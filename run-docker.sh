@@ -20,9 +20,9 @@ if [ "$1" == "debug" ] || [ "$1" == "DEBUG" ] || [ "$1" == "-i" ]; then
       $IMAGE_NAME
 elif [ -z "$1" ]; then # no args passed
     docker run --rm -it \
-    --env-file dev.env \
-    -v /mnt/imap-data:/data \
-    $IMAGE_NAME
+  --env-file dev.env \
+  -v /mnt/imap-data:/data \
+  $IMAGE_NAME
 else
     echo "Extra arguments: $@"
     docker run --rm -it \
