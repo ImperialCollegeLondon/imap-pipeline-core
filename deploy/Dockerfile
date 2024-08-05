@@ -44,9 +44,6 @@ USER appuser
 # Make sure scripts in .local are usable:
 ENV PATH="$PATH:/home/appuser/.local/bin"
 
-# DELETE ME
-RUN ls -la .
-
 # Now the imap-mag CLI is available on the path and
 # the 3.12 python package for imap-mag is intalled at /home/appuser/.local/bin
 
