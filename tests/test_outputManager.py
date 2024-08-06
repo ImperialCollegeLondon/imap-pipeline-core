@@ -96,7 +96,7 @@ def test_copy_file_forced_version():
         original_file,
         descriptor="pwr",
         date=datetime(2025, 5, 2),
-        version="v003",
+        version=3,
         extension="txt",
     )
 

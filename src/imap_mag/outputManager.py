@@ -15,7 +15,7 @@ class OutputMetadata(typing.TypedDict):
     data_level: str | None
     descriptor: str
     date: datetime
-    version: str | None
+    version: int | None
     extension: str
 
 
@@ -42,7 +42,7 @@ class OutputManager:
             )
             raise typer.Abort()
 
-        return f"{metadata['descriptor']}-{metadata['date'].strftime('%Y%m%d')}-{metadata['version']}.{metadata['extension']}"
+        return f"{metadata['descriptor']}-{metadata['date'].strftime('%Y%m%d')}-v{metadata['version']:03}.{metadata['extension']}"
 
     """Output location."""
     location: Path
@@ -73,7 +73,7 @@ class OutputManager:
 
         if ("version" not in metadata) or (metadata["version"] is None):
             logging.debug("No version provided. Setting to 'v000'.")
-            metadata["version"] = "v000"
+            metadata["version"] = 0
 
         if not self.location.exists():
             self.location.mkdir(parents=True, exist_ok=True)
@@ -113,14 +113,14 @@ class OutputManager:
 
     def __find_viable_version(
         self, destination_file: Path, **metadata: OutputMetadata
-    ) -> str:
+    ) -> int:
         """Find a viable version for a file."""
 
         while destination_file.exists():
             logging.info(
                 f"File {destination_file} already exists and is different. Increasing version to {metadata['version']}."
             )
-            metadata["version"] = "v%03d" % (int(metadata["version"][1:]) + 1)
+            metadata["version"] += 1
             destination_file = self.__assemble_full_path(**metadata)
 
         return metadata["version"]
