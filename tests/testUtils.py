@@ -2,7 +2,31 @@ import os
 from pathlib import Path, PosixPath, WindowsPath
 
 import imap_mag.appConfig as appConfig
+import pytest
 import yaml
+from imap_mag import appLogging
+
+
+@pytest.fixture(autouse=True)
+def enableLogging():
+    appLogging.set_up_logging(
+        console_log_output="stdout",
+        console_log_level="debug",
+        console_log_color=True,
+        logfile_file="debug",
+        logfile_log_level="debug",
+        logfile_log_color=False,
+        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s",
+        console_log_line_template="%(color_on)s%(message)s%(color_off)s",
+    )
+    yield
+
+
+@pytest.fixture(autouse=True)
+def tidyDataFolders():
+    os.system("rm -rf .work")
+    os.system("rm -rf output/*")
+    yield
 
 
 def create_serialize_config(

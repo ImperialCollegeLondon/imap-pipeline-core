@@ -7,21 +7,13 @@ import os
 import re
 from pathlib import Path
 
-import pytest
 from imap_mag.main import app
 from typer.testing import CliRunner
 
-from .testUtils import create_serialize_config
+from .testUtils import create_serialize_config, tidyDataFolders  # noqa: F401
 from .wiremockUtils import wiremock_manager  # noqa: F401
 
 runner = CliRunner()
-
-
-@pytest.fixture(autouse=True)
-def tidyDataFolders():
-    os.system("rm -rf .work")
-    os.system("rm -rf output/*")
-    yield
 
 
 def test_app_says_hello():

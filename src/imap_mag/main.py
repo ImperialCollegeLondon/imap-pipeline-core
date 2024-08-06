@@ -35,7 +35,7 @@ app = typer.Typer()
 globalState = {"verbose": False}
 
 
-def commandInit(config: Path) -> appConfig.AppConfig:
+def commandInit(config: Path | None) -> appConfig.AppConfig:
     # load and verify the config file
     if config is None:
         logging.critical("No config file")
@@ -182,6 +182,8 @@ def fetch_binary(
     end_date: Annotated[str, typer.Option(help="End date for the download")],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
 ):
+    """Download binary data from WebPODA."""
+
     configFile: appConfig.AppConfig = commandInit(config)
 
     if not auth_code:
@@ -229,6 +231,8 @@ def fetch_science(
     ] = LevelEnum.level_2,
     config: Annotated[Path, typer.Option()] = Path("config-sci.yaml"),
 ):
+    """Download science data from the SDC."""
+
     configFile: appConfig.AppConfig = commandInit(config)
 
     if not auth_code:
