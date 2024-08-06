@@ -1,6 +1,4 @@
 import logging
-import os
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -8,7 +6,8 @@ import numpy as np
 import pandas as pd
 import typer
 
-from . import appConfig
+from .appConfig import Destination
+from .outputManager import OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
@@ -56,18 +55,20 @@ def convertToDatetime(string: str) -> np.datetime64:
         raise typer.Abort()
 
 
-def copyFileToDestination(filePath: Path, destination: appConfig.Destination) -> None:
+def copyFileToDestination(
+    file_path: Path,
+    destination: Destination,
+    output_manager: Optional[OutputManager] = None,
+) -> Path:
     """Copy file to destination folder."""
 
-    destinationFile = Path(destination.folder)
+    destination_folder = Path(destination.folder)
 
-    if not destinationFile.exists():
-        logging.debug(f"Creating destination folder {destinationFile}.")
-        os.makedirs(destinationFile)
+    if output_manager is None:
+        output_manager: OutputManager = OutputManager(
+            destination_folder,
+            folder_structure_provider=lambda **_: "",
+            file_name_provider=lambda **_: file_path.name,
+        )
 
-    if destination.filename:
-        destinationFile = destinationFile / destination.filename
-
-    logging.info(f"Copying {filePath} to {destinationFile.absolute()}")
-    completed = shutil.copy2(filePath, destinationFile)
-    logging.info(f"Copy complete: {completed}")
+    output_manager.add_file(file_path)

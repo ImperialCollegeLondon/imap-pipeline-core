@@ -76,11 +76,15 @@ class OutputManager:
             metadata["version"] = 0
 
         if not self.location.exists():
+            logging.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
         destination_file: Path = self.__assemble_full_path(**metadata)
 
         if not destination_file.parent.exists():
+            logging.debug(
+                f"Output folder structure does not exist. Creating {destination_file.parent}."
+            )
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
         if destination_file.exists():
