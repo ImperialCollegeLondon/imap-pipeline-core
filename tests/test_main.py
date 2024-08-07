@@ -110,10 +110,10 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
 
     # Verify.
     assert result.exit_code == 0
-    assert Path("output/power.pkts").exists()
+    assert Path("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts").exists()
 
     with (
-        open("output/power.pkts", "rb") as output,
+        open("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts", "rb") as output,
         open(binary_file, "rb") as input,
     ):
         assert output.read() == input.read()
@@ -143,7 +143,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&version=latest&extension=cdf",
+        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -154,7 +154,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     wiremock_manager.add_string_mapping(
         re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
         + ".*"
-        + re.escape("&start_date=20250502&version=latest&extension=cdf"),
+        + re.escape("&start_date=20250502&end_date=20250502&extension=cdf"),
         json.dumps({}),
         is_pattern=True,
         priority=2,
@@ -187,10 +187,12 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
 
     # Verify.
     assert result.exit_code == 0
-    assert Path("output/result.cdf").exists()
+    assert Path("output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf").exists()
 
     with (
-        open("output/result.cdf", "rb") as output,
+        open(
+            "output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+        ) as output,
         open(cdf_file, "rb") as input,
     ):
         assert output.read() == input.read()
