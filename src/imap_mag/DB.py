@@ -51,9 +51,15 @@ class DB:
 
 
 class DatabaseOutputManager(IOutputManager):
-    def __init__(self, output_manager: IOutputManager, db: DB = DB()):
+    def __init__(self, output_manager: IOutputManager, db: DB | None = None):
+        """Initialize database and output manager."""
+
         self.output_manager = output_manager
-        self.db = db
+
+        if db is None:
+            self.db = DB()
+        else:
+            self.db = db
 
     def add_file(
         self, original_file: Path, metadata_provider: IMetadataProvider
