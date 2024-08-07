@@ -34,6 +34,7 @@
         "WEBPODA_AUTH_CODE": "${localEnv:WEBPODA_AUTH_CODE}",
         "SDC_AUTH_CODE": "${localEnv:SDC_AUTH_CODE}",
         "IMAP_DATA_ACCESS_URL": "${localEnv:IMAP_DATA_ACCESS_URL}",
+        "SQLALCHEMY_URL": "${localEnv:SQLALCHEMY_URL}",
         // Define WireMock variables to connect Docker outside of Docker.
         "WIREMOCK_DIND": "1",
         "TESTCONTAINERS_HOST_OVERRIDE": "host.docker.internal"
