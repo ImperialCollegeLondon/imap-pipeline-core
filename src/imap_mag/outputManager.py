@@ -26,7 +26,8 @@ class IMetadataProvider(abc.ABC):
 class DefaultMetadataProvider(IMetadataProvider):
     """Metadata for output files."""
 
-    data_level: str | None = None
+    prefix: str | None = "imap_mag"
+    level: str | None = None
     descriptor: str
     date: datetime
     extension: str
@@ -49,7 +50,15 @@ class DefaultMetadataProvider(IMetadataProvider):
             )
             raise typer.Abort()
 
-        return f"{self.descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        descriptor = self.descriptor
+
+        if self.level is not None:
+            descriptor = f"{self.level}_{descriptor}"
+
+        if self.prefix is not None:
+            descriptor = f"{self.prefix}_{descriptor}"
+
+        return f"{descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
 
 class IOutputManager(abc.ABC):
