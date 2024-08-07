@@ -25,7 +25,7 @@ def test_copy_new_file():
     )
 
     # Verify.
-    assert Path("output/2025/05/02/pwr-20250502-v000.txt").exists()
+    assert Path("output/2025/05/02/pwr_20250502_v000.txt").exists()
 
 
 def test_copy_file_same_content():
@@ -37,7 +37,7 @@ def test_copy_file_same_content():
     original_file.touch()
     original_file.write_bytes(b"some content")
 
-    existing_file = Path("output/2025/05/02/pwr-20250502-v000.txt")
+    existing_file = Path("output/2025/05/02/pwr_20250502_v000.txt")
     existing_file.parent.mkdir(parents=True, exist_ok=True)
     existing_file.touch()
     existing_file.write_bytes(b"some content")
@@ -53,7 +53,7 @@ def test_copy_file_same_content():
     )
 
     # Verify.
-    assert not Path("output/2025/05/02/pwr-20250502-v001.txt").exists()
+    assert not Path("output/2025/05/02/pwr_20250502_v001.txt").exists()
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
@@ -67,7 +67,7 @@ def test_copy_file_existing_versions():
     original_file.write_bytes(b"some content")
 
     for version in range(2):
-        existing_file = Path(f"output/2025/05/02/pwr-20250502-v{version:03}.txt")
+        existing_file = Path(f"output/2025/05/02/pwr_20250502_v{version:03}.txt")
         existing_file.parent.mkdir(parents=True, exist_ok=True)
         existing_file.touch()
 
@@ -80,7 +80,7 @@ def test_copy_file_existing_versions():
     )
 
     # Verify.
-    assert Path("output/2025/05/02/pwr-20250502-v002.txt").exists()
+    assert Path("output/2025/05/02/pwr_20250502_v002.txt").exists()
 
 
 def test_copy_file_forced_version():
@@ -101,7 +101,7 @@ def test_copy_file_forced_version():
     )
 
     # Verify.
-    assert Path("output/2025/05/02/pwr-20250502-v003.txt").exists()
+    assert Path("output/2025/05/02/pwr_20250502_v003.txt").exists()
 
 
 class TestMetadataProvider(IMetadataProvider):

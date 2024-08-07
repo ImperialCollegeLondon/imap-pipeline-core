@@ -49,7 +49,7 @@ class DefaultMetadataProvider(IMetadataProvider):
             )
             raise typer.Abort()
 
-        return f"{self.descriptor}-{self.date.strftime('%Y%m%d')}-v{self.version:03}.{self.extension}"
+        return f"{self.descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
 
 class IOutputManager(abc.ABC):
