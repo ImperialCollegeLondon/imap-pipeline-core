@@ -13,7 +13,6 @@ import typer
 
 # config
 import yaml
-from imap_db.model import File
 from mag_toolkit import CDFLoader
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
 from mag_toolkit.calibration.calibrationFormatProcessor import (
@@ -26,10 +25,13 @@ from mag_toolkit.calibration.Calibrator import (
     SpinPlaneCalibrator,
 )
 
-from . import DB, appConfig, appLogging, appUtils, imapProcessing
+from . import appConfig, appLogging, appUtils, imapProcessing
+from .cli.fetchBinary import FetchBinary
 from .cli.fetchScience import FetchScience
 from .client.sdcDataAccess import SDCDataAccess
 from .client.webPODA import WebPODA
+from .DB import DatabaseOutputManager
+from .outputManager import OutputManager
 
 app = typer.Typer()
 globalState = {"verbose": False}
@@ -191,6 +193,9 @@ def fetch_binary(
         raise typer.Abort()
 
     packet: str = appUtils.getPacketFromApID(apid)
+    start_date = appUtils.convertToDatetime(start_date)
+    end_date = appUtils.convertToDatetime(end_date)
+
     logging.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
 
     poda = WebPODA(
@@ -198,13 +203,12 @@ def fetch_binary(
         configFile.work_folder,
         configFile.api.webpoda_url if configFile.api else None,
     )
-    result: str = poda.download(
-        packet=packet,
-        start_date=appUtils.convertToDatetime(start_date),
-        end_date=appUtils.convertToDatetime(end_date),
-    )
+    output_manager = DatabaseOutputManager(OutputManager(configFile.destination.folder))
 
-    appUtils.copyFileToDestination(result, configFile.destination)
+    fetch_binary = FetchBinary(poda, output_manager)
+    fetch_binary.download_binaries(
+        packet=packet, start_date=start_date, end_date=end_date
+    )
 
 
 class LevelEnum(str, Enum):
@@ -229,7 +233,7 @@ def fetch_science(
     level: Annotated[
         LevelEnum, typer.Option(help="Level to download")
     ] = LevelEnum.level_2,
-    config: Annotated[Path, typer.Option()] = Path("config-sci.yaml"),
+    config: Annotated[Path, typer.Option()] = Path("config.yaml"),
 ):
     """Download science data from the SDC."""
 
@@ -239,30 +243,21 @@ def fetch_science(
         logging.critical("No SDC_AUTH_CODE API key provided")
         raise typer.Abort()
 
+    start_date = appUtils.convertToDatetime(start_date)
+    end_date = appUtils.convertToDatetime(end_date)
+
     logging.info(f"Downloading {level} science from {start_date} to {end_date}.")
 
     data_access = SDCDataAccess(
         data_dir=str(configFile.work_folder),
         sdc_url=configFile.api.sdc_url if configFile.api else None,
     )
+    output_manager = DatabaseOutputManager(OutputManager(configFile.destination.folder))
 
-    fetch_science = FetchScience(data_access)
-    files = fetch_science.download_latest_science(
+    fetch_science = FetchScience(data_access, output_manager)
+    fetch_science.download_latest_science(
         level=level.value, start_date=start_date, end_date=end_date
     )
-
-    records = []
-    for file in files:
-        records.append(File(name=file.name, path=file.absolute().as_posix()))
-
-    for file in files:
-        appUtils.copyFileToDestination(file, configFile.destination)
-
-    if configFile.destination.export_to_database:
-        db = DB.DB()
-        db.insert_files(records)
-
-        logging.info(f"Downloaded {len(files)} files and saved to database")
 
 
 # imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
