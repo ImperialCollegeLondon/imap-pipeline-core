@@ -6,6 +6,7 @@ work-folder: .work
 destination:
   folder: output/
   filename: result.csv
+  export-to-database: false
 
 packet-definition:
   hk: src/imap_mag/xtce/tlm_20240724.xml

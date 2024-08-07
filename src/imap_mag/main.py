@@ -30,8 +30,6 @@ from .cli.fetchBinary import FetchBinary
 from .cli.fetchScience import FetchScience
 from .client.sdcDataAccess import SDCDataAccess
 from .client.webPODA import WebPODA
-from .DB import DatabaseOutputManager
-from .outputManager import OutputManager
 
 app = typer.Typer()
 globalState = {"verbose": False}
@@ -203,7 +201,7 @@ def fetch_binary(
         configFile.work_folder,
         configFile.api.webpoda_url if configFile.api else None,
     )
-    output_manager = DatabaseOutputManager(OutputManager(configFile.destination.folder))
+    output_manager = appUtils.getOutputManager(configFile.destination)
 
     fetch_binary = FetchBinary(poda, output_manager)
     fetch_binary.download_binaries(
@@ -252,7 +250,7 @@ def fetch_science(
         data_dir=str(configFile.work_folder),
         sdc_url=configFile.api.sdc_url if configFile.api else None,
     )
-    output_manager = DatabaseOutputManager(OutputManager(configFile.destination.folder))
+    output_manager = appUtils.getOutputManager(configFile.destination)
 
     fetch_science = FetchScience(data_access, output_manager)
     fetch_science.download_latest_science(

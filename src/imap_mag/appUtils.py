@@ -7,7 +7,8 @@ import pandas as pd
 import typer
 
 from .appConfig import Destination
-from .outputManager import IMetadataProvider, OutputManager
+from .DB import DatabaseOutputManager
+from .outputManager import IMetadataProvider, IOutputManager, OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
@@ -53,6 +54,17 @@ def convertToDatetime(string: str) -> np.datetime64:
     except Exception as e:
         logging.critical(f"Error parsing {string} as datetime: {e}")
         raise typer.Abort()
+
+
+def getOutputManager(destination: Destination) -> IOutputManager:
+    """Retrieve output manager based on destination."""
+
+    output_manager = OutputManager(destination.folder)
+
+    if destination.export_to_database:
+        output_manager = DatabaseOutputManager(output_manager)
+
+    return output_manager
 
 
 def copyFileToDestination(

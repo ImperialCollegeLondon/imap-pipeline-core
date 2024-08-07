@@ -6,3 +6,4 @@ work-folder: .work
 destination:
   folder: output/
   filename: calibration.json
+  export-to-database: false
