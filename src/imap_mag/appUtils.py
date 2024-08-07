@@ -62,13 +62,23 @@ def copyFileToDestination(
 ) -> tuple[Path, IMetadataProvider]:
     """Copy file to destination folder."""
 
+    class SimpleMetadataProvider(IMetadataProvider):
+        """Simple metadata provider for compatibility."""
+
+        def __init__(self, filename: str) -> None:
+            self.filename = filename
+
+        def get_folder_structure(self) -> str:
+            return ""
+
+        def get_file_name(self) -> str:
+            return self.filename
+
     destination_folder = Path(destination.folder)
 
     if output_manager is None:
-        output_manager: OutputManager = OutputManager(
-            destination_folder,
-            folder_structure_provider=lambda **_: "",
-            file_name_provider=lambda **_: file_path.name,
-        )
+        output_manager: OutputManager = OutputManager(destination_folder)
 
-    return output_manager.add_file(file_path)
+    return output_manager.add_file(
+        file_path, SimpleMetadataProvider(destination.filename)
+    )
