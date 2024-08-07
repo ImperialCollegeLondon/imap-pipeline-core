@@ -1,3 +1,4 @@
+import abc
 import hashlib
 import logging
 import shutil
@@ -6,80 +7,84 @@ from datetime import datetime
 from pathlib import Path
 
 import typer
-import typing_extensions
 
 
-class OutputMetadata(typing.TypedDict):
+class IMetadataProvider(abc.ABC):
+    """Interface for metadata providers."""
+
+    version: int = 0
+
+    @abc.abstractmethod
+    def get_folder_structure(self) -> str:
+        """Retrieve folder structure."""
+
+    @abc.abstractmethod
+    def get_file_name(self) -> str:
+        """Retireve file name."""
+
+
+class DefaultMetadataProvider(IMetadataProvider):
     """Metadata for output files."""
 
-    data_level: str | None
+    data_level: str | None = None
     descriptor: str
     date: datetime
-    version: int | None
     extension: str
 
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
-class OutputManager:
-    """Manage output files."""
-
-    @staticmethod
-    def get_folder_structure(**metadata: OutputMetadata) -> str:
-        """Retrieve folder structure from metadata."""
-
-        if "date" not in metadata:
-            logging.error(f"Metadata must contain key 'date'. Got: {metadata.keys()}")
+    def get_folder_structure(self) -> str:
+        if self.date is None:
+            logging.error("No 'date' defined. Cannot generate folder structure.")
             raise typer.Abort()
 
-        return metadata["date"].strftime("%Y/%m/%d")
+        return self.date.strftime("%Y/%m/%d")
 
-    @staticmethod
-    def get_file_name(**metadata: OutputMetadata) -> str:
-        """Retireve file name from metadata."""
-
-        if {"descriptor", "date", "version", "extension"} > metadata.keys():
+    def get_file_name(self) -> str:
+        if any(x is None for x in ["descriptor", "date", "version", "extension"]):
             logging.error(
-                f"Metadata must contain keys 'descriptor', 'date', 'version', 'extension'. Got: {metadata.keys()}"
+                "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
             )
             raise typer.Abort()
 
-        return f"{metadata['descriptor']}-{metadata['date'].strftime('%Y%m%d')}-v{metadata['version']:03}.{metadata['extension']}"
+        return f"{self.descriptor}-{self.date.strftime('%Y%m%d')}-v{self.version:03}.{self.extension}"
 
-    """Output location."""
-    location: Path
-    """Function returning folder structure pattern."""
-    folder_structure_provider: typing.Callable[..., str] = get_folder_structure
-    """Function returning file name pattern."""
-    file_name_provider: typing.Callable[..., str] = get_file_name
 
-    def __init__(
-        self,
-        location: Path,
-        *,
-        folder_structure_provider: typing.Callable[..., str] | None = None,
-        file_name_provider: typing.Callable[..., str] | None = None,
-    ) -> None:
-        self.location = location
+class IOutputManager(abc.ABC):
+    """Interface for output managers."""
 
-        if folder_structure_provider is not None:
-            self.folder_structure_provider = folder_structure_provider
-
-        if file_name_provider is not None:
-            self.file_name_provider = file_name_provider
-
+    @abc.abstractmethod
     def add_file(
-        self, original_file: Path, **metadata: typing_extensions.Unpack[OutputMetadata]
-    ) -> Path:
+        self, original_file: Path, metadata_provider: IMetadataProvider
+    ) -> tuple[Path, IMetadataProvider]:
         """Add file to output location."""
 
-        if ("version" not in metadata) or (metadata["version"] is None):
-            logging.debug("No version provided. Setting to 'v000'.")
-            metadata["version"] = 0
+    def add_default_file(
+        self, original_file: Path, **metadata: typing.Any
+    ) -> tuple[Path, IMetadataProvider]:
+        return self.add_file(original_file, DefaultMetadataProvider(**metadata))
+
+
+class OutputManager(IOutputManager):
+    """Manage output files."""
+
+    location: Path
+
+    def __init__(self, location: Path) -> None:
+        self.location = location
+
+    def add_file(
+        self, original_file: Path, metadata_provider: IMetadataProvider
+    ) -> tuple[Path, IMetadataProvider]:
+        """Add file to output location."""
 
         if not self.location.exists():
             logging.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        destination_file: Path = self.__assemble_full_path(**metadata)
+        destination_file: Path = self.__assemble_full_path(metadata_provider)
 
         if not destination_file.parent.exists():
             logging.debug(
@@ -93,38 +98,38 @@ class OutputManager:
                 == hashlib.md5(original_file.read_bytes()).hexdigest()
             ):
                 logging.info(f"File {destination_file} already exists and is the same.")
-                return destination_file
+                return (destination_file, metadata_provider)
 
-            metadata["version"] = self.__find_viable_version(
-                destination_file, **metadata
+            metadata_provider.version = self.__find_viable_version(
+                destination_file, metadata_provider
             )
-            destination_file = self.__assemble_full_path(**metadata)
+            destination_file = self.__assemble_full_path(metadata_provider)
 
         logging.info(f"Copying {original_file} to {destination_file.absolute()}.")
         destination = shutil.copy2(original_file, destination_file)
         logging.info(f"Copied to {destination}.")
 
-        return destination_file
+        return (destination_file, metadata_provider)
 
-    def __assemble_full_path(self, **metadata: OutputMetadata) -> Path:
+    def __assemble_full_path(self, metadata_provider: IMetadataProvider) -> Path:
         """Assemble full path from metadata."""
 
         return (
             self.location
-            / self.folder_structure_provider(**metadata)
-            / self.file_name_provider(**metadata)
+            / metadata_provider.get_folder_structure()
+            / metadata_provider.get_file_name()
         )
 
     def __find_viable_version(
-        self, destination_file: Path, **metadata: OutputMetadata
+        self, destination_file: Path, metadata_provider: IMetadataProvider
     ) -> int:
         """Find a viable version for a file."""
 
         while destination_file.exists():
             logging.info(
-                f"File {destination_file} already exists and is different. Increasing version to {metadata['version']}."
+                f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version}."
             )
-            metadata["version"] += 1
-            destination_file = self.__assemble_full_path(**metadata)
+            metadata_provider.version += 1
+            destination_file = self.__assemble_full_path(metadata_provider)
 
-        return metadata["version"]
+        return metadata_provider.version

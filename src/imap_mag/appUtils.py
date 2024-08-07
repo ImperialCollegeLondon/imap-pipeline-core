@@ -7,7 +7,7 @@ import pandas as pd
 import typer
 
 from .appConfig import Destination
-from .outputManager import OutputManager
+from .outputManager import IMetadataProvider, OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
@@ -59,7 +59,7 @@ def copyFileToDestination(
     file_path: Path,
     destination: Destination,
     output_manager: Optional[OutputManager] = None,
-) -> Path:
+) -> tuple[Path, IMetadataProvider]:
     """Copy file to destination folder."""
 
     destination_folder = Path(destination.folder)
@@ -71,4 +71,4 @@ def copyFileToDestination(
             file_name_provider=lambda **_: file_path.name,
         )
 
-    output_manager.add_file(file_path)
+    return output_manager.add_file(file_path)
