@@ -58,21 +58,22 @@ class FetchBinary:
             ]
 
         for d in range(len(dates) - 1):
-            file = self.__web_poda.download(
+            file: Path = self.__web_poda.download(
                 packet=options["packet"], start_date=dates[d], end_date=dates[d + 1]
             )
 
-            if self.__output_manager is not None:
-                self.__output_manager.add_default_file(
-                    file,
-                    descriptor=options["packet"]
-                    .lower()
-                    .strip("mag_")
-                    .replace("_", "-"),
-                    date=dates[d],
-                    extension="pkts",
-                )
+            if file.stat().st_size > 0:
+                if self.__output_manager is not None:
+                    self.__output_manager.add_default_file(
+                        file,
+                        descriptor=options["packet"]
+                        .lower()
+                        .strip("mag_")
+                        .replace("_", "-"),
+                        date=dates[d],
+                        extension="pkts",
+                    )
 
-            downloaded += [file]
+                downloaded += [file]
 
         return downloaded
