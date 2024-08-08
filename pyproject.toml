@@ -37,6 +37,7 @@ single-version = "^1.6.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.1"
 pytest-cov = "^5.0.0"
+pytest-mock = "^3.14.0"
 pyinstaller = "^6.5.0"
 pre-commit = "^3.8.0"
 ruff = "^0.5.4"
