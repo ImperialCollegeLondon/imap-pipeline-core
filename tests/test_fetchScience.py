@@ -52,8 +52,9 @@ def test_fetch_science_no_matching_files(
         extension="cdf",
     )
 
-    assert not mock_soc.download.called
-    assert not mock_output_manager.add_default_file.called
+    mock_soc.download.assert_not_called()
+    mock_output_manager.add_default_file.assert_not_called()
+
     assert actual_downloaded == []
 
 

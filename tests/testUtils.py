@@ -65,3 +65,17 @@ def create_serialize_config(
         yaml.dump(config.model_dump(by_alias=True), f)
 
     return (config, config_file)
+
+
+def create_test_file(file_path: Path, content: str | None) -> Path:
+    """Create a file with the given content."""
+
+    file_path.unlink(missing_ok=True)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_path.touch()
+
+    if content is not None:
+        file_path.write_text(content)
+
+    return file_path
