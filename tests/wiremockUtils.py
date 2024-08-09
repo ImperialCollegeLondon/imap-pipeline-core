@@ -1,5 +1,5 @@
 import typing
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 import typing_extensions
@@ -55,7 +55,7 @@ class WireMockManager:
     ) -> None:
         """Copy file to container and add WireMock mapping for it."""
 
-        container_dir_path = Path("/home/wiremock/__files")
+        container_dir_path = PurePosixPath("/home/wiremock/__files")
 
         with open(host_path, "rb") as f:
             self.__mock_container.copy_files_to_container(
