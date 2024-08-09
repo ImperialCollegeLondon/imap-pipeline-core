@@ -45,8 +45,6 @@ class Database(IDatabase):
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
-        logging.debug(f"Creating database with URL: {db_url}")
-
     def insert_files(self, files: list[File]) -> None:
         session = self.Session()
         try:
