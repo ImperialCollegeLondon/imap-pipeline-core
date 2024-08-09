@@ -28,7 +28,6 @@ class FetchScienceOptions(typing.TypedDict):
     level: str
     start_date: datetime
     end_date: datetime
-    output_dir: str
 
 
 class FetchScience:
@@ -44,8 +43,8 @@ class FetchScience:
         self,
         data_access: ISDCDataAccess,
         output_manager: IOutputManager | None = None,
-        modes: list[MAGMode] = ["norm", "burst"],
-        sensors: list[MAGSensor] = ["magi", "mago"],
+        modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
+        sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:
         """Initialize SDC interface."""
 
@@ -73,7 +72,7 @@ class FetchScience:
                 for sensor in self.__sensor:
                     file_details = self.__data_access.get_filename(
                         level=options["level"],
-                        descriptor=str(mode) + "-" + str(sensor),
+                        descriptor=mode.value + "-" + sensor.value,
                         start_date=date,
                         end_date=date,
                         version="latest",

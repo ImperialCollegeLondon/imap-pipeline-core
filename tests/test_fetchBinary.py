@@ -51,7 +51,7 @@ def test_fetch_binary_empty_download_not_added_to_output(
     mock_poda.download.side_effect = lambda **_: create_file(test_file, None)
 
     # Exercise.
-    actual_downloaded: Path = fetchBinary.download_binaries(
+    actual_downloaded: list[Path] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
@@ -78,7 +78,7 @@ def test_fetch_binary_with_same_start_end_date(
     mock_poda.download.side_effect = lambda **_: create_file(test_file, "content")
 
     # Exercise.
-    actual_downloaded: Path = fetchBinary.download_binaries(
+    actual_downloaded: list[Path] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
