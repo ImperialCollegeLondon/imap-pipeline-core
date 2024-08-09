@@ -103,7 +103,7 @@ class DatabaseOutputManager(IOutputManager):
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
             )
             destination_file.unlink(missing_ok=True)
-            typer.Abort()
+            raise typer.Abort()
 
         logging.info(f"Inserting {destination_file} into database.")
 
