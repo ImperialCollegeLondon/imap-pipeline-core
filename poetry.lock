@@ -1798,7 +1798,7 @@ testing = ["docker (>=6.1.0,<7.0.0)", "testcontainers (>=3.7.1,<4.0.0)"]
 
 [package.source]
 type = "git"
-url = "git@github.com:ImperialCollegeLondon/python-wiremock.git"
+url = "https://github.com/ImperialCollegeLondon/python-wiremock.git"
 reference = "fix-test-containers-on-windows"
 resolved_reference = "d7cb44af3c3cf84e84b219094b3fc97a8ed06c5c"
 
@@ -1908,4 +1908,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "0ad1f8fbdb650d2841254fdfe3a326f4390270ce10bef74584cc24e88778bd7b"
+content-hash = "7452752b3522e4513c287a99b753459abf9523839bb9c142a50837e8fd0e7a7b"
