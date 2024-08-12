@@ -1,6 +1,5 @@
 import os
-from pathlib import Path, PosixPath
-
+from pathlib import Path, PosixPath, WindowsPath
 import imap_mag.appConfig as appConfig
 import yaml
 
@@ -34,6 +33,9 @@ def create_serialize_config(
     with open(config_file, "w") as f:
         yaml.add_representer(
             PosixPath, lambda dumper, data: dumper.represent_str(str(data))
+        )
+        yaml.add_representer(
+            WindowsPath, lambda dumper, data: dumper.represent_str(str(data))
         )
         yaml.dump(config.model_dump(by_alias=True), f)
 
