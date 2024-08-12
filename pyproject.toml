@@ -31,7 +31,6 @@ pandas = "^2.2.2"
 imap-data-access = "^0.7.0"
 cdflib = "^1.3.1"
 psycopg = {extras = ["binary"], version = "^3.2.1"}
-wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git", rev = "fix-test-containers-on-windows"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.1"
@@ -41,6 +40,7 @@ pre-commit = "^3.8.0"
 ruff = "^0.5.4"
 docker = "^7.1.0"
 testcontainers = "^4.7.2"
+wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git", rev = "d7cb44af3c3cf84e84b219094b3fc97a8ed06c5c"}
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
