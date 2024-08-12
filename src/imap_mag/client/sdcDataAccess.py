@@ -2,9 +2,9 @@
 
 import abc
 import logging
-import pathlib
 import typing
 from datetime import datetime
+from pathlib import Path
 
 import imap_data_access
 import typing_extensions
@@ -44,7 +44,7 @@ class ISDCDataAccess(abc.ABC):
     @abc.abstractmethod
     def get_file_path(
         **options: typing_extensions.Unpack[FileOptions],
-    ) -> tuple[str, str]:
+    ) -> tuple[Path, Path]:
         """Get file path for data from imap-data-access."""
         pass
 
@@ -68,7 +68,7 @@ class ISDCDataAccess(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def download(self, file_name: str) -> pathlib.Path:
+    def download(self, file_name: str) -> Path:
         """Download data from imap-data-access."""
         pass
 
@@ -76,10 +76,10 @@ class ISDCDataAccess(abc.ABC):
 class SDCDataAccess(ISDCDataAccess):
     """Class for uploading and downloading MAG data via imap-data-access."""
 
-    def __init__(self, data_dir: str, sdc_url: str | None = None) -> None:
+    def __init__(self, data_dir: Path, sdc_url: str | None = None) -> None:
         """Initialize SDC API client."""
 
-        imap_data_access.config["DATA_DIR"] = pathlib.Path(data_dir)
+        imap_data_access.config["DATA_DIR"] = data_dir
         imap_data_access.config["DATA_ACCESS_URL"] = (
             sdc_url or "https://api.dev.imap-mission.com"
         )
@@ -87,7 +87,7 @@ class SDCDataAccess(ISDCDataAccess):
     @staticmethod
     def get_file_path(
         **options: typing_extensions.Unpack[FileOptions],
-    ) -> tuple[str, str]:
+    ) -> tuple[Path, Path]:
         science_file = imap_data_access.ScienceFilePath.generate_from_inputs(
             instrument="mag",
             data_level=options["level"],
@@ -136,6 +136,6 @@ class SDCDataAccess(ISDCDataAccess):
 
         return file_details
 
-    def download(self, file_name: str) -> pathlib.Path:
+    def download(self, file_name: str) -> Path:
         logging.debug(f"Downloading {file_name} from imap-data-access.")
-        return pathlib.Path(imap_data_access.download(file_name))
+        return imap_data_access.download(file_name)

@@ -247,7 +247,7 @@ def fetch_science(
     logging.info(f"Downloading {level} science from {start_date} to {end_date}.")
 
     data_access = SDCDataAccess(
-        data_dir=str(configFile.work_folder),
+        data_dir=configFile.work_folder,
         sdc_url=configFile.api.sdc_url if configFile.api else None,
     )
     output_manager = appUtils.getOutputManager(configFile.destination)
