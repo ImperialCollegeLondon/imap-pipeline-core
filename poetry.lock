@@ -603,18 +603,13 @@ version = "0.8.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
-files = []
-develop = false
+files = [
+    {file = "imap_data_access-0.8.0.tar.gz", hash = "sha256:bfcb96a6dc7c724662272bd83f5ea89a32eda4c4524bc2b94e12ee166a4a1194"},
+]
 
 [package.extras]
 dev = ["imap_data_access[test]", "pre-commit", "ruff"]
 test = ["pytest", "pytest-cov"]
-
-[package.source]
-type = "git"
-url = "https://github.com/ImperialCollegeLondon/imap-data-access.git"
-reference = "HEAD"
-resolved_reference = "c792c2f6d92512f2be4de0f4f796b409d634f843"
 
 [[package]]
 name = "importlib-resources"
@@ -1943,4 +1938,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "2646920291fe7954ce23f3b4b16e68b0a0b96daed4600ac03766e248d5480dcc"
+content-hash = "05034a7ae56f6ac95b6728ffa0c1af41cd021338cb3171e71ef0c67d376b6c19"
