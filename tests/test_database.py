@@ -116,3 +116,29 @@ def test_database_output_manager_errors_destination_file_different_hash(
     # Exercise and verify.
     with pytest.raises(typer.Abort):
         database_manager.add_file(original_file, metadata_provider)
+
+
+def test_database_output_manager_errors_database_error(
+    mock_output_manager: mock.Mock, mock_database: mock.Mock
+) -> None:
+    # Set up.
+    database_manager = DatabaseOutputManager(mock_output_manager, mock_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    metadata_provider = DefaultMetadataProvider(
+        version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        metadata_provider,
+    )
+
+    mock_database.insert_file.side_effect = ArithmeticError("Database error")
+
+    # Exercise and verify.
+    with pytest.raises(ArithmeticError):
+        database_manager.add_file(original_file, metadata_provider)
