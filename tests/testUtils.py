@@ -1,5 +1,6 @@
 import os
 from pathlib import Path, PosixPath, WindowsPath
+
 import imap_mag.appConfig as appConfig
 import yaml
 
