@@ -1,4 +1,4 @@
-"""Tests for `OutputManager` class."""
+"""Tests for database classes."""
 
 import hashlib
 import tempfile
