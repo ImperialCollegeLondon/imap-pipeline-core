@@ -1,5 +1,6 @@
 """Tests for `OutputManager` class."""
 
+import hashlib
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,8 @@ from unittest import mock
 
 import pytest
 import typer
+from imap_db.model import File
+from imap_mag import __version__
 from imap_mag.DB import DatabaseOutputManager, IDatabase
 from imap_mag.outputManager import DefaultMetadataProvider, IOutputManager
 
@@ -44,6 +47,17 @@ def test_database_output_manager_writes_to_database(
         metadata_provider,
     )
 
+    def check_inserted_file(file: File):
+        # Two instances of `File` will never be equal, so we check the attributes.
+        assert file.name == "test_file.txt"
+        assert file.path == test_file.absolute().as_posix()
+        assert file.version == 1
+        assert file.hash == hashlib.md5(b"some content").hexdigest()
+        assert file.date == datetime(2025, 5, 2)
+        assert file.software_version == __version__
+
+    mock_database.insert_file.side_effect = lambda file: check_inserted_file(file)
+
     # Exercise.
     (actual_file, actual_metadata_provider) = database_manager.add_file(
         original_file, metadata_provider
@@ -53,16 +67,6 @@ def test_database_output_manager_writes_to_database(
     mock_output_manager.add_file.assert_called_once_with(
         original_file, metadata_provider
     )
-    # mock_database.insert_file.assert_called_once_with(
-    #     File(
-    #         name="test_file.txt",
-    #         path=test_file.absolute().as_posix(),
-    #         version=1,
-    #         hash=hashlib.md5(b"some content").hexdigest(),
-    #         date=datetime(2025, 5, 2),
-    #         software_version=__version__,
-    #     )
-    # )
 
     assert actual_file == test_file
     assert actual_metadata_provider == metadata_provider
