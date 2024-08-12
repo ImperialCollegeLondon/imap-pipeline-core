@@ -1,4 +1,4 @@
-"""Tests for `OutputManager` class."""
+"""Tests for `FetchScience` class."""
 
 import tempfile
 from datetime import datetime
