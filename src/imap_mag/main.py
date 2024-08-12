@@ -13,13 +13,12 @@ import typer
 
 # config
 import yaml
-
-from src.mag_toolkit import CDFLoader
-from src.mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
-from src.mag_toolkit.calibration.calibrationFormatProcessor import (
+from mag_toolkit import CDFLoader
+from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
+from mag_toolkit.calibration.calibrationFormatProcessor import (
     CalibrationFormatProcessor,
 )
-from src.mag_toolkit.calibration.Calibrator import (
+from mag_toolkit.calibration.Calibrator import (
     Calibrator,
     CalibratorType,
     SpinAxisCalibrator,
@@ -95,12 +94,16 @@ def hello(name: str):
     print(f"Hello {name}")
 
 
-def prepareWorkFile(file, configFile):
+def prepareWorkFile(file, configFile) -> Path | None:
     logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
 
     # get all files in \\RDS.IMPERIAL.AC.UK\rds\project\solarorbitermagnetometer\live\SO-MAG-Web\quicklooks_py\
     files = []
     folder = configFile.source.folder
+
+    if not folder.exists():
+        logging.warning(f"Folder {folder} does not exist")
+        return None
 
     # if pattern contains a %
     if "%" in file:
@@ -151,7 +154,12 @@ def process(
 
     workFile = prepareWorkFile(file, configFile)
 
-    # TODO: do something with the data!
+    if workFile is None:
+        logging.critical(
+            "Unable to find a file to process in %s", configFile.source.folder
+        )
+        raise typer.Abort()
+
     fileProcessor = imapProcessing.dispatchFile(workFile)
     fileProcessor.initialize(configFile)
     result = fileProcessor.process(workFile)
@@ -265,6 +273,13 @@ def calibrate(
     configFile: appConfig.AppConfig = commandInit(config)
 
     workFile = prepareWorkFile(input, configFile)
+
+    if workFile is None:
+        logging.critical(
+            "Unable to find a file to process in %s", configFile.source.folder
+        )
+        raise typer.Abort()
+
     calibrator: Calibrator
 
     match method:

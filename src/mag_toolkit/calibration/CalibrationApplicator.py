@@ -3,12 +3,12 @@ from pathlib import Path
 
 import numpy as np
 
-from src.mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
-from src.mag_toolkit.calibration.calibrationFormat import CalibrationFormat
-from src.mag_toolkit.calibration.calibrationFormatProcessor import (
+from ..CDFLoader import load_cdf, write_cdf
+from .CalibrationExceptions import CalibrationValidityError
+from .calibrationFormat import CalibrationFormat
+from .calibrationFormatProcessor import (
     CalibrationFormatProcessor,
 )
-from src.mag_toolkit.CDFLoader import load_cdf, write_cdf
 
 
 class CalibrationApplicator:

@@ -5,12 +5,12 @@ import os
 from pathlib import Path
 
 import typer
+from imap_db.model import File
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.imap_db.model import File
-from src.imap_mag import __version__
-from src.imap_mag.outputManager import IMetadataProvider, IOutputManager
+from imap_mag import __version__
+from imap_mag.outputManager import IMetadataProvider, IOutputManager
 
 
 class IDatabase(abc.ABC):
@@ -36,6 +36,11 @@ class Database(IDatabase):
             db_url = env_url
 
         # TODO: Check database is available
+
+        if db_url is None:
+            raise ValueError(
+                "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
+            )
 
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)

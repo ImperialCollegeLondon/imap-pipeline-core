@@ -1,9 +1,8 @@
 from logging.config import fileConfig
 
 from alembic import context
+from imap_db.model import Base
 from sqlalchemy import engine_from_config, pool
-
-from src.imap_db.model import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

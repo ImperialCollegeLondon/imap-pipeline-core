@@ -10,9 +10,9 @@ description = "Process IMAP data"
 authors = ["alastairtree"]
 readme = "README.md"
 packages = [
-    { include = "src/imap_mag" },
-    { include = "src/imap_db" },
-    { include = "src/mag_toolkit" },
+    { include = "imap_mag", from = "src" },
+    { include = "imap_db", from = "src" },
+    { include = "mag_toolkit", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -25,7 +25,6 @@ xarray = "^2024.7.0"
 numpy = "^2.0.1"
 typer = "^0.12.3"
 sqlalchemy = "^2.0.31"
-psycopg2 = "^2.9.9"
 alembic = "^1.13.2"
 sqlalchemy-utils = "^0.41.2"
 requests = "^2.32.3"
@@ -33,6 +32,7 @@ pandas = "^2.2.2"
 imap-data-access = "^0.8.0"
 cdflib = "^1.3.1"
 single-version = "^1.6.0"
+psycopg = {extras = ["binary"], version = "^3.2.1"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.1"
@@ -47,8 +47,8 @@ testcontainers = "^4.7.2"
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
-imap-mag = 'src.imap_mag.main:app'
-imap-db = 'src.imap_db.main:app'
+imap-mag = 'imap_mag.main:app'
+imap-db = 'imap_db.main:app'
 
 [tool.pytest.ini_options]
 pythonpath = [

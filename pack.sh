@@ -16,6 +16,16 @@ echo "Packing version $(poetry version --short) for $(python3 --version) into $O
 poetry lock
 poetry build
 
+# output a requierments.txt file used by docker during the build
+poetry self add poetry-plugin-export
+poetry export --format=requirements.txt > dist/requirements.txt
+
 # move the files into a folder with the python version
 mkdir -p dist/python$PYTHON_VERSION
 find dist/ -maxdepth 1 -type f -name '*' -exec mv {} dist/python$PYTHON_VERSION \;
+
+# setup a docker folder that will be copied into the docker output at /app
+dockerFolder=dist/docker
+mkdir -p $dockerFolder
+cp deploy/entrypoint.sh $dockerFolder
+cp *.yaml $dockerFolder

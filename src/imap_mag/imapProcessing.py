@@ -1,6 +1,7 @@
 import abc
 import collections
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -34,10 +35,44 @@ class HKProcessor(FileProcessor):
     xtcePacketDefinition: Path
 
     def initialize(self, config: appConfig.AppConfig) -> None:
-        self.xtcePacketDefinition = config.packet_definition.hk
+        # first try the file path as is, then in the same directory as the module, then fallback to a default
+        pythonModuleRelativePath = Path(
+            os.path.join(os.path.dirname(__file__), config.packet_definition.hk)
+        )
+        defaultFallbackPath = Path("tlm.xml")
+        logging.debug(
+            "Trying XTCE packet definition file from these paths in turn: \n  %s\n  %s\n  %s\n",
+            config.packet_definition.hk,
+            pythonModuleRelativePath,
+            defaultFallbackPath,
+        )
+        if (
+            config.packet_definition is not None
+            and config.packet_definition.hk is not None
+            and config.packet_definition.hk.exists()
+        ):
+            logging.debug(
+                "Using XTCE packet definition file from relative path: %s",
+                config.packet_definition.hk,
+            )
+            self.xtcePacketDefinition = config.packet_definition.hk
+        # otherwise try path relative to the module
+        elif pythonModuleRelativePath.exists():
+            logging.debug(
+                "Using XTCE packet definition file from module path: %s",
+                pythonModuleRelativePath,
+            )
+            self.xtcePacketDefinition = pythonModuleRelativePath
+        else:
+            logging.debug(
+                "Using XTCE packet definition file from default path: %s",
+                defaultFallbackPath,
+            )
+            self.xtcePacketDefinition = defaultFallbackPath
+
         if not self.xtcePacketDefinition.exists():
             raise FileNotFoundError(
-                f"XTCE packet definition file not found: {self.xtcePacketDefinition}"
+                f"XTCE packet definition file not found: {config.packet_definition.hk}"
             )
 
     def process(self, file: Path) -> Path:

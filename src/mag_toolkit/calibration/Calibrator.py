@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
 
-from src.mag_toolkit.calibration import MatlabWrapper
-from src.mag_toolkit.calibration.calibrationFormat import (
+from . import MatlabWrapper
+from .calibrationFormat import (
     CalibrationFormat,
     OffsetCollection,
     SingleCalibration,

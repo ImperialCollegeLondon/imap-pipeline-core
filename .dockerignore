@@ -1,3 +1,18 @@
+# Ignore everything
+*
+
+# Allow files and directories
+!/dist
+#!/dist/file.txt
+
+# Ignore unnecessary files inside allowed directories
+# This should go after the allowed directories
+**/*~
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+
+#Ignore python crap
 **/__pycache__
 **/.venv
 **/.classpath
@@ -17,7 +32,6 @@
 **/*.jfm
 **/bin
 **/build
-
 **/.work
 **/htmlcov
 **/output
@@ -30,17 +44,13 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
-
 test-results.xml
 .coverage
 coverage.xml
 .coveragerc
-*.sh
-
 poetry.*
 pyproject.*
 pyrightconfig.json
 README.md
-
 LICENSE
-README.md
+CHANGELOG.md

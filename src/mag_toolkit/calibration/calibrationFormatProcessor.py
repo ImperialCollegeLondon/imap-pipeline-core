@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from src.mag_toolkit.calibration.calibrationFormat import CalibrationFormat
+from .calibrationFormat import CalibrationFormat
 
 
 class CalibrationFormatProcessor:
