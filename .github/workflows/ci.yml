@@ -151,7 +151,7 @@ jobs:
           reporter: java-junit
 
       - name: Coverage Report
-        uses: 5monkeys/cobertura-action@master
+        uses: 5monkeys/cobertura-action@v14
         with:
           report_name: Coverage Report (${{ matrix.python-versions }})
           path: "coverage.xml"
