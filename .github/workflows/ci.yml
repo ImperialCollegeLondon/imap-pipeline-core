@@ -150,6 +150,13 @@ jobs:
           path: 'test-results.xml'
           reporter: java-junit
 
+      - name: Coverage Report
+        uses: 5monkeys/cobertura-action@master
+        with:
+          report_name: Coverage Report (${{ matrix.python-versions }})
+          path: "coverage.xml"
+          minimum_coverage: 80
+
       - name: Create Release ${{github.ref_name}} & upload artifacts
         uses: softprops/action-gh-release@v2
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
