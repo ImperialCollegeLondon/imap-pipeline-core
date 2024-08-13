@@ -79,9 +79,10 @@ def test_process_with_binary_hk_converts_to_csv():
         assert expectedLastLine == lines[-1]
         assert expectedNumRows == len(lines)
 
+
 @pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows", 
-    reason="Wiremock test containers will not work on Windows Github Runner"
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
 )
 def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
     # Set up.
@@ -127,8 +128,8 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
 
 
 @pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows", 
-    reason="Wiremock test containers will not work on Windows Github Runner"
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
 )
 def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     # Set up.
