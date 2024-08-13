@@ -1800,7 +1800,7 @@ testing = ["docker (>=6.1.0,<7.0.0)", "testcontainers (>=3.7.1,<4.0.0)"]
 type = "git"
 url = "https://github.com/ImperialCollegeLondon/python-wiremock.git"
 reference = "fix-test-containers-on-windows"
-resolved_reference = "d7cb44af3c3cf84e84b219094b3fc97a8ed06c5c"
+resolved_reference = "fc2df60d0ff13e22f2cf5995d11596f83869a0ea"
 
 [[package]]
 name = "wrapt"
@@ -1908,4 +1908,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "b4b811611814a4876734b6cc3e2dc52c3795e22f317c321b8853f172165efa36"
+content-hash = "1fc833bcb9a1cfef4dde9214e97c327cbec06ec6e6de6f423ccd8abcb054ae65"
