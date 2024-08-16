@@ -39,6 +39,9 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     permissions:
+      actions: write
+      checks: write
+      packages: write
       pull-requests: write
     # map step outputs to job outputs so they can be share among jobs
     outputs:
