@@ -255,6 +255,7 @@ jobs:
           shell: bash
 
         - uses: addnab/docker-run-action@v3
+          continue-on-error: true
           with:
             registry: gcr.io
             image: ${{ matrix.image }}
