@@ -35,6 +35,8 @@ class Database(IDatabase):
         if db_url is None and env_url is not None:
             db_url = env_url
 
+        # TODO: Check database is available
+
         if db_url is None:
             raise ValueError(
                 "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
