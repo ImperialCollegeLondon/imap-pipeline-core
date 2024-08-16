@@ -208,7 +208,6 @@ jobs:
 
   build_single_file_binary:
     strategy:
-      fail-fast: false
       matrix:
         os: [linux, windows]
         include:
@@ -261,10 +260,6 @@ jobs:
             image: ${{ matrix.image }}
             options: -v ${{ github.workspace }}:/src/
             run: |
-                if [[ "$OSTYPE" == "msys" ]]
-                then
-                    echo 'wine '\''C:\Program Files\Git\bin\git.exe'\'' "$@"' > /usr/bin/git
-                fi
                 python -m pip install poetry
                 python -m poetry self add poetry-pyinstaller-plugin
                 python -m poetry install
