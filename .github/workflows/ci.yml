@@ -260,6 +260,7 @@ jobs:
             image: ${{ matrix.image }}
             options: -v ${{ github.workspace }}:/src/
             run: |
+                apt install git-all
                 python -m pip install poetry
                 python -m poetry self add poetry-pyinstaller-plugin
                 python -m poetry install
