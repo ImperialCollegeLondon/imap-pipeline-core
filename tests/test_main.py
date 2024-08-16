@@ -7,6 +7,7 @@ import os
 import re
 from pathlib import Path
 
+import pytest
 from imap_mag.main import app
 from typer.testing import CliRunner
 
