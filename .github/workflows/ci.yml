@@ -38,6 +38,10 @@ jobs:
         python-versions: ['3.10', '3.11', '3.12']
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
+      checks: write
     # map step outputs to job outputs so they can be share among jobs
     outputs:
       package_version: ${{ env.PACKAGE_VERSION }}

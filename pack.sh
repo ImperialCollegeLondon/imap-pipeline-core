@@ -18,7 +18,7 @@ poetry build
 
 # output a requierments.txt file used by docker during the build
 poetry self add poetry-plugin-export
-poetry export --format=requirements.txt > dist/requirements.txt
+poetry export --without-hashes --format=requirements.txt > dist/requirements.txt
 
 # move the files into a folder with the python version
 mkdir -p dist/python$PYTHON_VERSION

@@ -7,7 +7,6 @@ import os
 import re
 from pathlib import Path
 
-import pytest
 from imap_mag.main import app
 from typer.testing import CliRunner
 
@@ -116,7 +115,6 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
         assert output.read() == input.read()
 
 
-@pytest.mark.skip(reason="Waiting for `imap-data-access` version > 0.8.0.")
 def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     # Set up.
     query_response: list[dict[str, str]] = [
