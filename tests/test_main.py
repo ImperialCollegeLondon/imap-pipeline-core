@@ -120,7 +120,6 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
         assert output.read() == input.read()
 
 
-@pytest.mark.skip("Wait for `imap-data-access` to release version > 0.8.0.")
 @pytest.mark.skipif(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
