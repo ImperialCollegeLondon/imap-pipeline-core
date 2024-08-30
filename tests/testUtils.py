@@ -67,7 +67,7 @@ def create_serialize_config(
     return (config, config_file)
 
 
-def create_test_file(file_path: Path, content: str | None) -> Path:
+def create_test_file(file_path: Path, content: str | None = None) -> Path:
     """Create a file with the given content."""
 
     file_path.unlink(missing_ok=True)

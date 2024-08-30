@@ -1,4 +1,3 @@
-import hashlib
 import logging
 from pathlib import Path
 from typing import Optional
@@ -55,10 +54,6 @@ def convertToDatetime(string: str) -> np.datetime64:
     except Exception as e:
         logging.critical(f"Error parsing {string} as datetime: {e}")
         raise typer.Abort()
-
-
-def generate_hash(file: Path) -> str:
-    return hashlib.md5(file.read_bytes()).hexdigest()
 
 
 def getOutputManager(destination: Destination) -> IOutputManager:
