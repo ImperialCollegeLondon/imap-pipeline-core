@@ -22,6 +22,8 @@ class FetchBinaryOptions(typing.TypedDict):
 class FetchBinary:
     """Manage WebPODA data."""
 
+    __MAG_PREFIX: str = "mag_"
+
     __web_poda: WebPODA
     __output_manager: IOutputManager | None
 
@@ -68,7 +70,7 @@ class FetchBinary:
                         file,
                         descriptor=options["packet"]
                         .lower()
-                        .strip("mag_")
+                        .strip(self.__MAG_PREFIX)
                         .replace("_", "-"),
                         date=dates[d],
                         extension="pkts",

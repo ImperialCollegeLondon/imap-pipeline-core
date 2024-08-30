@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from pathlib import Path
 from typing import Optional
@@ -8,7 +9,7 @@ import typer
 
 from .appConfig import Destination
 from .DB import DatabaseOutputManager
-from .outputManager import IMetadataProvider, IOutputManager, OutputManager
+from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
@@ -56,6 +57,10 @@ def convertToDatetime(string: str) -> np.datetime64:
         raise typer.Abort()
 
 
+def generate_hash(file: Path) -> str:
+    return hashlib.md5(file.read_bytes()).hexdigest()
+
+
 def getOutputManager(destination: Destination) -> IOutputManager:
     """Retrieve output manager based on destination."""
 
@@ -71,10 +76,10 @@ def copyFileToDestination(
     file_path: Path,
     destination: Destination,
     output_manager: Optional[OutputManager] = None,
-) -> tuple[Path, IMetadataProvider]:
+) -> tuple[Path, IFileMetadataProvider]:
     """Copy file to destination folder."""
 
-    class SimpleMetadataProvider(IMetadataProvider):
+    class SimpleMetadataProvider(IFileMetadataProvider):
         """Simple metadata provider for compatibility."""
 
         def __init__(self, filename: str) -> None:

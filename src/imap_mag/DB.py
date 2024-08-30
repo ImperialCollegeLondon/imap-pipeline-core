@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from imap_mag import __version__
-from imap_mag.outputManager import IMetadataProvider, IOutputManager
+from imap_mag.outputManager import IFileMetadataProvider, IOutputManager
 
 
 class IDatabase(abc.ABC):
@@ -89,8 +89,8 @@ class DatabaseOutputManager(IOutputManager):
             self.__database = database
 
     def add_file(
-        self, original_file: Path, metadata_provider: IMetadataProvider
-    ) -> tuple[Path, IMetadataProvider]:
+        self, original_file: Path, metadata_provider: IFileMetadataProvider
+    ) -> tuple[Path, IFileMetadataProvider]:
         (destination_file, metadata_provider) = self.__output_manager.add_file(
             original_file, metadata_provider
         )

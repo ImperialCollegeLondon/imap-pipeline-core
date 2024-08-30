@@ -1,7 +1,13 @@
 """The main module for project."""
 
-from pathlib import Path
+from importlib.metadata import PackageNotFoundError, version
 
-from single_version import get_version
 
-__version__ = get_version("imap-mag", Path(__file__).parent.parent)
+def get_version() -> str:
+    try:
+        return version("imap-mag")
+    except PackageNotFoundError:
+        print("IMAP MAG CLI Version unknown, not installed via pip.")
+
+
+__version__ = get_version()

@@ -11,7 +11,7 @@ import typer
 from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.DB import DatabaseOutputManager, IDatabase
-from imap_mag.outputManager import DefaultMetadataProvider, IOutputManager
+from imap_mag.outputManager import DatastoreScienceFilepathGenerator, IOutputManager
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 
@@ -37,7 +37,7 @@ def test_database_output_manager_writes_to_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = DefaultMetadataProvider(
+    metadata_provider = DatastoreScienceFilepathGenerator(
         version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
     )
 
@@ -72,7 +72,7 @@ def test_database_output_manager_writes_to_database(
     assert actual_metadata_provider == metadata_provider
 
 
-def test_database_output_manager_errors_destination_file_not_found(
+def test_database_output_manager_errors_when_destination_file_is_not_found(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
@@ -81,7 +81,7 @@ def test_database_output_manager_errors_destination_file_not_found(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = DefaultMetadataProvider(
+    metadata_provider = DatastoreScienceFilepathGenerator(
         version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
     )
 
@@ -107,7 +107,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = DefaultMetadataProvider(
+    metadata_provider = DatastoreScienceFilepathGenerator(
         version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
     )
 
@@ -131,7 +131,7 @@ def test_database_output_manager_errors_database_error(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = DefaultMetadataProvider(
+    metadata_provider = DatastoreScienceFilepathGenerator(
         version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
     )
 

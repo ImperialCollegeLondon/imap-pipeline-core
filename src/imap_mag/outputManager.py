@@ -1,5 +1,4 @@
 import abc
-import hashlib
 import logging
 import shutil
 import typing
@@ -8,8 +7,10 @@ from pathlib import Path
 
 import typer
 
+from .appUtils import generate_hash
 
-class IMetadataProvider(abc.ABC):
+
+class IFileMetadataProvider(abc.ABC):
     """Interface for metadata providers."""
 
     version: int = 0
@@ -23,7 +24,7 @@ class IMetadataProvider(abc.ABC):
         """Retireve file name."""
 
 
-class DefaultMetadataProvider(IMetadataProvider):
+class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
     """Metadata for output files."""
 
     prefix: str | None = "imap_mag"
@@ -66,14 +67,16 @@ class IOutputManager(abc.ABC):
 
     @abc.abstractmethod
     def add_file(
-        self, original_file: Path, metadata_provider: IMetadataProvider
-    ) -> tuple[Path, IMetadataProvider]:
+        self, original_file: Path, metadata_provider: IFileMetadataProvider
+    ) -> tuple[Path, IFileMetadataProvider]:
         """Add file to output location."""
 
     def add_default_file(
         self, original_file: Path, **metadata: typing.Any
-    ) -> tuple[Path, IMetadataProvider]:
-        return self.add_file(original_file, DefaultMetadataProvider(**metadata))
+    ) -> tuple[Path, IFileMetadataProvider]:
+        return self.add_file(
+            original_file, DatastoreScienceFilepathGenerator(**metadata)
+        )
 
 
 class OutputManager(IOutputManager):
@@ -85,8 +88,8 @@ class OutputManager(IOutputManager):
         self.location = location
 
     def add_file(
-        self, original_file: Path, metadata_provider: IMetadataProvider
-    ) -> tuple[Path, IMetadataProvider]:
+        self, original_file: Path, metadata_provider: IFileMetadataProvider
+    ) -> tuple[Path, IFileMetadataProvider]:
         """Add file to output location."""
 
         if not self.location.exists():
@@ -102,14 +105,11 @@ class OutputManager(IOutputManager):
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
         if destination_file.exists():
-            if (
-                hashlib.md5(destination_file.read_bytes()).hexdigest()
-                == hashlib.md5(original_file.read_bytes()).hexdigest()
-            ):
+            if generate_hash(destination_file) == generate_hash(original_file):
                 logging.info(f"File {destination_file} already exists and is the same.")
                 return (destination_file, metadata_provider)
 
-            metadata_provider.version = self.__find_viable_version(
+            metadata_provider.version = self.__get_next_available_version(
                 destination_file, metadata_provider
             )
             destination_file = self.__assemble_full_path(metadata_provider)
@@ -120,7 +120,7 @@ class OutputManager(IOutputManager):
 
         return (destination_file, metadata_provider)
 
-    def __assemble_full_path(self, metadata_provider: IMetadataProvider) -> Path:
+    def __assemble_full_path(self, metadata_provider: IFileMetadataProvider) -> Path:
         """Assemble full path from metadata."""
 
         return (
@@ -129,13 +129,13 @@ class OutputManager(IOutputManager):
             / metadata_provider.get_file_name()
         )
 
-    def __find_viable_version(
-        self, destination_file: Path, metadata_provider: IMetadataProvider
+    def __get_next_available_version(
+        self, destination_file: Path, metadata_provider: IFileMetadataProvider
     ) -> int:
         """Find a viable version for a file."""
 
         while destination_file.exists():
-            logging.info(
+            logging.debug(
                 f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version}."
             )
             metadata_provider.version += 1

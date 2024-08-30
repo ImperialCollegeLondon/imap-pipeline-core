@@ -33,7 +33,7 @@ def test_fetch_science_no_matching_files(
         mock_soc, mock_output_manager, modes=[MAGMode.Normal], sensors=[MAGSensor.OBS]
     )
 
-    mock_soc.get_filename.side_effect = lambda **_: {}
+    mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
     actual_downloaded: list[Path] = fetchScience.download_latest_science(

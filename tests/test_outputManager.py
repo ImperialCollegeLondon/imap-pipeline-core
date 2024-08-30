@@ -3,18 +3,16 @@
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.outputManager import IMetadataProvider, OutputManager
+from imap_mag.outputManager import IFileMetadataProvider, OutputManager
 
-from .testUtils import enableLogging, tidyDataFolders  # noqa: F401
+from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 
 
 def test_copy_new_file():
     # Set up.
     manager = OutputManager(Path("output"))
 
-    original_file = Path(".work/some_test_file.txt")
-    original_file.parent.mkdir(parents=True, exist_ok=True)
-    original_file.touch()
+    original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
     manager.add_default_file(
@@ -32,15 +30,10 @@ def test_copy_file_same_content():
     # Set up.
     manager = OutputManager(Path("output"))
 
-    original_file = Path(".work/some_test_file.txt")
-    original_file.parent.mkdir(parents=True, exist_ok=True)
-    original_file.touch()
-    original_file.write_bytes(b"some content")
-
-    existing_file = Path("output/2025/05/02/imap_mag_pwr_20250502_v000.txt")
-    existing_file.parent.mkdir(parents=True, exist_ok=True)
-    existing_file.touch()
-    existing_file.write_bytes(b"some content")
+    original_file = create_test_file(Path(".work/some_test_file.txt"), "some content")
+    existing_file = create_test_file(
+        Path("output/2025/05/02/imap_mag_pwr_20250502_v000.txt"), "some content"
+    )
 
     existing_modification_time = existing_file.stat().st_mtime
 
@@ -61,17 +54,12 @@ def test_copy_file_existing_versions():
     # Set up.
     manager = OutputManager(Path("output"))
 
-    original_file = Path(".work/some_test_file.txt")
-    original_file.parent.mkdir(parents=True, exist_ok=True)
-    original_file.touch()
-    original_file.write_bytes(b"some content")
+    original_file = create_test_file(Path(".work/some_test_file.txt"), "some content")
 
     for version in range(2):
-        existing_file = Path(
-            f"output/2025/05/02/imap_mag_pwr_20250502_v{version:03}.txt"
+        create_test_file(
+            Path(f"output/2025/05/02/imap_mag_pwr_20250502_v{version:03}.txt")
         )
-        existing_file.parent.mkdir(parents=True, exist_ok=True)
-        existing_file.touch()
 
     # Exercise.
     manager.add_default_file(
@@ -89,9 +77,7 @@ def test_copy_file_forced_version():
     # Set up.
     manager = OutputManager(Path("output"))
 
-    original_file = Path(".work/some_test_file.txt")
-    original_file.parent.mkdir(parents=True, exist_ok=True)
-    original_file.touch()
+    original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
     manager.add_default_file(
@@ -106,7 +92,7 @@ def test_copy_file_forced_version():
     assert Path("output/2025/05/02/imap_mag_pwr_20250502_v003.txt").exists()
 
 
-class TestMetadataProvider(IMetadataProvider):
+class TestMetadataProvider(IFileMetadataProvider):
     def get_folder_structure(self) -> str:
         return "abc"
 
@@ -118,9 +104,7 @@ def test_copy_file_custom_providers():
     # Set up.
     manager = OutputManager(Path("output"))
 
-    original_file = Path(".work/some_test_file.txt")
-    original_file.parent.mkdir(parents=True, exist_ok=True)
-    original_file.touch()
+    original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
     manager.add_file(original_file, TestMetadataProvider())

@@ -16,6 +16,8 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# write to checks/pull-request extra permission needed by 5monkeys/cobertura-action to post coverage stats
+# write packages needed by docker image step
 permissions:
   id-token: write
   contents: write

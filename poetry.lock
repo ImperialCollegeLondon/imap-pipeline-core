@@ -1531,17 +1531,6 @@ files = [
 ]
 
 [[package]]
-name = "single-version"
-version = "1.6.0"
-description = "Small utility to define version string for Poetry-style Python project."
-optional = false
-python-versions = ">=3.7,<4.0"
-files = [
-    {file = "single_version-1.6.0-py3-none-any.whl", hash = "sha256:67a2734e728b9554750e867b33591f3ad9509ccb851bb3047ced7bfe68429ecd"},
-    {file = "single_version-1.6.0.tar.gz", hash = "sha256:3b1fb6e9bd2c88268948d9191c78b63ddd3c07554c1f07cd8a85aedf2486e4fc"},
-]
-
-[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1948,4 +1937,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "5e61cad3f957d9dabe11d074137198dab507d4ef007b072912a21b6239e733f3"
+content-hash = "46cf132984999ff68385aae9bfd5317548d568a149d5f15042b9909753929740"
