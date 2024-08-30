@@ -9,6 +9,10 @@ from pathlib import Path
 import typer
 
 
+def generate_hash(file: Path) -> str:
+    return hashlib.md5(file.read_bytes()).hexdigest()
+
+
 class IFileMetadataProvider(abc.ABC):
     """Interface for metadata providers."""
 
@@ -104,9 +108,7 @@ class OutputManager(IOutputManager):
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
         if destination_file.exists():
-            if self.__generate_hash(destination_file) == self.__generate_hash(
-                original_file
-            ):
+            if generate_hash(destination_file) == generate_hash(original_file):
                 logging.info(f"File {destination_file} already exists and is the same.")
                 return (destination_file, metadata_provider)
 
@@ -143,7 +145,3 @@ class OutputManager(IOutputManager):
             destination_file = self.__assemble_full_path(metadata_provider)
 
         return metadata_provider.version
-
-    @staticmethod
-    def __generate_hash(file: Path) -> str:
-        return hashlib.md5(file.read_bytes()).hexdigest()

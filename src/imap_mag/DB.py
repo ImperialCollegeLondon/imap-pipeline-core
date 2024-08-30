@@ -1,5 +1,4 @@
 import abc
-import hashlib
 import logging
 import os
 from pathlib import Path
@@ -10,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from imap_mag import __version__
-from imap_mag.outputManager import IFileMetadataProvider, IOutputManager
+from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, generate_hash
 
 
 class IDatabase(abc.ABC):
@@ -34,8 +33,6 @@ class Database(IDatabase):
         env_url = os.getenv("SQLALCHEMY_URL")
         if db_url is None and env_url is not None:
             db_url = env_url
-
-        # TODO: Check database is available
 
         if db_url is None:
             raise ValueError(
@@ -95,11 +92,10 @@ class DatabaseOutputManager(IOutputManager):
             original_file, metadata_provider
         )
 
-        file_hash: str = hashlib.md5(original_file.read_bytes()).hexdigest()
+        file_hash: str = generate_hash(original_file)
 
         if not (
-            destination_file.exists()
-            and (hashlib.md5(destination_file.read_bytes()).hexdigest() == file_hash)
+            destination_file.exists() and (generate_hash(destination_file) == file_hash)
         ):
             logging.error(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
