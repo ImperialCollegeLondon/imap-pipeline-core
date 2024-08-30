@@ -1,6 +1,4 @@
 import logging
-import os
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -8,7 +6,9 @@ import numpy as np
 import pandas as pd
 import typer
 
-from . import appConfig
+from .appConfig import Destination
+from .DB import DatabaseOutputManager
+from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
@@ -56,18 +56,41 @@ def convertToDatetime(string: str) -> np.datetime64:
         raise typer.Abort()
 
 
-def copyFileToDestination(filePath: Path, destination: appConfig.Destination) -> None:
+def getOutputManager(destination: Destination) -> IOutputManager:
+    """Retrieve output manager based on destination."""
+
+    output_manager = OutputManager(destination.folder)
+
+    if destination.export_to_database:
+        output_manager = DatabaseOutputManager(output_manager)
+
+    return output_manager
+
+
+def copyFileToDestination(
+    file_path: Path,
+    destination: Destination,
+    output_manager: Optional[OutputManager] = None,
+) -> tuple[Path, IFileMetadataProvider]:
     """Copy file to destination folder."""
 
-    destinationFile = Path(destination.folder)
+    class SimpleMetadataProvider(IFileMetadataProvider):
+        """Simple metadata provider for compatibility."""
 
-    if not destinationFile.exists():
-        logging.debug(f"Creating destination folder {destinationFile}.")
-        os.makedirs(destinationFile)
+        def __init__(self, filename: str) -> None:
+            self.filename = filename
 
-    if destination.filename:
-        destinationFile = destinationFile / destination.filename
+        def get_folder_structure(self) -> str:
+            return ""
 
-    logging.info(f"Copying {filePath} to {destinationFile.absolute()}")
-    completed = shutil.copy2(filePath, destinationFile)
-    logging.info(f"Copy complete: {completed}")
+        def get_file_name(self) -> str:
+            return self.filename
+
+    destination_folder = Path(destination.folder)
+
+    if output_manager is None:
+        output_manager: OutputManager = OutputManager(destination_folder)
+
+    return output_manager.add_file(
+        file_path, SimpleMetadataProvider(destination.filename)
+    )

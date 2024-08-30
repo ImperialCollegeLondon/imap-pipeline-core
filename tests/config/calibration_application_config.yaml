@@ -6,3 +6,4 @@ work-folder: .work
 destination:
   folder: output/
   filename: L2.cdf
+  export-to-database: false
