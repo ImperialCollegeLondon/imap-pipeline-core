@@ -1,8 +1,9 @@
 import os
 from pathlib import Path, PosixPath, WindowsPath
 
-import imap_mag.appConfig as appConfig
 import yaml
+
+import imap_mag.appConfig as appConfig
 
 
 def create_serialize_config(
