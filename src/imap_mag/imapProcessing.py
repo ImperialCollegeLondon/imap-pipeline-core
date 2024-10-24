@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 import xarray as xr
-from space_packet_parser import parser, xtcedef
+from space_packet_parser import definitions
 
 from . import appConfig, appUtils
 
@@ -81,20 +81,25 @@ class HKProcessor(FileProcessor):
         # Extract data from binary file.
         dataDict: dict[int, dict] = dict()
 
-        packetDefinition = xtcedef.XtcePacketDefinition(self.xtcePacketDefinition)
-        packetParser = parser.PacketParser(packetDefinition)
+        packetDefinition = definitions.XtcePacketDefinition(self.xtcePacketDefinition)
 
         with open(file, "rb") as binaryData:
-            packetGenerator = packetParser.generator(binaryData)
+            packetGenerator = packetDefinition.packet_generator(
+                binaryData, show_progress=True
+            )
 
             for packet in packetGenerator:
                 apid = packet.header["PKT_APID"].raw_value
                 dataDict.setdefault(apid, collections.defaultdict(list))
 
-                packetContent = packet.data | packet.header
+                packetContent = packet.user_data | packet.header
 
                 for key, value in packetContent.items():
-                    dataDict[apid][key].append(value.derived_value or value.raw_value)
+                    if value is None:
+                        value = value.raw_value
+                    elif hasattr(value, "decode"):
+                        value = int.from_bytes(value, byteorder="big")
+                    dataDict[apid][key].append(value)
 
         # Convert data to xarray datasets.
         datasetDict = {}
@@ -105,8 +110,11 @@ class HKProcessor(FileProcessor):
 
             ds = xr.Dataset(
                 {
-                    re.sub(r"^mag_hsk_[a-zA-Z]+_", "", key.lower()): ("epoch", val)
-                    for key, val in data.items()
+                    re.sub(r"^mag_hsk_[a-zA-Z0-9]+\.", "", key.lower()): (
+                        "epoch",
+                        value,
+                    )
+                    for key, value in data.items()
                 },
                 coords={"epoch": time_data},
             )

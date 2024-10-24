@@ -8,7 +8,7 @@ def load_cdf(inputPath: Path):
     if inputPath.is_file():
         return xarray.cdf_to_xarray(inputPath)
     else:
-        raise FileExistsError()
+        raise FileNotFoundError()
 
 
 def write_cdf(dataset, outputPath: Path):

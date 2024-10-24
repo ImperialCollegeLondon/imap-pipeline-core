@@ -55,7 +55,7 @@ class WireMockManager:
     ) -> None:
         """Copy file to container and add WireMock mapping for it."""
 
-        container_dir_path = Path("/home/wiremock/__files")
+        container_dir_path = Path(self.__mock_container.FILES_DIR)
 
         with open(host_path, "rb") as f:
             self.__mock_container.copy_files_to_container(
@@ -64,7 +64,7 @@ class WireMockManager:
 
         self.__add_mapping(url, Path(host_path).name, is_file=True, **options)
 
-    def add_mapping(mapping: Mapping) -> None:
+    def add_mapping(self, mapping: Mapping) -> None:
         """Add WireMock mapping for URL."""
 
         Mappings.create_mapping(mapping)
