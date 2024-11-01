@@ -37,7 +37,7 @@ pytest = "^8.3.1"
 pytest-cov = "^5.0.0"
 pyinstaller = "^6.10.0"
 pre-commit = "^3.8.0"
-ruff = "^0.6.3"
+ruff = "^0.7.2"
 docker = "^7.1.0"
 testcontainers = "^4.8.1"
 wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git", rev = "fix-test-containers-on-windows"}
