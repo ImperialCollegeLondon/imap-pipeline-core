@@ -599,12 +599,12 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.7.0"
+version = "0.10.1"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 files = [
-    {file = "imap_data_access-0.7.0.tar.gz", hash = "sha256:f0db935949d048394fc554b308b1e4a1572a18acd41636462d37c309c7cb4c9d"},
+    {file = "imap_data_access-0.10.1.tar.gz", hash = "sha256:54a65d2a220fe82bba08290c4d8fa5cb3aa58ff587230d2f4b2f544ef1bb0f67"},
 ]
 
 [package.extras]
@@ -1913,4 +1913,4 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "78cad326131de0386b55a393eef5aa3873cfbc91bef9d4b2ef6b45bb09a87d4a"
+content-hash = "2ddb9007395f94d6ffcd6a4516f16763f07e413955f551098c23945f540cff49"
