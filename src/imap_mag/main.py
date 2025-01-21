@@ -13,6 +13,7 @@ import typer
 
 # config
 import yaml
+
 from mag_toolkit import CDFLoader
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
 from mag_toolkit.calibration.calibrationFormatProcessor import (

@@ -1,9 +1,10 @@
 import os
 from pathlib import Path, PosixPath, WindowsPath
 
-import imap_mag.appConfig as appConfig
 import pytest
 import yaml
+
+import imap_mag.appConfig as appConfig
 from imap_mag import appLogging
 
 

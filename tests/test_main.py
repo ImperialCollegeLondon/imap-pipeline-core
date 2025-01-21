@@ -8,10 +8,11 @@ import re
 from pathlib import Path
 
 import pytest
-from imap_mag.main import app
 from typer.testing import CliRunner
 
-from .testUtils import create_serialize_config, tidyDataFolders  # noqa: F401
+from imap_mag.main import app
+
+from .testUtils import create_serialize_config
 from .wiremockUtils import wiremock_manager  # noqa: F401
 
 runner = CliRunner()

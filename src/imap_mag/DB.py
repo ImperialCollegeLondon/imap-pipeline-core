@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 
 import typer
-from imap_db.model import File
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, generate_hash
 
