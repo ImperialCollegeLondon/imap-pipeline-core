@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+
 from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import IWebPODA
 from imap_mag.outputManager import IOutputManager

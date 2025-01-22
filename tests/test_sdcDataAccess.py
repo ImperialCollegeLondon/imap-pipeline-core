@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import imap_data_access
+
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 
 from .testUtils import create_serialize_config, tidyDataFolders  # noqa: F401

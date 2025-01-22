@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 import typer
+
 from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.DB import DatabaseOutputManager, IDatabase

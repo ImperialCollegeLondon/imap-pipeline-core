@@ -2,6 +2,7 @@
 
 import pytest
 import typer
+
 from imap_mag.appUtils import convertToDatetime, getPacketFromApID
 
 from .testUtils import enableLogging, tidyDataFolders  # noqa: F401

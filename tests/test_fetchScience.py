@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+
 from imap_mag.cli.fetchScience import FetchScience, MAGMode, MAGSensor
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.outputManager import IOutputManager
