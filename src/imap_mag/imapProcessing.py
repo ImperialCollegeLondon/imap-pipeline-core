@@ -99,7 +99,9 @@ class HKProcessor(FileProcessor):
                         value = value.raw_value
                     elif hasattr(value, "decode"):
                         value = int.from_bytes(value, byteorder="big")
-                    dataDict[apid][key].append(value)
+                    dataDict[apid][
+                        re.sub(r"^mag_hsk_[a-zA-Z0-9]+\_", "", key.lower())
+                    ].append(value)
 
         # Convert data to xarray datasets.
         datasetDict = {}
@@ -110,7 +112,7 @@ class HKProcessor(FileProcessor):
 
             ds = xr.Dataset(
                 {
-                    re.sub(r"^mag_hsk_[a-zA-Z0-9]+\.", "", key.lower()): (
+                    key: (
                         "epoch",
                         value,
                     )
