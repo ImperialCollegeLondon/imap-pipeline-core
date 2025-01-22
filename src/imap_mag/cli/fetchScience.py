@@ -86,7 +86,7 @@ class FetchScience:
                             ]
 
                             if self.__output_manager is not None:
-                                self.__output_manager.add_default_file(
+                                self.__output_manager.add_default_format_file(
                                     downloaded[-1],
                                     level=options["level"],
                                     descriptor=file["descriptor"],

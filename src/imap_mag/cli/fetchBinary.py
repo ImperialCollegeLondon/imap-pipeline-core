@@ -66,7 +66,7 @@ class FetchBinary:
 
             if file.stat().st_size > 0:
                 if self.__output_manager is not None:
-                    self.__output_manager.add_default_file(
+                    self.__output_manager.add_default_format_file(
                         file,
                         descriptor=options["packet"]
                         .lower()

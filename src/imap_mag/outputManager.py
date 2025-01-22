@@ -19,6 +19,10 @@ class IFileMetadataProvider(abc.ABC):
     version: int = 0
 
     @abc.abstractmethod
+    def supports_versioning(self) -> bool:
+        """Check if metadata provider supports versioning."""
+
+    @abc.abstractmethod
     def get_folder_structure(self) -> str:
         """Retrieve folder structure."""
 
@@ -40,6 +44,9 @@ class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def supports_versioning(self) -> bool:
+        return True
+
     def get_folder_structure(self) -> str:
         if self.date is None:
             logging.error("No 'date' defined. Cannot generate folder structure.")
@@ -48,7 +55,12 @@ class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
         return self.date.strftime("%Y/%m/%d")
 
     def get_file_name(self) -> str:
-        if any(x is None for x in ["descriptor", "date", "version", "extension"]):
+        if (
+            self.descriptor is None
+            or self.date is None
+            or self.version is None
+            or self.extension is None
+        ):
             logging.error(
                 "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
             )
@@ -74,7 +86,7 @@ class IOutputManager(abc.ABC):
     ) -> tuple[Path, IFileMetadataProvider]:
         """Add file to output location."""
 
-    def add_default_file(
+    def add_default_format_file(
         self, original_file: Path, **metadata: typing.Any
     ) -> tuple[Path, IFileMetadataProvider]:
         return self.add_file(
@@ -136,6 +148,12 @@ class OutputManager(IOutputManager):
         self, destination_file: Path, metadata_provider: IFileMetadataProvider
     ) -> int:
         """Find a viable version for a file."""
+
+        if not metadata_provider.supports_versioning():
+            logging.warning(
+                f"File {destination_file} already exists and is different. Overwriting."
+            )
+            return 0
 
         while destination_file.exists():
             logging.debug(

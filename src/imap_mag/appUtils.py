@@ -80,6 +80,9 @@ def copyFileToDestination(
         def __init__(self, filename: str) -> None:
             self.filename = filename
 
+        def supports_versioning(self) -> bool:
+            return False
+
         def get_folder_structure(self) -> str:
             return ""
 
