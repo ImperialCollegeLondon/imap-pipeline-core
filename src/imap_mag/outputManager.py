@@ -160,6 +160,16 @@ class OutputManager(IOutputManager):
                 f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version}."
             )
             metadata_provider.version += 1
-            destination_file = self.__assemble_full_path(metadata_provider)
+            updated_file = self.__assemble_full_path(metadata_provider)
+
+            if destination_file == updated_file:
+                logging.error(
+                    f"File {destination_file} already exists and is different. Cannot increase version."
+                )
+                raise FileExistsError(
+                    f"File {destination_file} already exists and is different. Cannot increase version."
+                )
+
+            destination_file = updated_file
 
         return metadata_provider.version
