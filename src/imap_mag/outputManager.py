@@ -6,8 +6,6 @@ import typing
 from datetime import datetime
 from pathlib import Path
 
-import typer
-
 
 def generate_hash(file: Path) -> str:
     return hashlib.md5(file.read_bytes()).hexdigest()
@@ -50,7 +48,7 @@ class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
     def get_folder_structure(self) -> str:
         if self.date is None:
             logging.error("No 'date' defined. Cannot generate folder structure.")
-            raise typer.Abort()
+            raise ValueError("No 'date' defined. Cannot generate folder structure.")
 
         return self.date.strftime("%Y/%m/%d")
 
@@ -64,7 +62,9 @@ class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
             logging.error(
                 "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
             )
-            raise typer.Abort()
+            raise ValueError(
+                "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
+            )
 
         descriptor = self.descriptor
 
