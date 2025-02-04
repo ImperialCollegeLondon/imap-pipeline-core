@@ -1,8 +1,9 @@
 import os
 
-from imap_db.model import File
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from imap_db.model import File
 
 
 class DB:

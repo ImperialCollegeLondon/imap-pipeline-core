@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -13,6 +14,7 @@ import typer
 
 # config
 import yaml
+
 from imap_db.model import File
 from mag_toolkit import CDFLoader
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
@@ -92,6 +94,11 @@ def commandInit(config: Path) -> appConfig.AppConfig:
 @app.command()
 def hello(name: str):
     print(f"Hello {name}")
+
+
+@app.command()
+def matlab():
+    subprocess.run(["matlab", "-batch", "helloworld"])
 
 
 def prepareWorkFile(file, configFile) -> Path | None:
