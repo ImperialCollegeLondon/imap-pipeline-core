@@ -47,3 +47,32 @@ chown -R appuser:appuser /mnt/imap-data
 ```
 
 You can also build a compiled linux executable with `./build-linux.sh` and a docker image with `./build-docker.sh`
+
+### Using the CLI inside the docker container
+
+```bash
+# Using the so-mag CLI:
+docker run --entrypoint /bin/sh ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev -c "imap-mag hello world"
+
+# Using the prefect CLI:
+docker run --entrypoint /bin/bash -it --rm -e PREFECT_API_URL=http://prefect:4200/api --network mag-lab-data-platform ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev -c "prefect --version"
+
+
+### Deploy to a full Prefect server using a docker container (e.g. from WSL)
+
+From a linux host or WSL (i.e. not in a dev container) you can use the container image to run a deployment:
+
+```bash
+
+./pack.sh
+./build-docker.sh
+
+docker run -it --rm \
+    --network mag-lab-data-platform \
+    -e PREFECT_API_URL=http://prefect:4200/api \
+    -e IMAP_IMAGE_TAG=local-dev \
+    -e IMAP_VOLUMES=/mnt/imap-data/dev:/data \
+    --entrypoint /bin/bash \
+    ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev \
+    -c "python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows()'"
+```

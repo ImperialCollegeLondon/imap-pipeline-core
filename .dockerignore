@@ -6,6 +6,7 @@
 !/src/matlab
 !/deploy
 #!/dist/file.txt
+!/src/prefect_server/**
 
 # Ignore unnecessary files inside allowed directories
 # This should go after the allowed directories
