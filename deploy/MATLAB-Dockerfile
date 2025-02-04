@@ -50,11 +50,13 @@ RUN mkdir -p /home/matlab/Documents/MATLAB/Libraries/MICE \
 
 ARG SRC_DIR="src/matlab"
 
-COPY ${SRC_DIR}/*.p /home/matlab/Documents/MATLAB/
+COPY ${SRC_DIR}/ /home/matlab/Documents/MATLAB/
 
 # For more information, please refer to https://aka.ms/vscode-docker-python
 
 FROM python:${PYTHON_VERSION}-slim AS compile-image
+
+ARG USERID=5678
 
 ARG TOOL_PACKAGE="imap_mag-*.tar.gz"
 ARG PYTHON_VERSION
@@ -69,7 +71,7 @@ RUN apt-get update && apt-get install -y libpq-dev gcc
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-RUN adduser -u 5678 --disabled-password --gecos "" appuser
+RUN adduser -u ${USERID} --disabled-password --gecos "" appuser
 
 USER appuser
 
@@ -84,19 +86,23 @@ RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
 
+ARG USERID
+
+ENV MLM_LICENSE_FILE=27004@matlab.cc.ic.ac.uk
+
 COPY --from=matlab_install /opt/matlab /opt/matlab
-COPY --from=matlab_install /home/matlab/Documents/MATLAB /opt/matlab/R2024a/toolbox/local
+COPY --from=matlab_install /home/matlab/Documents/MATLAB /home/matlab/Documents/MATLAB
 
 COPY --from=compile-image /home/appuser/.local /home/appuser/.local
 COPY dist/docker /app
 
 RUN apt-get update && apt-get install -y libxt6
 
-RUN adduser -u 5678 --disabled-password --gecos "" appuser && \
+RUN adduser -u ${USERID} --disabled-password --gecos "" appuser && \
     chown -R appuser /app && \
     mkdir -p /data && \
     chown -R appuser /data && \
-    chmod +x /app/entrypoint.sh
+    chmod +x /app/example-entrypoint.sh
 
 WORKDIR /app
 USER appuser
@@ -104,8 +110,10 @@ USER appuser
 # Make sure scripts in .local are usable:
 ENV PATH="$PATH:/home/appuser/.local/bin:/opt/matlab/R2024a/bin"
 
+RUN matlab -nojvm -nodesktop -batch "addpath(genpath(\"/home/matlab/Documents/MATLAB\")); savepath"
+
 # Now the imap-mag CLI is available on the path and
 # the 3.12 python package for imap-mag is intalled at /home/appuser/.local/bin
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["/app/entrypoint.sh"]
+CMD ["/app/example-entrypoint.sh"]

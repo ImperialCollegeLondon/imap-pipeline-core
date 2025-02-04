@@ -101,6 +101,18 @@ def matlab():
     subprocess.run(["matlab", "-batch", "helloworld"])
 
 
+@app.command()
+def calibrationdemo(
+    file_to_calibrate: str = typer.Argument(
+        help="The file name of the file to be calibrated",
+    ),
+    output_file: str = typer.Argument(help="The file name of the output file"),
+):
+    subprocess.run(
+        ["matlab", "-batch", f'demo("{file_to_calibrate}", "{output_file}")']
+    )
+
+
 def prepareWorkFile(file, configFile) -> Path | None:
     logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
 
