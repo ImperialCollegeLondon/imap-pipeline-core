@@ -13,10 +13,18 @@ from prefect.client.schemas.objects import (
 )
 from prefect_shell import ShellOperation
 
+from mag_toolkit.calibration.MatlabWrapper import call_matlab
+
 
 class CONSTANTS:
     DEFAULT_WORKPOOL = "default-pool"
     DEPLOYMENT_TAG = "NASA_IMAP"
+
+
+@flow(log_prints=True)
+def run_matlab():
+    print("Starting MATLAB functionality...")
+    call_matlab()
 
 
 @flow(log_prints=True)
@@ -71,6 +79,7 @@ def deploy_flows(local_debug: bool = False):
             run_imap_pipeline.to_deployment(
                 name=imap_flow_name,
             ),
+            run_matlab.to_deployment(name="matlab-test"),
         )
     else:
         # do a full prefect deployment with containers, work-pools, schedules etc

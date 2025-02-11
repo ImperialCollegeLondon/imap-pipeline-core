@@ -1,3 +1,4 @@
+import subprocess
 from datetime import datetime
 
 import numpy as np
@@ -9,6 +10,10 @@ class BasicCalibration(BaseModel):
     x_offsets: list[float]
     y_offsets: list[float]
     z_offsets: list[float]
+
+
+def call_matlab():
+    subprocess.run(["matlab", "-batch", "helloworld"])
 
 
 def simulateSpinAxisCalibration(xarray) -> BasicCalibration:

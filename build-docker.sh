@@ -14,7 +14,7 @@ fi
 
 # compile imap-mag into a docker container
 #docker build --progress=plain -f deploy/Dockerfile -t $IMAGE_NAME .
-docker build -f deploy/Dockerfile -t $IMAGE_NAME .
+docker build -f deploy/MATLAB-Dockerfile -t $IMAGE_NAME .
 
 # Check the command works!
 docker run \
