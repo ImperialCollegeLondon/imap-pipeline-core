@@ -12,7 +12,15 @@ class BasicCalibration(BaseModel):
     z_offsets: list[float]
 
 
-def call_matlab():
+def call_matlab(first_call=True):
+    if first_call:
+        subprocess.run(
+            [
+                "matlab",
+                "-batch",
+                'addpath(genpath("/home/matlab/Documents/MATLAB")); savepath',
+            ]
+        )
     subprocess.run(["matlab", "-batch", "helloworld"])
 
 
