@@ -49,7 +49,7 @@ def test_fetch_binary_empty_download_not_added_to_output(
         end_date=datetime(2025, 5, 3),
     )
 
-    mock_output_manager.add_default_file.assert_not_called()
+    mock_output_manager.add_default_format_file.assert_not_called()
 
     assert actual_downloaded == []
 
@@ -77,7 +77,7 @@ def test_fetch_binary_with_same_start_end_date(
         end_date=datetime(2025, 5, 3),
     )
 
-    mock_output_manager.add_default_file.assert_called_once_with(
+    mock_output_manager.add_default_format_file.assert_called_once_with(
         test_file,
         descriptor="hsk-pw",
         date=datetime(2025, 5, 2),

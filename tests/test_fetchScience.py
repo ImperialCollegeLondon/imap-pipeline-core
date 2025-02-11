@@ -54,7 +54,7 @@ def test_fetch_science_no_matching_files(
     )
 
     mock_soc.download.assert_not_called()
-    mock_output_manager.add_default_file.assert_not_called()
+    mock_output_manager.add_default_format_file.assert_not_called()
 
     assert actual_downloaded == []
 
@@ -97,7 +97,7 @@ def test_fetch_science_with_same_start_end_date(
         test_file.absolute(),
     )
 
-    mock_output_manager.add_default_file.assert_called_once_with(
+    mock_output_manager.add_default_format_file.assert_called_once_with(
         test_file,
         level="l1b",
         descriptor="norm-mago",
