@@ -132,7 +132,16 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        deployables = (imap_pipeline_deployable,)
+        matlab_deployable = run_matlab.to_deployment(
+            name="MATLAB",
+            job_variables=shared_job_variables,
+            concurrency_limit=ConcurrencyLimitConfig(
+                limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+            ),
+            tags=[CONSTANTS.DEPLOYMENT_TAG],
+        )
+
+        deployables = (imap_pipeline_deployable, matlab_deployable)
 
         deploy_ids = deploy(
             *deployables,
