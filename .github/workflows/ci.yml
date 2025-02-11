@@ -118,7 +118,7 @@ jobs:
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           context: .
-          file: deploy/Dockerfile
+          file: deploy/MATLAB-Dockerfile
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
