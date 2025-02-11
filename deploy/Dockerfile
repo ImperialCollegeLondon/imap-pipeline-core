@@ -21,7 +21,7 @@ USER appuser
 
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
-RUN python3 -m pip install --user -r requirements.txt
+RUN python3 -m pip install --user --no-deps -r requirements.txt
 
 # now install the imap-mag package as the user
 COPY dist/python${PYTHON_VERSION}/${TOOL_PACKAGE} python${PYTHON_VERSION}/
@@ -39,10 +39,15 @@ RUN adduser -u 5678 --disabled-password --gecos "" appuser && \
     chmod +x /app/entrypoint.sh
 
 WORKDIR /app
-USER appuser
 
-# Make sure scripts in .local are usable:
+USER appuser
 ENV PATH="$PATH:/home/appuser/.local/bin"
+ENV PREFECT_HOME=/app/.prefect
+ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
+
+#include the prefect workflows
+COPY src/ /app/
+
 
 # Now the imap-mag CLI is available on the path and
 # the 3.12 python package for imap-mag is intalled at /home/appuser/.local/bin

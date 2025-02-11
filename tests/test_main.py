@@ -101,6 +101,8 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
             config_file,
             "--apid",
             "1063",
+            "--auth-code",
+            "12345",
             "--start-date",
             "2025-05-02",
             "--end-date",
