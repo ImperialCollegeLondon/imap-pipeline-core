@@ -122,6 +122,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Zip up the folder
         run: zip -r ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip python${{matrix.python-versions}}
