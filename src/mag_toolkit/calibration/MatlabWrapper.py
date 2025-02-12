@@ -1,8 +1,11 @@
+import logging
 import subprocess
 from datetime import datetime
 
 import numpy as np
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class BasicCalibration(BaseModel):
@@ -13,6 +16,7 @@ class BasicCalibration(BaseModel):
 
 
 def call_matlab(first_call=True):
+    logger.info("Testing logging!")
     if first_call:
         subprocess.run(
             [
@@ -21,7 +25,18 @@ def call_matlab(first_call=True):
                 'addpath(genpath("/home/matlab/Documents/MATLAB")); savepath',
             ]
         )
-    subprocess.run(["matlab", "-batch", "helloworld"])
+
+        logger.info("Added necessary files to path")
+
+    logger.info("Running MATLAB...")
+    cmd = ["matlab", "-batch", "helloworld"]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+
+    while (line := p.stdout.readline()) != "":
+        line = line.rstrip()
+        logger.info(line)
+
+    logger.info("Finished")
 
 
 def simulateSpinAxisCalibration(xarray) -> BasicCalibration:
