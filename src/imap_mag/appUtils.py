@@ -1,10 +1,10 @@
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
-import typer
 
 from .appConfig import Destination
 from .DB import DatabaseOutputManager
@@ -43,17 +43,17 @@ def getPacketFromApID(apid: int) -> str:
     """Get packet name from ApID."""
     if apid not in APID_TO_PACKET:
         logging.critical(f"ApID {apid} does not match any known packet.")
-        raise typer.Abort()
+        raise ValueError(f"ApID {apid} does not match any known packet.")
     return APID_TO_PACKET[apid]
 
 
-def convertToDatetime(string: str) -> np.datetime64:
+def convertToDatetime(string: str) -> datetime:
     """Convert string to datetime."""
     try:
-        return pd.to_datetime(string)
+        return pd.to_datetime(string).to_pydatetime()
     except Exception as e:
         logging.critical(f"Error parsing {string} as datetime: {e}")
-        raise typer.Abort()
+        raise ValueError(f"Error parsing {string} as datetime: {e}")
 
 
 def getOutputManager(destination: Destination) -> IOutputManager:

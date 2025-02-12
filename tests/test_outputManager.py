@@ -15,7 +15,7 @@ def test_copy_new_file():
     original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
-    manager.add_default_format_file(
+    manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
         date=datetime(2025, 5, 2),
@@ -38,7 +38,7 @@ def test_copy_file_same_content():
     existing_modification_time = existing_file.stat().st_mtime
 
     # Exercise.
-    manager.add_default_format_file(
+    manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
         date=datetime(2025, 5, 2),
@@ -62,7 +62,7 @@ def test_copy_file_existing_versions():
         )
 
     # Exercise.
-    manager.add_default_format_file(
+    manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
         date=datetime(2025, 5, 2),
@@ -80,7 +80,7 @@ def test_copy_file_forced_version():
     original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
-    manager.add_default_format_file(
+    manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
         date=datetime(2025, 5, 2),

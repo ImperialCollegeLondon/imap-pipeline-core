@@ -15,6 +15,12 @@ import typer
 # config
 import yaml
 
+from imap_mag import appConfig, appLogging, appUtils, imapProcessing
+from imap_mag.cli.fetchBinary import FetchBinary
+from imap_mag.cli.fetchScience import FetchScience
+from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.client.webPODA import WebPODA
+from imap_mag.outputManager import StandardSPDFMetadataProvider
 from mag_toolkit import CDFLoader
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
 from mag_toolkit.calibration.calibrationFormatProcessor import (
@@ -26,12 +32,6 @@ from mag_toolkit.calibration.Calibrator import (
     SpinAxisCalibrator,
     SpinPlaneCalibrator,
 )
-
-from . import appConfig, appLogging, appUtils, imapProcessing
-from .cli.fetchBinary import FetchBinary
-from .cli.fetchScience import FetchScience
-from .client.sdcDataAccess import SDCDataAccess
-from .client.webPODA import WebPODA
 
 app = typer.Typer()
 globalState = {"verbose": False}
@@ -198,22 +198,30 @@ def fetch_binary(
         raise typer.Abort()
 
     packet: str = appUtils.getPacketFromApID(apid)
-    start_date = appUtils.convertToDatetime(start_date)
-    end_date = appUtils.convertToDatetime(end_date)
+    start_datetime: datetime = appUtils.convertToDatetime(start_date)
+    end_datetime: datetime = appUtils.convertToDatetime(end_date)
 
-    logging.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
+    logging.info(
+        f"Downloading raw packet {packet} from {start_datetime} to {end_datetime}."
+    )
 
     poda = WebPODA(
         auth_code,
         configFile.work_folder,
         configFile.api.webpoda_url if configFile.api else None,
     )
+
+    fetch_binary = FetchBinary(poda)
+    downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
+        fetch_binary.download_binaries(
+            packet=packet, start_date=start_datetime, end_date=end_datetime
+        )
+    )
+
     output_manager = appUtils.getOutputManager(configFile.destination)
 
-    fetch_binary = FetchBinary(poda, output_manager)
-    fetch_binary.download_binaries(
-        packet=packet, start_date=start_date, end_date=end_date
-    )
+    for file, metadata_provider in downloaded_binaries.items():
+        output_manager.add_file(file, metadata_provider)
 
 
 class LevelEnum(str, Enum):
@@ -248,21 +256,29 @@ def fetch_science(
         logging.critical("No SDC_AUTH_CODE API key provided")
         raise typer.Abort()
 
-    start_date = appUtils.convertToDatetime(start_date)
-    end_date = appUtils.convertToDatetime(end_date)
+    start_datetime: datetime = appUtils.convertToDatetime(start_date)
+    end_datetime: datetime = appUtils.convertToDatetime(end_date)
 
-    logging.info(f"Downloading {level} science from {start_date} to {end_date}.")
+    logging.info(
+        f"Downloading {level} science from {start_datetime} to {end_datetime}."
+    )
 
     data_access = SDCDataAccess(
         data_dir=configFile.work_folder,
         sdc_url=configFile.api.sdc_url if configFile.api else None,
     )
+
+    fetch_science = FetchScience(data_access)
+    downloaded_science: dict[Path, StandardSPDFMetadataProvider] = (
+        fetch_science.download_latest_science(
+            level=level.value, start_date=start_datetime, end_date=end_datetime
+        )
+    )
+
     output_manager = appUtils.getOutputManager(configFile.destination)
 
-    fetch_science = FetchScience(data_access, output_manager)
-    fetch_science.download_latest_science(
-        level=level.value, start_date=start_date, end_date=end_date
-    )
+    for file, metadata_provider in downloaded_science.items():
+        output_manager.add_file(file, metadata_provider)
 
 
 # imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf

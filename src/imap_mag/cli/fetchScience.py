@@ -1,5 +1,6 @@
 """Program to retrieve and process MAG CDF files."""
 
+import logging
 import typing
 from datetime import datetime
 from enum import Enum
@@ -8,8 +9,8 @@ from pathlib import Path
 import pandas as pd
 import typing_extensions
 
-from ..client.sdcDataAccess import ISDCDataAccess
-from ..outputManager import IOutputManager
+from imap_mag.client.sdcDataAccess import ISDCDataAccess
+from imap_mag.outputManager import StandardSPDFMetadataProvider
 
 
 class MAGMode(str, Enum):
@@ -34,7 +35,6 @@ class FetchScience:
     """Manage SOC data."""
 
     __data_access: ISDCDataAccess
-    __output_manager: IOutputManager | None
 
     __modes: list[MAGMode]
     __sensor: list[MAGSensor]
@@ -42,23 +42,21 @@ class FetchScience:
     def __init__(
         self,
         data_access: ISDCDataAccess,
-        output_manager: IOutputManager | None = None,
         modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
         sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:
         """Initialize SDC interface."""
 
         self.__data_access = data_access
-        self.__output_manager = output_manager
         self.__modes = modes
         self.__sensor = sensors
 
     def download_latest_science(
         self, **options: typing_extensions.Unpack[FetchScienceOptions]
-    ) -> list[Path]:
+    ) -> dict[Path, StandardSPDFMetadataProvider]:
         """Retrieve SDC data."""
 
-        downloaded = []
+        downloaded: dict[Path, StandardSPDFMetadataProvider] = dict()
 
         for mode in self.__modes:
             date_range: pd.DatetimeIndex = pd.date_range(
@@ -81,17 +79,26 @@ class FetchScience:
 
                     if file_details is not None:
                         for file in file_details:
-                            downloaded += [
-                                self.__data_access.download(file["file_path"])
-                            ]
+                            downloaded_file = self.__data_access.download(
+                                file["file_path"]
+                            )
 
-                            if self.__output_manager is not None:
-                                self.__output_manager.add_default_format_file(
-                                    downloaded[-1],
-                                    level=options["level"],
-                                    descriptor=file["descriptor"],
-                                    date=date,
-                                    extension="cdf",
+                            if downloaded_file.stat().st_size > 0:
+                                logging.info(
+                                    f"Downloaded file from SDC Data Access: {downloaded_file}"
+                                )
+
+                                downloaded[downloaded_file] = (
+                                    StandardSPDFMetadataProvider(
+                                        level=options["level"],
+                                        descriptor=file["descriptor"],
+                                        date=date,
+                                        extension="cdf",
+                                    )
+                                )
+                            else:
+                                logging.debug(
+                                    f"Downloaded file {downloaded_file} is empty and will not be used."
                                 )
 
         return downloaded

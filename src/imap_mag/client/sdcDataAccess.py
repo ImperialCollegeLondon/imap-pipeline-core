@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import imap_data_access
+import imap_data_access.io
 import typing_extensions
 
 
@@ -62,7 +63,7 @@ class ISDCDataAccess(abc.ABC):
 
     @abc.abstractmethod
     def get_filename(
-        self, **options: typing_extensions.Unpack[FileOptions]
+        self, **options: typing_extensions.Unpack[QueryOptions]
     ) -> list[dict[str, str]] | None:
         """Wait for file to be available in imap-data-access."""
         pass
@@ -127,7 +128,7 @@ class SDCDataAccess(ISDCDataAccess):
         )
 
     def get_filename(
-        self, **options: typing_extensions.Unpack[FileOptions]
+        self, **options: typing_extensions.Unpack[QueryOptions]
     ) -> list[dict[str, str]] | None:
         file_details: list[dict[str, str]] = self.query(**options)
 

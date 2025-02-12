@@ -9,7 +9,7 @@ import pytest
 
 from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import IWebPODA
-from imap_mag.outputManager import IOutputManager
+from imap_mag.outputManager import StandardSPDFMetadataProvider
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 
@@ -20,26 +20,20 @@ def mock_poda() -> mock.Mock:
     return mock.create_autospec(IWebPODA, spec_set=True)
 
 
-@pytest.fixture
-def mock_output_manager() -> mock.Mock:
-    """Fixture for a mock IOutputManager instance."""
-    return mock.create_autospec(IOutputManager, spec_set=True)
-
-
-def test_fetch_binary_empty_download_not_added_to_output(
-    mock_poda: mock.Mock, mock_output_manager: mock.Mock
-) -> None:
+def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -> None:
     # Set up.
-    fetchBinary = FetchBinary(mock_poda, mock_output_manager)
+    fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, None)
 
     # Exercise.
-    actual_downloaded: list[Path] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 2),
+    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+        fetchBinary.download_binaries(
+            packet="MAG_HSK_PW",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 2),
+        )
     )
 
     # Verify.
@@ -49,25 +43,23 @@ def test_fetch_binary_empty_download_not_added_to_output(
         end_date=datetime(2025, 5, 3),
     )
 
-    mock_output_manager.add_default_format_file.assert_not_called()
-
-    assert actual_downloaded == []
+    assert actual_downloaded == dict()
 
 
-def test_fetch_binary_with_same_start_end_date(
-    mock_poda: mock.Mock, mock_output_manager: mock.Mock
-) -> None:
+def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
     # Set up.
-    fetchBinary = FetchBinary(mock_poda, mock_output_manager)
+    fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
 
     # Exercise.
-    actual_downloaded: list[Path] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 2),
+    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+        fetchBinary.download_binaries(
+            packet="MAG_HSK_PW",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 2),
+        )
     )
 
     # Verify.
@@ -77,11 +69,14 @@ def test_fetch_binary_with_same_start_end_date(
         end_date=datetime(2025, 5, 3),
     )
 
-    mock_output_manager.add_default_format_file.assert_called_once_with(
-        test_file,
-        descriptor="hsk-pw",
-        date=datetime(2025, 5, 2),
-        extension="pkts",
-    )
+    assert len(actual_downloaded) == 1
 
-    assert actual_downloaded == [test_file]
+    assert test_file in actual_downloaded.keys()
+    assert (
+        StandardSPDFMetadataProvider(
+            descriptor="hsk-pw",
+            date=datetime(2025, 5, 2),
+            extension="pkts",
+        )
+        in actual_downloaded.values()
+    )

@@ -3,6 +3,7 @@ import hashlib
 import logging
 import shutil
 import typing
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -11,6 +12,7 @@ def generate_hash(file: Path) -> str:
     return hashlib.md5(file.read_bytes()).hexdigest()
 
 
+@dataclass
 class IFileMetadataProvider(abc.ABC):
     """Interface for metadata providers."""
 
@@ -29,18 +31,18 @@ class IFileMetadataProvider(abc.ABC):
         """Retireve file name."""
 
 
-class DatastoreScienceFilepathGenerator(IFileMetadataProvider):
-    """Metadata for output files."""
+@dataclass
+class StandardSPDFMetadataProvider(IFileMetadataProvider):
+    """
+    Metadata for standard SPDF files.
+    See: https://imap-processing.readthedocs.io/en/latest/development-guide/style-guide/naming-conventions.html#data-product-file-naming-conventions
+    """
 
     prefix: str | None = "imap_mag"
     level: str | None = None
-    descriptor: str
-    date: datetime
-    extension: str
-
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    descriptor: str | None = None
+    date: datetime | None = None  # date data belongs to
+    extension: str | None = None
 
     def supports_versioning(self) -> bool:
         return True
@@ -86,12 +88,10 @@ class IOutputManager(abc.ABC):
     ) -> tuple[Path, IFileMetadataProvider]:
         """Add file to output location."""
 
-    def add_default_format_file(
+    def add_spdf_format_file(
         self, original_file: Path, **metadata: typing.Any
     ) -> tuple[Path, IFileMetadataProvider]:
-        return self.add_file(
-            original_file, DatastoreScienceFilepathGenerator(**metadata)
-        )
+        return self.add_file(original_file, StandardSPDFMetadataProvider(**metadata))
 
 
 class OutputManager(IOutputManager):
@@ -153,7 +153,7 @@ class OutputManager(IOutputManager):
             logging.warning(
                 f"File {destination_file} already exists and is different. Overwriting."
             )
-            return 0
+            return metadata_provider.version
 
         while destination_file.exists():
             logging.debug(
