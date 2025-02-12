@@ -102,7 +102,10 @@ def deploy_flows(local_debug: bool = False):
             "main",
         )
 
-        matlab_license = get_matlab_license_server()
+        matlab_license = asyncio.get_event_loop().run_until_complete(
+            get_matlab_license_server()
+        )
+
         # Comma separated docker volumes, e.g. /mnt/imap-data/dev:/data
         docker_volumes = os.getenv("IMAP_VOLUMES", "").split(",")
         # Comma separated docker networks, e.g. mag-lab-data-platform,some-other-network
