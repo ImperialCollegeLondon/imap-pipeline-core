@@ -99,7 +99,6 @@ COPY dist/docker /app
 RUN apt-get update && apt-get install -y libxt6
 
 RUN adduser -u ${USERID} --disabled-password --gecos "" appuser && \
-    chown -R appuser /home/appuser && \
     chown -R appuser /app && \
     mkdir -p /data && \
     chown -R appuser /data && \
