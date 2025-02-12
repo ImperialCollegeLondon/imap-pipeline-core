@@ -71,7 +71,7 @@ def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | No
 async def get_matlab_license_server():
     return await Variable.get(
         "matlab_license",
-        default=os.getenv(CONSTANTS.ENV_VAR_NAMES.MATLAB_LICENSE),  # type: ignore
+        default=os.getenv("MLM_LICENSE_FILE"),  # type: ignore
     )
 
 
