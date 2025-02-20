@@ -6,11 +6,12 @@ from datetime import datetime
 import prefect
 import prefect.blocks
 import prefect.deployments
-from prefect import deploy, flow, get_client, serve
+from prefect import deploy, flow, get_client, serve, settings
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
+from prefect.logging import get_run_logger
 from prefect.variables import Variable
 from prefect_shell import ShellOperation
 
@@ -24,7 +25,10 @@ class CONSTANTS:
 
 @flow(log_prints=True)
 def run_matlab():
-    print("Starting MATLAB functionality...")
+    logger = get_run_logger()
+
+    logger.info(settings.PREFECT_LOGGING_EXTRA_LOGGERS.value())
+    logger.info("Starting MATLAB functionality...")
     call_matlab()
 
 
