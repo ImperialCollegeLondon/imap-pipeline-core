@@ -5,7 +5,7 @@ from datetime import datetime
 import numpy as np
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+class_logger = logging.getLogger(__name__)
 
 
 class BasicCalibration(BaseModel):
@@ -15,8 +15,12 @@ class BasicCalibration(BaseModel):
     z_offsets: list[float]
 
 
-def call_matlab(first_call=True):
-    logger.info("Testing logging!")
+def call_matlab(command, first_call=True, flow_logger=None):
+    if flow_logger:
+        logger = flow_logger
+    else:
+        logger = class_logger
+
     if first_call:
         subprocess.run(
             [
@@ -29,10 +33,13 @@ def call_matlab(first_call=True):
         logger.info("Added necessary files to path")
 
     logger.info("Running MATLAB...")
-    cmd = ["matlab", "-batch", "helloworld"]
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    cmd = ["matlab", "-nojvm", "-nodesktop", "-batch"]
+    cmd.extend(command)
+    p = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
 
-    while (line := p.stdout.readline()) != "":
+    while (line := p.stdout.readline()) != "":  # type: ignore
         line = line.rstrip()
         logger.info(line)
 

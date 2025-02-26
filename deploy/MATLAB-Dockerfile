@@ -112,7 +112,7 @@ ENV PREFECT_HOME=/app/.prefect
 ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 
 #include the prefect workflows
-COPY src/ /app/
+COPY src /app/src
 
 #RUN matlab -nojvm -nodesktop -batch "addpath(genpath(\"/home/matlab/Documents/MATLAB\")); savepath"
 

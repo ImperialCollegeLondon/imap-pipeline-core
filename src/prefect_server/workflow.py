@@ -2,6 +2,7 @@ import asyncio
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import prefect
 import prefect.blocks
@@ -29,7 +30,30 @@ def run_matlab():
 
     logger.info(settings.PREFECT_LOGGING_EXTRA_LOGGERS.value())
     logger.info("Starting MATLAB functionality...")
-    call_matlab()
+    call_matlab("helloworld")
+
+
+@flow(log_prints=True)
+def generate_offsets(filename: Path, output_filename: Path):
+    logger = get_run_logger()
+
+    logger.info(f"Generating an offsets file based on {filename}")
+
+    if not os.path.isfile(filename):
+        logger.error(f"Cannot generate offsets: {filename} is not a file")
+        raise ValueError(f"{filename} is not a file")
+
+    if not os.path.isdir(output_filename.parent):
+        logger.error(f"Parent directories for {output_filename} do not exist")
+        raise ValueError(f"Parent directories for {output_filename} do not exist")
+
+    if os.path.isfile(output_filename):
+        logger.error(f"Output file {output_filename} already exists")
+        raise ValueError(f"File {output_filename} already exists")
+
+    call_matlab(
+        [f'generate_offsets("{filename}", "{output_filename}")'], flow_logger=logger
+    )
 
 
 @flow(log_prints=True)
@@ -159,7 +183,16 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        deployables = (imap_pipeline_deployable, matlab_deployable)
+        offsets_deployable = generate_offsets.to_deployment(
+            name="generate-offsets",
+            job_variables=shared_job_variables,
+            concurrency_limit=ConcurrencyLimitConfig(
+                limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+            ),
+            tags=[CONSTANTS.DEPLOYMENT_TAG],
+        )
+
+        deployables = (imap_pipeline_deployable, matlab_deployable, offsets_deployable)
 
         deploy_ids = deploy(
             *deployables,  # type: ignore
