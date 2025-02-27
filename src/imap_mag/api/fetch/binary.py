@@ -22,25 +22,20 @@ def fetch_binary(
         ),
     ],
     apid: Annotated[int, typer.Option(help="ApID to download")],
-    start_date: Annotated[str, typer.Option(help="Start date for the download")],
-    end_date: Annotated[str, typer.Option(help="End date for the download")],
+    start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
+    end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
 ):
     """Download binary data from WebPODA."""
 
     configFile: appConfig.AppConfig = commandInit(config)
+    packet: str = appUtils.getPacketFromApID(apid)
 
     if not auth_code:
         logging.critical("No WebPODA authorization code provided")
-        raise typer.Abort()
+        raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    packet: str = appUtils.getPacketFromApID(apid)
-    start_datetime: datetime = appUtils.convertToDatetime(start_date)
-    end_datetime: datetime = appUtils.convertToDatetime(end_date)
-
-    logging.info(
-        f"Downloading raw packet {packet} from {start_datetime} to {end_datetime}."
-    )
+    logging.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
 
     poda = WebPODA(
         auth_code,
@@ -51,7 +46,7 @@ def fetch_binary(
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
         fetch_binary.download_binaries(
-            packet=packet, start_date=start_datetime, end_date=end_datetime
+            packet=packet, start_date=start_date, end_date=end_date
         )
     )
 

@@ -7,7 +7,6 @@ from enum import Enum
 from pathlib import Path
 
 import pandas as pd
-import typing_extensions
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.outputManager import StandardSPDFMetadataProvider
@@ -52,7 +51,7 @@ class FetchScience:
         self.__sensor = sensors
 
     def download_latest_science(
-        self, **options: typing_extensions.Unpack[FetchScienceOptions]
+        self, level: str, start_date: datetime, end_date: datetime
     ) -> dict[Path, StandardSPDFMetadataProvider]:
         """Retrieve SDC data."""
 
@@ -60,8 +59,8 @@ class FetchScience:
 
         for mode in self.__modes:
             date_range: pd.DatetimeIndex = pd.date_range(
-                start=options["start_date"],
-                end=options["end_date"],
+                start=start_date,
+                end=end_date,
                 freq="D",
                 normalize=True,
             )
@@ -69,7 +68,7 @@ class FetchScience:
             for date in date_range.to_pydatetime():
                 for sensor in self.__sensor:
                     file_details = self.__data_access.get_filename(
-                        level=options["level"],
+                        level=level,
                         descriptor=mode.value + "-" + sensor.value,
                         start_date=date,
                         end_date=date,
@@ -90,7 +89,7 @@ class FetchScience:
 
                                 downloaded[downloaded_file] = (
                                     StandardSPDFMetadataProvider(
-                                        level=options["level"],
+                                        level=level,
                                         descriptor=file["descriptor"],
                                         date=date,
                                         extension="cdf",

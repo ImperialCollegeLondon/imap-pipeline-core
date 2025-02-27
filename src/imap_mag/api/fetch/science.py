@@ -29,25 +29,20 @@ def fetch_science(
             help="IMAP Science Data Centre API Key",
         ),
     ],
-    start_date: Annotated[str, typer.Option(help="Start date for the download")],
-    end_date: Annotated[str, typer.Option(help="End date for the download")],
+    start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
+    end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     level: Annotated[Level, typer.Option(help="Level to download")] = Level.level_2,
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
 ):
-    """DLevelcience data from the SDC."""
+    """Download science data from the SDC."""
 
     configFile: appConfig.AppConfig = commandInit(config)
 
     if not auth_code:
         logging.critical("No SDC_AUTH_CODE API key provided")
-        raise typer.Abort()
+        raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    start_datetime: datetime = appUtils.convertToDatetime(start_date)
-    end_datetime: datetime = appUtils.convertToDatetime(end_date)
-
-    logging.info(
-        f"Downloading {level} science from {start_datetime} to {end_datetime}."
-    )
+    logging.info(f"Downloading {level} science from {start_date} to {end_date}.")
 
     data_access = SDCDataAccess(
         data_dir=configFile.work_folder,
@@ -57,7 +52,7 @@ def fetch_science(
     fetch_science = FetchScience(data_access)
     downloaded_science: dict[Path, StandardSPDFMetadataProvider] = (
         fetch_science.download_latest_science(
-            level=level.value, start_date=start_datetime, end_date=end_datetime
+            level=level.value, start_date=start_date, end_date=end_date
         )
     )
 

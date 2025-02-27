@@ -1,23 +1,13 @@
 """Program to retrieve and process MAG binary files."""
 
 import logging
-import typing
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-import typing_extensions
 
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.outputManager import StandardSPDFMetadataProvider
-
-
-class FetchBinaryOptions(typing.TypedDict):
-    """Options for WebPODA interactions."""
-
-    packet: str
-    start_date: datetime
-    end_date: datetime
 
 
 class FetchBinary:
@@ -36,15 +26,15 @@ class FetchBinary:
         self.__web_poda = web_poda
 
     def download_binaries(
-        self, **options: typing_extensions.Unpack[FetchBinaryOptions]
+        self, packet: str, start_date: datetime, end_date: datetime
     ) -> dict[Path, StandardSPDFMetadataProvider]:
         """Retrieve WebPODA data."""
 
         downloaded: dict[Path, StandardSPDFMetadataProvider] = dict()
 
         date_range: pd.DatetimeIndex = pd.date_range(
-            start=options["start_date"],
-            end=options["end_date"],
+            start=start_date,
+            end=end_date,
             freq="D",
             normalize=True,
         )
@@ -59,15 +49,14 @@ class FetchBinary:
 
         for d in range(len(dates) - 1):
             file: Path = self.__web_poda.download(
-                packet=options["packet"], start_date=dates[d], end_date=dates[d + 1]
+                packet=packet, start_date=dates[d], end_date=dates[d + 1]
             )
 
             if file.stat().st_size > 0:
                 logging.info(f"Downloaded file from WebPODA: {file}")
 
                 downloaded[file] = StandardSPDFMetadataProvider(
-                    descriptor=options["packet"]
-                    .lower()
+                    descriptor=packet.lower()
                     .strip(self.__MAG_PREFIX)
                     .replace("_", "-"),
                     date=dates[d],

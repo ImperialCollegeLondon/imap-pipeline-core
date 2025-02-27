@@ -1,14 +1,12 @@
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import pandas as pd
 
 from imap_mag import appConfig
 
-from .DB import DatabaseOutputManager
+from .DB import DatabaseFileOutputManager
 from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
@@ -48,22 +46,13 @@ def getPacketFromApID(apid: int) -> str:
     return APID_TO_PACKET[apid]
 
 
-def convertToDatetime(string: str) -> datetime:
-    """Convert string to datetime."""
-    try:
-        return pd.to_datetime(string).to_pydatetime()
-    except Exception as e:
-        logging.critical(f"Error parsing {string} as datetime: {e}")
-        raise ValueError(f"Error parsing {string} as datetime: {e}")
-
-
 def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
     """Retrieve output manager based on destination."""
 
     output_manager = OutputManager(destination.folder)
 
     if destination.export_to_database:
-        output_manager = DatabaseOutputManager(output_manager)
+        output_manager = DatabaseFileOutputManager(output_manager)
 
     return output_manager
 
