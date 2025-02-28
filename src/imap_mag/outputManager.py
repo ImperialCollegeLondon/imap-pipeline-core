@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 
 def generate_hash(file: Path) -> str:
     return hashlib.md5(file.read_bytes()).hexdigest()
@@ -49,7 +51,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
 
     def get_folder_structure(self) -> str:
         if self.date is None:
-            logging.error("No 'date' defined. Cannot generate folder structure.")
+            logger.error("No 'date' defined. Cannot generate folder structure.")
             raise ValueError("No 'date' defined. Cannot generate folder structure.")
 
         return self.date.strftime("%Y/%m/%d")
@@ -61,7 +63,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             or self.version is None
             or self.extension is None
         ):
-            logging.error(
+            logger.error(
                 "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
             )
             raise ValueError(
@@ -108,20 +110,20 @@ class OutputManager(IOutputManager):
         """Add file to output location."""
 
         if not self.location.exists():
-            logging.debug(f"Output location does not exist. Creating {self.location}.")
+            logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
         destination_file: Path = self.__assemble_full_path(metadata_provider)
 
         if not destination_file.parent.exists():
-            logging.debug(
+            logger.debug(
                 f"Output folder structure does not exist. Creating {destination_file.parent}."
             )
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
         if destination_file.exists():
             if generate_hash(destination_file) == generate_hash(original_file):
-                logging.info(f"File {destination_file} already exists and is the same.")
+                logger.info(f"File {destination_file} already exists and is the same.")
                 return (destination_file, metadata_provider)
 
             metadata_provider.version = self.__get_next_available_version(
@@ -129,9 +131,9 @@ class OutputManager(IOutputManager):
             )
             destination_file = self.__assemble_full_path(metadata_provider)
 
-        logging.info(f"Copying {original_file} to {destination_file.absolute()}.")
+        logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
         destination = shutil.copy2(original_file, destination_file)
-        logging.info(f"Copied to {destination}.")
+        logger.info(f"Copied to {destination}.")
 
         return (destination_file, metadata_provider)
 
@@ -150,20 +152,20 @@ class OutputManager(IOutputManager):
         """Find a viable version for a file."""
 
         if not metadata_provider.supports_versioning():
-            logging.warning(
+            logger.warning(
                 f"File {destination_file} already exists and is different. Overwriting."
             )
             return metadata_provider.version
 
         while destination_file.exists():
-            logging.debug(
+            logger.debug(
                 f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version}."
             )
             metadata_provider.version += 1
             updated_file = self.__assemble_full_path(metadata_provider)
 
             if destination_file == updated_file:
-                logging.error(
+                logger.error(
                     f"File {destination_file} already exists and is different. Cannot increase version."
                 )
                 raise FileExistsError(

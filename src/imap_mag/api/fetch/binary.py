@@ -11,6 +11,8 @@ from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 
+logger = logging.getLogger(__name__)
+
 
 # E.g., imap-mag fetch binary --apid 1063 --start-date 2025-05-02 --end-date 2025-05-03
 def fetch_binary(
@@ -32,10 +34,10 @@ def fetch_binary(
     packet: str = appUtils.getPacketFromApID(apid)
 
     if not auth_code:
-        logging.critical("No WebPODA authorization code provided")
+        logger.critical("No WebPODA authorization code provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logging.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
+    logger.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
 
     poda = WebPODA(
         auth_code,

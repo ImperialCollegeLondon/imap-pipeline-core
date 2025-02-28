@@ -10,6 +10,8 @@ from space_packet_parser import definitions
 
 from . import appConfig, appUtils
 
+logger = logging.getLogger(__name__)
+
 
 class FileProcessor(abc.ABC):
     """Interface for IMAP processing."""
@@ -40,7 +42,7 @@ class HKProcessor(FileProcessor):
             os.path.join(os.path.dirname(__file__), config.packet_definition.hk)
         )
         defaultFallbackPath = Path("tlm.xml")
-        logging.debug(
+        logger.debug(
             "Trying XTCE packet definition file from these paths in turn: \n  %s\n  %s\n  %s\n",
             config.packet_definition.hk,
             pythonModuleRelativePath,
@@ -51,20 +53,20 @@ class HKProcessor(FileProcessor):
             and config.packet_definition.hk is not None
             and config.packet_definition.hk.exists()
         ):
-            logging.debug(
+            logger.debug(
                 "Using XTCE packet definition file from relative path: %s",
                 config.packet_definition.hk,
             )
             self.xtcePacketDefinition = config.packet_definition.hk
         # otherwise try path relative to the module
         elif pythonModuleRelativePath.exists():
-            logging.debug(
+            logger.debug(
                 "Using XTCE packet definition file from module path: %s",
                 pythonModuleRelativePath,
             )
             self.xtcePacketDefinition = pythonModuleRelativePath
         else:
-            logging.debug(
+            logger.debug(
                 "Using XTCE packet definition file from default path: %s",
                 defaultFallbackPath,
             )
@@ -147,11 +149,11 @@ class UnknownProcessor(FileProcessor):
 def dispatchFile(file: Path) -> FileProcessor:
     match file.suffix:
         case ".cdf":
-            logging.info(f"File {file} contains science.")
+            logger.info(f"File {file} contains science.")
             return ScienceProcessor()
         case ".pkts" | ".bin":
-            logging.info(f"File {file} contains HK.")
+            logger.info(f"File {file} contains HK.")
             return HKProcessor()
         case _:
-            logging.info(f"File {file} contains unknown data.")
+            logger.info(f"File {file} contains unknown data.")
             return UnknownProcessor()

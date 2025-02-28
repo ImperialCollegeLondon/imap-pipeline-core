@@ -7,6 +7,8 @@ import typer
 from imap_mag import appConfig, appUtils, imapProcessing
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
 
+logger = logging.getLogger(__name__)
+
 
 # E.g., imap-mag process --config config.yaml solo_L2_mag-rtn-ll-internal_20240210_V00.cdf
 def process(
@@ -25,7 +27,7 @@ def process(
     workFile = prepareWorkFile(file, configFile)
 
     if workFile is None:
-        logging.critical(
+        logger.critical(
             "Unable to find a file to process in %s", configFile.source.folder
         )
         raise typer.Abort()

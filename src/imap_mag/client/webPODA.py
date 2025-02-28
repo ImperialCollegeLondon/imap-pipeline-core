@@ -11,6 +11,8 @@ from pathlib import Path
 import requests
 from typing_extensions import Unpack
 
+logger = logging.getLogger(__name__)
+
 
 class DownloadOptions(typing.TypedDict):
     """Options for download."""
@@ -52,7 +54,7 @@ class WebPODA(IWebPODA):
 
         file_path: Path = self.__output_dir / (options["packet"] + ".bin")
 
-        logging.info(
+        logger.info(
             f"Downloading {options['packet']} from "
             f"{options['start_date']} to {options['end_date']} (S/C time) "
             f"into {file_path}."
@@ -99,7 +101,7 @@ class WebPODA(IWebPODA):
             f"{time_var}%3C{end_value}&"
             f"{data}"
         )
-        logging.debug(f"Downloading from: {url}")
+        logger.debug(f"Downloading from: {url}")
 
         try:
             response: requests.Response = requests.get(
@@ -108,7 +110,7 @@ class WebPODA(IWebPODA):
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to download from {url}: {e}")
+            logger.error(f"Failed to download from {url}: {e}")
             raise
 
         return response

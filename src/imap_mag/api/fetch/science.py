@@ -12,6 +12,8 @@ from imap_mag.cli.fetchScience import FetchScience
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 
+logger = logging.getLogger(__name__)
+
 
 class Level(str, Enum):
     level_1a = "l1a"
@@ -39,10 +41,10 @@ def fetch_science(
     configFile: appConfig.AppConfig = commandInit(config)
 
     if not auth_code:
-        logging.critical("No SDC_AUTH_CODE API key provided")
+        logger.critical("No SDC_AUTH_CODE API key provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logging.info(f"Downloading {level} science from {start_date} to {end_date}.")
+    logger.info(f"Downloading {level} science from {start_date} to {end_date}.")
 
     data_access = SDCDataAccess(
         data_dir=configFile.work_folder,

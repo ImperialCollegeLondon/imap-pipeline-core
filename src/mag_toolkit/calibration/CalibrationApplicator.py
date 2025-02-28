@@ -10,6 +10,8 @@ from .calibrationFormatProcessor import (
     CalibrationFormatProcessor,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CalibrationApplicator:
     def apply(self, calibrationFile, dataFile, outputFile) -> Path:
@@ -19,14 +21,14 @@ class CalibrationApplicator:
             CalibrationFormatProcessor.loadFromPath(calibrationFile)
         )
 
-        logging.info("Loaded calibration file and data file")
+        logger.info("Loaded calibration file and data file")
 
         try:
             self.checkValidity(data, calibrationCollection)
         except CalibrationValidityError as e:
-            logging.info(f"{e} -> continuing application of calibration regardless")
+            logger.info(f"{e} -> continuing application of calibration regardless")
 
-        logging.info("Dataset and calibration file deemed compatible")
+        logger.info("Dataset and calibration file deemed compatible")
 
         for eachCal in calibrationCollection.calibrations:
             data.vectors[0] = data.vectors[0] + eachCal.offsets.X
@@ -42,5 +44,5 @@ class CalibrationApplicator:
         if data.epoch[0] < np.datetime64(
             calibrationCollection.valid_start
         ) or data.epoch[1] > np.datetime64(calibrationCollection.valid_end):
-            logging.debug("Data outside of calibration validity range")
+            logger.debug("Data outside of calibration validity range")
             raise CalibrationValidityError("Data outside of calibration validity range")

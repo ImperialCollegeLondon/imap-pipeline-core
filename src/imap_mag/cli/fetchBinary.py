@@ -9,6 +9,8 @@ import pandas as pd
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 
+logger = logging.getLogger(__name__)
+
 
 class FetchBinary:
     """Manage WebPODA data."""
@@ -53,7 +55,7 @@ class FetchBinary:
             )
 
             if file.stat().st_size > 0:
-                logging.info(f"Downloaded file from WebPODA: {file}")
+                logger.info(f"Downloaded file from WebPODA: {file}")
 
                 downloaded[file] = StandardSPDFMetadataProvider(
                     descriptor=packet.lower()
@@ -63,6 +65,6 @@ class FetchBinary:
                     extension="pkts",
                 )
             else:
-                logging.debug(f"Downloaded file {file} is empty and will not be used.")
+                logger.debug(f"Downloaded file {file} is empty and will not be used.")
 
         return downloaded

@@ -11,6 +11,8 @@ import pandas as pd
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 
+logger = logging.getLogger(__name__)
+
 
 class MAGMode(str, Enum):
     Normal = "norm"
@@ -83,7 +85,7 @@ class FetchScience:
                             )
 
                             if downloaded_file.stat().st_size > 0:
-                                logging.info(
+                                logger.info(
                                     f"Downloaded file from SDC Data Access: {downloaded_file}"
                                 )
 
@@ -96,7 +98,7 @@ class FetchScience:
                                     )
                                 )
                             else:
-                                logging.debug(
+                                logger.debug(
                                     f"Downloaded file {downloaded_file} is empty and will not be used."
                                 )
 

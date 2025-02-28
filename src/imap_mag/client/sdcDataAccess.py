@@ -10,6 +10,8 @@ import imap_data_access
 import imap_data_access.io
 import typing_extensions
 
+logger = logging.getLogger(__name__)
+
 
 class FileOptions(typing.TypedDict):
     """Options for generating file name."""
@@ -100,12 +102,12 @@ class SDCDataAccess(ISDCDataAccess):
         return (science_file.filename, science_file.construct_path())
 
     def upload(self, file_name: str) -> None:
-        logging.debug(f"Uploading {file_name} to imap-data-access.")
+        logger.debug(f"Uploading {file_name} to imap-data-access.")
 
         try:
             imap_data_access.upload(file_name)
         except imap_data_access.io.IMAPDataAccessError as e:
-            logging.error(f"Upload failed: {e}")
+            logger.error(f"Upload failed: {e}")
             raise e
 
     def query(
@@ -133,10 +135,10 @@ class SDCDataAccess(ISDCDataAccess):
         file_details: list[dict[str, str]] = self.query(**options)
 
         file_names: str = ", ".join([value["file_path"] for value in file_details])
-        logging.info(f"Found {len(file_details)} matching files:\n{file_names}")
+        logger.info(f"Found {len(file_details)} matching files:\n{file_names}")
 
         return file_details
 
     def download(self, file_name: str) -> Path:
-        logging.debug(f"Downloading {file_name} from imap-data-access.")
+        logger.debug(f"Downloading {file_name} from imap-data-access.")
         return imap_data_access.download(file_name)
