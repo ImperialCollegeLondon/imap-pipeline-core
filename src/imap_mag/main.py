@@ -18,8 +18,15 @@ def hello(name: str):
 
 
 @app.command()
-def matlab():
-    subprocess.run(["matlab", "-batch", "helloworld"])
+def calibrationdemo(
+    file_to_calibrate: str = typer.Argument(
+        help="The file name of the file to be calibrated",
+    ),
+    output_file: str = typer.Argument(help="The file name of the output file"),
+):
+    subprocess.run(
+        ["matlab", "-batch", f'demo("{file_to_calibrate}", "{output_file}")']
+    )
 
 
 app.command()(process.process)
