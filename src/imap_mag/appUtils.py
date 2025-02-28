@@ -6,7 +6,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from .appConfig import Destination
+from imap_mag import appConfig
+
 from .DB import DatabaseOutputManager
 from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
@@ -56,7 +57,7 @@ def convertToDatetime(string: str) -> datetime:
         raise ValueError(f"Error parsing {string} as datetime: {e}")
 
 
-def getOutputManager(destination: Destination) -> IOutputManager:
+def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
     """Retrieve output manager based on destination."""
 
     output_manager = OutputManager(destination.folder)
@@ -69,7 +70,7 @@ def getOutputManager(destination: Destination) -> IOutputManager:
 
 def copyFileToDestination(
     file_path: Path,
-    destination: Destination,
+    destination: appConfig.Destination,
     output_manager: Optional[OutputManager] = None,
 ) -> tuple[Path, IFileMetadataProvider]:
     """Copy file to destination folder."""

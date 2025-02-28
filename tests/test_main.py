@@ -96,7 +96,8 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
         app,
         [
             "--verbose",
-            "fetch-binary",
+            "fetch",
+            "binary",
             "--config",
             config_file,
             "--apid",
@@ -173,7 +174,8 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
         app,
         [
             "--verbose",
-            "fetch-science",
+            "fetch",
+            "science",
             "--config",
             config_file,
             "--auth-code",
