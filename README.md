@@ -67,11 +67,12 @@ From a linux host or WSL (i.e. not in a dev container) you can use the container
 ./pack.sh
 ./build-docker.sh
 
+source dev.env
+
 docker run -it --rm \
     --network mag-lab-data-platform \
-    -e PREFECT_API_URL=http://prefect:4200/api \
-    -e IMAP_IMAGE_TAG=local-dev \
-    -e IMAP_VOLUMES=/mnt/imap-data/dev:/data \
+    --env-file defaults.env \
+    --env-file dev.env \
     --entrypoint /bin/bash \
     ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev \
     -c "python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows()'"

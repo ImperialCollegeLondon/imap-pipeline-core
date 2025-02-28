@@ -218,6 +218,10 @@ def fetch_binary(
         )
     )
 
+    logging.info(
+        f"Downloaded files from WebPODA: {', '.join([str(file) for file in downloaded_binaries.keys()])}"
+    )
+
     output_manager = appUtils.getOutputManager(configFile.destination)
 
     for file, metadata_provider in downloaded_binaries.items():
