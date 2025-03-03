@@ -12,10 +12,18 @@ logger = logging.getLogger(__name__)
 
 # E.g., imap-mag process --config config.yaml solo_L2_mag-rtn-ll-internal_20240210_V00.cdf
 def process(
+    file: Annotated[
+        Path,
+        typer.Argument(
+            help="The file name or pattern to match for the input file",
+            exists=False,  # can be a pattern
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            writable=False,
+        ),
+    ],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
-    file: str = typer.Argument(
-        help="The file name or pattern to match for the input file"
-    ),
 ):
     """Sample processing job."""
     # TODO: semantic logging
@@ -23,7 +31,6 @@ def process(
     # TODO: move shared logic to a library
 
     configFile: appConfig.AppConfig = commandInit(config)
-
     workFile = prepareWorkFile(file, configFile)
 
     if workFile is None:

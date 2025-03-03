@@ -21,3 +21,14 @@ class File(Base):
 
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
+
+
+class DownloadProgress(Base):
+    __tablename__ = "download_progress"
+
+    item_name: Mapped[str] = mapped_column(String(128), primary_key=True, unique=True)
+    progress_timestamp: Mapped[datetime] = mapped_column(DateTime())
+    last_checked_date: Mapped[datetime] = mapped_column(DateTime())
+
+    def __repr__(self):
+        return f"<DownloadProgress {self.item_name} (progress_timestamp={self.progress_timestamp}, last_checked_date={self.last_checked_date})>"

@@ -1,15 +1,19 @@
 import abc
+import functools
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 
 import typer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from imap_db.model import File
+from imap_db.model import DownloadProgress, File
 from imap_mag import __version__
 from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, generate_hash
+
+logger = logging.getLogger(__name__)
 
 
 class IDatabase(abc.ABC):
@@ -23,6 +27,22 @@ class IDatabase(abc.ABC):
     @abc.abstractmethod
     def insert_files(self, files: list[File]) -> None:
         """Insert a list of files into the database."""
+        pass
+
+    @abc.abstractmethod
+    def get_download_progress_timestamp(self, item_name: str) -> datetime | None:
+        """Get the progress timestamp for an item."""
+        pass
+
+    @abc.abstractmethod
+    def update_download_progress(
+        self,
+        item_name: str,
+        *,
+        progress_timestamp: datetime | None = None,
+        last_checked_date: datetime | None = None,
+    ) -> None:
+        """Update the download progress for an item."""
         pass
 
 
@@ -42,32 +62,86 @@ class Database(IDatabase):
         # TODO: Check database is available
 
         self.engine = create_engine(db_url)
-        self.Session = sessionmaker(bind=self.engine)
+        self.session = sessionmaker(bind=self.engine)
 
+    @staticmethod
+    def __session_manager(func):
+        """Manage session scope for database operations."""
+
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            session = self.session()
+            try:
+                value = func(self, *args, **kwargs)
+                session.commit()
+
+                return value
+            except Exception as e:
+                session.rollback()
+                raise e
+            finally:
+                session.close()
+
+        return wrapper
+
+    @__session_manager
     def insert_files(self, files: list[File]) -> None:
-        session = self.Session()
-        try:
-            for file in files:
-                # check file does not already exist
-                existing_file = (
-                    session.query(File)
-                    .filter_by(name=file.name, path=file.path)
-                    .first()
-                )
-                if existing_file is not None:
-                    continue
+        session = self.session()
+        for file in files:
+            # check file does not already exist
+            existing_file = (
+                session.query(File).filter_by(name=file.name, path=file.path).first()
+            )
+            if existing_file is not None:
+                continue
 
-                session.add(file)
+            session.add(file)
 
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            raise e
-        finally:
-            session.close()
+    @__session_manager
+    def get_download_progress_timestamp(self, item_name: str) -> datetime | None:
+        session = self.session()
+        download_progress = (
+            session.query(DownloadProgress).filter_by(item_name=item_name).first()
+        )
+        self.update_download_progress(item_name, last_checked_date=datetime.now())
+
+        if download_progress is None:
+            return None
+
+        return download_progress.progress_timestamp
+
+    @__session_manager
+    def update_download_progress(
+        self,
+        item_name: str,
+        *,
+        progress_timestamp: datetime | None = None,
+        last_checked_date: datetime | None = None,
+    ) -> None:
+        session = self.session()
+        download_progress = (
+            session.query(DownloadProgress).filter_by(item_name=item_name).first()
+        )
+
+        if download_progress is None:
+            download_progress = DownloadProgress(item_name=item_name)
+
+        if progress_timestamp is not None:
+            logger.info(
+                f"Updating progress timestamp for {item_name} to {progress_timestamp}."
+            )
+            download_progress.progress_timestamp = progress_timestamp
+
+        if last_checked_date is not None:
+            logger.info(
+                f"Updating last checked date for {item_name} to {last_checked_date}."
+            )
+            download_progress.last_checked_date = last_checked_date
+
+        session.add(download_progress)
 
 
-class DatabaseOutputManager(IOutputManager):
+class DatabaseFileOutputManager(IOutputManager):
     """Decorator for adding files to database as well as output."""
 
     __output_manager: IOutputManager
@@ -97,13 +171,13 @@ class DatabaseOutputManager(IOutputManager):
         if not (
             destination_file.exists() and (generate_hash(destination_file) == file_hash)
         ):
-            logging.error(
+            logger.error(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
             )
             destination_file.unlink(missing_ok=True)
             raise typer.Abort()
 
-        logging.info(f"Inserting {destination_file} into database.")
+        logger.info(f"Inserting {destination_file} into database.")
 
         try:
             self.__database.insert_file(
@@ -117,7 +191,7 @@ class DatabaseOutputManager(IOutputManager):
                 )
             )
         except Exception as e:
-            logging.error(f"Error inserting {destination_file} into database: {e}")
+            logger.error(f"Error inserting {destination_file} into database: {e}")
             destination_file.unlink()
             raise e
 

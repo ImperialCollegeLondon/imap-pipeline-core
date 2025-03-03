@@ -11,7 +11,7 @@ import typer
 
 from imap_db.model import File
 from imap_mag import __version__
-from imap_mag.DB import DatabaseOutputManager, IDatabase
+from imap_mag.DB import DatabaseFileOutputManager, IDatabase
 from imap_mag.outputManager import IOutputManager, StandardSPDFMetadataProvider
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
@@ -33,7 +33,7 @@ def test_database_output_manager_writes_to_database(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseOutputManager(mock_output_manager, mock_database)
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -77,7 +77,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseOutputManager(mock_output_manager, mock_database)
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -103,7 +103,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseOutputManager(mock_output_manager, mock_database)
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -127,7 +127,7 @@ def test_database_output_manager_errors_database_error(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseOutputManager(mock_output_manager, mock_database)
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"

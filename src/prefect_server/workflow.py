@@ -3,20 +3,17 @@ import os
 import sys
 from datetime import datetime
 
-import prefect
-import prefect.blocks
-import prefect.deployments
-from prefect import deploy, flow, get_client, serve
+from prefect import deploy, flow, serve
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
 from prefect_shell import ShellOperation
 
-
-class CONSTANTS:
-    DEFAULT_WORKPOOL = "default-pool"
-    DEPLOYMENT_TAG = "NASA_IMAP"
+from prefect_server.constants import CONSTANTS
+from prefect_server.pollHK import poll_hk_flow
+from prefect_server.prefectUtils import get_cron_from_env
+from prefect_server.serverConfig import ServerConfig
 
 
 @flow(log_prints=True)
@@ -33,34 +30,8 @@ def run_imap_pipeline():
     print("Finished IMAP pipeline")
 
 
-async def setupOtherServerConfig():
-    # Set a concurrency limit of 10 on the 'autoflow_kernels' tag
-    async with get_client() as client:
-        # Check if the limit already exists
-
-        try:
-            existing_limit = await client.read_global_concurrency_limit_by_name(
-                "not-a-name"
-            )
-        except prefect.exceptions.ObjectNotFound:
-            existing_limit = None
-
-        print(f"config: {existing_limit}")
-
-
-def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | None:
-    cron = os.getenv(env_var_name, default)
-
-    if cron is None or cron == "":
-        return None
-    else:
-        cron = cron.strip(" '\"")
-        print(f"Using cron schedule: {env_var_name}={cron}")
-        return cron
-
-
 def deploy_flows(local_debug: bool = False):
-    asyncio.get_event_loop().run_until_complete(setupOtherServerConfig())
+    asyncio.get_event_loop().run_until_complete(ServerConfig.initialise())
 
     imap_flow_name = "imappipeline"
 
@@ -70,6 +41,9 @@ def deploy_flows(local_debug: bool = False):
         serve(
             run_imap_pipeline.to_deployment(
                 name=imap_flow_name,
+            ),
+            poll_hk_flow.to_deployment(
+                name=CONSTANTS.FLOW_NAMES.POLL_HK,
             ),
         )
     else:
@@ -99,7 +73,7 @@ def deploy_flows(local_debug: bool = False):
         shared_job_env_variables = dict(
             WEBPODA_AUTH_CODE=os.getenv("WEBPODA_AUTH_CODE"),
             SDC_AUTH_CODE=os.getenv("SDC_AUTH_CODE"),
-            SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
+            SQLALCHEMY_URL="postgresql+psycopg://postgres:postgres@db:5432/imap",  # os.getenv("SQLALCHEMY_URL"),
             PREFECT_LOGGING_EXTRA_LOGGERS="imap_mag,imap_db,mag_toolkit",
         )
         shared_job_variables = dict(
@@ -115,15 +89,22 @@ def deploy_flows(local_debug: bool = False):
 
         imap_pipeline_deployable = run_imap_pipeline.to_deployment(
             name=imap_flow_name,
-            cron=get_cron_from_env("IMAP_CRON_HEALTHCHECK"),
+            cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.IMAP_PIPELINE_CRON),
             job_variables=shared_job_variables,
             concurrency_limit=ConcurrencyLimitConfig(
                 limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
             ),
-            tags=[CONSTANTS.DEPLOYMENT_TAG],
+            tags=[CONSTANTS.PREFECT_TAG],
         )
 
-        deployables = (imap_pipeline_deployable,)
+        poll_hk_deployable = poll_hk_flow.to_deployment(
+            name=CONSTANTS.FLOW_NAMES.POLL_HK,
+            cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
+            job_variables=shared_job_variables,
+            tags=[CONSTANTS.PREFECT_TAG],
+        )
+
+        deployables = (imap_pipeline_deployable, poll_hk_deployable)
 
         deploy_ids = deploy(
             *deployables,

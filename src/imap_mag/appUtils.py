@@ -9,15 +9,28 @@ from imap_mag import appConfig
 from .DB import DatabaseFileOutputManager
 from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
+logger = logging.getLogger(__name__)
+
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
-APID_TO_PACKET = {
+HK_APIDS: list[int] = [
+    1028,
+    1055,
+    1063,
+    1064,
+    1082,
+    1060,
+    1053,
+    1054,
+    1045,
+]
+APID_TO_PACKET: dict[int, str] = {
     1028: "MAG_HSK_SID1",
     1055: "MAG_HSK_SID2",
     1063: "MAG_HSK_PW",
     1064: "MAG_HSK_STATUS",
-    1082: "MAG_HSK_SID5",
+    1082: "MAG_HSK_SCI",
     1051: "MAG_HSK_SID11",
     1060: "MAG_HSK_SID12",
     1053: "MAG_HSK_SID15",
@@ -41,7 +54,7 @@ def convertMETToJ2000ns(
 def getPacketFromApID(apid: int) -> str:
     """Get packet name from ApID."""
     if apid not in APID_TO_PACKET:
-        logging.critical(f"ApID {apid} does not match any known packet.")
+        logger.critical(f"ApID {apid} does not match any known packet.")
         raise ValueError(f"ApID {apid} does not match any known packet.")
     return APID_TO_PACKET[apid]
 

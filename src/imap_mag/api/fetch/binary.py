@@ -27,7 +27,7 @@ def fetch_binary(
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
-):
+) -> dict[Path, StandardSPDFMetadataProvider]:
     """Download binary data from WebPODA."""
 
     configFile: appConfig.AppConfig = commandInit(config)
@@ -56,3 +56,5 @@ def fetch_binary(
 
     for file, metadata_provider in downloaded_binaries.items():
         output_manager.add_file(file, metadata_provider)
+
+    return downloaded_binaries
