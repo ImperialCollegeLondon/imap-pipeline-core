@@ -34,6 +34,8 @@ cdflib = "^1.3.1"
 psycopg = {extras = ["binary"], version = "^3.2.1"}
 prefect = {extras = ["shell"], version = "^3.1.7"}
 prefect-docker = "^0.6.1"
+psycopg2 = "^2.9.10"
+psycopg2-binary = "^2.9.10"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.1"

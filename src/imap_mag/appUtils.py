@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +42,7 @@ APID_TO_PACKET: dict[int, str] = {
 
 def convertMETToJ2000ns(
     met: np.typing.ArrayLike,
-    reference_epoch: Optional[np.datetime64] = IMAP_EPOCH,
+    reference_epoch: np.datetime64 = IMAP_EPOCH,
 ) -> np.typing.ArrayLike:
     """Convert mission elapsed time (MET) to nanoseconds from J2000."""
     time_array = (np.asarray(met, dtype=float) * 1e9).astype(np.int64)
@@ -59,10 +60,15 @@ def getPacketFromApID(apid: int) -> str:
     return APID_TO_PACKET[apid]
 
 
+def forceUTCTimeZone(*args: datetime) -> tuple[datetime, ...]:
+    """Convert given datetime objects to UTC timezone and remove timezone."""
+    return tuple(arg.astimezone(timezone.utc).replace(tzinfo=None) for arg in args)
+
+
 def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
     """Retrieve output manager based on destination."""
 
-    output_manager = OutputManager(destination.folder)
+    output_manager: IOutputManager = OutputManager(destination.folder)
 
     if destination.export_to_database:
         output_manager = DatabaseFileOutputManager(output_manager)
@@ -95,7 +101,7 @@ def copyFileToDestination(
     destination_folder = Path(destination.folder)
 
     if output_manager is None:
-        output_manager: OutputManager = OutputManager(destination_folder)
+        output_manager = OutputManager(destination_folder)
 
     return output_manager.add_file(
         file_path, SimpleMetadataProvider(destination.filename)

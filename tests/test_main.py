@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from imap_mag.appConfig import create_serialize_config
 from imap_mag.main import app
 
-from .testUtils import create_serialize_config
 from .wiremockUtils import wiremock_manager  # noqa: F401
 
 runner = CliRunner()
@@ -88,7 +88,9 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
     )
 
     (_, config_file) = create_serialize_config(
-        destination_file="power.pkts", webpoda_url=wiremock_manager.get_url()
+        destination_file="power.pkts",
+        webpoda_url=wiremock_manager.get_url(),
+        export_to_database=False,
     )
 
     # Exercise.
@@ -99,7 +101,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
             "fetch",
             "binary",
             "--config",
-            config_file,
+            str(config_file),
             "--apid",
             "1063",
             "--auth-code",
@@ -166,7 +168,9 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     )
 
     (_, config_file) = create_serialize_config(
-        destination_file="result.cdf", sdc_url=wiremock_manager.get_url().rstrip("/")
+        destination_file="result.cdf",
+        sdc_url=wiremock_manager.get_url().rstrip("/"),
+        export_to_database=False,
     )
 
     # Exercise.
@@ -177,7 +181,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
             "fetch",
             "science",
             "--config",
-            config_file,
+            str(config_file),
             "--auth-code",
             "12345",
             "--level",

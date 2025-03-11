@@ -1,8 +1,11 @@
 """App configuration module."""
 
-from pathlib import Path
+import os
+import tempfile
+from pathlib import Path, PosixPath, WindowsPath
 from typing import Optional
 
+import yaml
 from pydantic import BaseModel
 from pydantic.aliases import AliasGenerator
 from pydantic.config import ConfigDict
@@ -50,3 +53,40 @@ class AppConfig(BaseModel):
             validation_alias=hyphenize, serialization_alias=hyphenize
         )
     )
+
+
+def create_serialize_config(
+    *,
+    source: Path = Path("."),
+    destination_folder: Path = Path("output"),
+    destination_file: str = "results.csv",
+    webpoda_url: str | None = None,
+    sdc_url: str | None = None,
+    export_to_database: bool = True,
+) -> tuple[AppConfig, Path]:
+    """Create and serialize a configuration object."""
+
+    config = AppConfig(
+        source=Source(folder=source),
+        destination=Destination(
+            folder=destination_folder,
+            filename=destination_file,
+            export_to_database=export_to_database,
+        ),
+        packet_definition=PacketDefinition(hk=Path("xtce/tlm_20241024.xml")),
+        api=API(webpoda_url=webpoda_url, sdc_url=sdc_url),
+    )
+
+    if not os.path.exists(config.work_folder):
+        os.makedirs(config.work_folder)
+
+    config_file = Path(tempfile.mkdtemp()) / "config-temp.yaml"
+
+    with open(config_file, "w") as f:
+        for path_type in (PosixPath, WindowsPath):
+            yaml.add_representer(
+                path_type, lambda dumper, data: dumper.represent_str(str(data))
+            )
+        yaml.dump(config.model_dump(by_alias=True), f)
+
+    return (config, config_file)

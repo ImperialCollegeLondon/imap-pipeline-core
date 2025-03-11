@@ -97,7 +97,7 @@ def prepareWorkFile(file: Path | str, configFile) -> Path | None:
 
     if len(files) == 0:
         logger.critical(f"No files matching {file} found in {folder}")
-        raise typer.Abort()
+        raise FileNotFoundError(f"No files matching {file} found in {folder}")
 
     logger.info(
         f"Found {len(files)} matching files. Select the most recent one:"

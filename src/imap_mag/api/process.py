@@ -35,7 +35,7 @@ def process(
 
     if workFile is None:
         logger.critical(
-            "Unable to find a file to process in %s", configFile.source.folder
+            f"Unable to find a file to process in {configFile.source.folder}"
         )
         raise typer.Abort()
 

@@ -8,8 +8,7 @@ import imap_data_access
 
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 
-from .testUtils import create_serialize_config, tidyDataFolders  # noqa: F401
-from .wiremockUtils import wiremock_manager  # noqa: F401
+from .testUtils import tidyDataFolders  # noqa: F401
 
 
 def test_sdc_data_access_constructor_sets_config() -> None:

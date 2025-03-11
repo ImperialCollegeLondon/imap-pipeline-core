@@ -81,18 +81,19 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         return f"{descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
 
+T = typing.TypeVar("T", bound=IFileMetadataProvider)
+
+
 class IOutputManager(abc.ABC):
     """Interface for output managers."""
 
     @abc.abstractmethod
-    def add_file(
-        self, original_file: Path, metadata_provider: IFileMetadataProvider
-    ) -> tuple[Path, IFileMetadataProvider]:
+    def add_file(self, original_file: Path, metadata_provider: T) -> tuple[Path, T]:
         """Add file to output location."""
 
     def add_spdf_format_file(
         self, original_file: Path, **metadata: typing.Any
-    ) -> tuple[Path, IFileMetadataProvider]:
+    ) -> tuple[Path, StandardSPDFMetadataProvider]:
         return self.add_file(original_file, StandardSPDFMetadataProvider(**metadata))
 
 
@@ -104,9 +105,7 @@ class OutputManager(IOutputManager):
     def __init__(self, location: Path) -> None:
         self.location = location
 
-    def add_file(
-        self, original_file: Path, metadata_provider: IFileMetadataProvider
-    ) -> tuple[Path, IFileMetadataProvider]:
+    def add_file(self, original_file: Path, metadata_provider: T) -> tuple[Path, T]:
         """Add file to output location."""
 
         if not self.location.exists():

@@ -7,7 +7,8 @@ from pydantic import SecretStr
 
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
-from imap_mag.appUtils import HK_APIDS, getPacketFromApID
+from imap_mag.appConfig import create_serialize_config
+from imap_mag.appUtils import HK_APIDS, forceUTCTimeZone, getPacketFromApID
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
@@ -26,7 +27,13 @@ def generate_flow_run_name() -> str:
     ) - timedelta(days=1)
     end_date = parameters["end_date"] or start_date + timedelta(days=1)
 
-    return f"Download-{convert_ints_to_string(hk_apids)}-ApIDs-from-{start_date.strftime('%d-%m-%Y')}-to-{end_date.strftime('%d-%m-%Y')}"
+    apid_text = (
+        f"{convert_ints_to_string(hk_apids)}-ApIDs"
+        if hk_apids != HK_APIDS
+        else "all-HK"
+    )
+
+    return f"Download-{apid_text}-from-{start_date.strftime('%d-%m-%Y')}-to-{end_date.strftime('%d-%m-%Y')}"
 
 
 @flow(
@@ -47,10 +54,9 @@ async def poll_hk_flow(
     logger = get_run_logger()
 
     if not auth_code:
-        auth_code_str = await get_secret_block(
-            CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME
+        auth_code = SecretStr(
+            await get_secret_block(CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME)
         )
-        auth_code = SecretStr(auth_code_str)
 
     if start_date is None:
         start_date = datetime.today().replace(
@@ -59,6 +65,8 @@ async def poll_hk_flow(
 
     if end_date is None:
         end_date = start_date + timedelta(days=1)
+
+    (start_date, end_date) = forceUTCTimeZone(start_date, end_date)
 
     logger.info(
         f"Polling housekeeping data for ApIDs {convert_ints_to_string(hk_apids)} from {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}."
@@ -95,6 +103,7 @@ async def poll_hk_flow(
         )
 
         for file, _ in downloaded_binaries.items():
-            process(file=file)
+            (_, config_file) = create_serialize_config(source=file.parent)
+            process(file=Path(file.name), config=config_file)
 
         database.update_download_progress(packet_name, progress_timestamp=end_date)

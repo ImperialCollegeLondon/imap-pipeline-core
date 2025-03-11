@@ -54,7 +54,12 @@ def fetch_binary(
 
     output_manager = appUtils.getOutputManager(configFile.destination)
 
-    for file, metadata_provider in downloaded_binaries.items():
-        output_manager.add_file(file, metadata_provider)
+    output_binaries: dict[Path, StandardSPDFMetadataProvider] = dict()
 
-    return downloaded_binaries
+    for file, metadata_provider in downloaded_binaries.items():
+        (output_file, output_metadata) = output_manager.add_file(
+            file, metadata_provider
+        )
+        output_binaries[output_file] = output_metadata
+
+    return output_binaries

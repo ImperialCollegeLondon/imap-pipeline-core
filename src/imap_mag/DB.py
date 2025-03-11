@@ -7,11 +7,11 @@ from pathlib import Path
 
 import typer
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import DownloadProgress, File
 from imap_mag import __version__
-from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, generate_hash
+from imap_mag.outputManager import IOutputManager, T, generate_hash
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ class IDatabase(abc.ABC):
 class Database(IDatabase):
     """Database manager."""
 
+    __active_session: Session | None
+
     def __init__(self, db_url=None):
         env_url = os.getenv("SQLALCHEMY_URL")
         if db_url is None and env_url is not None:
@@ -72,6 +74,7 @@ class Database(IDatabase):
         def wrapper(self, *args, **kwargs):
             session = self.session()
             try:
+                self.__active_session = session
                 value = func(self, *args, **kwargs)
                 session.commit()
 
@@ -81,12 +84,21 @@ class Database(IDatabase):
                 raise e
             finally:
                 session.close()
+                self.__active_session = None
 
         return wrapper
 
+    def __get_active_session(self) -> Session:
+        if self.__active_session is None:
+            raise ValueError(
+                "No active session. Use decorator @__session_manager to create session."
+            )
+
+        return self.__active_session
+
     @__session_manager
     def insert_files(self, files: list[File]) -> None:
-        session = self.session()
+        session = self.__get_active_session()
         for file in files:
             # check file does not already exist
             existing_file = (
@@ -99,7 +111,7 @@ class Database(IDatabase):
 
     @__session_manager
     def get_download_progress_timestamp(self, item_name: str) -> datetime | None:
-        session = self.session()
+        session = self.__get_active_session()
         download_progress = (
             session.query(DownloadProgress).filter_by(item_name=item_name).first()
         )
@@ -118,7 +130,7 @@ class Database(IDatabase):
         progress_timestamp: datetime | None = None,
         last_checked_date: datetime | None = None,
     ) -> None:
-        session = self.session()
+        session = self.__get_active_session()
         download_progress = (
             session.query(DownloadProgress).filter_by(item_name=item_name).first()
         )
@@ -159,9 +171,7 @@ class DatabaseFileOutputManager(IOutputManager):
         else:
             self.__database = database
 
-    def add_file(
-        self, original_file: Path, metadata_provider: IFileMetadataProvider
-    ) -> tuple[Path, IFileMetadataProvider]:
+    def add_file(self, original_file: Path, metadata_provider: T) -> tuple[Path, T]:
         (destination_file, metadata_provider) = self.__output_manager.add_file(
             original_file, metadata_provider
         )

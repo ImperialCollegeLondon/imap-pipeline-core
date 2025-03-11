@@ -3,12 +3,18 @@ import prefect.docker
 from prefect import get_client
 from pydantic import SecretStr
 
+from imap_db.main import create_db, upgrade_db
 from prefect_server.constants import CONSTANTS
 
 
 class ServerConfig:
     @staticmethod
     async def initialise():
+        # Create IMAP database
+        create_db()
+        upgrade_db()
+
+        # Initialize server configuration
         async with get_client() as client:
             await ServerConfig._create_concurrency_limits(client)
             await ServerConfig._create_queues(client)
