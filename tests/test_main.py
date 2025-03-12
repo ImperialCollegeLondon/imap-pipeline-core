@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.main import app
 
+from .testUtils import tidyDataFolders  # noqa: F401
 from .wiremockUtils import wiremock_manager  # noqa: F401
 
 runner = CliRunner()
@@ -42,7 +43,17 @@ def test_process_with_valid_config_does_not_error():
     assert Path("output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf").exists()
 
 
-def test_process_with_binary_hk_converts_to_csv():
+@pytest.mark.parametrize(
+    "binary_file, output_file",
+    [
+        ("MAG_HSK_PW.pkts", "output/result.csv"),
+        (
+            "imap_mag_hsk-pw_20250214_v000.pkts",
+            "output/2025/02/14/imap_mag_hsk-pw_20250214_v000.csv",
+        ),
+    ],
+)
+def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
     # Set up.
     expectedHeader = "epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,hk_strucid,p1v5v,p1v8v,p3v3v,p2v5v,p8v,n8v,icu_temp,p2v4v,p1v5i,p1v8i,p3v3i,p2v5i,p8vi,n8vi,fob_temp,fib_temp,magosatflagx,magosatflagy,magosatflagz,magisatflagx,magisatflagy,magisatflagz,spare1,magorange,magirange,spare2,magitfmisscnt,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len\n"
     expectedFirstLine = "799424368184000000,483848304,0,1,0,3,25,3,1.52370834,1.82973516,3.3652049479999997,2.54942028,9.735992639,-9.7267671632,19.470153600000003,2.36297684,423.7578925213,18.436028516,116.40531765999998,87.2015252,119.75070000000001,90.32580000000002,19.640128302955475,19.482131117873905,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1063,3,0,43\n"
@@ -56,7 +67,7 @@ def test_process_with_binary_hk_converts_to_csv():
             "process",
             "--config",
             "tests/config/hk_process.yaml",
-            "MAG_HSK_PW.pkts",
+            binary_file,
         ],
     )
 
@@ -64,9 +75,9 @@ def test_process_with_binary_hk_converts_to_csv():
 
     # Verify.
     assert result.exit_code == 0
-    assert Path("output/result.csv").exists()
+    assert Path(output_file).exists()
 
-    with open("output/result.csv") as f:
+    with open(output_file) as f:
         lines = f.readlines()
         assert expectedHeader == lines[0]
         assert expectedFirstLine == lines[1]
