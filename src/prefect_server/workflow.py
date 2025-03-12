@@ -33,8 +33,6 @@ def run_imap_pipeline(start_date: date, end_date: date):
 def deploy_flows(local_debug: bool = False):
     asyncio.get_event_loop().run_until_complete(ServerConfig.initialise())
 
-    imap_flow_name = "imappipeline"
-
     # Docker image and tag, e.g. so-pipeline-core:latest. May include registry, e.g. ghcr.io/imperialcollegelondon/so-pipeline-core:latest
     docker_image = os.getenv(
         "IMAP_IMAGE",
@@ -59,8 +57,8 @@ def deploy_flows(local_debug: bool = False):
     shared_job_env_variables = dict(
         WEBPODA_AUTH_CODE=os.getenv("WEBPODA_AUTH_CODE"),
         SDC_AUTH_CODE=os.getenv("SDC_AUTH_CODE"),
-        SQLALCHEMY_URL="postgresql+psycopg://postgres:postgres@db:5432/imap",  # os.getenv("SQLALCHEMY_URL"),
-        PREFECT_LOGGING_EXTRA_LOGGERS="imap_mag,imap_db,mag_toolkit",
+        SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
+        PREFECT_LOGGING_EXTRA_LOGGERS=CONSTANTS.DEFAULT_LOGGERS,
     )
     shared_job_variables = dict(
         env=shared_job_env_variables,
@@ -72,6 +70,7 @@ def deploy_flows(local_debug: bool = False):
         f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
     )
 
+    imap_flow_name = "imappipeline"
     imap_pipeline_deployable = run_imap_pipeline.to_deployment(
         name=imap_flow_name,
         cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.IMAP_PIPELINE_CRON),
