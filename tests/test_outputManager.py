@@ -99,7 +99,7 @@ class TestMetadataProvider(IFileMetadataProvider):
     def get_folder_structure(self) -> str:
         return "abc"
 
-    def get_file_name(self) -> str:
+    def get_filename(self) -> str:
         return "def"
 
 

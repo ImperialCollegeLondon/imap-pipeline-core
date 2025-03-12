@@ -1,6 +1,7 @@
 import abc
 import hashlib
 import logging
+import re
 import shutil
 import typing
 from dataclasses import dataclass
@@ -29,7 +30,7 @@ class IFileMetadataProvider(abc.ABC):
         """Retrieve folder structure."""
 
     @abc.abstractmethod
-    def get_file_name(self) -> str:
+    def get_filename(self) -> str:
         """Retireve file name."""
 
 
@@ -56,7 +57,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
 
         return self.date.strftime("%Y/%m/%d")
 
-    def get_file_name(self) -> str:
+    def get_filename(self) -> str:
         if (
             self.descriptor is None
             or self.date is None
@@ -79,6 +80,29 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             descriptor = f"{self.prefix}_{descriptor}"
 
         return f"{descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+
+    @classmethod
+    def from_filename(
+        cls, filename: str | Path
+    ) -> "StandardSPDFMetadataProvider | None":
+        """Create metadata provider from filename."""
+
+        match = re.match(
+            r"(?P<prefix>imap_mag)?_?(?P<level>l\d\w?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            Path(filename).name,
+        )
+
+        if match is None:
+            return None
+        else:
+            return cls(
+                prefix=match["prefix"],
+                level=match["level"],
+                descriptor=match["descr"],
+                date=datetime.strptime(match["date"], "%Y%m%d"),
+                version=int(match["version"]),
+                extension=match["ext"],
+            )
 
 
 T = typing.TypeVar("T", bound=IFileMetadataProvider)
@@ -142,7 +166,7 @@ class OutputManager(IOutputManager):
         return (
             self.location
             / metadata_provider.get_folder_structure()
-            / metadata_provider.get_file_name()
+            / metadata_provider.get_filename()
         )
 
     def __get_next_available_version(

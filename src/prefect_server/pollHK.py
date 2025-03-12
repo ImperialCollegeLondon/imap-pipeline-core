@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pandas as pd
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import SecretStr
 
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
-from imap_mag.appConfig import create_serialize_config
+from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.appUtils import HK_APIDS, forceUTCTimeZone, getPacketFromApID
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
@@ -58,6 +59,8 @@ async def poll_hk_flow(
             await get_secret_block(CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME)
         )
 
+    check_and_update_database = (start_date is None) and (end_date is None)
+
     if start_date is None:
         start_date = datetime.today().replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -78,23 +81,31 @@ async def poll_hk_flow(
         packet_name = getPacketFromApID(apid)
         logger.debug(f"Downloading ApID {apid} ({packet_name}).")
 
-        last_updated_date = database.get_download_progress_timestamp(packet_name)
-        logger.debug(f"Last update for ApID {apid} is {last_updated_date}.")
+        # Check what data actually needs downloading
+        if check_and_update_database:
+            last_updated_date = database.get_download_progress_timestamp(packet_name)
+            logger.debug(f"Last update for ApID {apid} is {last_updated_date}.")
 
-        if (last_updated_date is None) or (last_updated_date <= start_date):
+            if (last_updated_date is None) or (last_updated_date <= start_date):
+                logger.info(
+                    f"ApID {apid} is not up to date. Downloading from {start_date}."
+                )
+                actual_start_date = start_date
+            elif last_updated_date >= end_date:
+                logger.info(f"ApID {apid} is already up to date. Not downloading.")
+                continue
+            else:  # last_updated_date > start_date
+                logger.info(
+                    f"ApID {apid} is partially up to date. Downloading from {last_updated_date}."
+                )
+                actual_start_date = last_updated_date
+        else:
             logger.info(
-                f"ApID {apid} is not up to date. Downloading from {start_date}."
+                f"Not checking database and forcing download from {start_date} to {end_date}."
             )
             actual_start_date = start_date
-        elif last_updated_date >= end_date:
-            logger.info(f"ApID {apid} is already up to date. Not downloading.")
-            continue
-        else:  # last_updated_date > start_date
-            logger.info(
-                f"ApID {apid} is partially up to date. Downloading from {last_updated_date}."
-            )
-            actual_start_date = last_updated_date
 
+        # Download binary from WebPODA
         downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = fetch_binary(
             auth_code=auth_code.get_secret_value(),
             apid=apid,
@@ -102,8 +113,28 @@ async def poll_hk_flow(
             end_date=end_date,
         )
 
-        for file, _ in downloaded_binaries.items():
-            (_, config_file) = create_serialize_config(source=file.parent)
-            process(file=Path(file.name), config=config_file)
+        if not downloaded_binaries:
+            logger.info(
+                f"No data downloaded for ApID {apid} from {actual_start_date} to {end_date}. Database not updated."
+            )
+            continue
 
-        database.update_download_progress(packet_name, progress_timestamp=end_date)
+        # Process binary data into CSV
+        latest_timestamp: list[datetime] = []
+
+        for file, _ in downloaded_binaries.items():
+            (_, config_file) = create_and_serialize_config(source=file.parent)
+            (processed_file, _) = process(file=Path(file.name), config=config_file)
+
+            latest_timestamp.append(
+                datetime.fromtimestamp(
+                    pd.read_csv(processed_file).iloc[-1].epoch / 10**9
+                )
+            )
+
+        if check_and_update_database:
+            database.update_download_progress(
+                packet_name, progress_timestamp=max(latest_timestamp)
+            )
+        else:
+            logger.info(f"Database not updated for {apid}.")

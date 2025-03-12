@@ -55,7 +55,7 @@ class AppConfig(BaseModel):
     )
 
 
-def create_serialize_config(
+def create_and_serialize_config(
     *,
     source: Path = Path("."),
     destination_folder: Path = Path("output"),

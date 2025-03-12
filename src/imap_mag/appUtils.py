@@ -95,7 +95,7 @@ def copyFileToDestination(
         def get_folder_structure(self) -> str:
             return ""
 
-        def get_file_name(self) -> str:
+        def get_filename(self) -> str:
             return self.filename
 
     destination_folder = Path(destination.folder)

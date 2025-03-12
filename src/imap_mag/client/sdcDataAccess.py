@@ -52,7 +52,7 @@ class ISDCDataAccess(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def upload(self, file_name: str) -> None:
+    def upload(self, filename: str) -> None:
         """Upload data to imap-data-access."""
         pass
 
@@ -71,7 +71,7 @@ class ISDCDataAccess(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def download(self, file_name: str) -> Path:
+    def download(self, filename: str) -> Path:
         """Download data from imap-data-access."""
         pass
 
@@ -101,11 +101,11 @@ class SDCDataAccess(ISDCDataAccess):
 
         return (science_file.filename, science_file.construct_path())
 
-    def upload(self, file_name: str) -> None:
-        logger.debug(f"Uploading {file_name} to imap-data-access.")
+    def upload(self, filename: str) -> None:
+        logger.debug(f"Uploading {filename} to imap-data-access.")
 
         try:
-            imap_data_access.upload(file_name)
+            imap_data_access.upload(filename)
         except imap_data_access.io.IMAPDataAccessError as e:
             logger.error(f"Upload failed: {e}")
             raise e
@@ -139,6 +139,6 @@ class SDCDataAccess(ISDCDataAccess):
 
         return file_details
 
-    def download(self, file_name: str) -> Path:
-        logger.debug(f"Downloading {file_name} from imap-data-access.")
-        return imap_data_access.download(file_name)
+    def download(self, filename: str) -> Path:
+        logger.debug(f"Downloading {filename} from imap-data-access.")
+        return imap_data_access.download(filename)

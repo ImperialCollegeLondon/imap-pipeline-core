@@ -6,6 +6,7 @@ import typer
 
 from imap_mag import appConfig, appUtils, imapProcessing
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
+from imap_mag.outputManager import IFileMetadataProvider, StandardSPDFMetadataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ def process(
         ),
     ],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
-):
+) -> tuple[Path, IFileMetadataProvider]:
     """Sample processing job."""
     # TODO: semantic logging
     # TODO: handle file system/cloud files - abstraction layer needed for files
@@ -35,12 +36,20 @@ def process(
 
     if workFile is None:
         logger.critical(
-            f"Unable to find a file to process in {configFile.source.folder}"
+            f"Unable to find a file to process in {configFile.source.folder} with name/pattern {file!s}"
         )
-        raise typer.Abort()
+        raise FileNotFoundError(
+            f"Unable to find a file to process in {configFile.source.folder} with name/pattern {file!s}"
+        )
 
     fileProcessor = imapProcessing.dispatchFile(workFile)
     fileProcessor.initialize(configFile)
-    result = fileProcessor.process(workFile)
+    processedFile = fileProcessor.process(workFile)
 
-    appUtils.copyFileToDestination(result, configFile.destination)
+    spdf_metadata = StandardSPDFMetadataProvider.from_filename(processedFile)
+
+    if spdf_metadata is None:
+        return appUtils.copyFileToDestination(processedFile, configFile.destination)
+    else:
+        output_manager = appUtils.getOutputManager(configFile.destination)
+        return output_manager.add_file(processedFile, spdf_metadata)
