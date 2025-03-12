@@ -19,6 +19,16 @@ rm -rf /data/output
 START_DATE='2025-05-02'
 END_DATE='2025-05-03'
 
+#if arg 0 is set, use it as the start date
+if [ -n "$1" ]; then
+    START_DATE=$1
+fi
+if [ -n "$2" ]; then
+    END_DATE=$2
+fi
+
+echo "Running pipeline for $START_DATE to $END_DATE"
+
 imap-mag fetch-binary --config config-hk-download.yaml --apid 1063 --start-date $START_DATE --end-date $END_DATE
 
 imap-mag process --config config-hk-process.yaml power.pkts
