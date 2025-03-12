@@ -8,7 +8,7 @@ from pydantic import SecretStr
 
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
-from imap_mag.appConfig import create_and_serialize_config
+from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import HK_APIDS, forceUTCTimeZone, getPacketFromApID
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
@@ -106,12 +106,16 @@ async def poll_hk_flow(
             actual_start_date = start_date
 
         # Download binary from WebPODA
-        downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = fetch_binary(
-            auth_code=auth_code.get_secret_value(),
-            apid=apid,
-            start_date=actual_start_date,
-            end_date=end_date,
-        )
+        with manage_config(export_to_database=True) as config_file:
+            downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
+                fetch_binary(
+                    auth_code=auth_code.get_secret_value(),
+                    apid=apid,
+                    start_date=actual_start_date,
+                    end_date=end_date,
+                    config=config_file,
+                )
+            )
 
         if not downloaded_binaries:
             logger.info(
@@ -123,8 +127,10 @@ async def poll_hk_flow(
         latest_timestamp: list[datetime] = []
 
         for file, _ in downloaded_binaries.items():
-            (_, config_file) = create_and_serialize_config(source=file.parent)
-            (processed_file, _) = process(file=Path(file.name), config=config_file)
+            with manage_config(
+                source=file.parent, export_to_database=True
+            ) as config_file:
+                (processed_file, _) = process(file=Path(file.name), config=config_file)
 
             latest_timestamp.append(
                 datetime.fromtimestamp(
@@ -132,6 +138,7 @@ async def poll_hk_flow(
                 )
             )
 
+        # Update database
         if check_and_update_database:
             database.update_download_progress(
                 packet_name, progress_timestamp=max(latest_timestamp)

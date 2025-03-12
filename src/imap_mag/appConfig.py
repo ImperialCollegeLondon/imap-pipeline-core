@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path, PosixPath, WindowsPath
 from typing import Optional
 
@@ -22,7 +23,7 @@ class Source(BaseModel):
 class Destination(BaseModel):
     folder: Path = Path(".")
     filename: str
-    export_to_database: bool = True
+    export_to_database: bool = False
 
 
 class PacketDefinition(BaseModel):
@@ -62,7 +63,7 @@ def create_and_serialize_config(
     destination_file: str = "results.csv",
     webpoda_url: str | None = None,
     sdc_url: str | None = None,
-    export_to_database: bool = True,
+    export_to_database: bool = False,
 ) -> tuple[AppConfig, Path]:
     """Create and serialize a configuration object."""
 
@@ -90,3 +91,15 @@ def create_and_serialize_config(
         yaml.dump(config.model_dump(by_alias=True), f)
 
     return (config, config_file)
+
+
+@contextmanager
+def manage_config(**kwargs):
+    """Serialize a configuration object and manage its lifetime."""
+
+    (_, config_file) = create_and_serialize_config(**kwargs)
+
+    try:
+        yield config_file
+    finally:
+        os.remove(config_file)

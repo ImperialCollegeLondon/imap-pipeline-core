@@ -39,7 +39,7 @@ def test_process_with_valid_config_does_not_error():
     print("\n" + str(result.stdout))
     assert result.exit_code == 0
     # check that file output/result.cdf exists
-    assert Path("output/result.cdf").exists()
+    assert Path("output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf").exists()
 
 
 def test_process_with_binary_hk_converts_to_csv():
@@ -90,7 +90,6 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
     (_, config_file) = create_and_serialize_config(
         destination_file="power.pkts",
         webpoda_url=wiremock_manager.get_url(),
-        export_to_database=False,
     )
 
     # Exercise.
@@ -170,7 +169,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
     (_, config_file) = create_and_serialize_config(
         destination_file="result.cdf",
         sdc_url=wiremock_manager.get_url().rstrip("/"),
-        export_to_database=False,
     )
 
     # Exercise.
