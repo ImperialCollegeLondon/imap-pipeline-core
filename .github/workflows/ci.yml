@@ -155,6 +155,7 @@ jobs:
 
       - name: Coverage Report
         uses: 5monkeys/cobertura-action@v14
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           report_name: Coverage Report (${{ matrix.python-versions }})
           path: "coverage.xml"
