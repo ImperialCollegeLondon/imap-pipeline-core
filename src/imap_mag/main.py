@@ -1,6 +1,8 @@
 """Main module."""
 
+import logging
 import subprocess
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -25,6 +27,23 @@ def matlab():
 app.command()(process.process)
 app.command()(calibrate.calibrate)
 app.command()(apply.apply)
+
+
+@app.command()
+def calibrationdemo(
+    file_to_calibrate: str = typer.Argument(
+        help="The file name of the file to be calibrated",
+    ),
+    output_file: str = typer.Argument(help="The file name of the output file"),
+):
+    subprocess.run(
+        ["matlab", "-batch", f'demo("{file_to_calibrate}", "{output_file}")']
+    )
+
+
+def prepareWorkFile(file, configFile) -> Path | None:
+    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
+
 
 app.add_typer(fetch.app, name="fetch", help="Fetch data from the SDC or WebPODA")
 
