@@ -3,7 +3,13 @@
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.outputManager import IFileMetadataProvider, OutputManager
+import pytest
+
+from imap_mag.outputManager import (
+    IFileMetadataProvider,
+    OutputManager,
+    StandardSPDFMetadataProvider,
+)
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 
@@ -114,3 +120,46 @@ def test_copy_file_custom_providers():
 
     # Verify.
     assert Path("output/abc/def").exists()
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    [
+        (
+            "imap_mag_hsk-pw_20241210_v003.pkts",
+            StandardSPDFMetadataProvider(
+                descriptor="hsk-pw",
+                date=datetime(2024, 12, 10),
+                version=3,
+                extension="pkts",
+            ),
+        ),
+        (
+            "imap_mag_l1b_mago-normal_20250502_v001.cdf",
+            StandardSPDFMetadataProvider(
+                level="l1b",
+                descriptor="mago-normal",
+                date=datetime(2025, 5, 2),
+                version=1,
+                extension="cdf",
+            ),
+        ),
+        (
+            "imap_mag_l2_burst_20261231_v010.cdf",
+            StandardSPDFMetadataProvider(
+                level="l2",
+                descriptor="burst",
+                date=datetime(2026, 12, 31),
+                version=10,
+                extension="cdf",
+            ),
+        ),
+        (
+            "imap_mag_definitely_not_a_standard_spdf_file.txt",
+            None,
+        ),
+    ],
+)
+def test_standard_spdf_metadata_provider_from_filename(filename, expected):
+    actual = StandardSPDFMetadataProvider.from_filename(filename)
+    assert actual == expected

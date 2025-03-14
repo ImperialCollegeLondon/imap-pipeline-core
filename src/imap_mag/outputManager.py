@@ -88,7 +88,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"(?P<prefix>imap_mag)?_?(?P<level>l\d\w?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"(?P<prefix>imap_mag)?_?(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
 
