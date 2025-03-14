@@ -60,15 +60,20 @@ def deploy_flows(local_debug: bool = False):
         SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
         PREFECT_LOGGING_EXTRA_LOGGERS=CONSTANTS.DEFAULT_LOGGERS,
     )
-    shared_job_variables = dict(
-        env=shared_job_env_variables,
-        image_pull_policy="IfNotPresent",
-        networks=docker_networks,
-        volumes=docker_volumes,
-    )
-    print(
-        f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
-    )
+
+    if local_debug:
+        shared_job_variables = dict(env=shared_job_env_variables)
+        print("Deploying IMAP Pipeline to Prefect with local server")
+    else:
+        shared_job_variables = dict(
+            env=shared_job_env_variables,
+            image_pull_policy="IfNotPresent",
+            networks=docker_networks,
+            volumes=docker_volumes,
+        )
+        print(
+            f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
+        )
 
     imap_flow_name = "imappipeline"
     imap_pipeline_deployable = run_imap_pipeline.to_deployment(
