@@ -1,48 +1,65 @@
+import os
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, model_validator
+import yaml
+from pydantic import BaseModel
 
 
-class Unit(Enum):
-    NT = "nT"
-    UT = "uT"
-    T = "T"
+class CalibrationMethod(Enum):
+    KEPKO = "Kepko"
+    LEINWEBER = "Leinweber"
+    IMAPLO_PIVOT = "IMAP-Lo Pivot Platform Interference"
 
 
-class Instrument(Enum):
-    MAGO = "MAGO"
-    MAGI = "MAGI"
+class Sensor(Enum):
+    MAGO = "MAGo"
+    MAGI = "MAGi"
 
 
-class OffsetCollection(BaseModel):
-    X: list[float]
-    Y: list[float]
-    Z: list[float]
-
-    @model_validator(mode="after")
-    def check_lengths_match(self):
-        if (
-            len(self.X) != len(self.Y)
-            or len(self.Y) != len(self.Z)
-            or len(self.X) != len(self.Z)
-        ):
-            raise ValueError("Length of offset lists do not match")
-        return self
-
-
-class SingleCalibration(BaseModel):
+class CalibrationLayer(BaseModel):
     timestamps: list[datetime]
-    offsets: OffsetCollection
-    units: Unit
-    instrument: Instrument
+    offsets: list[list[float]]
+    sensor: Sensor
+    validity_start_time: datetime
+    validity_end_time: datetime
     creation_timestamp: datetime
-    method: str
+    dependencies: list[str]
+    science: list[str]
+    method: CalibrationMethod
     comment: Optional[str] = None
+    version: int
+
+    @classmethod
+    def from_file(cls, path: Path):
+        with open(path) as fid:
+            as_dict = yaml.safe_load(fid)
+        model = cls(**as_dict)
+        return model
+
+    def getWriteable(self):
+        json = self.model_dump_json()
+
+        return json
+
+    def writeToFile(self, filepath: Path, createDirectory=False):
+        json = self.model_dump_json()
+
+        if createDirectory:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+        try:
+            with open(filepath, "w+") as f:
+                f.write(json)
+        except Exception as e:
+            print(e)
+            print(f"Failed to write calibration to {filepath}")
+
+        return filepath
 
 
-class CalibrationFormat(BaseModel):
-    valid_start: datetime
-    valid_end: datetime
-    calibrations: list[SingleCalibration]
+class ScienceLayerZero(CalibrationLayer):
+    range: list[int]
+    science_file: str
