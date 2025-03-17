@@ -81,9 +81,14 @@ async def poll_hk_flow(
         packet_name = getPacketFromApID(apid)
         logger.debug(f"Downloading ApID {apid} ({packet_name}).")
 
+        download_progress = database.get_download_progress(packet_name)
+
         # Check what data actually needs downloading
         if check_and_update_database:
-            last_updated_date = database.get_download_progress_timestamp(packet_name)
+            last_updated_date = download_progress.progress_timestamp
+            download_progress.record_checked_download(datetime.now())
+            database.save(download_progress)
+
             logger.debug(f"Last update for ApID {apid} is {last_updated_date}.")
 
             if (last_updated_date is None) or (last_updated_date <= start_date):
@@ -141,8 +146,7 @@ async def poll_hk_flow(
 
         # Update database
         if check_and_update_database:
-            database.update_download_progress(
-                packet_name, progress_timestamp=max(latest_timestamp)
-            )
+            download_progress.record_successful_download(max(latest_timestamp))
+            database.save(download_progress)
         else:
             logger.info(f"Database not updated for {apid}.")

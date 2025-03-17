@@ -9,11 +9,52 @@ import typer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from imap_db.model import DownloadProgress, File
+from imap_db.model import Base, DownloadProgress, File
 from imap_mag import __version__
 from imap_mag.outputManager import IOutputManager, T, generate_hash
 
 logger = logging.getLogger(__name__)
+
+
+class IModelWrapper(abc.ABC):
+    """Interface for wrapping database models."""
+
+    @abc.abstractmethod
+    def get_model(self) -> Base:
+        """Get the original model."""
+        pass
+
+
+class DownloadProgressWrapper(IModelWrapper):
+    def __init__(self, download_progress: DownloadProgress):
+        self.__download_progress = download_progress
+
+    def get_model(self) -> Base:
+        return self.__download_progress
+
+    @property
+    def item_name(self) -> str:
+        return self.__download_progress.item_name
+
+    @property
+    def progress_timestamp(self) -> datetime:
+        return self.__download_progress.progress_timestamp
+
+    @property
+    def last_checked_date(self) -> datetime:
+        return self.__download_progress.last_checked_date
+
+    def record_successful_download(self, progress_timestamp: datetime):
+        logger.info(
+            f"Updating progress timestamp for {self.item_name} to {progress_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
+        )
+        self.__download_progress.progress_timestamp = progress_timestamp
+
+    def record_checked_download(self, last_checked_date: datetime):
+        logger.info(
+            f"Updating last checked date for {self.item_name} to {last_checked_date.strftime('%d/%m/%Y %H:%M:%S')}."
+        )
+        self.__download_progress.last_checked_date = last_checked_date
 
 
 class IDatabase(abc.ABC):
@@ -30,19 +71,13 @@ class IDatabase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_download_progress_timestamp(self, item_name: str) -> datetime | None:
+    def get_download_progress(self, item_name: str) -> DownloadProgressWrapper:
         """Get the progress timestamp for an item."""
         pass
 
     @abc.abstractmethod
-    def update_download_progress(
-        self,
-        item_name: str,
-        *,
-        progress_timestamp: datetime | None = None,
-        last_checked_date: datetime | None = None,
-    ) -> None:
-        """Update the download progress for an item."""
+    def save(self, wrapper: IModelWrapper) -> None:
+        """Save the download progress."""
         pass
 
 
@@ -110,26 +145,7 @@ class Database(IDatabase):
             session.add(file)
 
     @__session_manager
-    def get_download_progress_timestamp(self, item_name: str) -> datetime | None:
-        session = self.__get_active_session()
-        download_progress = (
-            session.query(DownloadProgress).filter_by(item_name=item_name).first()
-        )
-        self.update_download_progress(item_name, last_checked_date=datetime.now())
-
-        if download_progress is None:
-            return None
-
-        return download_progress.progress_timestamp
-
-    @__session_manager
-    def update_download_progress(
-        self,
-        item_name: str,
-        *,
-        progress_timestamp: datetime | None = None,
-        last_checked_date: datetime | None = None,
-    ) -> None:
+    def get_download_progress(self, item_name: str) -> DownloadProgressWrapper:
         session = self.__get_active_session()
         download_progress = (
             session.query(DownloadProgress).filter_by(item_name=item_name).first()
@@ -138,19 +154,12 @@ class Database(IDatabase):
         if download_progress is None:
             download_progress = DownloadProgress(item_name=item_name)
 
-        if progress_timestamp is not None:
-            logger.info(
-                f"Updating progress timestamp for {item_name} to {progress_timestamp}."
-            )
-            download_progress.progress_timestamp = progress_timestamp
+        return DownloadProgressWrapper(download_progress)
 
-        if last_checked_date is not None:
-            logger.info(
-                f"Updating last checked date for {item_name} to {last_checked_date}."
-            )
-            download_progress.last_checked_date = last_checked_date
-
-        session.add(download_progress)
+    @__session_manager
+    def save(self, wrapper: IModelWrapper) -> None:
+        session = self.__get_active_session()
+        session.add(wrapper.get_model())
 
 
 class DatabaseFileOutputManager(IOutputManager):
