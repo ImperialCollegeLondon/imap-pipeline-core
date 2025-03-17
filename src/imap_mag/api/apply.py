@@ -36,6 +36,7 @@ def apply(
     workLayers = []
     for layer in layers:
         workLayers.append(prepareWorkFile(layer, configFile))
+
     workOutputFile = configFile.work_folder / "summed-layer.json"
 
     applier = CalibrationApplicator()
@@ -43,3 +44,7 @@ def apply(
     L2_file = applier.apply(workLayers, workDataFile, workOutputFile)
 
     appUtils.copyFileToDestination(L2_file, configFile.destination)
+
+
+def publish():
+    pass

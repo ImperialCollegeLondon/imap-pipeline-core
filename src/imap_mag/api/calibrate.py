@@ -5,17 +5,19 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
+from imap_mag import appConfig
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from mag_toolkit import CDFLoader
 from mag_toolkit.calibration.Calibrator import (
     CalibrationMethod,
-    Calibrator,
+    EmptyCalibrator,
+    IMAPLoCalibrator,
     SpinAxisCalibrator,
     SpinPlaneCalibrator,
 )
 
 app = typer.Typer()
+
+logger = logging.getLogger(__name__)
 
 
 @app.command()
@@ -38,7 +40,8 @@ def publish():
 
 # E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
-    config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
+    from_date: Annotated[datetime, typer.Option("--from")],
+    to_date: Annotated[datetime, typer.Option("--to")],
     method: Annotated[CalibrationMethod, typer.Option()] = CalibrationMethod.KEPKO,
     input: str = typer.Argument(
         help="The file name or pattern to match for the input file"
@@ -47,7 +50,7 @@ def calibrate(
     # TODO: Define specific calibration configuration
     # Using AppConfig for now to piggyback off of configuration
     # verification and work area setup
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.AppConfig = commandInit(None)
 
     workFile = prepareWorkFile(input, configFile)
 
@@ -57,17 +60,30 @@ def calibrate(
         )
         raise typer.Abort()
 
-    calibrator: Calibrator
-
     match method:
-        case CalibrationMethod.KEPKO:
-            calibrator = SpinAxisCalibrator()
         case CalibrationMethod.LEINWEBER:
+            calibrator = SpinAxisCalibrator()
+        case CalibrationMethod.KEPKO:
             calibrator = SpinPlaneCalibrator()
+        case CalibrationMethod.IMAPLO_PIVOT:
+            calibrator = IMAPLoCalibrator()
+        case CalibrationMethod.NOOP:
+            calibrator = EmptyCalibrator()
         case _:
             raise Exception("Undefined calibrator")
 
-    inputData = CDFLoader.load_cdf(workFile)
-    result: Path = calibrator.runCalibration(inputData)
+    calfile = Path(
+        f"data_store/imap/cal_layers/{from_date.year}/{from_date.month}/{from_date.day}_{calibrator.name}_v000.json"
+    )
 
-    appUtils.copyFileToDestination(result, configFile.destination)
+    result: Path = calibrator.runCalibration(
+        from_date,
+        workFile,
+        calfile,
+        "data_store",
+        None,
+    )
+
+    logger.info(f"Calibration file written to {result}")
+
+    # appUtils.copyFileToDestination(result, configFile.destination)
