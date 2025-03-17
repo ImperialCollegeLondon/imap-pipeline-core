@@ -1,5 +1,5 @@
 import logging
-import os
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -8,21 +8,38 @@ import typer
 from imap_mag import appConfig, appUtils
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
 from mag_toolkit import CDFLoader
-from mag_toolkit.calibration.calibrationFormatProcessor import (
-    CalibrationFormatProcessor,
-)
 from mag_toolkit.calibration.Calibrator import (
+    CalibrationMethod,
     Calibrator,
-    CalibratorType,
     SpinAxisCalibrator,
     SpinPlaneCalibrator,
 )
+
+app = typer.Typer()
+
+
+@app.command()
+def generate(
+    method: CalibrationMethod,
+    from_date: Annotated[datetime, typer.Option("--from")],
+    to_date: Annotated[datetime, typer.Option("--to")],
+):
+    pass
+
+
+# TODO: ?
+def interpolate():
+    pass
+
+
+def publish():
+    pass
 
 
 # E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
     config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
-    method: Annotated[CalibratorType, typer.Option()] = "SpinAxisCalibrator",
+    method: Annotated[CalibrationMethod, typer.Option()] = CalibrationMethod.KEPKO,
     input: str = typer.Argument(
         help="The file name or pattern to match for the input file"
     ),
@@ -43,16 +60,14 @@ def calibrate(
     calibrator: Calibrator
 
     match method:
-        case CalibratorType.SPINAXIS:
+        case CalibrationMethod.KEPKO:
             calibrator = SpinAxisCalibrator()
-        case CalibratorType.SPINPLANE:
+        case CalibrationMethod.LEINWEBER:
             calibrator = SpinPlaneCalibrator()
+        case _:
+            raise Exception("Undefined calibrator")
 
     inputData = CDFLoader.load_cdf(workFile)
-    calibration = calibrator.generateCalibration(inputData)
-
-    tempOutputFile = os.path.join(configFile.work_folder, "calibration.json")
-
-    result = CalibrationFormatProcessor.writeToFile(calibration, tempOutputFile)
+    result: Path = calibrator.runCalibration(inputData)
 
     appUtils.copyFileToDestination(result, configFile.destination)

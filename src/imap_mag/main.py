@@ -46,6 +46,7 @@ def prepareWorkFile(file, configFile) -> Path | None:
 
 
 app.add_typer(fetch.app, name="fetch", help="Fetch data from the SDC or WebPODA")
+app.add_typer(calibrate.app, name="calibration", help="Generate calibration parameters")
 
 
 @app.callback()

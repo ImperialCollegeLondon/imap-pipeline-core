@@ -1,4 +1,5 @@
 import os
+from abc import ABC
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -6,31 +7,52 @@ from typing import Optional
 
 import yaml
 from pydantic import BaseModel
+from spacepy import pycdf
+
+from mag_toolkit.calibration.Calibrator import CalibrationMethod
 
 
-class CalibrationMethod(Enum):
-    KEPKO = "Kepko"
-    LEINWEBER = "Leinweber"
-    IMAPLO_PIVOT = "IMAP-Lo Pivot Platform Interference"
-
-
-class Sensor(Enum):
+class Sensor(str, Enum):
     MAGO = "MAGo"
     MAGI = "MAGi"
 
 
-class CalibrationLayer(BaseModel):
-    timestamps: list[datetime]
-    offsets: list[list[float]]
-    sensor: Sensor
-    validity_start_time: datetime
-    validity_end_time: datetime
-    creation_timestamp: datetime
+class Mission(str, Enum):
+    IMAP = "IMAP"
+
+
+class CalibrationMetadata(BaseModel):
     dependencies: list[str]
     science: list[str]
-    method: CalibrationMethod
+    creation_timestamp: datetime
     comment: Optional[str] = None
+
+
+class Value(BaseModel, ABC):
+    time: datetime
+    value: list[float]
+
+
+class CalibrationValue(Value):
+    timedelta: float
+
+
+class ScienceValue(Value):
+    range: int
+
+
+class Validity(BaseModel):
+    start: datetime
+    end: datetime
+
+
+class Layer(BaseModel, ABC):
+    id: str
+    mission: Mission
+    validity: Validity
+    sensor: Sensor
     version: int
+    metadata: CalibrationMetadata
 
     @classmethod
     def from_file(cls, path: Path):
@@ -60,6 +82,59 @@ class CalibrationLayer(BaseModel):
         return filepath
 
 
-class ScienceLayerZero(CalibrationLayer):
-    range: list[int]
+class CalibrationLayer(Layer):
+    method: CalibrationMethod
+    value_type: str
+    values: list[CalibrationValue]
+
+
+class ScienceLayerZero(Layer):
     science_file: str
+    value_type: str
+    values: list[ScienceValue]
+
+    @classmethod
+    def from_file(cls, path: Path):
+        if path.suffix == ".cdf":
+            return cls._from_cdf(path)
+        else:
+            return super().from_file(path)
+
+    @classmethod
+    def _from_cdf(cls, path: Path):
+        cdf_loaded = pycdf.CDF(str(path))
+
+        data = cdf_loaded["vectors"][...]
+        epoch = cdf_loaded["epoch"][...]
+
+        if data is None or epoch is None:
+            raise ValueError("CDF does not contain valid data")
+
+        validity = Validity(start=epoch[0], end=epoch[-1])
+
+        sensor = Sensor.MAGO if cdf_loaded.attrs["is_mago"] else Sensor.MAGI
+
+        version = int(cdf_loaded.attrs["Data_version"][0][1:])
+
+        metadata = CalibrationMetadata(
+            dependencies=[],
+            science=[],
+            creation_timestamp=datetime.now(),
+        )
+
+        values = [
+            ScienceValue(time=epoch_val, value=datapoint[0:3], range=datapoint[3])
+            for epoch_val, datapoint in zip(epoch, data)
+        ]
+
+        return ScienceLayerZero(
+            id=cdf_loaded.attrs["Logical_file_id"][0],
+            mission=cdf_loaded.attrs["Mission_group"][0],
+            validity=validity,
+            sensor=sensor,
+            version=version,
+            metadata=metadata,
+            value_type="vector",
+            science_file=str(path),
+            values=values,
+        )
