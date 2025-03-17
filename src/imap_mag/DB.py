@@ -20,14 +20,29 @@ class IModelWrapper(abc.ABC):
     """Interface for wrapping database models."""
 
     @abc.abstractmethod
+    def get_session(self) -> Session:
+        """Get the session attached to the model."""
+        pass
+
+    @abc.abstractmethod
     def get_model(self) -> Base:
         """Get the original model."""
         pass
 
 
 class DownloadProgressWrapper(IModelWrapper):
-    def __init__(self, download_progress: DownloadProgress):
+    """Wrapper for download progress model."""
+
+    def __init__(self, download_progress: DownloadProgress, session: Session):
         self.__download_progress = download_progress
+        self.__session = session
+
+    def __del__(self):
+        logger.debug(f"Closing session for {self.item_name}.")
+        self.__session.close()
+
+    def get_session(self) -> Session:
+        return self.__session
 
     def get_model(self) -> Base:
         return self.__download_progress
@@ -102,26 +117,35 @@ class Database(IDatabase):
         self.session = sessionmaker(bind=self.engine)
 
     @staticmethod
-    def __session_manager(func):
+    def __session_manager(
+        commit: bool = True,
+        close_session: bool = True,
+    ):
         """Manage session scope for database operations."""
 
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            session = self.session()
-            try:
-                self.__active_session = session
-                value = func(self, *args, **kwargs)
-                session.commit()
+        def outer_wrapper(func):
+            @functools.wraps(func)
+            def wrapper(self, *args, **kwargs):
+                session = self.session()
+                try:
+                    self.__active_session = session
+                    value = func(self, *args, **kwargs)
 
-                return value
-            except Exception as e:
-                session.rollback()
-                raise e
-            finally:
-                session.close()
-                self.__active_session = None
+                    if commit:
+                        session.commit()
 
-        return wrapper
+                    return value
+                except Exception as e:
+                    session.rollback()
+                    raise e
+                finally:
+                    if close_session:
+                        session.close()
+                    self.__active_session = None
+
+            return wrapper
+
+        return outer_wrapper
 
     def __get_active_session(self) -> Session:
         if self.__active_session is None:
@@ -131,7 +155,7 @@ class Database(IDatabase):
 
         return self.__active_session
 
-    @__session_manager
+    @__session_manager()
     def insert_files(self, files: list[File]) -> None:
         session = self.__get_active_session()
         for file in files:
@@ -144,7 +168,7 @@ class Database(IDatabase):
 
             session.add(file)
 
-    @__session_manager
+    @__session_manager(close_session=False)
     def get_download_progress(self, item_name: str) -> DownloadProgressWrapper:
         session = self.__get_active_session()
         download_progress = (
@@ -154,11 +178,10 @@ class Database(IDatabase):
         if download_progress is None:
             download_progress = DownloadProgress(item_name=item_name)
 
-        return DownloadProgressWrapper(download_progress)
+        return DownloadProgressWrapper(download_progress, session)
 
-    @__session_manager
     def save(self, wrapper: IModelWrapper) -> None:
-        session = self.__get_active_session()
+        session = wrapper.get_session()
         session.add(wrapper.get_model())
 
 

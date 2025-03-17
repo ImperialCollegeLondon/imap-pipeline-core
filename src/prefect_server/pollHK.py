@@ -86,6 +86,7 @@ async def poll_hk_flow(
         # Check what data actually needs downloading
         if check_and_update_database:
             last_updated_date = download_progress.progress_timestamp
+
             download_progress.record_checked_download(datetime.now())
             database.save(download_progress)
 
