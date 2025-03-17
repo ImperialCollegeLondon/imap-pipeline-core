@@ -16,6 +16,7 @@ class File(Base):
     path: Mapped[str] = mapped_column(String(256), unique=True)
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer())
     date: Mapped[datetime] = mapped_column(DateTime())
     software_version: Mapped[str] = mapped_column(String(16))
 
@@ -26,7 +27,7 @@ class File(Base):
 class DownloadProgress(Base):
     __tablename__ = "download_progress"
 
-    item_name: Mapped[str] = mapped_column(String(128), primary_key=True, unique=True)
+    item_name: Mapped[str] = mapped_column(String(32), primary_key=True, unique=True)
     progress_timestamp: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
     last_checked_date: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
 
