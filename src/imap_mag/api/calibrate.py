@@ -6,8 +6,9 @@ from typing import Annotated
 import typer
 
 from imap_mag import appConfig, appUtils
+from imap_mag.api import apply
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from mag_toolkit.calibration.calibrationFormat import ScienceLayerZero
+from mag_toolkit.calibration.calibrationFormat import ScienceLayer
 from mag_toolkit.calibration.Calibrator import (
     CalibrationMethod,
     EmptyCalibrator,
@@ -19,6 +20,8 @@ from mag_toolkit.calibration.Calibrator import (
 app = typer.Typer()
 
 logger = logging.getLogger(__name__)
+
+app.command()(apply.apply)
 
 
 @app.command()
@@ -63,7 +66,7 @@ def calibrate(
         )
         raise typer.Abort()
 
-    scienceLayer = ScienceLayerZero.from_file(workFile)
+    scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerPath = configFile.work_folder / f"{scienceLayer.id}.json"
     scienceLayer.writeToFile(scienceLayerPath)
 
@@ -85,11 +88,12 @@ def calibrate(
         configFile.destination.folder / str(from_date.year) / str(from_date.month)
     )
 
+    # TODO: Standardised constant?
     TIMEFORMAT = "%d-%m-%Y"
 
     cal_file_destination = appConfig.Destination(
         folder=cal_folder,
-        filename=f"{from_date.strftime(TIMEFORMAT)}-{to_date.strftime(TIMEFORMAT)}_{calibrator.name.value}_v000.json",
+        filename=f"{from_date.strftime(TIMEFORMAT)}_{to_date.strftime(TIMEFORMAT)}_{calibrator.name.value}_v000.json",
     )
 
     result: Path = calibrator.runCalibration(
