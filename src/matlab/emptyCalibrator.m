@@ -10,8 +10,8 @@ values = {baseScience.values.value};
 offset_values = zeros(length(epoch), 3);
 
 Metadata.dependencies = [];
-Metadata.science = [sciencefile];
-Metadata.creation_timestamp = datetime("now");
+Metadata.science = {sciencefile};
+Metadata.creation_timestamp = string(datetime("now"), 'yyyy-MM-dd''T''HH:mm:ss');
 Metadata.comment = "This is a zero value calibration file";
 generateCalFile(epoch, offset_values, "noop", Metadata, calfile)
 

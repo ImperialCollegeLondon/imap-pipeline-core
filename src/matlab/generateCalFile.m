@@ -9,6 +9,7 @@ Calibration.validity = Validity;
 
 Calibration.method = method;
 Calibration.sensor = "MAGo";
+Calibration.version = 0;
 
 Metadata = metadata;
 Calibration.metadata = Metadata;
@@ -16,7 +17,8 @@ Calibration.metadata = Metadata;
 Calibration.value_type = "vector";
 
  for i=length(epoch):-1:1
-     Value.time = epoch(i);
+    % Force time to show maximum second specificity without rounding errors
+     Value.time = string(epoch(i), 'yyyy-MM-dd''T''HH:mm') + ":" + num2str(epoch(i).Second, "%09.6f");
      Value.value = values(i,:);
      Value.timedelta = 0;
      Calibration.values(i)=Value;
