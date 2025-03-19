@@ -21,6 +21,9 @@ Calibration.value_type = "vector";
      Value.time = string(epoch(i), 'yyyy-MM-dd''T''HH:mm') + ":" + num2str(epoch(i).Second, "%09.6f");
      Value.value = values(i,:);
      Value.timedelta = 0;
+     Value.quality_flag = 0;
+     Value.quality_bitmask = 0;
+
      Calibration.values(i)=Value;
  end
 
