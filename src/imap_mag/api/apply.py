@@ -5,13 +5,13 @@ from typing import Annotated
 import typer
 
 from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit, prepareWorkFile
+from imap_mag.api.apiUtils import commandInit, prepareCalibrationFile, prepareWorkFile
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
 
 
 # E.g., imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
-    layers: list[Path],
+    layers: list[str],
     from_date: Annotated[
         datetime,
         typer.Option("--from", help="Date to apply calibration parameters from"),
@@ -35,7 +35,7 @@ def apply(
 
     workLayers = []
     for layer in layers:
-        workLayers.append(prepareWorkFile(layer, configFile))
+        workLayers.append(prepareCalibrationFile(layer, configFile))
 
     workOutputFile = configFile.work_folder / "summed-layer.json"
 

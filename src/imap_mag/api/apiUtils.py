@@ -66,12 +66,8 @@ def commandInit(config: Path | None) -> appConfig.AppConfig:
     return configFile
 
 
-def prepareWorkFile(file, configFile) -> Path | None:
-    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
-
-    # get all files in \\RDS.IMPERIAL.AC.UK\rds\project\solarorbitermagnetometer\live\SO-MAG-Web\quicklooks_py\
+def _prepareFile(file, configFile, folder) -> Path | None:
     files = []
-    folder = configFile.source.folder
 
     if not folder.exists():
         logging.warning(f"Folder {folder} does not exist")
@@ -107,3 +103,17 @@ def prepareWorkFile(file, configFile) -> Path | None:
     workFile = Path(shutil.copy2(files[0], configFile.work_folder))
 
     return workFile
+
+
+def prepareCalibrationFile(file, configFile) -> Path | None:
+    logging.debug(
+        f"Grabbing calibration file matching {file} in {configFile.source.calibration_folder}"
+    )
+
+    return _prepareFile(file, configFile, configFile.source.calibration_folder)
+
+
+def prepareWorkFile(file, configFile) -> Path | None:
+    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
+
+    return _prepareFile(file, configFile, configFile.source.folder)
