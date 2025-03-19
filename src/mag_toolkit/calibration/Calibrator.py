@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
 
-from src.mag_toolkit.calibration.MatlabWrapper import call_matlab
+from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
 
 class CalibrationMethod(str, Enum):
@@ -16,7 +16,7 @@ class CalibrationMethod(str, Enum):
 class Calibrator(ABC):
     @abstractmethod
     def runCalibration(
-        self, date, sciencefile, calfile, datastore, configfile=None
+        self, date, sciencefile: Path, calfile, datastore, configfile=None
     ) -> Path:
         """Calibration that generates a calibration layer."""
 
@@ -57,6 +57,6 @@ class EmptyCalibrator(Calibrator):
         # produce an epmpty calibration through matlab
 
         call_matlab(
-            f"emptyCalibrator({date}, {sciencefile}, {calfile}, {datastore}, {configfile})"
+            f'emptyCalibrator("{date}", "{sciencefile}", "{calfile}", "{datastore}", "{configfile}")'
         )
         return calfile

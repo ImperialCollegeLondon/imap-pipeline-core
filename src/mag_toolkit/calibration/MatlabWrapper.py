@@ -1,15 +1,10 @@
 import logging
 import subprocess
 
-class_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-def call_matlab(command, first_call=True, flow_logger=None):
-    if flow_logger:
-        logger = flow_logger
-    else:
-        logger = class_logger
-
+def call_matlab(command, first_call=True):
     if first_call:
         subprocess.run(
             [
@@ -23,7 +18,7 @@ def call_matlab(command, first_call=True, flow_logger=None):
 
     logger.info("Running MATLAB...")
     cmd = ["matlab", "-nojvm", "-nodesktop", "-batch"]
-    cmd.extend(command)
+    cmd.append(command)
     p = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )

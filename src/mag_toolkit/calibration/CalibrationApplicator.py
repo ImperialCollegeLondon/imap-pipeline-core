@@ -17,17 +17,20 @@ from .calibrationFormat import (
     Value,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CalibrationApplicator:
-    def apply(self, layers, dataFile, outputFile: Path) -> Path:
+    def apply(self, layer_files: list[Path], dataFile, outputFile: Path) -> Path:
         """Currently operating on unprocessed data."""
         science_data = ScienceLayerZero.from_file(dataFile)
 
-        if len(layers) < 1:
+        if len(layer_files) < 1:
             raise Exception("No layers to apply")
 
         base_layer = science_data.values
-        for layer in layers:
+        for layer_file in layer_files:
+            layer = CalibrationLayer.from_file(layer_file)
             base_layer = self.apply_single(base_layer, layer.values)
 
         validity = Validity(start=base_layer[0].time, end=base_layer[-1].time)
