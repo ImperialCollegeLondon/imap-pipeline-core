@@ -34,11 +34,15 @@ class Value(BaseModel, ABC):
 
 
 class CalibrationValue(Value):
-    timedelta: float
+    timedelta: float = 0
+    quality_flag: int = 0
+    quality_bitmask: int = 0
 
 
 class ScienceValue(Value):
     range: int
+    quality_flag: Optional[int] = 0
+    quality_bitmask: Optional[int] = 0
 
 
 class Validity(BaseModel):
@@ -66,7 +70,7 @@ class Layer(BaseModel, ABC):
 
         return json
 
-    def writeToFile(self, filepath: Path, createDirectory=False):
+    def _write_to_json(self, filepath: Path, createDirectory=False):
         json = self.model_dump_json()
 
         if createDirectory:
@@ -81,14 +85,48 @@ class Layer(BaseModel, ABC):
 
         return filepath
 
+    def writeToFile(self, filepath: Path, createDirectory=False):
+        return self._write_to_json(filepath, createDirectory=createDirectory)
+
 
 class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: str
     values: list[CalibrationValue]
 
+    def _write_to_cdf(
+        self, filepath: Path, skeleton=None, createDirectory=False
+    ) -> Path:
+        # TODO: Constant? Some kind of data store path manager?
+        OFFSET_SKELETON_CDF = "/data/resource/skeleton/l2_offset_skeleton.cdf"
+        with pycdf.CDF(str(filepath), OFFSET_SKELETON_CDF) as offset_cdf:
+            offset_cdf["epoch"] = [value.time for value in self.values]
+            offset_cdf["offsets"][...] = [cal_value.value for cal_value in self.values]
+            offset_cdf["timedeltas"] = [
+                cal_value.timedelta for cal_value in self.values
+            ]
+            offset_cdf["quality_flag"] = [
+                cal_value.quality_flag for cal_value in self.values
+            ]
+            offset_cdf["quality_bitmask"] = [
+                cal_value.quality_bitmask for cal_value in self.values
+            ]
+            offset_cdf["valid_start_datetime"] = self.validity.start
+            offset_cdf["valid_end_datetime"] = self.validity.end
 
-class ScienceLayerZero(Layer):
+            offset_cdf.attrs["Generation_date"] = datetime.now()
+            offset_cdf.attrs["Data_version"] = self.version
+
+        return filepath
+
+    def writeToFile(self, filepath: Path, createDirectory=False) -> Path:
+        if filepath.suffix == ".cdf":
+            return self._write_to_cdf(filepath, createDirectory=createDirectory)
+        else:
+            return self._write_to_json(filepath, createDirectory=createDirectory)
+
+
+class ScienceLayer(Layer):
     science_file: str
     value_type: str
     values: list[ScienceValue]
@@ -127,7 +165,7 @@ class ScienceLayerZero(Layer):
             for epoch_val, datapoint in zip(epoch, data)
         ]
 
-        return ScienceLayerZero(
+        return ScienceLayer(
             id=cdf_loaded.attrs["Logical_file_id"][0],
             mission=cdf_loaded.attrs["Mission_group"][0],
             validity=validity,

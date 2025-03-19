@@ -37,13 +37,24 @@ def apply(
     for layer in layers:
         workLayers.append(prepareCalibrationFile(layer, configFile))
 
-    workOutputFile = configFile.work_folder / "summed-layer.json"
+    workCalFile = configFile.work_folder / "calibration.cdf"
+
+    workL2File = configFile.work_folder / "L2.json"
 
     applier = CalibrationApplicator()
 
-    L2_file = applier.apply(workLayers, workDataFile, workOutputFile)
+    (L2_file, cal_file) = applier.apply(
+        workLayers, workDataFile, workCalFile, workL2File
+    )
 
     appUtils.copyFileToDestination(L2_file, configFile.destination)
+
+    appUtils.copyFileToDestination(
+        cal_file,
+        appConfig.Destination(
+            folder=configFile.destination.folder, filename="calibration.cdf"
+        ),
+    )
 
 
 def publish():
