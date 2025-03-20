@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timedelta
 
@@ -49,13 +50,12 @@ def get_start_and_end_dates_for_download(
     original_start_date: datetime | None,
     original_end_date: datetime | None,
     check_and_update_database: bool,
+    logger: logging.Logger | logging.LoggerAdapter,
 ) -> tuple[datetime, datetime] | None:
     """
     Check database for last update date and return start and end dates for download,
     based on what data has already been downloaded so far.
     """
-
-    logger = get_run_logger()
 
     # Check end date
     if original_end_date is None:

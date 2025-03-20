@@ -77,6 +77,7 @@ async def poll_hk_flow(
             original_start_date=start_date,
             original_end_date=end_date,
             check_and_update_database=check_and_update_database,
+            logger=logger,
         )
 
         if packet_dates is None:
