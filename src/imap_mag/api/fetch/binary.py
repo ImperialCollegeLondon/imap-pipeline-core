@@ -23,7 +23,9 @@ def fetch_binary(
             help="WebPODA authentication code",
         ),
     ],
-    apid: Annotated[int, typer.Option(help="ApID to download")],
+    apid_or_packet: Annotated[
+        appUtils.HKPacket, typer.Option(help="ApID or packet to download")  # type: ignore
+    ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     config: Annotated[Path, typer.Option()] = Path("config.yaml"),
@@ -31,7 +33,13 @@ def fetch_binary(
     """Download binary data from WebPODA."""
 
     configFile: appConfig.AppConfig = commandInit(config)
-    packet: str = appUtils.getPacketFromApID(apid)
+
+    if isinstance(apid_or_packet, int):
+        packet: str = appUtils.getPacketFromApID(apid_or_packet)
+    elif isinstance(apid_or_packet, str):
+        packet: str = apid_or_packet
+    else:
+        packet: str = apid_or_packet.name
 
     if not auth_code:
         logger.critical("No WebPODA authorization code provided")

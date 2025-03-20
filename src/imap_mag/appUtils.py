@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from enum import StrEnum
 from pathlib import Path
 from typing import Optional
 
@@ -15,29 +16,21 @@ logger = logging.getLogger(__name__)
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
-HK_APIDS: list[int] = [
-    1028,
-    1055,
-    1063,
-    1064,
-    1082,
-    1060,
-    1053,
-    1054,
-    1045,
-]
 APID_TO_PACKET: dict[int, str] = {
     1028: "MAG_HSK_SID1",
     1055: "MAG_HSK_SID2",
     1063: "MAG_HSK_PW",
     1064: "MAG_HSK_STATUS",
     1082: "MAG_HSK_SCI",
-    1051: "MAG_HSK_SID11",
+    # 1051: "MAG_HSK_SID11", SID11 is not supported by WebPODA
     1060: "MAG_HSK_SID12",
     1053: "MAG_HSK_SID15",
     1054: "MAG_HSK_SID16",
     1045: "MAG_HSK_SID20",
 }
+
+HKPacket = StrEnum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
+HK_PACKETS: list[str] = [e.value for e in HKPacket]  # type: ignore
 
 
 def convertMETToJ2000ns(
