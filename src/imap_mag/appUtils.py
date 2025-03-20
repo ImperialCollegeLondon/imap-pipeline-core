@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -29,7 +29,7 @@ APID_TO_PACKET: dict[int, str] = {
     1045: "MAG_HSK_SID20",
 }
 
-HKPacket = StrEnum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
+HKPacket = Enum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
 HK_PACKETS: list[str] = [e.value for e in HKPacket]  # type: ignore
 
 
