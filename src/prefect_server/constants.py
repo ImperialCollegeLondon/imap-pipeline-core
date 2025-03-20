@@ -1,5 +1,5 @@
 class CONSTANTS:
-    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit"
+    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,imap_data_access"
     DEFAULT_WORKPOOL = "default-pool"
 
     PREFECT_TAG = "NASA-IMAP"
@@ -9,9 +9,13 @@ class CONSTANTS:
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
+    class POLL_SCIENCE:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
     class ENV_VAR_NAMES:
         IMAP_PIPELINE_CRON = "IMAP_CRON_HEALTHCHECK"
         POLL_HK_CRON = "IMAP_CRON_POLL_HK"
+        POLL_SCIENCE_CRON = "IMAP_CRON_POLL_SCIENCE"
 
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
@@ -20,6 +24,8 @@ class CONSTANTS:
 
     class FLOW_NAMES:
         POLL_HK = "poll-hk"
+        POLL_SCIENCE = "poll-science"
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"
+        POLL_SCIENCE = "poll_science"
