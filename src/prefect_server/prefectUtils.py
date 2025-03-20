@@ -1,7 +1,11 @@
 import os
+from datetime import datetime, timedelta
 
 from prefect import get_run_logger
 from prefect.blocks.system import Secret
+
+from imap_mag.appUtils import forceUTCTimeZone
+from imap_mag.DB import Database
 
 
 def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | None:
@@ -36,3 +40,88 @@ async def get_secret_block(secret_name: str):
     logger.debug(f"Block {secret_name} retrieved successfully.")
 
     return value
+
+
+def get_start_and_end_dates_for_download(
+    *,
+    packet_name: str,
+    database: Database,
+    original_start_date: datetime | None,
+    original_end_date: datetime | None,
+    check_and_update_database: bool,
+) -> tuple[datetime, datetime] | None:
+    """
+    Check database for last update date and return start and end dates for download,
+    based on what data has already been downloaded so far.
+    """
+
+    logger = get_run_logger()
+
+    # Check end date
+    if original_end_date is None:
+        logger.info(
+            f"End date not provided. Using end of today as default download date for {packet_name}."
+        )
+        packet_end_date = datetime.today().replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+    else:
+        logger.info(f"Using provided end date {original_end_date} for {packet_name}.")
+        packet_end_date = original_end_date
+
+    # Check start date
+    download_progress = database.get_download_progress(packet_name)
+    last_updated_date = download_progress.get_progress_timestamp()
+
+    if (original_start_date is None) and (last_updated_date is None):
+        logger.info(
+            f"Start date not provided. Using yesterday as default download date for {packet_name}."
+        )
+        packet_start_date = datetime.today().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) - timedelta(days=1)
+    elif original_start_date is None:
+        logger.info(
+            f"Start date not provided. Using last updated date {last_updated_date} for {packet_name} from database."
+        )
+        packet_start_date = last_updated_date
+    else:
+        logger.info(
+            f"Using provided start date {original_start_date} for {packet_name}."
+        )
+        packet_start_date = original_start_date
+
+        # Check what data actually needs downloading
+        if check_and_update_database:
+            download_progress.record_checked_download(datetime.now())
+            database.save(download_progress)
+
+            logger.debug(
+                f"Last update for packet {packet_name} is {last_updated_date}."
+            )
+
+            if (last_updated_date is None) or (last_updated_date <= packet_start_date):
+                logger.info(
+                    f"Packet {packet_name} is not up to date. Downloading from {packet_start_date}."
+                )
+            elif last_updated_date >= packet_end_date:
+                logger.info(
+                    f"Packet {packet_name} is already up to date. Not downloading."
+                )
+                return None
+            else:  # last_updated_date > packet_start_date
+                logger.info(
+                    f"Packet {packet_name} is partially up to date. Downloading from {last_updated_date}."
+                )
+                packet_start_date = last_updated_date
+        else:
+            logger.info(
+                f"Not checking database and forcing download from {packet_start_date} to {packet_end_date}."
+            )
+
+    # Remove any timezone information
+    (packet_start_date, packet_end_date) = forceUTCTimeZone(
+        packet_start_date, packet_end_date
+    )
+
+    return (packet_start_date, packet_end_date)

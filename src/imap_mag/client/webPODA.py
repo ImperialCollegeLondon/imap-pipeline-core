@@ -56,8 +56,7 @@ class WebPODA(IWebPODA):
 
         logger.info(
             f"Downloading {options['packet']} from "
-            f"{options['start_date']} to {options['end_date']} (S/C time) "
-            f"into {file_path}."
+            f"{options['start_date']} to {options['end_date']} into {file_path}."
         )
 
         if not self.__output_dir.exists():
