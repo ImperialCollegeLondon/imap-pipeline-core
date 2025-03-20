@@ -45,8 +45,13 @@ class CalibrationApplicator:
         validity = Validity(
             start=sum_layer_values[0].time, end=sum_layer_values[-1].time
         )
+
+        # TODO: Correct dependenciues and science in cal and science file
+        dependencies = [layer_file.name for layer_file in layer_files]
         metadata = CalibrationMetadata(
-            dependencies=[], science=[], creation_timestamp=datetime.datetime.now()
+            dependencies=dependencies,
+            science=[],
+            creation_timestamp=datetime.datetime.now(),
         )
         calibrationLayer = CalibrationLayer(
             id="",
@@ -64,6 +69,7 @@ class CalibrationApplicator:
 
         scienceResult = self._get_science_layer(
             science_data,
+            dependencies,
             self._apply_layer_to_science_values(
                 science_data.values, calibrationLayer.values
             ),
@@ -73,11 +79,13 @@ class CalibrationApplicator:
 
         return (l2_filepath, cal_filepath)
 
-    def _get_science_layer(self, science: ScienceLayer, values: list[ScienceValue]):
+    def _get_science_layer(
+        self, science: ScienceLayer, dependencies: list[str], values: list[ScienceValue]
+    ):
         validity = Validity(start=values[0].time, end=values[-1].time)
 
         metadata = CalibrationMetadata(
-            dependencies=[],
+            dependencies=dependencies,
             science=[science.science_file],
             creation_timestamp=datetime.datetime.now(),
         )

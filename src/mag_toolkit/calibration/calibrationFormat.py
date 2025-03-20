@@ -1,5 +1,5 @@
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -65,6 +65,9 @@ class Layer(BaseModel, ABC):
         model = cls(**as_dict)
         return model
 
+    @abstractmethod
+    def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path: ...
+
     def getWriteable(self):
         json = self.model_dump_json()
 
@@ -85,8 +88,11 @@ class Layer(BaseModel, ABC):
 
         return filepath
 
-    def writeToFile(self, filepath: Path, createDirectory=False):
-        return self._write_to_json(filepath, createDirectory=createDirectory)
+    def writeToFile(self, filepath: Path, createDirectory=False) -> Path:
+        if filepath.suffix == ".cdf":
+            return self._write_to_cdf(filepath, createDirectory=createDirectory)
+        else:
+            return self._write_to_json(filepath, createDirectory=createDirectory)
 
 
 class CalibrationLayer(Layer):
@@ -94,9 +100,7 @@ class CalibrationLayer(Layer):
     value_type: str
     values: list[CalibrationValue]
 
-    def _write_to_cdf(
-        self, filepath: Path, skeleton=None, createDirectory=False
-    ) -> Path:
+    def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
         # TODO: Constant? Some kind of data store path manager?
         OFFSET_SKELETON_CDF = "/data/resource/skeleton/l2_offset_skeleton.cdf"
         with pycdf.CDF(str(filepath), OFFSET_SKELETON_CDF) as offset_cdf:
@@ -119,17 +123,14 @@ class CalibrationLayer(Layer):
 
         return filepath
 
-    def writeToFile(self, filepath: Path, createDirectory=False) -> Path:
-        if filepath.suffix == ".cdf":
-            return self._write_to_cdf(filepath, createDirectory=createDirectory)
-        else:
-            return self._write_to_json(filepath, createDirectory=createDirectory)
-
 
 class ScienceLayer(Layer):
     science_file: str
     value_type: str
     values: list[ScienceValue]
+
+    def _write_to_cdf(self, filepath: Path, createDirectory=False):
+        return Path()
 
     @classmethod
     def from_file(cls, path: Path):
