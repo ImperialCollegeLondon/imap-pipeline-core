@@ -70,7 +70,10 @@
                 "ms-python.mypy-type-checker",
                 "ms-azuretools.vscode-docker",
                 "github.vscode-github-actions",
-                "charliermarsh.ruff"
+                "charliermarsh.ruff",
+                "ms-ossdata.vscode-postgresql",
+                "mtxr.sqltools",
+                "mtxr.sqltools-driver-pg"
             ]
         }
     },
