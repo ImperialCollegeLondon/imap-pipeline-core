@@ -2,7 +2,6 @@ import abc
 import functools
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -14,62 +13,6 @@ from imap_mag import __version__
 from imap_mag.outputManager import IOutputManager, T, generate_hash
 
 logger = logging.getLogger(__name__)
-
-
-class IModelWrapper(abc.ABC):
-    """Interface for wrapping database models."""
-
-    @abc.abstractmethod
-    def get_session(self) -> Session:
-        """Get the session attached to the model."""
-        pass
-
-    @abc.abstractmethod
-    def get_model(self) -> Base:
-        """Get the original model."""
-        pass
-
-
-class DownloadProgressWrapper(IModelWrapper):
-    """Wrapper for download progress model."""
-
-    def __init__(self, download_progress: DownloadProgress, session: Session):
-        self.__download_progress = download_progress
-        self.__session = session
-
-    def __del__(self):
-        logger.debug(f"Closing session for {self.item_name}.")
-        self.__session.close()
-
-    def get_session(self) -> Session:
-        return self.__session
-
-    def get_model(self) -> Base:
-        return self.__download_progress
-
-    @property
-    def item_name(self) -> str:
-        return self.__download_progress.item_name
-
-    @property
-    def progress_timestamp(self) -> datetime:
-        return self.__download_progress.progress_timestamp
-
-    @property
-    def last_checked_date(self) -> datetime:
-        return self.__download_progress.last_checked_date
-
-    def record_successful_download(self, progress_timestamp: datetime):
-        logger.info(
-            f"Updating progress timestamp for {self.item_name} to {progress_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
-        )
-        self.__download_progress.progress_timestamp = progress_timestamp
-
-    def record_checked_download(self, last_checked_date: datetime):
-        logger.info(
-            f"Updating last checked date for {self.item_name} to {last_checked_date.strftime('%d/%m/%Y %H:%M:%S')}."
-        )
-        self.__download_progress.last_checked_date = last_checked_date
 
 
 class IDatabase(abc.ABC):
@@ -86,13 +29,13 @@ class IDatabase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_download_progress(self, item_name: str) -> DownloadProgressWrapper:
+    def get_download_progress(self, item_name: str) -> DownloadProgress:
         """Get the progress timestamp for an item."""
         pass
 
     @abc.abstractmethod
-    def save(self, wrapper: IModelWrapper) -> None:
-        """Save the download progress."""
+    def save(self, model: Base) -> None:
+        """Save an object to the database."""
         pass
 
 
@@ -118,32 +61,29 @@ class Database(IDatabase):
 
     @staticmethod
     def __session_manager(
-        commit: bool = True,
-        close_session: bool = True,
+        **session_kwargs,
     ):
         """Manage session scope for database operations."""
 
         def outer_wrapper(func):
             @functools.wraps(func)
-            def wrapper(self, *args, **kwargs):
-                session = self.session()
+            def inner_wrapper(self, *args, **kwargs):
+                session = self.session(**session_kwargs)
                 try:
                     self.__active_session = session
                     value = func(self, *args, **kwargs)
 
-                    if commit:
-                        session.commit()
+                    session.commit()
 
                     return value
                 except Exception as e:
                     session.rollback()
                     raise e
                 finally:
-                    if close_session:
-                        session.close()
+                    session.close()
                     self.__active_session = None
 
-            return wrapper
+            return inner_wrapper
 
         return outer_wrapper
 
@@ -168,8 +108,8 @@ class Database(IDatabase):
 
             session.add(file)
 
-    @__session_manager(close_session=False)
-    def get_download_progress(self, item_name: str) -> DownloadProgressWrapper:
+    @__session_manager(expire_on_commit=False)
+    def get_download_progress(self, item_name: str) -> DownloadProgress:
         session = self.__get_active_session()
         download_progress = (
             session.query(DownloadProgress).filter_by(item_name=item_name).first()
@@ -178,11 +118,12 @@ class Database(IDatabase):
         if download_progress is None:
             download_progress = DownloadProgress(item_name=item_name)
 
-        return DownloadProgressWrapper(download_progress, session)
+        return download_progress
 
-    def save(self, wrapper: IModelWrapper) -> None:
-        session = wrapper.get_session()
-        session.add(wrapper.get_model())
+    @__session_manager()
+    def save(self, model: Base) -> None:
+        session = self.__get_active_session()
+        session.merge(model)
 
 
 class DatabaseFileOutputManager(IOutputManager):
@@ -228,6 +169,7 @@ class DatabaseFileOutputManager(IOutputManager):
                     path=destination_file.absolute().as_posix(),
                     version=metadata_provider.version,
                     hash=file_hash,
+                    size=destination_file.stat().st_size,
                     date=metadata_provider.date,
                     software_version=__version__,
                 )

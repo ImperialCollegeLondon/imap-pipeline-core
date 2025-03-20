@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -33,3 +36,24 @@ class DownloadProgress(Base):
 
     def __repr__(self):
         return f"<DownloadProgress {self.item_name} (progress_timestamp={self.progress_timestamp}, last_checked_date={self.last_checked_date})>"
+
+    def get_item_name(self) -> str:
+        return self.item_name
+
+    def get_progress_timestamp(self) -> datetime:
+        return self.progress_timestamp
+
+    def get_last_checked_date(self) -> datetime:
+        return self.last_checked_date
+
+    def record_successful_download(self, progress_timestamp: datetime):
+        logger.info(
+            f"Updating progress timestamp for {self.item_name} to {progress_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
+        )
+        self.progress_timestamp = progress_timestamp
+
+    def record_checked_download(self, last_checked_date: datetime):
+        logger.info(
+            f"Updating last checked date for {self.item_name} to {last_checked_date.strftime('%d/%m/%Y %H:%M:%S')}."
+        )
+        self.last_checked_date = last_checked_date
