@@ -103,6 +103,9 @@ class Database(IDatabase):
                 session.query(File).filter_by(name=file.name, path=file.path).first()
             )
             if existing_file is not None:
+                logger.warning(
+                    f"File {file.path}/{file.name} already exists in database. Skipping."
+                )
                 continue
 
             session.add(file)
