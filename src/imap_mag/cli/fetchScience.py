@@ -14,6 +14,7 @@ from imap_mag.outputManager import StandardSPDFMetadataProvider
 logger = logging.getLogger(__name__)
 
 
+# TODO: Move these Enums to their own files or to a constants file
 class MAGMode(str, Enum):
     Normal = "norm"
     Burst = "burst"
@@ -32,6 +33,7 @@ class FetchScienceOptions(typing.TypedDict):
     end_date: datetime
 
 
+# TODO: why is this class in a folder named "cli" when it is not a command line app?
 class FetchScience:
     """Manage SOC data."""
 

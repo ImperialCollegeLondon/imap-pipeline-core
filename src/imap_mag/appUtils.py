@@ -13,6 +13,7 @@ from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
 logger = logging.getLogger(__name__)
 
+# TODO: move to constants
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
@@ -29,6 +30,7 @@ APID_TO_PACKET: dict[int, str] = {
     1045: "MAG_HSK_SID20",
 }
 
+# TODO: Move to separate file and tidy this up - add a method to get all packet names?
 HKPacket = Enum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
 HK_PACKETS: list[str] = [e.value for e in HKPacket]  # type: ignore
 
