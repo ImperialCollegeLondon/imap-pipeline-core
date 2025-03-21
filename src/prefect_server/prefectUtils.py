@@ -19,7 +19,6 @@ def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | No
         return cron
 
 
-# TODO: This is copied from so-pipeline-core
 async def get_secret_block(secret_name: str):
     logger = get_run_logger()
 
@@ -42,6 +41,7 @@ async def get_secret_block(secret_name: str):
     return value
 
 
+# TODO: This function is too long, in the wrong place and does to much, it needs a refactor
 def get_start_and_end_dates_for_download(
     *,
     packet_name: str,
