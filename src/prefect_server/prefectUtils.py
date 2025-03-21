@@ -1,11 +1,11 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from prefect import get_run_logger
 from prefect.blocks.system import Secret
 
-from imap_mag.appUtils import forceUTCTimeZone
+from imap_mag.appUtils import DatetimeProvider, forceUTCTimeZone
 from imap_mag.DB import Database
 
 
@@ -21,7 +21,7 @@ def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | No
 
 
 # TODO: This is copied from so-pipeline-core
-async def get_secret_block(secret_name: str):
+async def get_secret_block(secret_name: str) -> str:
     logger = get_run_logger()
 
     logger.info(f"Retrieving secret block {secret_name}.")
@@ -43,6 +43,29 @@ async def get_secret_block(secret_name: str):
     return value
 
 
+async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
+    logger = get_run_logger()
+
+    try:
+        auth_code = await get_secret_block(secret_name)
+    except ValueError:
+        logger.info(
+            f"{secret_name} not found or empty. Using environment variable {env_var_name}."
+        )
+
+    auth_code: str | None = os.getenv(env_var_name)
+
+    if not auth_code:
+        logger.error(
+            f"Environment variable {env_var_name} and secret {secret_name} are both undefined."
+        )
+        raise ValueError(
+            f"Environment variable {env_var_name} and secret {secret_name} are both undefined."
+        )
+
+    return auth_code
+
+
 def get_start_and_end_dates_for_download(
     *,
     packet_name: str,
@@ -62,9 +85,7 @@ def get_start_and_end_dates_for_download(
         logger.info(
             f"End date not provided. Using end of today as default download date for {packet_name}."
         )
-        packet_end_date = datetime.today().replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
+        packet_end_date = DatetimeProvider.end_of_today()
     else:
         logger.info(f"Using provided end date {original_end_date} for {packet_name}.")
         packet_end_date = original_end_date
@@ -77,9 +98,7 @@ def get_start_and_end_dates_for_download(
         logger.info(
             f"Start date not provided. Using yesterday as default download date for {packet_name}."
         )
-        packet_start_date = datetime.today().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) - timedelta(days=1)
+        packet_start_date = DatetimeProvider.yesterday()
     elif original_start_date is None:
         logger.info(
             f"Start date not provided. Using last updated date {last_updated_date} for {packet_name} from database."
@@ -93,7 +112,7 @@ def get_start_and_end_dates_for_download(
 
         # Check what data actually needs downloading
         if check_and_update_database:
-            download_progress.record_checked_download(datetime.now())
+            download_progress.record_checked_download(DatetimeProvider.now())
             database.save(download_progress)
 
             logger.debug(

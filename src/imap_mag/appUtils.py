@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -99,3 +99,33 @@ def copyFileToDestination(
     return output_manager.add_file(
         file_path, SimpleMetadataProvider(destination.filename)
     )
+
+
+class DatetimeProvider:
+    """Datetime provider to remove dependency on `datetime` library."""
+
+    @staticmethod
+    def now() -> datetime:
+        return datetime.now()
+
+    @staticmethod
+    def today(type=datetime) -> date:
+        return type.today()
+
+    @staticmethod
+    def tomorrow(type=datetime) -> date:
+        return type.today().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) + timedelta(days=1)
+
+    @staticmethod
+    def yesterday(type=datetime) -> date:
+        return type.today().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) - timedelta(days=1)
+
+    @staticmethod
+    def end_of_today() -> datetime:
+        return datetime.today().replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
