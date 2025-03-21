@@ -56,10 +56,18 @@ def deploy_flows(local_debug: bool = False):
     docker_networks = [x for x in docker_networks if x]
 
     shared_job_env_variables = dict(
-        WEBPODA_AUTH_CODE=os.getenv("WEBPODA_AUTH_CODE"),
-        SDC_AUTH_CODE=os.getenv("SDC_AUTH_CODE"),
-        SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
-        PREFECT_LOGGING_EXTRA_LOGGERS=CONSTANTS.DEFAULT_LOGGERS,
+        {
+            CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
+            ),
+            CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
+            ),
+            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
+            ),
+            "PREFECT_LOGGING_EXTRA_LOGGERS": CONSTANTS.DEFAULT_LOGGERS,
+        }
     )
 
     if local_debug:

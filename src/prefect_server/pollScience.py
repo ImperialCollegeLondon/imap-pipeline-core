@@ -3,7 +3,6 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
-from pydantic import SecretStr
 from spacepy import pycdf
 
 from imap_mag.api.fetch.science import Level, MAGMode, fetch_science
@@ -12,7 +11,7 @@ from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import (
-    get_secret_block,
+    get_secret_or_env_var,
     get_start_and_end_dates_for_download,
 )
 
@@ -48,7 +47,7 @@ async def poll_science_flow(
     modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    auth_code: SecretStr | None = None,
+    force_database_update: bool = False,
 ):
     """
     Poll housekeeping data from WebPODA.
@@ -56,12 +55,14 @@ async def poll_science_flow(
 
     logger = get_run_logger()
 
-    if not auth_code:
-        auth_code = SecretStr(
-            await get_secret_block(CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME)
-        )
+    auth_code = await get_secret_or_env_var(
+        CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
+        CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
+    )
 
-    check_and_update_database = (start_date is None) and (end_date is None)
+    check_and_update_database = force_database_update or (
+        (start_date is None) and (end_date is None)
+    )
     database = Database()
 
     for mode in modes:
@@ -78,6 +79,7 @@ async def poll_science_flow(
             original_start_date=start_date,
             original_end_date=end_date,
             check_and_update_database=check_and_update_database,
+            logger=logger,
         )
 
         if packet_dates is None:
@@ -89,7 +91,7 @@ async def poll_science_flow(
         with manage_config(export_to_database=True) as config_file:
             downloaded_science: dict[Path, StandardSPDFMetadataProvider] = (
                 fetch_science(
-                    auth_code=auth_code.get_secret_value(),
+                    auth_code=auth_code,
                     level=level,
                     modes=[mode],
                     start_date=packet_start_date,

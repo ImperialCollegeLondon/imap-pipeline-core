@@ -4,7 +4,6 @@ from pathlib import Path
 import pandas as pd
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
-from pydantic import SecretStr
 
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
@@ -14,7 +13,7 @@ from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import (
-    get_secret_block,
+    get_secret_or_env_var,
     get_start_and_end_dates_for_download,
 )
 
@@ -22,7 +21,7 @@ from prefect_server.prefectUtils import (
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
-    hk_packets: list[HKPacket] = parameters["hk_packets"]
+    hk_packets: list[HKPacket] = parameters["hk_packets"]  # type: ignore
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
         if parameters["start_date"] is not None
@@ -48,10 +47,10 @@ def generate_flow_run_name() -> str:
     flow_run_name=generate_flow_run_name,
 )
 async def poll_hk_flow(
-    hk_packets: list[HKPacket] = [hk for hk in HKPacket],
+    hk_packets: list[HKPacket] = [hk for hk in HKPacket],  # type: ignore
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    auth_code: SecretStr | None = None,
+    force_database_update: bool = False,
 ):
     """
     Poll housekeeping data from WebPODA.
@@ -59,12 +58,14 @@ async def poll_hk_flow(
 
     logger = get_run_logger()
 
-    if not auth_code:
-        auth_code = SecretStr(
-            await get_secret_block(CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME)
-        )
+    auth_code = await get_secret_or_env_var(
+        CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
+        CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
+    )
 
-    check_and_update_database = (start_date is None) and (end_date is None)
+    check_and_update_database = force_database_update or (
+        (start_date is None) and (end_date is None)
+    )
     database = Database()
 
     for packet in hk_packets:
@@ -89,7 +90,7 @@ async def poll_hk_flow(
         with manage_config(export_to_database=True) as config_file:
             downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
                 fetch_binary(
-                    auth_code=auth_code.get_secret_value(),
+                    auth_code=auth_code,
                     apid_or_packet=packet,
                     start_date=packet_start_date,
                     end_date=packet_end_date,
