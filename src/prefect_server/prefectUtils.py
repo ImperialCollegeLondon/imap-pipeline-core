@@ -91,7 +91,7 @@ def get_start_and_end_dates_for_download(
         packet_end_date = DatetimeProvider.end_of_today()
     else:
         logger.info(f"Using provided end date {original_end_date} for {packet_name}.")
-        packet_end_date = original_end_date
+        packet_end_date = forceUTCTimeZone(original_end_date)
 
     # Get last updated date from database
     download_progress = database.get_download_progress(packet_name)
@@ -118,7 +118,7 @@ def get_start_and_end_dates_for_download(
         logger.info(
             f"Using provided start date {original_start_date} for {packet_name}."
         )
-        packet_start_date = original_start_date
+        packet_start_date = forceUTCTimeZone(original_start_date)
 
         # Check what data actually needs downloading
         if check_and_update_database:
@@ -140,11 +140,6 @@ def get_start_and_end_dates_for_download(
             logger.info(
                 f"Not checking database and forcing download from {packet_start_date} to {packet_end_date}."
             )
-
-    # Remove any timezone information
-    (packet_start_date, packet_end_date) = forceUTCTimeZone(
-        packet_start_date, packet_end_date
-    )
 
     return (packet_start_date, packet_end_date)
 

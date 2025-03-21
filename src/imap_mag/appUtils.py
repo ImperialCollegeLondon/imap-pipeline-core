@@ -53,9 +53,9 @@ def getPacketFromApID(apid: int) -> str:
     return APID_TO_PACKET[apid]
 
 
-def forceUTCTimeZone(*args: datetime) -> tuple[datetime, ...]:
+def forceUTCTimeZone(date: datetime) -> datetime:
     """Convert given datetime objects to UTC timezone and remove timezone."""
-    return tuple(arg.astimezone(timezone.utc).replace(tzinfo=None) for arg in args)
+    return date.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 def getOutputManager(destination: appConfig.Destination) -> IOutputManager:

@@ -23,4 +23,4 @@ def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
     ],
 )
 def test_force_remove_timezone(date) -> None:
-    assert forceUTCTimeZone(date)[0] == datetime(2025, 3, 20, 10, 0, 0)
+    assert forceUTCTimeZone(date) == datetime(2025, 3, 20, 10, 0, 0)
