@@ -147,3 +147,25 @@ def get_start_and_end_dates_for_download(
     )
 
     return (packet_start_date, packet_end_date)
+
+
+def update_database_with_progress(
+    packet_name: str,
+    database: Database,
+    latest_timestamp: datetime,
+    check_and_update_database: bool,
+    logger: logging.Logger | logging.LoggerAdapter,
+) -> None:
+    download_progress = database.get_download_progress(packet_name)
+
+    logger.debug(
+        f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
+    )
+
+    if check_and_update_database and (
+        latest_timestamp > download_progress.progress_timestamp
+    ):
+        download_progress.record_successful_download(latest_timestamp)
+        database.save(download_progress)
+    else:
+        logger.info(f"Database not updated for {packet_name}.")

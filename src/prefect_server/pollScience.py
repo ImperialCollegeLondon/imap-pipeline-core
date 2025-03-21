@@ -14,6 +14,7 @@ from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
     get_start_and_end_dates_for_download,
+    update_database_with_progress,
 )
 
 
@@ -106,18 +107,18 @@ async def poll_science_flow(
             continue
 
         # Get latest science timestamp
-        latest_timestamp: list[datetime] = []
+        latest_timestamps: list[datetime] = []
 
         for file, _ in downloaded_science.items():
-            latest_timestamp.append(pycdf.CDF(file.as_posix())["epoch"][-1])  # type: ignore
+            latest_timestamps.append(pycdf.CDF(file.as_posix())["epoch"][-1])  # type: ignore
 
         # Update database
-        if check_and_update_database:
-            download_progress = database.get_download_progress(packet_name)
-            download_progress.record_successful_download(max(latest_timestamp))
-
-            database.save(download_progress)
-        else:
-            logger.info(f"Database not updated for {packet_name}.")
+        update_database_with_progress(
+            packet_name=packet_name,
+            database=database,
+            latest_timestamp=max(latest_timestamps),
+            check_and_update_database=check_and_update_database,
+            logger=logger,
+        )
 
     logger.info("---------- Finished ----------")

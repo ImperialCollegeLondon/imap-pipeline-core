@@ -15,6 +15,7 @@ from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
     get_start_and_end_dates_for_download,
+    update_database_with_progress,
 )
 
 
@@ -103,7 +104,7 @@ async def poll_hk_flow(
             continue
 
         # Process binary data into CSV
-        latest_timestamp: list[datetime] = []
+        latest_timestamps: list[datetime] = []
 
         for file, _ in downloaded_binaries.items():
             with manage_config(
@@ -111,7 +112,7 @@ async def poll_hk_flow(
             ) as config_file:
                 (processed_file, _) = process(file=Path(file.name), config=config_file)
 
-            latest_timestamp.append(
+            latest_timestamps.append(
                 datetime.fromtimestamp(
                     pd.read_csv(processed_file).iloc[-1].epoch / 10**9
                     + datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
@@ -119,12 +120,12 @@ async def poll_hk_flow(
             )
 
         # Update database
-        if check_and_update_database:
-            download_progress = database.get_download_progress(packet_name)
-            download_progress.record_successful_download(max(latest_timestamp))
-
-            database.save(download_progress)
-        else:
-            logger.info(f"Database not updated for {packet_name}.")
+        update_database_with_progress(
+            packet_name=packet_name,
+            database=database,
+            latest_timestamp=max(latest_timestamps),
+            check_and_update_database=check_and_update_database,
+            logger=logger,
+        )
 
     logger.info("---------- Finished ----------")
