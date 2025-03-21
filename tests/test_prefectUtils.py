@@ -422,7 +422,38 @@ def test_update_database_no_update_needed(
     assert not mock_database.save.called
 
 
-def test_update_database_update_needed(
+def test_update_database_update_needed_no_data(
+    caplog,
+    mock_database,
+) -> None:
+    # Set up
+    download_progress = DownloadProgress()
+    download_progress.item_name = "MAG_SCI_NORM"
+
+    mock_database.get_download_progress.return_value = download_progress
+
+    caplog.set_level(logging.DEBUG)
+
+    # Exercise
+    update_database_with_progress(
+        packet_name="MAG_SCI_NORM",
+        database=mock_database,
+        latest_timestamp=YESTERDAY,
+        check_and_update_database=True,
+        logger=LOGGER,
+    )
+
+    # Verify
+    assert (
+        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        in caplog.text
+    )
+
+    assert download_progress.progress_timestamp is YESTERDAY
+    assert mock_database.save.called
+
+
+def test_update_database_update_needed_old_data(
     caplog,
     mock_database,
 ) -> None:

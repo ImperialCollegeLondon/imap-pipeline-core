@@ -163,7 +163,8 @@ def update_database_with_progress(
     )
 
     if check_and_update_database and (
-        latest_timestamp > download_progress.progress_timestamp
+        (download_progress.progress_timestamp is None)
+        or (latest_timestamp > download_progress.progress_timestamp)
     ):
         download_progress.record_successful_download(latest_timestamp)
         database.save(download_progress)
