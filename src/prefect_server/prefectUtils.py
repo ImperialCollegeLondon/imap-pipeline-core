@@ -93,10 +93,17 @@ def get_start_and_end_dates_for_download(
         logger.info(f"Using provided end date {original_end_date} for {packet_name}.")
         packet_end_date = original_end_date
 
-    # Check start date
+    # Get last updated date from database
     download_progress = database.get_download_progress(packet_name)
     last_updated_date = download_progress.get_progress_timestamp()
 
+    logger.debug(f"Last update for packet {packet_name} is {last_updated_date}.")
+
+    if check_and_update_database:
+        download_progress.record_checked_download(DatetimeProvider.now())
+        database.save(download_progress)
+
+    # Check start date
     if (original_start_date is None) and (last_updated_date is None):
         logger.info(
             f"Start date not provided. Using yesterday as default download date for {packet_name}."
@@ -115,13 +122,6 @@ def get_start_and_end_dates_for_download(
 
         # Check what data actually needs downloading
         if check_and_update_database:
-            download_progress.record_checked_download(DatetimeProvider.now())
-            database.save(download_progress)
-
-            logger.debug(
-                f"Last update for packet {packet_name} is {last_updated_date}."
-            )
-
             if (last_updated_date is None) or (last_updated_date <= packet_start_date):
                 logger.info(
                     f"Packet {packet_name} is not up to date. Downloading from {packet_start_date}."

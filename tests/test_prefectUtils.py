@@ -33,6 +33,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
     caplog,
     mock_database,
     check_and_update_database,
+    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     download_progress = DownloadProgress()
@@ -69,8 +70,12 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         in caplog.text
     )
 
-    assert download_progress.last_checked_date is None
-    assert not mock_database.save.called
+    if check_and_update_database:
+        assert download_progress.last_checked_date == NOW
+        assert mock_database.save.called
+    else:
+        assert download_progress.last_checked_date is None
+        assert not mock_database.save.called
 
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
@@ -78,6 +83,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     caplog,
     mock_database,
     check_and_update_database,
+    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     download_progress = DownloadProgress()
@@ -113,13 +119,18 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         in caplog.text
     )
 
-    assert download_progress.last_checked_date is None
-    assert not mock_database.save.called
+    if check_and_update_database:
+        assert download_progress.last_checked_date == NOW
+        assert mock_database.save.called
+    else:
+        assert download_progress.last_checked_date is None
+        assert not mock_database.save.called
 
 
 def test_get_start_end_dates_both_dates_defined_empty_database(
     caplog,
     mock_database,
+    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     download_progress = DownloadProgress()
@@ -166,6 +177,7 @@ def test_get_start_end_dates_no_dates_defined_with_database(
     caplog,
     mock_database,
     check_and_update_database,
+    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     download_progress = DownloadProgress()
@@ -203,8 +215,12 @@ def test_get_start_end_dates_no_dates_defined_with_database(
         in caplog.text
     )
 
-    assert download_progress.last_checked_date is None
-    assert not mock_database.save.called
+    if check_and_update_database:
+        assert download_progress.last_checked_date == NOW
+        assert mock_database.save.called
+    else:
+        assert download_progress.last_checked_date is None
+        assert not mock_database.save.called
 
 
 def test_get_start_end_dates_not_up_to_date(
