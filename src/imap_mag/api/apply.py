@@ -4,8 +4,9 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
+from imap_mag import appConfig
 from imap_mag.api.apiUtils import commandInit, prepareCalibrationFile, prepareWorkFile
+from imap_mag.outputManager import OutputManager, StandardSPDFMetadataProvider
 from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
 
 
@@ -47,14 +48,17 @@ def apply(
         workLayers, workDataFile, workCalFile, workL2File
     )
 
-    appUtils.copyFileToDestination(L2_file, configFile.destination)
-
-    appUtils.copyFileToDestination(
-        cal_file,
-        appConfig.Destination(
-            folder=configFile.destination.folder, filename="calibration.cdf"
-        ),
+    l2_metadata_provider = StandardSPDFMetadataProvider(
+        level="l2", date=from_date, descriptor="norm", version=1, extension="json"
     )
+    cal_metadata_provider = StandardSPDFMetadataProvider(
+        level="l2", descriptor="offsets", date=from_date, version=1, extension="cdf"
+    )
+
+    outputManager = OutputManager(configFile.destination.folder)
+
+    outputManager.add_file(L2_file, l2_metadata_provider)
+    outputManager.add_file(cal_file, cal_metadata_provider)
 
 
 def publish():

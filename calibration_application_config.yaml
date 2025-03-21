@@ -5,5 +5,5 @@ source:
 work-folder: .work
 
 destination:
-  folder: /data/science/imap/mag/l2/2025/10
+  folder: /data/science/imap/mag/l2
   filename: imap_mag_l2_norm-mago_20251017_v000.json
