@@ -104,7 +104,7 @@ class Database(IDatabase):
             )
             if existing_file is not None:
                 logger.warning(
-                    f"File {file.path}/{file.name} already exists in database. Skipping."
+                    f"File {file.path} already exists in database. Skipping."
                 )
                 continue
 
