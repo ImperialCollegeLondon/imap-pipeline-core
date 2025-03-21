@@ -7,6 +7,7 @@ from spacepy import pycdf
 
 from imap_mag.api.fetch.science import Level, MAGMode, fetch_science
 from imap_mag.appConfig import manage_config
+from imap_mag.appUtils import DatetimeProvider
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
@@ -30,9 +31,7 @@ def generate_flow_run_name() -> str:
         if parameters["start_date"] is not None
         else "last-update"
     )
-    end_date: datetime = parameters["end_date"] or datetime.today().replace(
-        hour=23, minute=59, second=59, microsecond=999999
-    )
+    end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
     return f"Download-{','.join([m.value for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
 

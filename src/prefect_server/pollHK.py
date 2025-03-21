@@ -8,7 +8,7 @@ from prefect.runtime import flow_run
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
-from imap_mag.appUtils import HK_PACKETS, HKPacket
+from imap_mag.appUtils import HK_PACKETS, DatetimeProvider, HKPacket
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
@@ -27,9 +27,7 @@ def generate_flow_run_name() -> str:
         if parameters["start_date"] is not None
         else "last-update"
     )
-    end_date: datetime = parameters["end_date"] or datetime.today().replace(
-        hour=23, minute=59, second=59, microsecond=999999
-    )
+    end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
     packet_names = [hk.name for hk in hk_packets]
     packet_text = (
