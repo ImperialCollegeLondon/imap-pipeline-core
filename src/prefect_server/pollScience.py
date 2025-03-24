@@ -9,7 +9,7 @@ from imap_mag.api.fetch.science import Level, MAGMode, fetch_science
 from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import (
     DatetimeProvider,
-    get_start_and_end_dates_for_download,
+    get_dates_for_download,
     update_database_with_progress,
 )
 from imap_mag.DB import Database
@@ -73,7 +73,7 @@ async def poll_science_flow(
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
-        packet_dates = get_start_and_end_dates_for_download(
+        packet_dates = get_dates_for_download(
             packet_name=packet_name,
             database=database,
             original_start_date=start_date,

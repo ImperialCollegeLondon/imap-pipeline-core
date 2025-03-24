@@ -9,7 +9,7 @@ import pytest
 from imap_db.model import DownloadProgress
 from imap_mag.appUtils import (
     forceUTCTimeZone,
-    get_start_and_end_dates_for_download,
+    get_dates_for_download,
     getPacketFromApID,
     update_database_with_progress,
 )
@@ -67,7 +67,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=None,
@@ -119,7 +119,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=None,
@@ -167,7 +167,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=original_start_date,
@@ -212,7 +212,7 @@ def test_get_start_end_dates_no_dates_defined_with_database(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=None,
@@ -262,7 +262,7 @@ def test_get_start_end_dates_not_up_to_date(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=original_start_date,
@@ -311,7 +311,7 @@ def test_get_start_end_dates_fully_up_to_date(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=original_start_date,
@@ -349,7 +349,7 @@ def test_get_start_end_dates_partially_up_to_date(
     caplog.set_level(logging.INFO)
 
     # Exercise
-    result = get_start_and_end_dates_for_download(
+    result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
         original_start_date=original_start_date,

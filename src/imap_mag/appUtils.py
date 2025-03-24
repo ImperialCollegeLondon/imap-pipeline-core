@@ -136,17 +136,12 @@ class DownloadDateManager:
     def __init__(
         self,
         packet_name: str,
-        database: Database,
+        last_updated_date: datetime,
         logger: logging.Logger | logging.LoggerAdapter,
-        check_and_update_database: bool,
     ):
         self.__packet_name = packet_name
-        self.__database = database
+        self.__last_updated_date = last_updated_date
         self.__logger = logger
-        self.__check_and_update_database = check_and_update_database
-
-        self.__download_progress = self.__database.get_download_progress(packet_name)
-        self.__last_updated_date = self.__download_progress.get_progress_timestamp()
 
     def get_end_date(self, original_end_date: datetime | None) -> datetime:
         if original_end_date is None:
@@ -177,20 +172,9 @@ class DownloadDateManager:
             )
             return forceUTCTimeZone(original_start_date)
 
-    def update_database_progress(self):
-        if self.__check_and_update_database:
-            self.__download_progress.record_checked_download(DatetimeProvider.now())
-            self.__database.save(self.__download_progress)
-
     def validate_download_dates(
         self, start_date: datetime, end_date: datetime
     ) -> tuple[datetime, datetime] | None:
-        if not self.__check_and_update_database:
-            self.__logger.info(
-                f"Not checking database and forcing download from {start_date} to {end_date}."
-            )
-            return start_date, end_date
-
         if self.__last_updated_date is None or self.__last_updated_date <= start_date:
             self.__logger.info(
                 f"Packet {self.__packet_name} is not up to date. Downloading from {start_date}."
@@ -209,7 +193,7 @@ class DownloadDateManager:
         return start_date, end_date
 
 
-def get_start_and_end_dates_for_download(
+def get_dates_for_download(
     *,
     packet_name: str,
     database: Database,
@@ -218,18 +202,28 @@ def get_start_and_end_dates_for_download(
     check_and_update_database: bool,
     logger: logging.Logger | logging.LoggerAdapter,
 ) -> tuple[datetime, datetime] | None:
-    manager = DownloadDateManager(
-        packet_name, database, logger, check_and_update_database
-    )
-    manager.update_database_progress()
+    download_progress = database.get_download_progress(packet_name)
+    last_updated_date = download_progress.get_progress_timestamp()
 
-    end_date = manager.get_end_date(original_end_date)
+    if check_and_update_database:
+        download_progress.record_checked_download(DatetimeProvider.now())
+        database.save(download_progress)
+
+    manager = DownloadDateManager(packet_name, last_updated_date, logger)
+
     start_date = manager.get_start_date(original_start_date)
+    end_date = manager.get_end_date(original_end_date)
 
     if start_date is None:
         return None
 
-    return manager.validate_download_dates(start_date, end_date)
+    if check_and_update_database:
+        return manager.validate_download_dates(start_date, end_date)
+    else:
+        logger.info(
+            f"Not checking database and forcing download from {start_date} to {end_date}."
+        )
+        return start_date, end_date
 
 
 def update_database_with_progress(
