@@ -38,6 +38,7 @@ class IDatabase(abc.ABC):
         pass
 
 
+# TODO: the filename and this should match
 class Database(IDatabase):
     """Database manager."""
 
@@ -52,8 +53,6 @@ class Database(IDatabase):
             raise ValueError(
                 "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
             )
-
-        # TODO: Check database is available
 
         self.engine = create_engine(db_url)
         self.session = sessionmaker(bind=self.engine)
@@ -128,6 +127,7 @@ class Database(IDatabase):
         session.merge(model)
 
 
+# TODO: move this to a separate file
 class DatabaseFileOutputManager(IOutputManager):
     """Decorator for adding files to database as well as output."""
 
@@ -135,7 +135,7 @@ class DatabaseFileOutputManager(IOutputManager):
     __database: IDatabase
 
     def __init__(
-        self, output_manager: IOutputManager, database: Database | None = None
+        self, output_manager: IOutputManager, database: IDatabase | None = None
     ):
         """Initialize database and output manager."""
 

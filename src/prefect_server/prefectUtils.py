@@ -15,7 +15,6 @@ def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | No
         return cron
 
 
-# TODO: This is copied from so-pipeline-core
 async def get_secret_block(secret_name: str) -> str:
     logger = get_run_logger()
 
