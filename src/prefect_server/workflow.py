@@ -63,9 +63,10 @@ def deploy_flows(local_debug: bool = False):
             CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
                 CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
             ),
-            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
-            ),
+            # CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
+            #     CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
+            # ),
+            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap",
             "PREFECT_LOGGING_EXTRA_LOGGERS": CONSTANTS.DEFAULT_LOGGERS,
         }
     )

@@ -1,12 +1,7 @@
-import logging
 import os
-from datetime import datetime
 
 from prefect import get_run_logger
 from prefect.blocks.system import Secret
-
-from imap_mag.appUtils import DatetimeProvider, forceUTCTimeZone
-from imap_mag.DB import Database
 
 
 def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | None:
@@ -67,101 +62,3 @@ async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
         )
 
     return auth_code
-
-
-def get_start_and_end_dates_for_download(
-    *,
-    packet_name: str,
-    database: Database,
-    original_start_date: datetime | None,
-    original_end_date: datetime | None,
-    check_and_update_database: bool,
-    logger: logging.Logger | logging.LoggerAdapter,
-) -> tuple[datetime, datetime] | None:
-    """
-    Check database for last update date and return start and end dates for download,
-    based on what data has already been downloaded so far.
-    """
-
-    # Check end date
-    if original_end_date is None:
-        logger.info(
-            f"End date not provided. Using end of today as default download date for {packet_name}."
-        )
-        packet_end_date = DatetimeProvider.end_of_today()
-    else:
-        logger.info(f"Using provided end date {original_end_date} for {packet_name}.")
-        packet_end_date = forceUTCTimeZone(original_end_date)
-
-    # Get last updated date from database
-    download_progress = database.get_download_progress(packet_name)
-    last_updated_date = download_progress.get_progress_timestamp()
-
-    logger.debug(f"Last update for packet {packet_name} is {last_updated_date}.")
-
-    if check_and_update_database:
-        download_progress.record_checked_download(DatetimeProvider.now())
-        database.save(download_progress)
-
-    # Check start date
-    if (original_start_date is None) and (last_updated_date is None):
-        logger.info(
-            f"Start date not provided. Using yesterday as default download date for {packet_name}."
-        )
-        packet_start_date = DatetimeProvider.yesterday()
-    elif original_start_date is None:
-        logger.info(
-            f"Start date not provided. Using last updated date {last_updated_date} for {packet_name} from database."
-        )
-        packet_start_date = last_updated_date
-    else:
-        logger.info(
-            f"Using provided start date {original_start_date} for {packet_name}."
-        )
-        packet_start_date = forceUTCTimeZone(original_start_date)
-
-        # Check what data actually needs downloading
-        if check_and_update_database:
-            if (last_updated_date is None) or (last_updated_date <= packet_start_date):
-                logger.info(
-                    f"Packet {packet_name} is not up to date. Downloading from {packet_start_date}."
-                )
-            elif last_updated_date >= packet_end_date:
-                logger.info(
-                    f"Packet {packet_name} is already up to date. Not downloading."
-                )
-                return None
-            else:  # last_updated_date > packet_start_date
-                logger.info(
-                    f"Packet {packet_name} is partially up to date. Downloading from {last_updated_date}."
-                )
-                packet_start_date = last_updated_date
-        else:
-            logger.info(
-                f"Not checking database and forcing download from {packet_start_date} to {packet_end_date}."
-            )
-
-    return (packet_start_date, packet_end_date)
-
-
-def update_database_with_progress(
-    packet_name: str,
-    database: Database,
-    latest_timestamp: datetime,
-    check_and_update_database: bool,
-    logger: logging.Logger | logging.LoggerAdapter,
-) -> None:
-    download_progress = database.get_download_progress(packet_name)
-
-    logger.debug(
-        f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
-    )
-
-    if check_and_update_database and (
-        (download_progress.progress_timestamp is None)
-        or (latest_timestamp > download_progress.progress_timestamp)
-    ):
-        download_progress.record_successful_download(latest_timestamp)
-        database.save(download_progress)
-    else:
-        logger.info(f"Database not updated for {packet_name}.")
