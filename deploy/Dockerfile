@@ -36,6 +36,7 @@ RUN adduser -u 5678 --disabled-password --gecos "" appuser && \
     chown -R appuser /app && \
     mkdir -p /data && \
     chown -R appuser /data && \
+    chown -R appuser /home/appuser && \
     chmod +x /app/entrypoint.sh
 
 WORKDIR /app
@@ -54,4 +55,3 @@ COPY src/ /app/
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
 CMD ["/app/entrypoint.sh"]
-

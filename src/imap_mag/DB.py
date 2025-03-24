@@ -4,7 +4,6 @@ import logging
 import os
 from pathlib import Path
 
-import typer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -104,6 +103,9 @@ class Database(IDatabase):
                 session.query(File).filter_by(name=file.name, path=file.path).first()
             )
             if existing_file is not None:
+                logger.warning(
+                    f"File {file.path} already exists in database. Skipping."
+                )
                 continue
 
             session.add(file)
@@ -158,7 +160,9 @@ class DatabaseFileOutputManager(IOutputManager):
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
             )
             destination_file.unlink(missing_ok=True)
-            raise typer.Abort()
+            raise FileNotFoundError(
+                f"File {destination_file} does not exist or is not the same as original {original_file}."
+            )
 
         logger.info(f"Inserting {destination_file} into database.")
 

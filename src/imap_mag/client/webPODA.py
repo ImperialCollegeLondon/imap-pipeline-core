@@ -52,7 +52,10 @@ class WebPODA(IWebPODA):
     def download(self, **options: Unpack[DownloadOptions]) -> Path:
         """Download packet data from WebPODA."""
 
-        file_path: Path = self.__output_dir / (options["packet"] + ".bin")
+        file_path: Path = (
+            self.__output_dir
+            / f"{options['packet']}_{options['start_date'].strftime('%Y%m%d')}_{options['end_date'].strftime('%Y%m%d')}.bin"
+        )
 
         logger.info(
             f"Downloading {options['packet']} from "

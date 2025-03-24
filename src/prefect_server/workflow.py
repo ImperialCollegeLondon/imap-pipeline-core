@@ -12,6 +12,7 @@ from prefect_shell import ShellOperation
 
 from prefect_server.constants import CONSTANTS
 from prefect_server.pollHK import poll_hk_flow
+from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.serverConfig import ServerConfig
 
@@ -55,10 +56,19 @@ def deploy_flows(local_debug: bool = False):
     docker_networks = [x for x in docker_networks if x]
 
     shared_job_env_variables = dict(
-        WEBPODA_AUTH_CODE=os.getenv("WEBPODA_AUTH_CODE"),
-        SDC_AUTH_CODE=os.getenv("SDC_AUTH_CODE"),
-        SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
-        PREFECT_LOGGING_EXTRA_LOGGERS=CONSTANTS.DEFAULT_LOGGERS,
+        {
+            CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
+            ),
+            CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
+            ),
+            # CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
+            #     CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
+            # ),
+            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap",
+            "PREFECT_LOGGING_EXTRA_LOGGERS": CONSTANTS.DEFAULT_LOGGERS,
+        }
     )
 
     if local_debug:
@@ -93,7 +103,18 @@ def deploy_flows(local_debug: bool = False):
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
-    deployables = (imap_pipeline_deployable, poll_hk_deployable)
+    poll_science_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_SCIENCE_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    deployables = (
+        imap_pipeline_deployable,
+        poll_hk_deployable,
+        poll_science_deployable,
+    )
 
     if local_debug:
         for deployable in deployables:

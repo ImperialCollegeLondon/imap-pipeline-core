@@ -1,7 +1,6 @@
 """Program to retrieve and process MAG CDF files."""
 
 import logging
-import typing
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -22,14 +21,6 @@ class MAGMode(str, Enum):
 class MAGSensor(str, Enum):
     IBS = "magi"
     OBS = "mago"
-
-
-class FetchScienceOptions(typing.TypedDict):
-    """Options for SOC interactions."""
-
-    level: str
-    start_date: datetime
-    end_date: datetime
 
 
 class FetchScience:

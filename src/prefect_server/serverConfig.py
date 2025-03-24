@@ -80,6 +80,10 @@ class ServerConfig:
                 CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
                 prefect.blocks.system.Secret(value=SecretStr("some-webpoda-auth-code")),
             ),
+            (
+                CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
+                prefect.blocks.system.Secret(value=SecretStr("some-sdc-auth-code")),
+            ),
         ]
         blocks = await client.read_block_documents()
         for block_name, block in default_blocks:

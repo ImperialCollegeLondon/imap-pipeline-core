@@ -100,7 +100,7 @@ def prepareWorkFile(file: Path | str, configFile) -> Path | None:
         raise FileNotFoundError(f"No files matching {file} found in {folder}")
 
     logger.info(
-        f"Found {len(files)} matching files. Select the most recent one:"
+        f"Found {len(files)} matching files. Select the most recent one: "
         f"{files[0].absolute().as_posix()}"
     )
 

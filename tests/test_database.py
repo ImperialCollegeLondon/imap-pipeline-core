@@ -7,7 +7,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import typer
 
 from imap_db.model import File
 from imap_mag import __version__
@@ -95,7 +94,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     )
 
     # Exercise and verify.
-    with pytest.raises(typer.Abort):
+    with pytest.raises(FileNotFoundError):
         database_manager.add_file(original_file, metadata_provider)
 
 
@@ -119,7 +118,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     )
 
     # Exercise and verify.
-    with pytest.raises(typer.Abort):
+    with pytest.raises(FileNotFoundError):
         database_manager.add_file(original_file, metadata_provider)
 
 

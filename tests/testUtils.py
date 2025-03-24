@@ -1,9 +1,21 @@
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from imap_mag import appLogging
+from imap_mag.appUtils import DatetimeProvider
+
+NOW = datetime.now()
+TODAY = datetime.today()
+TOMORROW = datetime.today() + timedelta(days=1)
+YESTERDAY = datetime.today().replace(
+    hour=0, minute=0, second=0, microsecond=0
+) - timedelta(days=1)
+END_OF_TODAY = datetime.today().replace(
+    hour=23, minute=59, second=59, microsecond=999999
+)
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +38,17 @@ def tidyDataFolders():
     os.system("rm -rf .work")
     os.system("rm -rf output/*")
     yield
+
+
+@pytest.fixture(autouse=False)
+def mock_datetime_provider(monkeypatch):
+    """Mock DatetimeProvider to specific time."""
+
+    monkeypatch.setattr(DatetimeProvider, "now", lambda: NOW)
+    monkeypatch.setattr(DatetimeProvider, "today", lambda: TODAY)
+    monkeypatch.setattr(DatetimeProvider, "tomorrow", lambda: TOMORROW)
+    monkeypatch.setattr(DatetimeProvider, "yesterday", lambda: YESTERDAY)
+    monkeypatch.setattr(DatetimeProvider, "end_of_today", lambda: END_OF_TODAY)
 
 
 def create_test_file(file_path: Path, content: str | None = None) -> Path:
