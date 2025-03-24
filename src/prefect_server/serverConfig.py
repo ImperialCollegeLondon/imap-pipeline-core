@@ -9,7 +9,7 @@ from prefect_server.constants import CONSTANTS
 
 class ServerConfig:
     @staticmethod
-    async def initialise():
+    async def initialise(local_debug: bool = False):
         # Create IMAP database
         create_db()
         upgrade_db()
@@ -17,7 +17,7 @@ class ServerConfig:
         # Initialize server configuration
         async with get_client() as client:
             await ServerConfig._create_concurrency_limits(client)
-            await ServerConfig._create_queues(client)
+            await ServerConfig._create_queues(client, local_debug)
             await ServerConfig._create_variables(client)
             await ServerConfig._create_blocks(client)
 
@@ -26,14 +26,17 @@ class ServerConfig:
         pass
 
     @staticmethod
-    async def _create_queues(client):
+    async def _create_queues(client, local_debug: bool):
         existing_queues = await client.read_work_queues()
+
+        work_pool = CONSTANTS.DEFAULT_WORKPOOL if not local_debug else None
+
         if CONSTANTS.QUEUES.HIGH_PRIORITY not in [q.name for q in existing_queues]:
             await client.create_work_queue(
                 name=CONSTANTS.QUEUES.HIGH_PRIORITY,
                 concurrency_limit=1,
                 priority=1,
-                work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+                work_pool_name=work_pool,
             )
             print(f"Created new work queue '{CONSTANTS.QUEUES.HIGH_PRIORITY}'")
 
@@ -42,7 +45,7 @@ class ServerConfig:
                 name=CONSTANTS.QUEUES.DEFAULT,
                 concurrency_limit=5,
                 priority=10,
-                work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+                work_pool_name=work_pool,
             )
             print(f"Created new work queue '{CONSTANTS.QUEUES.DEFAULT}'")
 
@@ -51,7 +54,7 @@ class ServerConfig:
                 name=CONSTANTS.QUEUES.LOW,
                 concurrency_limit=1,
                 priority=30,
-                work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+                work_pool_name=work_pool,
             )
             print(f"Created new work queue '{CONSTANTS.QUEUES.LOW}'")
 
