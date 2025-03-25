@@ -159,7 +159,6 @@ class DatabaseFileOutputManager(IOutputManager):
             logger.error(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
             )
-            destination_file.unlink(missing_ok=True)
             raise FileNotFoundError(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
             )
