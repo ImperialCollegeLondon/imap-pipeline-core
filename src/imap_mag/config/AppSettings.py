@@ -1,0 +1,64 @@
+import logging
+from pathlib import Path
+from typing import ClassVar
+
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    YamlConfigSettingsSource,
+)
+
+from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.config.FetchConfig import FetchConfig
+
+logger = logging.getLogger(__name__)
+
+
+class AppSettings(BaseSettings):
+    """
+    Application configuration class.
+
+    Can be configure with the yaml file, with ENV vars like MAG_FIELD_SUBFIELD=123 and kwargs to AppSettsings(data_store="some_path")
+
+    """
+
+    config_file: ClassVar[str] = "imap-mag-config.yaml"
+    model_config = SettingsConfigDict(
+        env_nested_delimiter="_",
+        env_nested_max_split=2,
+        env_prefix="MAG_",
+        yaml_file=config_file,
+    )
+
+    # Global settings
+    work_folder: Path = Path(".work")
+    data_store: Path
+    packet_definition: Path
+
+    # Command settings
+    fetch_binary: FetchConfig
+
+    # functions
+    def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:
+        return command_config.setup_work_folder(self)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        # Let config come from secret files, the yaml file, env variables and constructor args
+        # Constructor args override the settings from theENV which overrides the YAML file which override secrets files
+        return (
+            # Highest priority
+            init_settings,
+            env_settings,
+            YamlConfigSettingsSource(settings_cls),
+            file_secret_settings,
+            # Lowest priority
+        )

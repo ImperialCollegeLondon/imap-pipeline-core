@@ -1,7 +1,6 @@
 import typing
 from pathlib import Path
 
-import pytest
 import typing_extensions
 from wiremock.client import (
     HttpMethods,
@@ -11,7 +10,7 @@ from wiremock.client import (
     Mappings,
 )
 from wiremock.constants import Config
-from wiremock.testing.testcontainer import WireMockContainer, wiremock_container
+from wiremock.testing.testcontainer import WireMockContainer
 
 
 class MappingOptions(typing.TypedDict):
@@ -30,9 +29,6 @@ class WireMockManager:
     def __init__(self, mock_container: WireMockContainer):
         self.__mock_container = mock_container
         Config.base_url = self.__mock_container.get_url("__admin")
-
-    def __del__(self):
-        Mappings.delete_all_mappings()
 
     def get_url(self) -> str:
         return self.__mock_container.get_url("/")
@@ -105,9 +101,3 @@ class WireMockManager:
             mapping.priority = options["priority"]
 
         Mappings.create_mapping(mapping)
-
-
-@pytest.fixture(scope="session", autouse=False)
-def wiremock_manager():
-    with wiremock_container(secure=False) as mock_container:
-        yield WireMockManager(mock_container)

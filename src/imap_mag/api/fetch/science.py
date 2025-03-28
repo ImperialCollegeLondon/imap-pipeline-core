@@ -46,7 +46,7 @@ def fetch_science(
 ) -> dict[Path, StandardSPDFMetadataProvider]:
     """Download science data from the SDC."""
 
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.CommandConfigBase = commandInit(config)
 
     if not auth_code:
         logger.critical("No SDC_AUTH_CODE API key provided")

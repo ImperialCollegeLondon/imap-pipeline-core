@@ -17,7 +17,7 @@ class FileProcessor(abc.ABC):
     """Interface for IMAP processing."""
 
     @abc.abstractmethod
-    def initialize(self, config: appConfig.AppConfig) -> None:
+    def initialize(self, config: appConfig.CommandConfigBase) -> None:
         pass
 
     @abc.abstractmethod
@@ -26,7 +26,7 @@ class FileProcessor(abc.ABC):
 
 
 class ScienceProcessor(FileProcessor):
-    def initialize(self, config: appConfig.AppConfig) -> None:
+    def initialize(self, config: appConfig.CommandConfigBase) -> None:
         pass
 
     def process(self, file: Path) -> Path:
@@ -36,7 +36,7 @@ class ScienceProcessor(FileProcessor):
 class HKProcessor(FileProcessor):
     xtcePacketDefinition: Path
 
-    def initialize(self, config: appConfig.AppConfig) -> None:
+    def initialize(self, config: appConfig.CommandConfigBase) -> None:
         # first try the file path as is, then in the same directory as the module, then fallback to a default
         pythonModuleRelativePath = Path(
             os.path.join(os.path.dirname(__file__), config.packet_definition.hk)
@@ -139,7 +139,7 @@ class HKProcessor(FileProcessor):
 
 
 class UnknownProcessor(FileProcessor):
-    def initialize(self, config: appConfig.AppConfig) -> None:
+    def initialize(self, config: appConfig.CommandConfigBase) -> None:
         pass
 
     def process(self, file: Path) -> Path:

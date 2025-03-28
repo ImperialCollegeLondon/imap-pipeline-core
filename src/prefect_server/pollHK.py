@@ -9,6 +9,7 @@ from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import HK_PACKETS, DatetimeProvider, HKPacket
+from imap_mag.config.FetchMode import FetchMode
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
@@ -85,17 +86,13 @@ async def poll_hk_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        # Download binary from WebPODA
-        with manage_config(export_to_database=True) as config_file:
-            downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
-                fetch_binary(
-                    auth_code=auth_code,
-                    apid_or_packet=packet,
-                    start_date=packet_start_date,
-                    end_date=packet_end_date,
-                    config=config_file,
-                )
-            )
+        downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = fetch_binary(
+            auth_code=auth_code,
+            packet=packet,
+            start_date=packet_start_date,
+            end_date=packet_end_date,
+            fetch_mode=FetchMode.DownloadAndUpdateProgress,
+        )
 
         if not downloaded_binaries:
             logger.info(
@@ -107,6 +104,7 @@ async def poll_hk_flow(
         latest_timestamps: list[datetime] = []
 
         for file, _ in downloaded_binaries.items():
+            # TODO: get rid of all use of the dynamic config files
             with manage_config(
                 source=file.parent, export_to_database=True
             ) as config_file:
