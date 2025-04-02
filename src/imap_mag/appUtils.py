@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -110,20 +110,21 @@ class DatetimeProvider:
         return datetime.now()
 
     @staticmethod
-    def today(type=datetime) -> date:
-        return type.today()
+    def today(date_type=datetime):
+        today = date_type.today()
 
-    @staticmethod
-    def tomorrow(type=datetime) -> date:
-        return type.today().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) + timedelta(days=1)
+        if isinstance(today, datetime):
+            return today.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            return today
 
-    @staticmethod
-    def yesterday(type=datetime) -> date:
-        return type.today().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) - timedelta(days=1)
+    @classmethod
+    def tomorrow(cls, date_type=datetime):
+        return cls.today(date_type) + timedelta(days=1)
+
+    @classmethod
+    def yesterday(cls, date_type=datetime):
+        return cls.today(date_type) - timedelta(days=1)
 
     @staticmethod
     def end_of_today() -> datetime:
