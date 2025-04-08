@@ -1,4 +1,4 @@
-function generateCalFile(epoch, values, method, metadata, outputFile)
+function generateCalFile(epoch, values, timedeltas, quality_flags, quality_bitmasks, method, metadata, outputFile)
 
 Calibration.id = "";
 Calibration.mission = "IMAP";
@@ -20,9 +20,9 @@ Calibration.value_type = "vector";
     % Force time to show maximum second specificity without rounding errors
      Value.time = string(epoch(i), 'yyyy-MM-dd''T''HH:mm') + ":" + num2str(epoch(i).Second, "%09.6f");
      Value.value = values(i,:);
-     Value.timedelta = 0;
-     Value.quality_flag = 0;
-     Value.quality_bitmask = 0;
+     Value.timedelta = timedeltas(i);
+     Value.quality_flag = quality_flags(i);
+     Value.quality_bitmask = quality_bitmasks(i);
 
      Calibration.values(i)=Value;
  end
