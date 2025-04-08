@@ -97,11 +97,7 @@ def calibrate(
     )
 
     result: Path = calibrator.runCalibration(
-        from_date,
-        scienceLayerPath,
-        temp_cal_file_name,
-        configFile.work_folder,
-        None,
+        from_date, scienceLayerPath, temp_cal_file_name, configFile.work_folder, None
     )
 
     appUtils.copyFileToDestination(result, cal_file_destination)

@@ -23,6 +23,7 @@ def apply(
     config: Annotated[Path, typer.Option()] = Path(
         "calibration_application_config.yaml"
     ),
+    rotation: Annotated[Path | None, typer.Option()] = None,
     input: str = typer.Argument(
         help="The file name or pattern to match for the input file"
     ),
@@ -38,18 +39,22 @@ def apply(
     for layer in layers:
         workLayers.append(prepareCalibrationFile(layer, configFile))
 
+    workRotationFile = (
+        prepareCalibrationFile(str(rotation), configFile) if rotation else None
+    )
+
     workCalFile = configFile.work_folder / "calibration.cdf"
 
-    workL2File = configFile.work_folder / "L2.json"
+    workL2File = configFile.work_folder / "L2.csv"
 
     applier = CalibrationApplicator()
 
     (L2_file, cal_file) = applier.apply(
-        workLayers, workDataFile, workCalFile, workL2File
+        workLayers, workRotationFile, workDataFile, workCalFile, workL2File
     )
 
     l2_metadata_provider = StandardSPDFMetadataProvider(
-        level="l2", date=from_date, descriptor="norm", version=1, extension="json"
+        level="l2", date=from_date, descriptor="norm", version=1, extension="csv"
     )
     cal_metadata_provider = StandardSPDFMetadataProvider(
         level="l2", descriptor="offsets", date=from_date, version=1, extension="cdf"
