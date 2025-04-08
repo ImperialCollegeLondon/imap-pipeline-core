@@ -5,6 +5,7 @@ from functools import reduce
 from pathlib import Path
 
 import numpy as np
+from spacepy import pycdf
 
 from mag_toolkit.calibration.Calibrator import CalibrationMethod
 
@@ -25,6 +26,7 @@ class CalibrationApplicator:
     def apply(
         self,
         layer_files: list[Path],
+        rotation: Path | None,
         dataFile,
         outputCalibrationFile: Path,
         outputScienceFile: Path,
@@ -32,15 +34,16 @@ class CalibrationApplicator:
         """Currently operating on unprocessed data."""
         science_data = ScienceLayer.from_file(dataFile)
 
-        if len(layer_files) < 1:
+        if len(layer_files) < 1 and rotation is None:
             raise Exception("No layers to apply")
+
+        if rotation is not None:
+            science_data.values = self._rotate(rotation, science_data)
 
         # Could be memory intensive
         # TODO: Load and sum one set at a time to reduce mem usage (?)
-        layers = [
-            CalibrationLayer.from_file(layer_file).values for layer_file in layer_files
-        ]
-        sum_layer_values = reduce(self._sum_layers, layers)
+        layers = [CalibrationLayer.from_file(layer_file) for layer_file in layer_files]
+        sum_layer_values = reduce(self._sum_layers, [layer.values for layer in layers])
 
         validity = Validity(
             start=sum_layer_values[0].time, end=sum_layer_values[-1].time
@@ -78,6 +81,16 @@ class CalibrationApplicator:
         l2_filepath = scienceResult.writeToFile(outputScienceFile)
 
         return (l2_filepath, cal_filepath)
+
+    def _rotate(self, rotation_filepath: Path, science_layer: ScienceLayer):
+        with pycdf.CDF(str(rotation_filepath)) as cdf:
+            rotation_matrices_mago = np.array(cdf["URFTOORFO"][...])
+            rotation_matrices_magi = np.array(cdf["URFTOORFI"][...])
+        for i, datapoint in enumerate(science_layer.values):
+            appropriate_rotator = rotation_matrices_mago[datapoint.range]
+            datapoint = np.matmul(appropriate_rotator, datapoint.value)
+            science_layer.values[i].value = datapoint
+        return science_layer.values
 
     def _get_science_layer(
         self, science: ScienceLayer, dependencies: list[str], values: list[ScienceValue]

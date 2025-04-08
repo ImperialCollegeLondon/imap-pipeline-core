@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+import pandas as pd
 import yaml
 from pydantic import BaseModel
 from spacepy import pycdf
@@ -57,6 +58,7 @@ class Layer(BaseModel, ABC):
     sensor: Sensor
     version: int
     metadata: CalibrationMetadata
+    rotation: Optional[list[list[list[float]]]] = None
 
     @classmethod
     def from_file(cls, path: Path):
@@ -67,6 +69,9 @@ class Layer(BaseModel, ABC):
 
     @abstractmethod
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path: ...
+
+    @abstractmethod
+    def _write_to_csv(self, filepath: Path, createDirectory=False) -> Path: ...
 
     def getWriteable(self):
         json = self.model_dump_json()
@@ -91,6 +96,8 @@ class Layer(BaseModel, ABC):
     def writeToFile(self, filepath: Path, createDirectory=False) -> Path:
         if filepath.suffix == ".cdf":
             return self._write_to_cdf(filepath, createDirectory=createDirectory)
+        elif filepath.suffix == ".csv":
+            return self._write_to_csv(filepath, createDirectory=createDirectory)
         else:
             return self._write_to_json(filepath, createDirectory=createDirectory)
 
@@ -100,9 +107,11 @@ class CalibrationLayer(Layer):
     value_type: str
     values: list[CalibrationValue]
 
+    def _write_to_csv(self, filepath: Path, createDirectory=False):
+        return Path()
+
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
-        # TODO: Constant? Some kind of data store path manager?
-        OFFSET_SKELETON_CDF = "/data/resource/skeleton/l2_offset_skeleton.cdf"
+        OFFSET_SKELETON_CDF = "resource/l2_offset_skeleton.cdf"
         with pycdf.CDF(str(filepath), OFFSET_SKELETON_CDF) as offset_cdf:
             offset_cdf["epoch"] = [value.time for value in self.values]
             offset_cdf["offsets"][...] = [cal_value.value for cal_value in self.values]
@@ -131,6 +140,29 @@ class ScienceLayer(Layer):
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
         return Path()
+
+    def _write_to_csv(self, filepath: Path, createDirectory=False):
+        epoch = [science.time for science in self.values]
+        x = [science.value[0] for science in self.values]
+        y = [science.value[1] for science in self.values]
+        z = [science.value[2] for science in self.values]
+        range = [science.range for science in self.values]
+        quality_flags = [science.quality_flag for science in self.values]
+        quality_bitmask = [science.quality_bitmask for science in self.values]
+
+        df = pd.DataFrame(
+            {
+                "epoch": epoch,
+                "x": x,
+                "y": y,
+                "z": z,
+                "range": range,
+                "quality_flags": quality_flags,
+                "quality_bitmask": quality_bitmask,
+            }
+        )
+        df.to_csv(filepath)
+        return filepath
 
     @classmethod
     def from_file(cls, path: Path):

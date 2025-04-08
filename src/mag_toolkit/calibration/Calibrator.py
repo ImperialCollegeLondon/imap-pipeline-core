@@ -16,7 +16,7 @@ class CalibrationMethod(str, Enum):
 class Calibrator(ABC):
     @abstractmethod
     def runCalibration(
-        self, date, sciencefile: Path, calfile, datastore, configfile=None
+        self, date, sciencefile: Path, calfile, datastore, config=None
     ) -> Path:
         """Calibration that generates a calibration layer."""
 
@@ -26,7 +26,7 @@ class SpinAxisCalibrator(Calibrator):
         self.name = CalibrationMethod.LEINWEBER
 
     def runCalibration(
-        self, date, sciencefile, calfile, datastore, configfile=None
+        self, date, sciencefile, calfile, datastore, config=None
     ) -> Path:
         return Path()
 
@@ -35,7 +35,7 @@ class SpinPlaneCalibrator(Calibrator):
     def __init__(self):
         self.name = CalibrationMethod.KEPKO
 
-    def runCalibration(self, date, sciencefile, calfile, datastore, configfile=None):
+    def runCalibration(self, date, sciencefile, calfile, datastore, config=None):
         return Path()
 
 
@@ -43,7 +43,7 @@ class IMAPLoCalibrator(Calibrator):
     def __init__(self):
         self.name = CalibrationMethod.IMAPLO_PIVOT
 
-    def runCalibration(self, date, sciencefile, calfile, datastore, configfile=None):
+    def runCalibration(self, date, sciencefile, calfile, datastore, config=None):
         return Path()
 
 
@@ -51,12 +51,10 @@ class EmptyCalibrator(Calibrator):
     def __init__(self):
         self.name = CalibrationMethod.NOOP
 
-    def runCalibration(
-        self, date, sciencefile: Path, calfile, datastore, configfile=None
-    ):
+    def runCalibration(self, date, sciencefile: Path, calfile, datastore, config=None):
         # produce an epmpty calibration through matlab
 
         call_matlab(
-            f'emptyCalibrator("{date}", "{sciencefile}", "{calfile}", "{datastore}", "{configfile}")'
+            f'emptyCalibrator("{date}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
         )
         return calfile
