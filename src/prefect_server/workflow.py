@@ -226,7 +226,7 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        deployables = imap_pipeline_deployable
+        deployables = [imap_pipeline_deployable]
 
         matlab_deployables = (calibration_deployable, apply_deployable)
 
