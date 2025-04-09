@@ -16,12 +16,40 @@ from prefect.logging import get_run_logger
 from prefect.variables import Variable
 from prefect_shell import ShellOperation
 
+from imap_mag.api.apply import FileType, apply
+from imap_mag.api.calibrate import calibrate
+from mag_toolkit.calibration.Calibrator import CalibrationMethod
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
 
 class CONSTANTS:
     DEFAULT_WORKPOOL = "default-pool"
     DEPLOYMENT_TAG = "NASA_IMAP"
+
+
+@flow(log_prints=True)
+def calibrate_flow(
+    from_date: datetime, to_date: datetime, method: CalibrationMethod, science_file: str
+):
+    calibrate(from_date, to_date, method, science_file)
+
+
+@flow(log_prints=True)
+def apply_flow(
+    cal_layer: Path,
+    file: Path,
+    date: datetime,
+    calibration_output_type: FileType = FileType.CDF,
+    L2_output_type: FileType = FileType.CDF,
+):
+    apply(
+        [str(cal_layer)],
+        from_date=date,
+        to_date=date,
+        input=str(file),
+        calibration_output_type=calibration_output_type,
+        l2_output_type=L2_output_type,
+    )
 
 
 @flow(log_prints=True)
@@ -116,6 +144,8 @@ def deploy_flows(local_debug: bool = False):
                 name=imap_flow_name,  # type: ignore
             ),
             run_matlab.to_deployment(name="matlab-test"),  # type: ignore
+            apply_flow.to_deployment(name="apply"),  # type: ignore
+            calibrate_flow.to_deployment(name="calibrate"),  # type: ignore
         )
     else:
         # do a full prefect deployment with containers, work-pools, schedules etc
@@ -129,6 +159,7 @@ def deploy_flows(local_debug: bool = False):
             "IMAP_IMAGE_TAG",
             "main",
         )
+        matlab_docker_tag = f"{docker_tag}-matlab"
 
         matlab_license = asyncio.get_event_loop().run_until_complete(
             get_matlab_license_server()
@@ -174,8 +205,8 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        matlab_deployable = run_matlab.to_deployment(
-            name="MATLAB",
+        calibration_deployable = calibrate_flow.to_deployment(
+            name="calibrate",
             job_variables=shared_job_variables,
             concurrency_limit=ConcurrencyLimitConfig(
                 limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
@@ -183,8 +214,8 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        offsets_deployable = generate_offsets.to_deployment(
-            name="generate-offsets",
+        apply_deployable = apply_flow.to_deployment(
+            name="apply",
             job_variables=shared_job_variables,
             concurrency_limit=ConcurrencyLimitConfig(
                 limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
@@ -192,7 +223,9 @@ def deploy_flows(local_debug: bool = False):
             tags=[CONSTANTS.DEPLOYMENT_TAG],
         )
 
-        deployables = (imap_pipeline_deployable, matlab_deployable, offsets_deployable)
+        deployables = imap_pipeline_deployable
+
+        matlab_deployables = (calibration_deployable, apply_deployable)
 
         deploy_ids = deploy(
             *deployables,  # type: ignore
@@ -202,8 +235,18 @@ def deploy_flows(local_debug: bool = False):
             image=f"{docker_image}:{docker_tag}",
         )  # type: ignore
 
-        if len(deploy_ids) != len(deployables):  # type: ignore
-            print(f"Incomplete deployment: {deploy_ids}")
+        matlab_deploy_ids = deploy(
+            *matlab_deployables,  # type: ignore
+            work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+            build=False,
+            push=False,
+            image=f"{docker_image}:{matlab_docker_tag}",
+        )  # type: ignore
+
+        if len(deploy_ids) != len(deployables) or len(matlab_deploy_ids) != len(  # type: ignore
+            matlab_deployables
+        ):
+            print(f"Incomplete deployment: {deploy_ids} {matlab_deploy_ids}")
             sys.exit(1)
 
 
