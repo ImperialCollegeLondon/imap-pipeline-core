@@ -1,8 +1,14 @@
+import logging
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+import pytz
+
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
+
+logger = logging.getLogger(__name__)
 
 
 class CalibrationMethod(str, Enum):
@@ -16,7 +22,7 @@ class CalibrationMethod(str, Enum):
 class Calibrator(ABC):
     @abstractmethod
     def runCalibration(
-        self, date, sciencefile: Path, calfile, datastore, config=None
+        self, date: datetime, sciencefile: Path, calfile, datastore, config=None
     ) -> Path:
         """Calibration that generates a calibration layer."""
 
@@ -54,7 +60,11 @@ class EmptyCalibrator(Calibrator):
     def runCalibration(self, date, sciencefile: Path, calfile, datastore, config=None):
         # produce an epmpty calibration through matlab
 
+        dt_as_str = date.astimezone(pytz.utc).replace(tzinfo=None).isoformat()
+
+        logger.info(f"Using datetime {dt_as_str}")
+
         call_matlab(
-            f'emptyCalibrator("{date}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
+            f'emptyCalibrator("{dt_as_str}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
         )
         return calfile

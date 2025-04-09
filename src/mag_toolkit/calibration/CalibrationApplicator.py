@@ -49,7 +49,7 @@ class CalibrationApplicator:
             start=sum_layer_values[0].time, end=sum_layer_values[-1].time
         )
 
-        # TODO: Correct dependenciues and science in cal and science file
+        # TODO: Correct dependencies and science in cal and science file
         dependencies = [layer_file.name for layer_file in layer_files]
         metadata = CalibrationMetadata(
             dependencies=dependencies,
