@@ -159,7 +159,10 @@ def deploy_flows(local_debug: bool = False):
             "IMAP_IMAGE_TAG",
             "main",
         )
-        matlab_docker_tag = f"matlab-{docker_tag}"
+        matlab_docker_tag = os.getenv(
+            "IMAP_MATLAB_IMAGE_TAG",
+            f"matlab-{docker_tag}",
+        )
 
         matlab_license = asyncio.get_event_loop().run_until_complete(
             get_matlab_license_server()
