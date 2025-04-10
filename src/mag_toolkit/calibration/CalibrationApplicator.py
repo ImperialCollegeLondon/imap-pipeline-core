@@ -87,7 +87,7 @@ class CalibrationApplicator:
             rotation_matrices_mago = np.array(cdf["URFTOORFO"])
             rotation_matrices_magi = np.array(cdf["URFTOORFI"])  # noqa: F841
         for i, datapoint in enumerate(science_layer.values):
-            appropriate_rotator = rotation_matrices_mago[:,:,datapoint.range]
+            appropriate_rotator = rotation_matrices_mago[:, :, datapoint.range]
             datapoint = np.matmul(appropriate_rotator, datapoint.value)
             science_layer.values[i].value = datapoint
         return science_layer.values
