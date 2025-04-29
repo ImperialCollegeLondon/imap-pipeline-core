@@ -12,6 +12,7 @@ from imap_mag.outputManager import StandardSPDFMetadataProvider
 logger = logging.getLogger(__name__)
 
 
+# TODO: why is this class in a folder named "cli" when it is not a command line app?
 class FetchBinary:
     """Manage WebPODA data."""
 

@@ -99,6 +99,7 @@ def create_and_serialize_config(
     return (config, config_file)
 
 
+# TODO: Come up with something better than generating config files at run time
 @contextmanager
 def manage_config(**kwargs):
     """Serialize a configuration object and manage its lifetime."""

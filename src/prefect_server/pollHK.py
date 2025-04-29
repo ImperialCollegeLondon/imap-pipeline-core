@@ -8,15 +8,19 @@ from prefect.runtime import flow_run
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
-from imap_mag.appUtils import HK_PACKETS, DatetimeProvider, HKPacket
+from imap_mag.appUtils import (
+    HK_PACKETS,
+    DatetimeProvider,
+    HKPacket,
+    get_dates_for_download,
+    update_database_with_progress,
+)
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
-    get_start_and_end_dates_for_download,
-    update_database_with_progress,
 )
 
 
@@ -72,7 +76,7 @@ async def poll_hk_flow(
         packet_name = packet.name
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
-        packet_dates = get_start_and_end_dates_for_download(
+        packet_dates = get_dates_for_download(
             packet_name=packet_name,
             database=database,
             original_start_date=start_date,

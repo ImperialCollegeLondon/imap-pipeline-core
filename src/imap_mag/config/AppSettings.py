@@ -19,7 +19,7 @@ class AppSettings(BaseSettings):
     """
     Application configuration class.
 
-    Can be configure with the yaml file, with ENV vars like MAG_FIELD_SUBFIELD=123 and kwargs to AppSettsings(data_store="some_path")
+    Can be configured with imap-mag-config.yaml, with ENV vars like MAG_FIELD_SUBFIELD=123 and kwargs to AppSettsings(data_store="some_path")
 
     """
 
@@ -53,7 +53,7 @@ class AppSettings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         # Let config come from secret files, the yaml file, env variables and constructor args
-        # Constructor args override the settings from theENV which overrides the YAML file which override secrets files
+        # Constructor args override the settings from the ENV which overrides the YAML file which override secrets files
         return (
             # Highest priority
             init_settings,

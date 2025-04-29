@@ -106,3 +106,14 @@ python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(
 ## Debugging a prefect flow
 
 This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode witha  debugger attached and then run your flow from there.
+
+## CLI Commands
+
+All core functionality and logic should be available as simnple CLI commands as well as the usual prefect based flows.
+
+```bash
+# Download HK from WebPODA
+export WEBPODA_AUTH_CODE=[YOUR_SECRET_HERE!]
+imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch binary --packet MAG_HSK_PW --start-date 2025-01-02 --end-date 2025-01-03
+```

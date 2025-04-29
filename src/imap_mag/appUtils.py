@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -8,12 +8,12 @@ import numpy as np
 
 from imap_mag import appConfig
 from imap_mag.config.FetchMode import FetchMode
-
-from .DB import DatabaseFileOutputManager
-from .outputManager import IFileMetadataProvider, IOutputManager, OutputManager
+from imap_mag.DB import Database, DatabaseFileOutputManager
+from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
 logger = logging.getLogger(__name__)
 
+# TODO: move to constants
 IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
 J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
@@ -23,13 +23,14 @@ APID_TO_PACKET: dict[int, str] = {
     1063: "MAG_HSK_PW",
     1064: "MAG_HSK_STATUS",
     1082: "MAG_HSK_SCI",
-    # 1051: "MAG_HSK_SID11", SID11 is not supported by WebPODA
+    1051: "MAG_HSK_PROCSTAT",
     1060: "MAG_HSK_SID12",
     1053: "MAG_HSK_SID15",
     1054: "MAG_HSK_SID16",
     1045: "MAG_HSK_SID20",
 }
 
+# TODO: Move to separate file and tidy this up - add a method to get all packet names?
 HKPacket = Enum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
 HK_PACKETS: list[str] = [e.value for e in HKPacket]  # type: ignore
 
@@ -122,23 +123,141 @@ class DatetimeProvider:
         return datetime.now()
 
     @staticmethod
-    def today(type=datetime) -> date:
-        return type.today()
+    def today(date_type=datetime):
+        today = date_type.today()
 
-    @staticmethod
-    def tomorrow(type=datetime) -> date:
-        return type.today().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) + timedelta(days=1)
+        if isinstance(today, datetime):
+            return today.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            return today
 
-    @staticmethod
-    def yesterday(type=datetime) -> date:
-        return type.today().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) - timedelta(days=1)
+    @classmethod
+    def tomorrow(cls, date_type=datetime):
+        return cls.today(date_type) + timedelta(days=1)
+
+    @classmethod
+    def yesterday(cls, date_type=datetime):
+        return cls.today(date_type) - timedelta(days=1)
 
     @staticmethod
     def end_of_today() -> datetime:
         return datetime.today().replace(
             hour=23, minute=59, second=59, microsecond=999999
         )
+
+
+class DownloadDateManager:
+    def __init__(
+        self,
+        packet_name: str,
+        last_updated_date: datetime,
+        logger: logging.Logger | logging.LoggerAdapter,
+    ):
+        self.__packet_name = packet_name
+        self.__last_updated_date = last_updated_date
+        self.__logger = logger
+
+    def get_end_date(self, original_end_date: datetime | None) -> datetime:
+        if original_end_date is None:
+            self.__logger.info(
+                f"End date not provided. Using end of today as default download date for {self.__packet_name}."
+            )
+            return DatetimeProvider.end_of_today()
+        else:
+            self.__logger.info(
+                f"Using provided end date {original_end_date} for {self.__packet_name}."
+            )
+            return forceUTCTimeZone(original_end_date)
+
+    def get_start_date(self, original_start_date: datetime | None) -> datetime | None:
+        if original_start_date is None and self.__last_updated_date is None:
+            self.__logger.info(
+                f"Start date not provided. Using yesterday as default download date for {self.__packet_name}."
+            )
+            return DatetimeProvider.yesterday()
+        elif original_start_date is None:
+            self.__logger.info(
+                f"Start date not provided. Using last updated date {self.__last_updated_date} for {self.__packet_name} from database."
+            )
+            return self.__last_updated_date
+        else:
+            self.__logger.info(
+                f"Using provided start date {original_start_date} for {self.__packet_name}."
+            )
+            return forceUTCTimeZone(original_start_date)
+
+    def validate_download_dates(
+        self, start_date: datetime, end_date: datetime
+    ) -> tuple[datetime, datetime] | None:
+        if self.__last_updated_date is None or self.__last_updated_date <= start_date:
+            self.__logger.info(
+                f"Packet {self.__packet_name} is not up to date. Downloading from {start_date}."
+            )
+        elif self.__last_updated_date >= end_date:
+            self.__logger.info(
+                f"Packet {self.__packet_name} is already up to date. Not downloading."
+            )
+            return None
+        else:
+            self.__logger.info(
+                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__last_updated_date}."
+            )
+            start_date = self.__last_updated_date
+
+        return start_date, end_date
+
+
+def get_dates_for_download(
+    *,
+    packet_name: str,
+    database: Database,
+    original_start_date: datetime | None,
+    original_end_date: datetime | None,
+    check_and_update_database: bool,
+    logger: logging.Logger | logging.LoggerAdapter,
+) -> tuple[datetime, datetime] | None:
+    download_progress = database.get_download_progress(packet_name)
+    last_updated_date = download_progress.get_progress_timestamp()
+
+    if check_and_update_database:
+        download_progress.record_checked_download(DatetimeProvider.now())
+        database.save(download_progress)
+
+    manager = DownloadDateManager(packet_name, last_updated_date, logger)
+
+    start_date = manager.get_start_date(original_start_date)
+    end_date = manager.get_end_date(original_end_date)
+
+    if start_date is None:
+        return None
+
+    if check_and_update_database:
+        return manager.validate_download_dates(start_date, end_date)
+    else:
+        logger.info(
+            f"Not checking database and forcing download from {start_date} to {end_date}."
+        )
+        return start_date, end_date
+
+
+def update_database_with_progress(
+    packet_name: str,
+    database: Database,
+    latest_timestamp: datetime,
+    check_and_update_database: bool,
+    logger: logging.Logger | logging.LoggerAdapter,
+) -> None:
+    download_progress = database.get_download_progress(packet_name)
+
+    logger.debug(
+        f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
+    )
+
+    if check_and_update_database and (
+        (download_progress.progress_timestamp is None)
+        or (latest_timestamp > download_progress.progress_timestamp)
+    ):
+        download_progress.record_successful_download(latest_timestamp)
+        database.save(download_progress)
+    else:
+        logger.info(f"Database not updated for {packet_name}.")
