@@ -8,14 +8,7 @@ import typer
 from imap_mag import appConfig, appUtils
 from imap_mag.api import apply
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from mag_toolkit.calibration.calibrationFormat import ScienceLayer
-from mag_toolkit.calibration.Calibrator import (
-    CalibrationMethod,
-    EmptyCalibrator,
-    IMAPLoCalibrator,
-    SpinAxisCalibrator,
-    SpinPlaneCalibrator,
-)
+from mag_toolkit.calibration import CalibrationMethod, EmptyCalibrator, ScienceLayer
 
 app = typer.Typer()
 
@@ -71,12 +64,6 @@ def calibrate(
     scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
-        case CalibrationMethod.LEINWEBER:
-            calibrator = SpinAxisCalibrator()
-        case CalibrationMethod.KEPKO:
-            calibrator = SpinPlaneCalibrator()
-        case CalibrationMethod.IMAPLO_PIVOT:
-            calibrator = IMAPLoCalibrator()
         case CalibrationMethod.NOOP:
             calibrator = EmptyCalibrator()
         case _:
@@ -89,7 +76,7 @@ def calibrate(
     )
 
     # TODO: Standardised constant?
-    TIMEFORMAT = "%d-%m-%Y"
+    TIMEFORMAT = "%Y%m%d"
 
     cal_file_destination = appConfig.Destination(
         folder=cal_folder,

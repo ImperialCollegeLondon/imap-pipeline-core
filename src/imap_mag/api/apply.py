@@ -9,7 +9,7 @@ import typer
 from imap_mag import appConfig
 from imap_mag.api.apiUtils import commandInit, prepareCalibrationFile, prepareWorkFile
 from imap_mag.outputManager import OutputManager, StandardSPDFMetadataProvider
-from mag_toolkit.calibration.CalibrationApplicator import CalibrationApplicator
+from mag_toolkit.calibration import CalibrationApplicator
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +73,13 @@ def apply(
     l2_metadata_provider = StandardSPDFMetadataProvider(
         level="l2",
         date=from_date,
-        descriptor="norm",
+        descriptor="norm-mago",
         version=1,
         extension=l2_output_type.value,
     )
     cal_metadata_provider = StandardSPDFMetadataProvider(
         level="l2",
-        descriptor="offsets",
+        descriptor="norm-offsets",
         date=from_date,
         version=1,
         extension=calibration_output_type.value,
