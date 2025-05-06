@@ -54,7 +54,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             logger.error("No 'date' defined. Cannot generate folder structure.")
             raise ValueError("No 'date' defined. Cannot generate folder structure.")
 
-        return self.date.strftime("%Y/%m/%d")
+        return self.date.strftime("%Y/%m")
 
     def get_file_name(self) -> str:
         if (
