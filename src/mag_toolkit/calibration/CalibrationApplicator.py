@@ -7,17 +7,16 @@ from pathlib import Path
 import numpy as np
 from spacepy import pycdf
 
-from mag_toolkit.calibration.Calibrator import CalibrationMethod
-
-from .CalibrationExceptions import CalibrationValidityError
-from .calibrationFormat import (
-    CalibrationLayer,
+from .CalibrationDefinitions import (
     CalibrationMetadata,
+    CalibrationMethod,
     CalibrationValue,
-    ScienceLayer,
     ScienceValue,
     Validity,
 )
+from .CalibrationExceptions import CalibrationValidityError
+from .CalibrationLayer import CalibrationLayer
+from .ScienceLayer import ScienceLayer
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class CalibrationApplicator:
         science_data = ScienceLayer.from_file(dataFile)
 
         if len(layer_files) < 1 and rotation is None:
-            raise Exception("No layers to apply")
+            raise ValueError("No calibration layers or rotation file provided")
 
         if rotation is not None:
             science_data.values = self._rotate(rotation, science_data)

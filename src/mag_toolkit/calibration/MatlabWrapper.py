@@ -5,10 +5,11 @@ logger = logging.getLogger(__name__)
 
 
 def call_matlab(command, first_call=True):
+    MATLAB_COMMAND = "matlab"
     if first_call:
         subprocess.run(
             [
-                "matlab",
+                MATLAB_COMMAND,
                 "-batch",
                 'addpath(genpath("/home/matlab/Documents/MATLAB")); savepath',
             ]
@@ -17,7 +18,7 @@ def call_matlab(command, first_call=True):
         logger.info("Added necessary files to path")
 
     logger.info("Running MATLAB...")
-    cmd = ["matlab", "-nojvm", "-nodesktop", "-batch"]
+    cmd = [MATLAB_COMMAND, "-nojvm", "-nodesktop", "-batch"]
     cmd.append(command)
     p = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
