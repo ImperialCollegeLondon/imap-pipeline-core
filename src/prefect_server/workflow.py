@@ -7,19 +7,17 @@ from pathlib import Path
 import prefect
 import prefect.blocks
 import prefect.deployments
-from prefect import deploy, flow, get_client, serve, settings
+from prefect import deploy, flow, get_client, get_run_logger, serve
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
-from prefect.logging import get_run_logger
 from prefect.variables import Variable
 from prefect_shell import ShellOperation
 
 from imap_mag.api.apply import FileType, apply
 from imap_mag.api.calibrate import calibrate
-from mag_toolkit.calibration.Calibrator import CalibrationMethod
-from mag_toolkit.calibration.MatlabWrapper import call_matlab
+from mag_toolkit.calibration import CalibrationMethod
 
 
 class CONSTANTS:
@@ -27,10 +25,18 @@ class CONSTANTS:
     DEPLOYMENT_TAG = "NASA_IMAP"
 
 
-@flow(log_prints=True)
+@flow(name="calibrate", log_prints=True)
 def calibrate_flow(
     from_date: datetime, to_date: datetime, method: CalibrationMethod, science_file: str
 ):
+    logger = get_run_logger()
+
+    if not os.path.isfile(science_file):
+        logger.error(
+            f"Cannot calibrate non-existent file: {science_file} is not a file"
+        )
+        raise ValueError(f"{science_file} is not a file")
+
     calibrate(from_date, to_date, method, science_file)
 
 
@@ -42,6 +48,16 @@ def apply_flow(
     calibration_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
 ):
+    logger = get_run_logger()
+
+    if not os.path.isfile(file):
+        logger.error(f"Cannot apply offsets to non-existent file: {file} is not a file")
+        raise ValueError(f"{file} is not a file")
+
+    if not os.path.isfile(cal_layer):
+        logger.error(f"Calibration layer does not exist: {cal_layer} is not a file")
+        raise ValueError(f"{cal_layer} is not a file")
+
     apply(
         [str(cal_layer)],
         from_date=date,
@@ -49,38 +65,6 @@ def apply_flow(
         input=str(file),
         calibration_output_type=calibration_output_type,
         l2_output_type=L2_output_type,
-    )
-
-
-@flow(log_prints=True)
-def run_matlab():
-    logger = get_run_logger()
-
-    logger.info(settings.PREFECT_LOGGING_EXTRA_LOGGERS.value())
-    logger.info("Starting MATLAB functionality...")
-    call_matlab("helloworld")
-
-
-@flow(log_prints=True)
-def generate_offsets(filename: Path, output_filename: Path):
-    logger = get_run_logger()
-
-    logger.info(f"Generating an offsets file based on {filename}")
-
-    if not os.path.isfile(filename):
-        logger.error(f"Cannot generate offsets: {filename} is not a file")
-        raise ValueError(f"{filename} is not a file")
-
-    if not os.path.isdir(output_filename.parent):
-        logger.error(f"Parent directories for {output_filename} do not exist")
-        raise ValueError(f"Parent directories for {output_filename} do not exist")
-
-    if os.path.isfile(output_filename):
-        logger.error(f"Output file {output_filename} already exists")
-        raise ValueError(f"File {output_filename} already exists")
-
-    call_matlab(
-        [f'generate_offsets("{filename}", "{output_filename}")'], flow_logger=logger
     )
 
 
@@ -143,7 +127,6 @@ def deploy_flows(local_debug: bool = False):
             run_imap_pipeline.to_deployment(
                 name=imap_flow_name,  # type: ignore
             ),
-            run_matlab.to_deployment(name="matlab-test"),  # type: ignore
             apply_flow.to_deployment(name="apply"),  # type: ignore
             calibrate_flow.to_deployment(name="calibrate"),  # type: ignore
         )
