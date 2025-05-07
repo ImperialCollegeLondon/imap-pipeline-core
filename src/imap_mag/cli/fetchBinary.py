@@ -62,7 +62,7 @@ class FetchBinary:
                     descriptor=packet.lower()
                     .strip(self.__MAG_PREFIX)
                     .replace("_", "-"),
-                    date=dates[d],
+                    content_date=dates[d],
                     extension="pkts",
                 )
             else:

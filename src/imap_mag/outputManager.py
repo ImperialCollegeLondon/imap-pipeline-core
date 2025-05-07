@@ -38,29 +38,29 @@ class IFileMetadataProvider(abc.ABC):
 class StandardSPDFMetadataProvider(IFileMetadataProvider):
     """
     Metadata for standard SPDF files.
-    See: https://imap-processing.readthedocs.io/en/latest/development-guide/style-guide/naming-conventions.html#data-product-file-naming-conventions
+    See: https://imap-processing.readthedocs.io/en/latest/data-access/naming-conventions.html#data-product-science-file-naming-conventions
     """
 
     prefix: str | None = "imap_mag"
     level: str | None = None
     descriptor: str | None = None
-    date: datetime | None = None  # date data belongs to
+    content_date: datetime | None = None  # date data belongs to
     extension: str | None = None
 
     def supports_versioning(self) -> bool:
         return True
 
     def get_folder_structure(self) -> str:
-        if self.date is None:
+        if self.content_date is None:
             logger.error("No 'date' defined. Cannot generate folder structure.")
             raise ValueError("No 'date' defined. Cannot generate folder structure.")
 
-        return self.date.strftime("%Y/%m/%d")
+        return self.content_date.strftime("%Y/%m/%d")
 
     def get_filename(self) -> str:
         if (
             self.descriptor is None
-            or self.date is None
+            or self.content_date is None
             or self.version is None
             or self.extension is None
         ):
@@ -79,7 +79,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         if self.prefix is not None:
             descriptor = f"{self.prefix}_{descriptor}"
 
-        return f"{descriptor}_{self.date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        return f"{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
     @classmethod
     def from_filename(
@@ -99,7 +99,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
                 prefix=match["prefix"],
                 level=match["level"],
                 descriptor=match["descr"],
-                date=datetime.strptime(match["date"], "%Y%m%d"),
+                content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 version=int(match["version"]),
                 extension=match["ext"],
             )

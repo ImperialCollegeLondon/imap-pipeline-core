@@ -75,7 +75,7 @@ def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
     assert (
         StandardSPDFMetadataProvider(
             descriptor="hsk-pw",
-            date=datetime(2025, 5, 2),
+            content_date=datetime(2025, 5, 2),
             extension="pkts",
         )
         in actual_downloaded.values()

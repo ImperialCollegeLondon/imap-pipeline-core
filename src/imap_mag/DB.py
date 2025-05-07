@@ -173,7 +173,7 @@ class DatabaseFileOutputManager(IOutputManager):
                     version=metadata_provider.version,
                     hash=file_hash,
                     size=destination_file.stat().st_size,
-                    date=metadata_provider.date,
+                    date=metadata_provider.content_date,
                     software_version=__version__,
                 )
             )

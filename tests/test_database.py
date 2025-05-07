@@ -38,7 +38,10 @@ def test_database_output_manager_writes_to_database(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     metadata_provider = StandardSPDFMetadataProvider(
-        version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
@@ -82,7 +85,10 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     metadata_provider = StandardSPDFMetadataProvider(
-        version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
@@ -108,7 +114,10 @@ def test_database_output_manager_errors_destination_file_different_hash(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     metadata_provider = StandardSPDFMetadataProvider(
-        version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
@@ -132,7 +141,10 @@ def test_database_output_manager_errors_database_error(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     metadata_provider = StandardSPDFMetadataProvider(
-        version=1, descriptor="hsk-pw", date=datetime(2025, 5, 2), extension="txt"
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"

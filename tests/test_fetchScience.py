@@ -7,9 +7,13 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchScience import FetchScience, MAGMode, MAGSensor
+from imap_mag.cli.fetchScience import (
+    FetchScience,
+    MAGMode,
+    MAGSensor,
+    SDCMetadataProvider,
+)
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.outputManager import StandardSPDFMetadataProvider
 
 from .testUtils import enableLogging, tidyDataFolders  # noqa: F401
 
@@ -29,7 +33,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+    actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
             level="l1b",
             start_date=datetime(2025, 5, 2),
@@ -43,7 +47,6 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
         descriptor="norm-mago",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
-        version="latest",
         extension="cdf",
     )
 
@@ -64,12 +67,15 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         {
             "file_path": test_file.absolute(),
             "descriptor": "norm-mago",
+            "start_date": "20250502",
+            "ingestion_date": "20250602 00:00:00",
+            "version": "v007",
         }
     ]
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+    actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
             level="l1b",
             start_date=datetime(2025, 5, 2),
@@ -83,7 +89,6 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         descriptor="norm-mago",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
-        version="latest",
         extension="cdf",
     )
     mock_soc.download.assert_called_once_with(
@@ -94,10 +99,12 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
 
     assert test_file in actual_downloaded.keys()
     assert (
-        StandardSPDFMetadataProvider(
+        SDCMetadataProvider(
             level="l1b",
             descriptor="norm-mago",
-            date=datetime(2025, 5, 2),
+            content_date=datetime(2025, 5, 2),
+            ingestion_date=datetime(2025, 6, 2),
+            version=7,
             extension="cdf",
         )
         in actual_downloaded.values()

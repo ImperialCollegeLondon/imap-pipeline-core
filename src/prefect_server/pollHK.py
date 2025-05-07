@@ -121,13 +121,15 @@ async def poll_hk_flow(
                 )
             )
 
-        # Update database
-        update_database_with_progress(
-            packet_name=packet_name,
-            database=database,
-            latest_timestamp=max(latest_timestamps),
-            check_and_update_database=check_and_update_database,
-            logger=logger,
-        )
+        # Update database with latest content date as progress (for HK)
+        if check_and_update_database or force_database_update:
+            update_database_with_progress(
+                packet_name=packet_name,
+                database=database,
+                latest_timestamp=max(latest_timestamps),
+                logger=logger,
+            )
+        else:
+            logger.info(f"Database not updated for {packet_name}.")
 
     logger.info("---------- Finished ----------")

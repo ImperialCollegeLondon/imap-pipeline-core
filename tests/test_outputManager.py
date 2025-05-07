@@ -24,7 +24,7 @@ def test_copy_new_file():
     manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
-        date=datetime(2025, 5, 2),
+        content_date=datetime(2025, 5, 2),
         extension="txt",
     )
 
@@ -47,7 +47,7 @@ def test_copy_file_same_content():
     manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
-        date=datetime(2025, 5, 2),
+        content_date=datetime(2025, 5, 2),
         extension="txt",
     )
 
@@ -71,7 +71,7 @@ def test_copy_file_existing_versions():
     manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
-        date=datetime(2025, 5, 2),
+        content_date=datetime(2025, 5, 2),
         extension="txt",
     )
 
@@ -89,7 +89,7 @@ def test_copy_file_forced_version():
     manager.add_spdf_format_file(
         original_file,
         descriptor="pwr",
-        date=datetime(2025, 5, 2),
+        content_date=datetime(2025, 5, 2),
         version=3,
         extension="txt",
     )
@@ -129,7 +129,7 @@ def test_copy_file_custom_providers():
             "imap_mag_hsk-pw_20241210_v003.pkts",
             StandardSPDFMetadataProvider(
                 descriptor="hsk-pw",
-                date=datetime(2024, 12, 10),
+                content_date=datetime(2024, 12, 10),
                 version=3,
                 extension="pkts",
             ),
@@ -139,7 +139,7 @@ def test_copy_file_custom_providers():
             StandardSPDFMetadataProvider(
                 level="l1b",
                 descriptor="mago-normal",
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
                 version=1,
                 extension="cdf",
             ),
@@ -149,7 +149,7 @@ def test_copy_file_custom_providers():
             StandardSPDFMetadataProvider(
                 level="l2",
                 descriptor="burst",
-                date=datetime(2026, 12, 31),
+                content_date=datetime(2026, 12, 31),
                 version=10,
                 extension="cdf",
             ),

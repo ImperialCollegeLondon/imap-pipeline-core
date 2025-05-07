@@ -157,7 +157,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "repointing": None,
             "version": "v000",
             "extension": "cdf",
-            "ingestion_date": "2024-07-16 10:29:02",
+            "ingestion_date": "20240716 10:29:02",
         }
     ]
     cdf_file = os.path.abspath(

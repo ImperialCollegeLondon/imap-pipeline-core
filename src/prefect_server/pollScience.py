@@ -3,9 +3,13 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
-from spacepy import pycdf
 
-from imap_mag.api.fetch.science import Level, MAGMode, fetch_science
+from imap_mag.api.fetch.science import (
+    Level,
+    MAGMode,
+    SDCMetadataProvider,
+    fetch_science,
+)
 from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import (
     DatetimeProvider,
@@ -13,7 +17,6 @@ from imap_mag.appUtils import (
     update_database_with_progress,
 )
 from imap_mag.DB import Database
-from imap_mag.outputManager import StandardSPDFMetadataProvider
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
@@ -47,6 +50,7 @@ async def poll_science_flow(
     modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    force_ingestion_date: bool = False,
     force_database_update: bool = False,
 ):
     """
@@ -60,9 +64,9 @@ async def poll_science_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
-    check_and_update_database = force_database_update or (
-        (start_date is None) and (end_date is None)
-    )
+    # If this is an automated flow run, use the database to figure out what to download,
+    # and use the ingestion date to download data; otherwise use the file start date.
+    use_database_and_ingestion_date = (start_date is None) and (end_date is None)
     database = Database()
 
     for mode in modes:
@@ -78,7 +82,7 @@ async def poll_science_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=check_and_update_database,
+            check_and_update_database=use_database_and_ingestion_date,
             logger=logger,
         )
 
@@ -89,36 +93,35 @@ async def poll_science_flow(
 
         # Download binary from SDC
         with manage_config(export_to_database=True) as config_file:
-            downloaded_science: dict[Path, StandardSPDFMetadataProvider] = (
-                fetch_science(
-                    auth_code=auth_code,
-                    level=level,
-                    modes=[mode],
-                    start_date=packet_start_date,
-                    end_date=packet_end_date,
-                    config=config_file,
-                )
+            downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
+                auth_code=auth_code,
+                level=level,
+                modes=[mode],
+                start_date=packet_start_date,
+                end_date=packet_end_date,
+                use_ingestion_date=(
+                    use_database_and_ingestion_date or force_ingestion_date
+                ),
+                config=config_file,
             )
 
         if not downloaded_science:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {end_date}. Database not updated."
+                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}. Database not updated."
             )
             continue
 
-        # Get latest science timestamp
-        latest_timestamps: list[datetime] = []
-
-        for file, _ in downloaded_science.items():
-            latest_timestamps.append(pycdf.CDF(file.as_posix())["epoch"][-1])  # type: ignore
-
-        # Update database
-        update_database_with_progress(
-            packet_name=packet_name,
-            database=database,
-            latest_timestamp=max(latest_timestamps),
-            check_and_update_database=check_and_update_database,
-            logger=logger,
-        )
+        # Update database with latest ingestion date as progress (for science)
+        if use_database_and_ingestion_date or force_database_update:
+            update_database_with_progress(
+                packet_name=packet_name,
+                database=database,
+                latest_timestamp=max(
+                    metadata.ingestion_date for metadata in downloaded_science.values()
+                ),
+                logger=logger,
+            )
+        else:
+            logger.info(f"Database not updated for {packet_name}.")
 
     logger.info("---------- Finished ----------")

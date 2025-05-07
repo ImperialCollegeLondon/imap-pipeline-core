@@ -157,18 +157,6 @@ class DownloadDateManager:
         self.__last_updated_date = last_updated_date
         self.__logger = logger
 
-    def get_end_date(self, original_end_date: datetime | None) -> datetime:
-        if original_end_date is None:
-            self.__logger.info(
-                f"End date not provided. Using end of today as default download date for {self.__packet_name}."
-            )
-            return DatetimeProvider.end_of_today()
-        else:
-            self.__logger.info(
-                f"Using provided end date {original_end_date} for {self.__packet_name}."
-            )
-            return forceUTCTimeZone(original_end_date)
-
     def get_start_date(self, original_start_date: datetime | None) -> datetime | None:
         if original_start_date is None and self.__last_updated_date is None:
             self.__logger.info(
@@ -185,6 +173,18 @@ class DownloadDateManager:
                 f"Using provided start date {original_start_date} for {self.__packet_name}."
             )
             return forceUTCTimeZone(original_start_date)
+
+    def get_end_date(self, original_end_date: datetime | None) -> datetime:
+        if original_end_date is None:
+            self.__logger.info(
+                f"End date not provided. Using end of today as default download date for {self.__packet_name}."
+            )
+            return DatetimeProvider.end_of_today()
+        else:
+            self.__logger.info(
+                f"Using provided end date {original_end_date} for {self.__packet_name}."
+            )
+            return forceUTCTimeZone(original_end_date)
 
     def validate_download_dates(
         self, start_date: datetime, end_date: datetime
@@ -244,7 +244,6 @@ def update_database_with_progress(
     packet_name: str,
     database: Database,
     latest_timestamp: datetime,
-    check_and_update_database: bool,
     logger: logging.Logger | logging.LoggerAdapter,
 ) -> None:
     download_progress = database.get_download_progress(packet_name)
@@ -253,11 +252,10 @@ def update_database_with_progress(
         f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
     )
 
-    if check_and_update_database and (
-        (download_progress.progress_timestamp is None)
-        or (latest_timestamp > download_progress.progress_timestamp)
+    if (download_progress.progress_timestamp is None) or (
+        latest_timestamp > download_progress.progress_timestamp
     ):
         download_progress.record_successful_download(latest_timestamp)
         database.save(download_progress)
     else:
-        logger.info(f"Database not updated for {packet_name}.")
+        logger.info(f"Database not updated for {packet_name} as no new data available.")
