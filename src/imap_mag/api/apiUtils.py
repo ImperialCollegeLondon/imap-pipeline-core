@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 globalState = {"verbose": False}
 
 
-def commandInit(config: Path | None) -> appConfig.AppConfig:
+def commandInit(config: Path | None) -> appConfig.CommandConfigBase:
     # load and verify the config file
     if config is None:
         logger.critical("No config file")
@@ -32,7 +32,7 @@ def commandInit(config: Path | None) -> appConfig.AppConfig:
     else:
         pass
 
-    configFile = appConfig.AppConfig(**configFileDict)
+    configFile = appConfig.CommandConfigBase(**configFileDict)
 
     # set up the work folder
     if not configFile.work_folder:
@@ -42,13 +42,17 @@ def commandInit(config: Path | None) -> appConfig.AppConfig:
         logger.debug(f"Creating work folder {configFile.work_folder}")
         os.makedirs(configFile.work_folder)
 
+    initialiseLoggingForCommand(configFile.work_folder)
+
+    return configFile
+
+
+def initialiseLoggingForCommand(folder):
     # initialise all logging into the workfile
     level = "debug" if globalState["verbose"] else "info"
 
-    # TODO: the log file location should be configurable so we can keep the logs on RDS
-    # Or maybe just ship them there after the fact? Or log to both?
     logFile = Path(
-        configFile.work_folder,
+        folder,
         f"{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.log",
     )
     if not appLogging.set_up_logging(
@@ -63,8 +67,6 @@ def commandInit(config: Path | None) -> appConfig.AppConfig:
     ):
         print("Failed to set up logging, aborting.")
         raise typer.Abort()
-
-    return configFile
 
 
 def prepareWorkFile(file: Path | str, configFile) -> Path | None:

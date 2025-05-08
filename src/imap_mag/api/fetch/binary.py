@@ -1,20 +1,24 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
-from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit
+from imap_mag import appUtils
+from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import WebPODA
+from imap_mag.config.AppSettings import AppSettings
+from imap_mag.config.FetchMode import FetchMode
 from imap_mag.outputManager import StandardSPDFMetadataProvider
 
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag fetch binary --apid 1063 --start-date 2025-05-02 --end-date 2025-05-03
+# E.g.,
+# imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch binary --packet MAG_HSK_PW --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_binary(
     auth_code: Annotated[
         str,
@@ -23,50 +27,76 @@ def fetch_binary(
             help="WebPODA authentication code",
         ),
     ],
-    apid_or_packet: Annotated[
-        appUtils.HKPacket, typer.Option(help="ApID or packet to download")  # type: ignore
-    ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
-    config: Annotated[Path, typer.Option()] = Path("config.yaml"),
+    apid: Annotated[
+        Optional[int],
+        typer.Option("--apid", help="ApID to download"),
+    ] = None,
+    packet: Annotated[
+        Optional[appUtils.HKPacket],  # type: ignore
+        typer.Option("--packet", help="Packet to download, e.g. MAG_HSK_SID1"),
+    ] = None,
+    fetch_mode: Annotated[
+        FetchMode, typer.Option("--mode", case_sensitive=False)
+    ] = FetchMode.DownloadOnly,
 ) -> dict[Path, StandardSPDFMetadataProvider]:
     """Download binary data from WebPODA."""
 
-    configFile: appConfig.AppConfig = commandInit(config)
+    # must provide a apid or a packet
+    if (not apid and not packet) or (apid and packet):
+        raise ValueError("Must provide either --apid or --packet, and not both")
 
-    if isinstance(apid_or_packet, int):
-        packet: str = appUtils.getPacketFromApID(apid_or_packet)
-    elif isinstance(apid_or_packet, str):
-        packet: str = apid_or_packet
+    settings_overrides = (
+        {"fetch_binary": {"webpoda": {"auth_code": auth_code}}} if auth_code else {}
+    )
+
+    app_settings = AppSettings(**settings_overrides)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
+    initialiseLoggingForCommand(work_folder)
+
+    if apid is not None:
+        packet_name: str = appUtils.getPacketFromApID(apid)
+    elif packet is not None and isinstance(packet, str):
+        packet_name: str = packet
     else:
-        packet: str = apid_or_packet.name
+        packet_name: str = packet.name  # type: ignore
 
     if not auth_code:
         logger.critical("No WebPODA authorization code provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logger.info(f"Downloading raw packet {packet} from {start_date} to {end_date}.")
-
-    poda = WebPODA(
-        auth_code,
-        configFile.work_folder,
-        configFile.api.webpoda_url if configFile.api else None,
+    logger.info(
+        f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
     )
+
+    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.webpoda.url_base)
 
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
         fetch_binary.download_binaries(
-            packet=packet, start_date=start_date, end_date=end_date
+            packet=packet_name, start_date=start_date, end_date=end_date
         )
     )
 
-    output_manager = appUtils.getOutputManager(configFile.destination)
-    output_binaries: dict[Path, StandardSPDFMetadataProvider] = dict()
-
-    for file, metadata_provider in downloaded_binaries.items():
-        (output_file, output_metadata) = output_manager.add_file(
-            file, metadata_provider
+    if not downloaded_binaries:
+        logger.info(
+            f"No data downloaded for packet {packet_name} from {start_date} to {end_date}."
         )
-        output_binaries[output_file] = output_metadata
+
+    if app_settings.fetch_binary.publish_to_data_store:
+        output_manager = appUtils.getOutputManagerByMode(
+            app_settings.data_store, mode=fetch_mode
+        )
+        output_binaries: dict[Path, StandardSPDFMetadataProvider] = dict()
+
+        for file, metadata_provider in downloaded_binaries.items():
+            (output_file, output_metadata) = output_manager.add_file(
+                file, metadata_provider
+            )
+            output_binaries[output_file] = output_metadata
+    else:
+        output_binaries = dict()
+        logger.info("Files not published to data store based on config.")
 
     return output_binaries

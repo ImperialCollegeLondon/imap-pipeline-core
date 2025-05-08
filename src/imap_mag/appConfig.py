@@ -35,7 +35,12 @@ class API(BaseModel):
     sdc_url: Optional[str] = None
 
 
-class AppConfig(BaseModel):
+# TODO: replace this with AppSettings and config per command
+class CommandConfigBase(BaseModel):
+    """
+    Provide the basic general cofiguration for all commands, such as a source, a work folder and a destination.
+    """
+
     source: Source
     work_folder: Path = Path(".work")
     destination: Destination
@@ -56,6 +61,7 @@ class AppConfig(BaseModel):
     )
 
 
+# TODO: replace this
 def create_and_serialize_config(
     *,
     source: Path = Path("."),
@@ -64,10 +70,10 @@ def create_and_serialize_config(
     webpoda_url: str | None = None,
     sdc_url: str | None = None,
     export_to_database: bool = False,
-) -> tuple[AppConfig, Path]:
+) -> tuple[CommandConfigBase, Path]:
     """Create and serialize a configuration object."""
 
-    config = AppConfig(
+    config = CommandConfigBase(
         source=Source(folder=source),
         destination=Destination(
             folder=destination_folder,

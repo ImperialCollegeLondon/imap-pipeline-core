@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 
 from imap_mag import appConfig
+from imap_mag.config.FetchMode import FetchMode
 from imap_mag.DB import Database, DatabaseFileOutputManager
 from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, OutputManager
 
@@ -59,6 +60,7 @@ def forceUTCTimeZone(date: datetime) -> datetime:
     return date.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+# TODO: Replace all uses of this with getOutputManagerByMode version
 def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
     """Retrieve output manager based on destination."""
 
@@ -68,6 +70,17 @@ def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
         output_manager = DatabaseFileOutputManager(output_manager)
 
     return output_manager
+
+
+def getOutputManagerByMode(destination_folder: Path, mode: FetchMode) -> IOutputManager:
+    """Retrieve output manager based on destination and mode."""
+
+    if mode == FetchMode.DownloadOnly:
+        return OutputManager(destination_folder)
+    elif mode == FetchMode.DownloadAndUpdateProgress:
+        return DatabaseFileOutputManager(OutputManager(destination_folder))
+    else:
+        raise ValueError(f"Unsupported mode: {mode}")
 
 
 def copyFileToDestination(

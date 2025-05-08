@@ -5,6 +5,7 @@
 import json
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,8 @@ from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.main import app
 
 from .testUtils import tidyDataFolders  # noqa: F401
-from .wiremockUtils import wiremock_manager  # noqa: F401
+
+# from .wiremockUtils import wiremock_manager
 
 runner = CliRunner()
 
@@ -89,7 +91,11 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
+@pytest.mark.parametrize(
+    "mode",
+    [None, "downloadonly"],
+)
+def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Set up.
     binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
 
@@ -98,30 +104,29 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
         binary_file,
     )
 
-    (_, config_file) = create_and_serialize_config(
-        destination_file="power.pkts",
-        webpoda_url=wiremock_manager.get_url(),
-    )
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
+    }
+
+    args = [
+        "--verbose",
+        "fetch",
+        "binary",
+        "--packet",
+        "MAG_HSK_PW",
+        "--auth-code",
+        "12345",
+        "--start-date",
+        "2025-05-02",
+        "--end-date",
+        "2025-05-03",
+    ]
+
+    if mode is not None:
+        args.extend(["--mode", mode])
 
     # Exercise.
-    result = runner.invoke(
-        app,
-        [
-            "--verbose",
-            "fetch",
-            "binary",
-            "--config",
-            str(config_file),
-            "--apid-or-packet",
-            "MAG_HSK_PW",
-            "--auth-code",
-            "12345",
-            "--start-date",
-            "2025-05-02",
-            "--end-date",
-            "2025-05-03",
-        ],
-    )
+    result = runner.invoke(app, args, env=settings_overrides_for_env)
 
     print("\n" + str(result.stdout))
 
@@ -140,7 +145,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager):  # noqa: F811
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):  # noqa: F811
+def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Set up.
     query_response: list[dict[str, str]] = [
         {

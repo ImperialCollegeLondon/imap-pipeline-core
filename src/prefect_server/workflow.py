@@ -32,7 +32,7 @@ def run_imap_pipeline(start_date: date, end_date: date):
 
 
 def deploy_flows(local_debug: bool = False):
-    asyncio.get_event_loop().run_until_complete(ServerConfig.initialise())
+    asyncio.get_event_loop().run_until_complete(ServerConfig.initialise(local_debug))
 
     # Docker image and tag, e.g. so-pipeline-core:latest. May include registry, e.g. ghcr.io/imperialcollegelondon/so-pipeline-core:latest
     docker_image = os.getenv(

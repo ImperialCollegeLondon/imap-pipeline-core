@@ -31,7 +31,7 @@ def process(
     # TODO: handle file system/cloud files - abstraction layer needed for files
     # TODO: move shared logic to a library
 
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.CommandConfigBase = commandInit(config)
     workFile = prepareWorkFile(file, configFile)
 
     if workFile is None:

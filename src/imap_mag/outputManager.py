@@ -146,7 +146,9 @@ class OutputManager(IOutputManager):
 
         if destination_file.exists():
             if generate_hash(destination_file) == generate_hash(original_file):
-                logger.info(f"File {destination_file} already exists and is the same.")
+                logger.info(
+                    f"File {destination_file} already exists and is the same. Skipping update."
+                )
                 return (destination_file, metadata_provider)
 
             metadata_provider.version = self.__get_next_available_version(

@@ -30,7 +30,7 @@ def calibrate(
     # TODO: Define specific calibration configuration
     # Using AppConfig for now to piggyback off of configuration
     # verification and work area setup
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.CommandConfigBase = commandInit(config)
 
     workFile = prepareWorkFile(input, configFile)
 

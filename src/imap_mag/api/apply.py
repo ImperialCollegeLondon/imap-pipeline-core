@@ -19,7 +19,7 @@ def apply(
         help="The file name or pattern to match for the input file"
     ),
 ):
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.CommandConfigBase = commandInit(config)
 
     workDataFile = prepareWorkFile(input, configFile)
     workCalibrationFile = prepareWorkFile(calibration, configFile)
