@@ -74,7 +74,7 @@ async def poll_hk_flow(
     database = Database()
 
     for packet in hk_packets:
-        packet_name = packet.name
+        packet_name = packet.packet
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
         packet_dates = get_dates_for_download(
