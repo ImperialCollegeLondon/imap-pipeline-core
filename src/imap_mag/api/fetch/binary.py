@@ -12,13 +12,14 @@ from imap_mag.client.webPODA import WebPODA
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)
 
 
 # E.g.,
 # imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
-# imap-mag fetch binary --packet MAG_HSK_PW --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch binary --packet PW --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_binary(
     auth_code: Annotated[
         str,
@@ -34,8 +35,8 @@ def fetch_binary(
         typer.Option("--apid", help="ApID to download"),
     ] = None,
     packet: Annotated[
-        Optional[appUtils.HKPacket],  # type: ignore
-        typer.Option("--packet", help="Packet to download, e.g. MAG_HSK_SID1"),
+        Optional[HKPacket],  # type: ignore
+        typer.Option("--packet", help="Packet to download, e.g., SID1"),
     ] = None,
     fetch_mode: Annotated[
         FetchMode, typer.Option("--mode", case_sensitive=False)
@@ -56,11 +57,11 @@ def fetch_binary(
     initialiseLoggingForCommand(work_folder)
 
     if apid is not None:
-        packet_name: str = appUtils.getPacketFromApID(apid)
+        packet_name: str = HKPacket.from_apid(apid).name
     elif packet is not None and isinstance(packet, str):
         packet_name: str = packet
     else:
-        packet_name: str = packet.name  # type: ignore
+        packet_name: str = packet.packet  # type: ignore
 
     if not auth_code:
         logger.critical("No WebPODA authorization code provided")

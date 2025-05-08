@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -10,20 +9,12 @@ from imap_mag import appConfig, appUtils
 from imap_mag.api.apiUtils import commandInit
 from imap_mag.cli.fetchScience import (
     FetchScience,
-    MAGMode,
-    MAGSensor,
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.util import Level, MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
-
-
-class Level(str, Enum):
-    level_1a = "l1a"
-    level_1b = "l1b"
-    level_1c = "l1c"
-    level_2 = "l2"
 
 
 # E.g., imap-mag fetch science --start-date 2025-05-02 --end-date 2025-05-03
@@ -46,10 +37,15 @@ def fetch_science(
         ),
     ] = False,
     level: Annotated[Level, typer.Option(help="Level to download")] = Level.level_2,
-    modes: Annotated[list[MAGMode], typer.Option(help="Science modes to download")] = [
-        MAGMode.Normal,
-        MAGMode.Burst,
-    ],
+    modes: Annotated[
+        list[ScienceMode],
+        typer.Option(
+            help="Science modes to download",
+        ),
+    ] = [
+        "norm",  # type: ignore
+        "burst",  # type: ignore
+    ],  # for some reason Typer does not like these being enums -
     sensors: Annotated[list[MAGSensor], typer.Option(help="Sensors to download")] = [
         MAGSensor.IBS,
         MAGSensor.OBS,

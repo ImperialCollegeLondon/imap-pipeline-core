@@ -9,11 +9,10 @@ import pytest
 
 from imap_mag.cli.fetchScience import (
     FetchScience,
-    MAGMode,
-    MAGSensor,
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
+from imap_mag.util import MAGSensor, ScienceMode
 
 from .testUtils import enableLogging, tidyDataFolders  # noqa: F401
 
@@ -27,7 +26,7 @@ def mock_soc() -> mock.Mock:
 def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     # Set up.
     fetchScience = FetchScience(
-        mock_soc, modes=[MAGMode.Normal], sensors=[MAGSensor.OBS]
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
     )
 
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
@@ -58,7 +57,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
 def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
     # Set up.
     fetchScience = FetchScience(
-        mock_soc, modes=[MAGMode.Normal], sensors=[MAGSensor.OBS]
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file"

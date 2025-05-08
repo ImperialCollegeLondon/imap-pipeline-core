@@ -3,24 +3,13 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.util import MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
-
-
-# TODO: Move these Enums to their own files or to a constants file
-class MAGMode(str, Enum):
-    Normal = "norm"
-    Burst = "burst"
-
-
-class MAGSensor(str, Enum):
-    IBS = "magi"
-    OBS = "mago"
 
 
 @dataclass
@@ -38,13 +27,13 @@ class FetchScience:
 
     __data_access: ISDCDataAccess
 
-    __modes: list[MAGMode]
+    __modes: list[ScienceMode]
     __sensor: list[MAGSensor]
 
     def __init__(
         self,
         data_access: ISDCDataAccess,
-        modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
+        modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
         sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:
         """Initialize SDC interface."""
@@ -73,7 +62,7 @@ class FetchScience:
             for sensor in self.__sensor:
                 file_details = self.__data_access.get_filename(
                     level=level,
-                    descriptor=mode.value + "-" + sensor.value,
+                    descriptor=mode.short_name + "-" + sensor.value,
                     extension="cdf",
                     **dates,
                 )

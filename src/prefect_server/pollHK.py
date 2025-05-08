@@ -9,16 +9,15 @@ from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import (
-    HK_PACKETS,
     DatetimeProvider,
-    HKPacket,
     get_dates_for_download,
     update_database_with_progress,
 )
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.DB import Database
 from imap_mag.outputManager import StandardSPDFMetadataProvider
-from prefect_server.constants import CONSTANTS
+from imap_mag.util import CONSTANTS, HKPacket
+from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
 )
@@ -37,7 +36,9 @@ def generate_flow_run_name() -> str:
 
     packet_names = [hk.name for hk in hk_packets]
     packet_text = (
-        f"{','.join(packet_names)}-Packets" if packet_names != HK_PACKETS else "all-HK"
+        f"{','.join(packet_names)}-Packets"
+        if packet_names != HKPacket.list()
+        else "all-HK"
     )
 
     return (
@@ -46,7 +47,7 @@ def generate_flow_run_name() -> str:
 
 
 @flow(
-    name=CONSTANTS.FLOW_NAMES.POLL_HK,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
 )
@@ -63,8 +64,8 @@ async def poll_hk_flow(
     logger = get_run_logger()
 
     auth_code = await get_secret_or_env_var(
-        CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
-        CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
+        PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
+        PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
     check_and_update_database = force_database_update or (
@@ -117,7 +118,7 @@ async def poll_hk_flow(
             latest_timestamps.append(
                 datetime.fromtimestamp(
                     pd.read_csv(processed_file).iloc[-1].epoch / 10**9
-                    + datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
+                    + CONSTANTS.J2000_EPOCH_POSIX
                 )
             )
 

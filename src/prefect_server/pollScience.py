@@ -5,8 +5,6 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 
 from imap_mag.api.fetch.science import (
-    Level,
-    MAGMode,
     SDCMetadataProvider,
     fetch_science,
 )
@@ -17,6 +15,7 @@ from imap_mag.appUtils import (
     update_database_with_progress,
 )
 from imap_mag.DB import Database
+from imap_mag.util import Level, ScienceMode
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
@@ -29,7 +28,7 @@ def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
     level: Level = parameters["level"]
-    modes: list[MAGMode] = parameters["modes"]
+    modes: list[ScienceMode] = parameters["modes"]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
         if parameters["start_date"] is not None
@@ -47,7 +46,7 @@ def generate_flow_run_name() -> str:
 )
 async def poll_science_flow(
     level: Level = Level.level_1c,
-    modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
+    modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     force_ingestion_date: bool = False,
@@ -70,10 +69,7 @@ async def poll_science_flow(
     database = Database()
 
     for mode in modes:
-        if mode == MAGMode.Normal:
-            packet_name = "MAG_SCI_NORM"
-        else:
-            packet_name = "MAG_SCI_BURST"
+        packet_name = mode.packet
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 

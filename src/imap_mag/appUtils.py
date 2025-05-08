@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -10,49 +9,23 @@ from imap_mag import appConfig
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.DB import Database, DatabaseFileOutputManager
 from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, OutputManager
+from imap_mag.util import CONSTANTS
 
 logger = logging.getLogger(__name__)
-
-# TODO: move to constants
-IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
-J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
-
-APID_TO_PACKET: dict[int, str] = {
-    1028: "MAG_HSK_SID1",
-    1055: "MAG_HSK_SID2",
-    1063: "MAG_HSK_PW",
-    1064: "MAG_HSK_STATUS",
-    1082: "MAG_HSK_SCI",
-    1051: "MAG_HSK_PROCSTAT",
-    1060: "MAG_HSK_SID12",
-    1053: "MAG_HSK_SID15",
-    1054: "MAG_HSK_SID16",
-    1045: "MAG_HSK_SID20",
-}
-
-# TODO: Move to separate file and tidy this up - add a method to get all packet names?
-HKPacket = Enum("HKPacket", [(value, value) for value in APID_TO_PACKET.values()])  # type: ignore
-HK_PACKETS: list[str] = [e.value for e in HKPacket]  # type: ignore
 
 
 def convertMETToJ2000ns(
     met: np.typing.ArrayLike,
-    reference_epoch: np.datetime64 = IMAP_EPOCH,
+    reference_epoch: np.datetime64 = CONSTANTS.IMAP_EPOCH,
 ) -> np.typing.ArrayLike:
     """Convert mission elapsed time (MET) to nanoseconds from J2000."""
     time_array = (np.asarray(met, dtype=float) * 1e9).astype(np.int64)
     j2000_offset = (
-        (reference_epoch - J2000_EPOCH).astype("timedelta64[ns]").astype(np.int64)
+        (reference_epoch - CONSTANTS.J2000_EPOCH)
+        .astype("timedelta64[ns]")
+        .astype(np.int64)
     )
     return j2000_offset + time_array
-
-
-def getPacketFromApID(apid: int) -> str:
-    """Get packet name from ApID."""
-    if apid not in APID_TO_PACKET:
-        logger.critical(f"ApID {apid} does not match any known packet.")
-        raise ValueError(f"ApID {apid} does not match any known packet.")
-    return APID_TO_PACKET[apid]
 
 
 def forceUTCTimeZone(date: datetime) -> datetime:

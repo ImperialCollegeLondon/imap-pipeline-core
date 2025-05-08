@@ -10,7 +10,6 @@ from imap_db.model import DownloadProgress
 from imap_mag.appUtils import (
     forceUTCTimeZone,
     get_dates_for_download,
-    getPacketFromApID,
     update_database_with_progress,
 )
 from imap_mag.DB import IDatabase
@@ -32,11 +31,6 @@ LOGGER = logging.getLogger(__name__)
 def mock_database() -> mock.Mock:
     """Fixture for a mock IDatabase instance."""
     return mock.create_autospec(IDatabase, spec_set=True)
-
-
-def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
-    with pytest.raises(ValueError):
-        getPacketFromApID(12345)
 
 
 @pytest.mark.parametrize(
