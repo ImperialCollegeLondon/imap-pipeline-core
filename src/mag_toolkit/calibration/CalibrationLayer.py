@@ -1,9 +1,11 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from spacepy import pycdf
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
+    CDF_FLOAT_FILLVAL,
     CalibrationMethod,
     CalibrationValue,
 )
@@ -22,7 +24,9 @@ class CalibrationLayer(Layer):
         OFFSET_SKELETON_CDF = "resource/l2_offset_skeleton.cdf"
         with pycdf.CDF(str(filepath), OFFSET_SKELETON_CDF) as offset_cdf:
             offset_cdf["epoch"] = [value.time for value in self.values]
-            offset_cdf["offsets"][...] = [cal_value.value for cal_value in self.values]
+            offset_cdf["offsets"][...] = np.nan_to_num(
+                [cal_value.value for cal_value in self.values], nan=CDF_FLOAT_FILLVAL
+            )
             offset_cdf["timedeltas"] = [
                 cal_value.timedelta for cal_value in self.values
             ]

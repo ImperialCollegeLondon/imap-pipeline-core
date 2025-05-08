@@ -5,6 +5,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
+
 
 class CalibrationMethod(str, Enum):
     KEPKO = "Kepko"
@@ -33,6 +35,7 @@ class CalibrationMetadata(BaseModel):
 class Value(BaseModel, ABC):
     time: datetime
     value: list[float]
+    magnitude: Optional[float] = None
 
 
 class CalibrationValue(Value):

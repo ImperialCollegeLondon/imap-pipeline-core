@@ -12,6 +12,7 @@ from .CalibrationDefinitions import (
     CalibrationMethod,
     CalibrationValue,
     ScienceValue,
+    Sensor,
     Validity,
 )
 from .CalibrationExceptions import CalibrationValidityError
@@ -77,16 +78,29 @@ class CalibrationApplicator:
             ),
         )
 
+        scienceResult = self._calculate_magnitudes(scienceResult)
+
         l2_filepath = scienceResult.writeToFile(outputScienceFile)
 
         return (l2_filepath, cal_filepath)
 
+    def _calculate_magnitudes(self, science_layer: ScienceLayer):
+        for i, datapoint in enumerate(science_layer.values):
+            magnitude = np.linalg.norm(datapoint.value)
+            science_layer.values[i].magnitude = float(magnitude)
+        return science_layer
+
     def _rotate(self, rotation_filepath: Path, science_layer: ScienceLayer):
         with pycdf.CDF(str(rotation_filepath)) as cdf:
             rotation_matrices_mago = np.array(cdf["URFTOORFO"][...])
-            rotation_matrices_magi = np.array(cdf["URFTOORFI"][...])  # noqa: F841
+            rotation_matrices_magi = np.array(cdf["URFTOORFI"][...])
+        rotation_matrix = (
+            rotation_matrices_mago
+            if science_layer.sensor == Sensor.MAGO
+            else rotation_matrices_magi
+        )
         for i, datapoint in enumerate(science_layer.values):
-            appropriate_rotator = rotation_matrices_mago[datapoint.range]
+            appropriate_rotator = rotation_matrix[datapoint.range]
             datapoint = np.matmul(appropriate_rotator, datapoint.value)
             science_layer.values[i].value = datapoint
         return science_layer.values
