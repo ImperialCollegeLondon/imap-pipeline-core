@@ -113,7 +113,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "fetch",
         "binary",
         "--packet",
-        "PW",
+        "SID3_PW",
         "--auth-code",
         "12345",
         "--start-date",

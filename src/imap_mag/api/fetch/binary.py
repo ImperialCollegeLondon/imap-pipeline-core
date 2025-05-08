@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # E.g.,
 # imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
-# imap-mag fetch binary --packet PW --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_binary(
     auth_code: Annotated[
         str,
