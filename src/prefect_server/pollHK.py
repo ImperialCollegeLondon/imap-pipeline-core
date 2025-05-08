@@ -8,15 +8,11 @@ from prefect.runtime import flow_run
 from imap_mag.api.fetch.binary import fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
-from imap_mag.appUtils import (
-    DatetimeProvider,
-    get_dates_for_download,
-    update_database_with_progress,
-)
+from imap_mag.appUtils import get_dates_for_download
 from imap_mag.config.FetchMode import FetchMode
-from imap_mag.DB import Database
-from imap_mag.outputManager import StandardSPDFMetadataProvider
-from imap_mag.util import CONSTANTS, HKPacket
+from imap_mag.db import Database, update_database_with_progress
+from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.util import CONSTANTS, DatetimeProvider, HKPacket
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,

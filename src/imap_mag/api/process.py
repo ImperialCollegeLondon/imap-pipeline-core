@@ -6,7 +6,7 @@ import typer
 
 from imap_mag import appConfig, appUtils, imapProcessing
 from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from imap_mag.outputManager import IFileMetadataProvider, StandardSPDFMetadataProvider
+from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
 
 logger = logging.getLogger(__name__)
 

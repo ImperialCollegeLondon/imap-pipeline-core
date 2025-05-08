@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from imap_mag.client.webPODA import WebPODA
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.io import StandardSPDFMetadataProvider
 
 logger = logging.getLogger(__name__)
 

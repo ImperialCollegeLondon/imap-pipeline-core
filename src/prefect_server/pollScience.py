@@ -14,7 +14,7 @@ from imap_mag.appUtils import (
     get_dates_for_download,
     update_database_with_progress,
 )
-from imap_mag.DB import Database
+from imap_mag.db import Database
 from imap_mag.util import Level, ScienceMode
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
@@ -36,7 +36,7 @@ def generate_flow_run_name() -> str:
     )
     end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
-    return f"Download-{','.join([m.value for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
+    return f"Download-{','.join([m.short_name for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
 
 
 @flow(

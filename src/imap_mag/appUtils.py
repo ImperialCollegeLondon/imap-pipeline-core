@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -7,9 +7,14 @@ import numpy as np
 
 from imap_mag import appConfig
 from imap_mag.config.FetchMode import FetchMode
-from imap_mag.DB import Database, DatabaseFileOutputManager
-from imap_mag.outputManager import IFileMetadataProvider, IOutputManager, OutputManager
-from imap_mag.util import CONSTANTS
+from imap_mag.db import Database
+from imap_mag.io import (
+    DatabaseFileOutputManager,
+    IFileMetadataProvider,
+    IOutputManager,
+    OutputManager,
+)
+from imap_mag.util import CONSTANTS, DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -86,37 +91,6 @@ def copyFileToDestination(
     return output_manager.add_file(
         file_path, SimpleMetadataProvider(destination.filename)
     )
-
-
-class DatetimeProvider:
-    """Datetime provider to remove dependency on `datetime` library."""
-
-    @staticmethod
-    def now() -> datetime:
-        return datetime.now()
-
-    @staticmethod
-    def today(date_type=datetime):
-        today = date_type.today()
-
-        if isinstance(today, datetime):
-            return today.replace(hour=0, minute=0, second=0, microsecond=0)
-        else:
-            return today
-
-    @classmethod
-    def tomorrow(cls, date_type=datetime):
-        return cls.today(date_type) + timedelta(days=1)
-
-    @classmethod
-    def yesterday(cls, date_type=datetime):
-        return cls.today(date_type) - timedelta(days=1)
-
-    @staticmethod
-    def end_of_today() -> datetime:
-        return datetime.today().replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
 
 
 class DownloadDateManager:
@@ -211,24 +185,3 @@ def get_dates_for_download(
             f"Not checking database and forcing download from {start_date} to {end_date}."
         )
         return start_date, end_date
-
-
-def update_database_with_progress(
-    packet_name: str,
-    database: Database,
-    latest_timestamp: datetime,
-    logger: logging.Logger | logging.LoggerAdapter,
-) -> None:
-    download_progress = database.get_download_progress(packet_name)
-
-    logger.debug(
-        f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
-    )
-
-    if (download_progress.progress_timestamp is None) or (
-        latest_timestamp > download_progress.progress_timestamp
-    ):
-        download_progress.record_successful_download(latest_timestamp)
-        database.save(download_progress)
-    else:
-        logger.info(f"Database not updated for {packet_name} as no new data available.")

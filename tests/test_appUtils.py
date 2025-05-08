@@ -10,14 +10,12 @@ from imap_db.model import DownloadProgress
 from imap_mag.appUtils import (
     forceUTCTimeZone,
     get_dates_for_download,
-    update_database_with_progress,
 )
-from imap_mag.DB import IDatabase
+from imap_mag.db import IDatabase
 
-from .testUtils import (  # noqa: F401  # noqa: F401
+from .testUtils import (  # noqa: F401
     END_OF_TODAY,
     NOW,
-    TODAY,
     YESTERDAY,
     enableLogging,
     mock_datetime_provider,
@@ -368,98 +366,4 @@ def test_get_start_end_dates_partially_up_to_date(
     )
 
     assert download_progress.last_checked_date == NOW
-    assert mock_database.save.called
-
-
-def test_update_database_no_update_needed(
-    caplog,
-    mock_database,
-) -> None:
-    # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-
-    download_progress.progress_timestamp = TODAY
-
-    mock_database.get_download_progress.return_value = download_progress
-
-    caplog.set_level(logging.DEBUG)
-
-    # Exercise
-    update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
-        database=mock_database,
-        latest_timestamp=YESTERDAY,
-        logger=LOGGER,
-    )
-
-    # Verify
-    assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
-        in caplog.text
-    )
-
-    assert download_progress.progress_timestamp is TODAY
-    assert not mock_database.save.called
-
-
-def test_update_database_update_needed_no_data(
-    caplog,
-    mock_database,
-) -> None:
-    # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-
-    mock_database.get_download_progress.return_value = download_progress
-
-    caplog.set_level(logging.DEBUG)
-
-    # Exercise
-    update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
-        database=mock_database,
-        latest_timestamp=YESTERDAY,
-        logger=LOGGER,
-    )
-
-    # Verify
-    assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
-        in caplog.text
-    )
-
-    assert download_progress.progress_timestamp is YESTERDAY
-    assert mock_database.save.called
-
-
-def test_update_database_update_needed_old_data(
-    caplog,
-    mock_database,
-) -> None:
-    # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-
-    download_progress.progress_timestamp = YESTERDAY
-
-    mock_database.get_download_progress.return_value = download_progress
-
-    caplog.set_level(logging.DEBUG)
-
-    # Exercise
-    update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
-        database=mock_database,
-        latest_timestamp=TODAY,
-        logger=LOGGER,
-    )
-
-    # Verify
-    assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {TODAY}."
-        in caplog.text
-    )
-
-    assert download_progress.progress_timestamp is TODAY
     assert mock_database.save.called

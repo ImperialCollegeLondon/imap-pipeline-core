@@ -9,7 +9,7 @@ import pytest
 
 from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import IWebPODA
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.io import StandardSPDFMetadataProvider
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 

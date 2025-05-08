@@ -11,7 +11,7 @@ from imap_mag.cli.fetchBinary import FetchBinary
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.FetchMode import FetchMode
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.io import StandardSPDFMetadataProvider
 from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)

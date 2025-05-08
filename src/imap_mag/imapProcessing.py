@@ -87,7 +87,8 @@ class HKProcessor(FileProcessor):
 
         with open(file, "rb") as binaryData:
             packetGenerator = packetDefinition.packet_generator(
-                binaryData, show_progress=True
+                binaryData,
+                show_progress=False,  # Prefect will log this every 0.001 seconds, which is insane
             )
 
             for packet in packetGenerator:

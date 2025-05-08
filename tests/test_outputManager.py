@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from imap_mag.outputManager import (
+from imap_mag.io import (
     IFileMetadataProvider,
     OutputManager,
     StandardSPDFMetadataProvider,
