@@ -23,8 +23,32 @@ class IWebPODA(abc.ABC):
         start_date: datetime,
         end_date: datetime,
         ert: bool = False,
-    ) -> tuple[Path, datetime | None]:
+    ) -> Path:
         """Download packet data from WebPODA."""
+        pass
+
+    @abc.abstractmethod
+    def get_max_ert(
+        self,
+        *,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        ert: bool = False,
+    ) -> datetime | None:
+        """Get max ERT from WebPODA."""
+        pass
+
+    @abc.abstractmethod
+    def get_min_sctime(
+        self,
+        *,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        ert: bool = False,
+    ) -> datetime | None:
+        """Get min S/C time from WebPODA."""
         pass
 
 
@@ -53,7 +77,7 @@ class WebPODA(IWebPODA):
         start_date: datetime,
         end_date: datetime,
         ert: bool = False,
-    ) -> tuple[Path, datetime | None]:
+    ) -> Path:
         """Download packet data from WebPODA."""
 
         file_path: Path = (
@@ -68,7 +92,6 @@ class WebPODA(IWebPODA):
         if not self.__output_dir.exists():
             os.makedirs(self.__output_dir)
 
-        # Download packets from WebPODA
         packet_response: requests.Response = self.__download_from_webpoda(
             packet,
             "bin",
@@ -81,7 +104,20 @@ class WebPODA(IWebPODA):
         with open(file_path, "wb") as f:
             f.write(packet_response.content)
 
-        # Download ERT data
+        return file_path
+
+    def get_max_ert(
+        self,
+        *,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        ert: bool = False,
+    ) -> datetime | None:
+        logger.info(
+            f"Downloading ERT information for {packet} from {start_date} to {end_date}."
+        )
+
         ert_response: requests.Response = self.__download_from_webpoda(
             packet,
             "csv",
@@ -90,8 +126,8 @@ class WebPODA(IWebPODA):
             ert,
             "project(ert)&formatTime(\"yyyy-MM-dd'T'HH:mm:ss\")",
         )
-        ert_info = ert_response.content.decode("utf-8")
 
+        ert_info = ert_response.content.decode("utf-8")
         lines = ert_info.strip().splitlines()[1:]
 
         if not lines:
@@ -103,8 +139,42 @@ class WebPODA(IWebPODA):
 
             logger.debug(f"Max ERT: {max_ert}")
 
-        # Return file with binary and max ERT
-        return file_path, max_ert
+        return max_ert
+
+    def get_min_sctime(
+        self,
+        *,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        ert: bool = False,
+    ) -> datetime | None:
+        logger.info(
+            f"Downloading time information for {packet} from {start_date} to {end_date}."
+        )
+
+        time_response: requests.Response = self.__download_from_webpoda(
+            packet,
+            "csv",
+            start_date,
+            end_date,
+            ert,
+            "project(time)&formatTime(\"yyyy-MM-dd'T'HH:mm:ss\")",
+        )
+
+        time_info = time_response.content.decode("utf-8")
+        lines = time_info.strip().splitlines()[1:]
+
+        if not lines:
+            logger.debug("No time data found.")
+            min_time = None
+        else:
+            datetimes = [datetime.fromisoformat(line) for line in lines]
+            min_time = min(datetimes)
+
+            logger.debug(f"Min time: {min_time}")
+
+        return min_time
 
     def __download_from_webpoda(
         self,

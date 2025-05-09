@@ -64,7 +64,7 @@ class FetchBinary:
             ]
 
         for d in range(len(dates) - 1):
-            (file, max_ert) = self.__web_poda.download(
+            file = self.__web_poda.download(
                 packet=packet,
                 start_date=dates[d],
                 end_date=dates[d + 1],
@@ -74,11 +74,28 @@ class FetchBinary:
             if file.stat().st_size > 0:
                 logger.info(f"Downloaded file from WebPODA: {file}")
 
+                max_ert: datetime | None = self.__web_poda.get_max_ert(
+                    packet=packet,
+                    start_date=dates[d],
+                    end_date=dates[d + 1],
+                    ert=use_ert,
+                )
+                min_time: datetime | None = self.__web_poda.get_min_sctime(
+                    packet=packet,
+                    start_date=dates[d],
+                    end_date=dates[d + 1],
+                    ert=use_ert,
+                )
+
                 downloaded[file] = WebPODAMetadataProvider(
                     descriptor=packet.lower()
                     .strip(self.__MAG_PREFIX)
                     .replace("_", "-"),
-                    content_date=dates[d],
+                    content_date=(
+                        min_time.replace(hour=0, minute=0, second=0)
+                        if min_time
+                        else None
+                    ),
                     ert=max_ert,
                     extension="pkts",
                 )
