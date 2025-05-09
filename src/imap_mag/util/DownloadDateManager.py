@@ -23,7 +23,7 @@ class DownloadDateManager:
         self.__last_updated_date = last_updated_date
         self.__logger = logger
 
-    def get_start_date(self, original_start_date: datetime | None) -> datetime | None:
+    def get_start_date(self, original_start_date: datetime | None) -> datetime:
         if original_start_date is None and self.__last_updated_date is None:
             self.__logger.info(
                 f"Start date not provided. Using {DatetimeProvider.beginning_of_imap()} as default download date for {self.__packet_name}."
@@ -93,9 +93,6 @@ def get_dates_for_download(
 
     start_date = manager.get_start_date(original_start_date)
     end_date = manager.get_end_date(original_end_date)
-
-    if start_date is None:
-        return None
 
     if check_and_update_database:
         return manager.validate_download_dates(start_date, end_date)
