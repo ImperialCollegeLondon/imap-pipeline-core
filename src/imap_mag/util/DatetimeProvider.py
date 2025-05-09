@@ -1,4 +1,7 @@
-from datetime import datetime, timedelta
+import typing
+from datetime import date, datetime, timedelta
+
+T = typing.TypeVar("T", date, datetime)
 
 
 class DatetimeProvider:
@@ -9,7 +12,7 @@ class DatetimeProvider:
         return datetime.now()
 
     @staticmethod
-    def today(date_type=datetime):
+    def today(date_type: type[T] = datetime) -> T:
         today = date_type.today()
 
         if isinstance(today, datetime):
@@ -18,11 +21,11 @@ class DatetimeProvider:
             return today
 
     @classmethod
-    def tomorrow(cls, date_type=datetime):
+    def tomorrow(cls, date_type: type[T] = datetime) -> T:
         return cls.today(date_type) + timedelta(days=1)
 
     @classmethod
-    def yesterday(cls, date_type=datetime):
+    def yesterday(cls, date_type: type[T] = datetime) -> T:
         return cls.today(date_type) - timedelta(days=1)
 
     @staticmethod
@@ -30,3 +33,7 @@ class DatetimeProvider:
         return datetime.today().replace(
             hour=23, minute=59, second=59, microsecond=999999
         )
+
+    @classmethod
+    def beginning_of_imap(cls, date_type: type[T] = datetime) -> T:
+        return cls.today(date_type).replace(year=2025, month=1, day=1)

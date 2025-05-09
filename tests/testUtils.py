@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag import appLogging
-from imap_mag.appUtils import DatetimeProvider
+from imap_mag.util import DatetimeProvider
 
 NOW = datetime.now()
 TODAY = datetime.today()
@@ -13,6 +13,7 @@ TOMORROW = datetime.today() + timedelta(days=1)
 YESTERDAY = datetime.today().replace(
     hour=0, minute=0, second=0, microsecond=0
 ) - timedelta(days=1)
+BEGINNING_OF_IMAP = datetime(2025, 1, 1, 0, 0, 0)
 END_OF_TODAY = datetime.today().replace(
     hour=23, minute=59, second=59, microsecond=999999
 )
@@ -49,6 +50,9 @@ def mock_datetime_provider(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "tomorrow", lambda: TOMORROW)
     monkeypatch.setattr(DatetimeProvider, "yesterday", lambda: YESTERDAY)
     monkeypatch.setattr(DatetimeProvider, "end_of_today", lambda: END_OF_TODAY)
+    monkeypatch.setattr(
+        DatetimeProvider, "beginning_of_imap", lambda: BEGINNING_OF_IMAP
+    )
 
 
 def create_test_file(file_path: Path, content: str | None = None) -> Path:
