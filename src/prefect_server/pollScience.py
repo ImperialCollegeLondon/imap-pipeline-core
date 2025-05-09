@@ -9,11 +9,8 @@ from imap_mag.api.fetch.science import (
     fetch_science,
 )
 from imap_mag.appConfig import manage_config
-from imap_mag.appUtils import (
-    get_dates_for_download,
-)
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.util import DatetimeProvider, Level, ScienceMode
+from imap_mag.util import DatetimeProvider, Level, ScienceMode, get_dates_for_download
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 

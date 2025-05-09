@@ -1,19 +1,15 @@
-"""Tests for app utilities."""
-
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
 
 from imap_db.model import DownloadProgress
-from imap_mag.appUtils import (
-    forceUTCTimeZone,
-    get_dates_for_download,
-)
 from imap_mag.db import IDatabase
+from imap_mag.util import get_dates_for_download
 
-from .testUtils import (  # noqa: F401
+from .testUtils import (  # noqa: F401  # noqa: F401
+    BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
     YESTERDAY,
@@ -29,18 +25,6 @@ LOGGER = logging.getLogger(__name__)
 def mock_database() -> mock.Mock:
     """Fixture for a mock IDatabase instance."""
     return mock.create_autospec(IDatabase, spec_set=True)
-
-
-@pytest.mark.parametrize(
-    "date",
-    [
-        datetime(2025, 3, 20, 9, 0, 0, tzinfo=timezone(timedelta(hours=-1))),
-        datetime(2025, 3, 20, 10, 0, 0, tzinfo=timezone.utc),
-        datetime(2025, 3, 20, 10, 0, 0, tzinfo=None),
-    ],
-)
-def test_force_remove_timezone(date) -> None:
-    assert forceUTCTimeZone(date) == datetime(2025, 3, 20, 10, 0, 0)
 
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
@@ -73,7 +57,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
 
     start_date, end_date = result
 
-    assert start_date == YESTERDAY
+    assert start_date == BEGINNING_OF_IMAP
     assert end_date == END_OF_TODAY
 
     assert (
@@ -81,7 +65,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         in caplog.text
     )
     assert (
-        "Start date not provided. Using yesterday as default download date for MAG_SCI_NORM."
+        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM."
         in caplog.text
     )
 
@@ -125,12 +109,12 @@ def test_get_start_end_dates_end_date_defined_empty_database(
 
     start_date, end_date = result
 
-    assert start_date == YESTERDAY
+    assert start_date == BEGINNING_OF_IMAP
     assert end_date == original_end_date
 
     assert "Using provided end date" in caplog.text
     assert (
-        "Start date not provided. Using yesterday as default download date for MAG_SCI_NORM."
+        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM."
         in caplog.text
     )
 
