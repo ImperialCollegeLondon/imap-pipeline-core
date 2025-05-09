@@ -103,6 +103,10 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
         binary_file,
     )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "ert\n",
+    )
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
@@ -139,6 +143,9 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         open(binary_file, "rb") as input,
     ):
         assert output.read() == input.read()
+
+
+# TODO: Add test with ERT
 
 
 @pytest.mark.skipif(

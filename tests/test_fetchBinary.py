@@ -7,9 +7,8 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchBinary import FetchBinary
+from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
 from imap_mag.client.webPODA import IWebPODA
-from imap_mag.io import StandardSPDFMetadataProvider
 
 from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
 
@@ -25,10 +24,13 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
     fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, None)
+    mock_poda.download.side_effect = lambda **_: (
+        create_test_file(test_file, None),  # file
+        None,  # max_ert
+    )
 
     # Exercise.
-    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+    actual_downloaded: dict[Path, WebPODAMetadataProvider] = (
         fetchBinary.download_binaries(
             packet="MAG_HSK_PW",
             start_date=datetime(2025, 5, 2),
@@ -41,6 +43,7 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        ert=False,
     )
 
     assert actual_downloaded == dict()
@@ -51,10 +54,13 @@ def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
     fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
+    mock_poda.download.side_effect = lambda **_: (
+        create_test_file(test_file, "content"),  # file
+        None,  # max_ert
+    )
 
     # Exercise.
-    actual_downloaded: dict[Path, StandardSPDFMetadataProvider] = (
+    actual_downloaded: dict[Path, WebPODAMetadataProvider] = (
         fetchBinary.download_binaries(
             packet="MAG_HSK_PW",
             start_date=datetime(2025, 5, 2),
@@ -67,16 +73,20 @@ def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        ert=False,
     )
 
     assert len(actual_downloaded) == 1
 
     assert test_file in actual_downloaded.keys()
     assert (
-        StandardSPDFMetadataProvider(
+        WebPODAMetadataProvider(
             descriptor="hsk-pw",
             content_date=datetime(2025, 5, 2),
             extension="pkts",
         )
         in actual_downloaded.values()
     )
+
+
+# TODO: Tests with ERT

@@ -1,18 +1,16 @@
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 
-from imap_mag.api.fetch.binary import fetch_binary
+from imap_mag.api.fetch.binary import WebPODAMetadataProvider, fetch_binary
 from imap_mag.api.process import process
 from imap_mag.appConfig import manage_config
 from imap_mag.appUtils import get_dates_for_download
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.io import StandardSPDFMetadataProvider
-from imap_mag.util import CONSTANTS, DatetimeProvider, HKPacket
+from imap_mag.util import DatetimeProvider, HKPacket
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
@@ -51,6 +49,7 @@ async def poll_hk_flow(
     hk_packets: list[HKPacket] = [hk for hk in HKPacket],  # type: ignore
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    force_ert: bool = False,
     force_database_update: bool = False,
 ):
     """
@@ -64,13 +63,14 @@ async def poll_hk_flow(
         PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
-    check_and_update_database = force_database_update or (
+    use_database_and_ert = force_database_update or (
         (start_date is None) and (end_date is None)
     )
     database = Database()
 
     for packet in hk_packets:
         packet_name = packet.packet
+
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
         packet_dates = get_dates_for_download(
@@ -78,7 +78,7 @@ async def poll_hk_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=check_and_update_database,
+            check_and_update_database=use_database_and_ert,
             logger=logger,
         )
 
@@ -87,11 +87,12 @@ async def poll_hk_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = fetch_binary(
+        downloaded_binaries: dict[Path, WebPODAMetadataProvider] = fetch_binary(
             auth_code=auth_code,
             packet=packet,
             start_date=packet_start_date,
             end_date=packet_end_date,
+            use_ert=use_database_and_ert or force_ert,
             fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
@@ -102,28 +103,21 @@ async def poll_hk_flow(
             continue
 
         # Process binary data into CSV
-        latest_timestamps: list[datetime] = []
-
         for file, _ in downloaded_binaries.items():
             # TODO: get rid of all use of the dynamic config files
             with manage_config(
                 source=file.parent, export_to_database=True
             ) as config_file:
-                (processed_file, _) = process(file=Path(file.name), config=config_file)
-
-            latest_timestamps.append(
-                datetime.fromtimestamp(
-                    pd.read_csv(processed_file).iloc[-1].epoch / 10**9
-                    + CONSTANTS.J2000_EPOCH_POSIX
-                )
-            )
+                process(file=Path(file.name), config=config_file)
 
         # Update database with latest content date as progress (for HK)
-        if check_and_update_database or force_database_update:
+        if use_database_and_ert or force_database_update:
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,
-                latest_timestamp=max(latest_timestamps),
+                latest_timestamp=max(
+                    metadata.ert for metadata in downloaded_binaries.values()
+                ),
                 logger=logger,
             )
         else:

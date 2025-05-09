@@ -1,6 +1,7 @@
 """Program to retrieve and process MAG binary files."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -12,7 +13,15 @@ from imap_mag.io import StandardSPDFMetadataProvider
 logger = logging.getLogger(__name__)
 
 
-# TODO: why is this class in a folder named "cli" when it is not a command line app?
+@dataclass
+class WebPODAMetadataProvider(StandardSPDFMetadataProvider):
+    """
+    Metadata for WebPODA binaries.
+    """
+
+    ert: datetime | None = None  # date data was received by WebPODA
+
+
 class FetchBinary:
     """Manage WebPODA data."""
 
@@ -29,11 +38,15 @@ class FetchBinary:
         self.__web_poda = web_poda
 
     def download_binaries(
-        self, packet: str, start_date: datetime, end_date: datetime
-    ) -> dict[Path, StandardSPDFMetadataProvider]:
+        self,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        use_ert: bool = False,
+    ) -> dict[Path, WebPODAMetadataProvider]:
         """Retrieve WebPODA data."""
 
-        downloaded: dict[Path, StandardSPDFMetadataProvider] = dict()
+        downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
         date_range: pd.DatetimeIndex = pd.date_range(
             start=start_date,
@@ -51,18 +64,22 @@ class FetchBinary:
             ]
 
         for d in range(len(dates) - 1):
-            file: Path = self.__web_poda.download(
-                packet=packet, start_date=dates[d], end_date=dates[d + 1]
+            (file, max_ert) = self.__web_poda.download(
+                packet=packet,
+                start_date=dates[d],
+                end_date=dates[d + 1],
+                ert=use_ert,
             )
 
             if file.stat().st_size > 0:
                 logger.info(f"Downloaded file from WebPODA: {file}")
 
-                downloaded[file] = StandardSPDFMetadataProvider(
+                downloaded[file] = WebPODAMetadataProvider(
                     descriptor=packet.lower()
                     .strip(self.__MAG_PREFIX)
                     .replace("_", "-"),
                     content_date=dates[d],
+                    ert=max_ert,
                     extension="pkts",
                 )
             else:

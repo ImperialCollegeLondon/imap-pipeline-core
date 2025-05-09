@@ -7,11 +7,10 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchBinary import FetchBinary
+from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.FetchMode import FetchMode
-from imap_mag.io import StandardSPDFMetadataProvider
 from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)
@@ -30,6 +29,13 @@ def fetch_binary(
     ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    use_ert: Annotated[
+        bool,
+        typer.Option(
+            "--ert",
+            help="Use ERT (Earth Received Time), rather than HK measurement time",
+        ),
+    ] = False,
     apid: Annotated[
         Optional[int],
         typer.Option("--apid", help="ApID to download"),
@@ -41,7 +47,7 @@ def fetch_binary(
     fetch_mode: Annotated[
         FetchMode, typer.Option("--mode", case_sensitive=False)
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, StandardSPDFMetadataProvider]:
+) -> dict[Path, WebPODAMetadataProvider]:
     """Download binary data from WebPODA."""
 
     # must provide a apid or a packet
@@ -74,9 +80,12 @@ def fetch_binary(
     poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.webpoda.url_base)
 
     fetch_binary = FetchBinary(poda)
-    downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
+    downloaded_binaries: dict[Path, WebPODAMetadataProvider] = (
         fetch_binary.download_binaries(
-            packet=packet_name, start_date=start_date, end_date=end_date
+            packet=packet_name,
+            start_date=start_date,
+            end_date=end_date,
+            use_ert=use_ert,
         )
     )
 
@@ -89,7 +98,7 @@ def fetch_binary(
         output_manager = appUtils.getOutputManagerByMode(
             app_settings.data_store, mode=fetch_mode
         )
-        output_binaries: dict[Path, StandardSPDFMetadataProvider] = dict()
+        output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
 
         for file, metadata_provider in downloaded_binaries.items():
             (output_file, output_metadata) = output_manager.add_file(
