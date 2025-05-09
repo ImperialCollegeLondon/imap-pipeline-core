@@ -286,6 +286,90 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         assert output.read() == input.read()
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manager):
+    # Set up.
+    query_response: list[dict[str, str]] = [
+        {
+            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "instrument": "mag",
+            "data_level": "l1b",
+            "descriptor": "norm-magi",
+            "start_date": "20250502",
+            "repointing": None,
+            "version": "v000",
+            "extension": "cdf",
+            "ingestion_date": "20240716 10:29:02",
+        }
+    ]
+    cdf_file = os.path.abspath(
+        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v000.cdf"
+    )
+
+    wiremock_manager.add_string_mapping(
+        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
+        json.dumps(query_response),
+        priority=1,
+    )
+    wiremock_manager.add_file_mapping(
+        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+        cdf_file,
+    )
+    wiremock_manager.add_string_mapping(
+        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        + ".*"
+        + re.escape(
+            "&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf"
+        ),
+        json.dumps({}),
+        is_pattern=True,
+        priority=2,
+    )
+
+    (_, config_file) = create_and_serialize_config(
+        destination_file="result.cdf",
+        sdc_url=wiremock_manager.get_url().rstrip("/"),
+    )
+
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "--verbose",
+            "fetch",
+            "science",
+            "--config",
+            str(config_file),
+            "--auth-code",
+            "12345",
+            "--level",
+            "l1b",
+            "--start-date",
+            "2024-07-16",
+            "--end-date",
+            "2024-07-16",
+            "--ingestion-date",
+        ],
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert Path("output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf").exists()
+
+    with (
+        open(
+            "output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+        ) as output,
+        open(cdf_file, "rb") as input,
+    ):
+        assert output.read() == input.read()
+
+
 def test_calibration_creates_calibration_file():
     result = runner.invoke(
         app,
