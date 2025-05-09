@@ -24,10 +24,7 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
     fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: (
-        create_test_file(test_file, None),  # file
-        None,  # max_ert
-    )
+    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, None)
 
     # Exercise.
     actual_downloaded: dict[Path, WebPODAMetadataProvider] = (
@@ -54,10 +51,9 @@ def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
     fetchBinary = FetchBinary(mock_poda)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: (
-        create_test_file(test_file, "content"),  # file
-        None,  # max_ert
-    )
+    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
+    mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 3, 8, 58, 39)
+    mock_poda.get_min_sctime.side_effect = lambda **_: datetime(2025, 5, 2, 12, 45, 29)
 
     # Exercise.
     actual_downloaded: dict[Path, WebPODAMetadataProvider] = (
@@ -84,9 +80,48 @@ def test_fetch_binary_with_same_start_end_date(mock_poda: mock.Mock) -> None:
             descriptor="hsk-pw",
             content_date=datetime(2025, 5, 2),
             extension="pkts",
+            ert=datetime(2025, 6, 3, 8, 58, 39),
         )
         in actual_downloaded.values()
     )
 
 
-# TODO: Tests with ERT
+def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
+    # Set up.
+    fetchBinary = FetchBinary(mock_poda)
+
+    test_file = Path(tempfile.gettempdir()) / "test_file"
+    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
+    mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 5, 2, 12, 45, 29)
+    mock_poda.get_min_sctime.side_effect = lambda **_: datetime(2025, 4, 3, 8, 58, 39)
+
+    # Exercise.
+    actual_downloaded: dict[Path, WebPODAMetadataProvider] = (
+        fetchBinary.download_binaries(
+            packet="MAG_HSK_PW",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            use_ert=True,
+        )
+    )
+
+    # Verify.
+    mock_poda.download.assert_called_once_with(
+        packet="MAG_HSK_PW",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        ert=True,
+    )
+
+    assert len(actual_downloaded) == 1
+
+    assert test_file in actual_downloaded.keys()
+    assert (
+        WebPODAMetadataProvider(
+            descriptor="hsk-pw",
+            content_date=datetime(2025, 4, 3),
+            extension="pkts",
+            ert=datetime(2025, 5, 2, 12, 45, 29),
+        )
+        in actual_downloaded.values()
+    )

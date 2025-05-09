@@ -108,3 +108,60 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         )
         in actual_downloaded.values()
     )
+
+
+def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> None:
+    # Set up.
+    fetchScience = FetchScience(
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file"
+
+    mock_soc.get_filename.side_effect = lambda **_: [
+        {
+            "file_path": test_file.absolute(),
+            "descriptor": "norm-mago",
+            "start_date": "20250502",
+            "ingestion_date": "20250602 00:00:00",
+            "version": "v007",
+        }
+    ]
+    mock_soc.download.side_effect = lambda file_path: file_path
+
+    # Exercise.
+    actual_downloaded: dict[Path, SDCMetadataProvider] = (
+        fetchScience.download_latest_science(
+            level="l1b",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            use_ingestion_date=True,
+        )
+    )
+
+    # Verify.
+    mock_soc.get_filename.assert_called_once_with(
+        level="l1b",
+        descriptor="norm-mago",
+        ingestion_start_date=datetime(2025, 5, 2),
+        ingestion_end_date=datetime(2025, 5, 3),
+        extension="cdf",
+    )
+    mock_soc.download.assert_called_once_with(
+        test_file.absolute(),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    assert test_file in actual_downloaded.keys()
+    assert (
+        SDCMetadataProvider(
+            level="l1b",
+            descriptor="norm-mago",
+            content_date=datetime(2025, 5, 2),
+            ingestion_date=datetime(2025, 6, 2),
+            version=7,
+            extension="cdf",
+        )
+        in actual_downloaded.values()
+    )

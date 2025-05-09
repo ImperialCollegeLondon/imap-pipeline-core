@@ -107,6 +107,10 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "/packets/SID2/MAG_HSK_PW.csv?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
         "ert\n",
     )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "time\n2025-05-02T12:37:09\n",
+    )
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
@@ -145,7 +149,60 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         assert output.read() == input.read()
 
 
-# TODO: Add test with ERT
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
+    # Set up.
+    binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
+
+    wiremock_manager.add_file_mapping(
+        "/packets/SID2/MAG_HSK_PW.bin?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(packet)",
+        binary_file,
+    )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "ert\n2025-06-02T12:37:09\n",
+    )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "time\n2025-05-02T12:37:09\n",
+    )
+
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
+    }
+
+    args = [
+        "--verbose",
+        "fetch",
+        "binary",
+        "--packet",
+        "SID3_PW",
+        "--auth-code",
+        "12345",
+        "--start-date",
+        "2025-06-02",
+        "--end-date",
+        "2025-06-03",
+        "--ert",
+    ]
+
+    # Exercise.
+    result = runner.invoke(app, args, env=settings_overrides_for_env)
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert Path("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts").exists()
+
+    with (
+        open("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts", "rb") as output,
+        open(binary_file, "rb") as input,
+    ):
+        assert output.read() == input.read()
 
 
 @pytest.mark.skipif(
