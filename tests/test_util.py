@@ -12,6 +12,30 @@ from imap_mag.util import (
 from .testUtils import enableLogging, tidyDataFolders  # noqa: F401
 
 
+def test_list_all_packets() -> None:
+    """Test listing all HK packets."""
+    packets_list = HKPacket.list()
+
+    assert len(packets_list) == 10
+    assert packets_list == [
+        "SID1",
+        "SID2",
+        "SID3_PW",
+        "SID4_STATUS",
+        "SID5_SCI",
+        "SID11_PROCSTAT",
+        "SID12",
+        "SID15",
+        "SID16",
+        "SID20",
+    ]
+
+
+def test_get_packet_from_apid_success() -> None:
+    packet = HKPacket.from_apid(1053)
+    assert packet == HKPacket.SID15
+
+
 def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
     with pytest.raises(ValueError):
         HKPacket.from_apid(12345)
