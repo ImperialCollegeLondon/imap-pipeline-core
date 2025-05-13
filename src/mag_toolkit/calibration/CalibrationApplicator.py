@@ -40,10 +40,19 @@ class CalibrationApplicator:
         if rotation is not None:
             science_data.values = self._rotate(rotation, science_data)
 
-        # Could be memory intensive
-        # TODO: Load and sum one set at a time to reduce mem usage (?)
-        layers = [CalibrationLayer.from_file(layer_file) for layer_file in layer_files]
-        sum_layer_values = reduce(self._sum_layers, [layer.values for layer in layers])
+        if len(layer_files) > 0:
+            sum_layer_values = self._add_layers(layer_files)
+        else:
+            sum_layer_values = [
+                CalibrationValue(
+                    time=data_point.time,
+                    value=[0, 0, 0],
+                    timedelta=0,
+                    quality_flag=0,
+                    quality_bitmask=0,
+                )
+                for data_point in science_data.values
+            ]
 
         validity = Validity(
             start=sum_layer_values[0].time, end=sum_layer_values[-1].time
@@ -83,6 +92,13 @@ class CalibrationApplicator:
         l2_filepath = scienceResult.writeToFile(outputScienceFile)
 
         return (l2_filepath, cal_filepath)
+
+    def _add_layers(self, layer_files: list[Path]):
+        # Could be memory intensive
+        # TODO: Load and sum one set at a time to reduce mem usage (?)
+        layers = [CalibrationLayer.from_file(layer_file) for layer_file in layer_files]
+        sum_layer_values = reduce(self._sum_layers, [layer.values for layer in layers])
+        return sum_layer_values
 
     def _calculate_magnitudes(self, science_layer: ScienceLayer):
         for i, datapoint in enumerate(science_layer.values):
