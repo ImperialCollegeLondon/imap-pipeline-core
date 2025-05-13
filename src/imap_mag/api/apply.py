@@ -40,6 +40,12 @@ def apply(
         help="The file name or pattern to match for the input file"
     ),
 ):
+    """
+    Apply calibration rotation and layers to an input science file.
+
+    imap-mag calibration apply --from [date] --to [date] --rotation [rotation] [layers] [input]
+    e.g. imap-mag calibration apply --from 2025-10-17 --to 2025-10-17 --rotation imap_mag_l2-calibration-matrices_20251017_v004.cdf 17-10-2025_17-10-2025_noop_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
+    """
     configFile: appConfig.AppConfig = commandInit(config)
 
     workDataFile = prepareWorkFile(input, configFile)

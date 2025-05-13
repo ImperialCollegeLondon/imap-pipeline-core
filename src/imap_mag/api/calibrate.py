@@ -45,6 +45,13 @@ def calibrate(
     ),
     config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
 ):
+    """
+    Generate calibration parameters for a given input file.
+    imap-mag calibrate --from [date] --to [date] --method [method] [input]
+
+    e.g. imap-mag calibrate --from 2025-10-17 --to 2025-10-17 --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
+
+    """
     # TODO: Define specific calibration configuration
     # Using AppConfig for now to piggyback off of configuration
     # verification and work area setup
