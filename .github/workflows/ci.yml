@@ -28,6 +28,7 @@ permissions:
 env:
   PREFERED_PYTHON_VERSION: '3.12'
   WEBPODA_AUTH_CODE: ${{ secrets.WEBPODA_AUTH_CODE }}
+  MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -76,6 +77,9 @@ jobs:
           echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
         shell: bash
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
 
       - name: build
         run: ./build.sh
