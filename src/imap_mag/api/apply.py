@@ -45,7 +45,7 @@ def apply(
     workDataFile = prepareWorkFile(input, configFile)
 
     if workDataFile is None:
-        raise Exception("Data file does not exist")
+        raise ValueError("Data file does not exist")
 
     workLayers = []
     for layer in layers:

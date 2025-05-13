@@ -18,7 +18,9 @@ class CalibrationLayer(Layer):
     values: list[CalibrationValue]
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
-        return Path()
+        raise NotImplementedError(
+            "CSV output not implemented for CalibrationLayer. Use CDF or JSON instead."
+        )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
         OFFSET_SKELETON_CDF = "resource/l2_offset_skeleton.cdf"

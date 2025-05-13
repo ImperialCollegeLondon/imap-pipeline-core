@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 from spacepy import pycdf
 
+from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
+
 from .CalibrationDefinitions import (
     CalibrationMetadata,
     CalibrationMethod,
@@ -15,7 +17,6 @@ from .CalibrationDefinitions import (
     Sensor,
     Validity,
 )
-from .CalibrationExceptions import CalibrationValidityError
 from .CalibrationLayer import CalibrationLayer
 from .ScienceLayer import ScienceLayer
 
@@ -152,7 +153,7 @@ class CalibrationApplicator:
 
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
-                raise Exception("Layer and data timestamps do not align")
+                raise ValueError("Layer and data timestamps do not align")
 
             data_point_vector = np.array(data_point.value)
             layer_vector = np.array(layer_point.value)
@@ -187,7 +188,7 @@ class CalibrationApplicator:
 
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
-                raise Exception("Layer and data timestamps do not align")
+                raise ValueError("Layer and data timestamps do not align")
 
             data_point_vector = np.array(data_point.value)
             layer_vector = np.array(layer_point.value)

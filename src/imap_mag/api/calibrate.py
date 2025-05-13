@@ -67,7 +67,7 @@ def calibrate(
         case CalibrationMethod.NOOP:
             calibrator = EmptyCalibrator()
         case _:
-            raise Exception("Undefined calibrator")
+            raise ValueError("Calibration method is not implemented")
 
     temp_cal_file_name = configFile.work_folder / configFile.destination.filename
 

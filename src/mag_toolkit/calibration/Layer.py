@@ -47,12 +47,8 @@ class Layer(BaseModel, ABC):
         if createDirectory:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-        try:
-            with open(filepath, "w+") as f:
-                f.write(json)
-        except Exception as e:
-            print(e)
-            print(f"Failed to write calibration to {filepath}")
+        with open(filepath, "w+") as f:
+            f.write(json)
 
         return filepath
 
