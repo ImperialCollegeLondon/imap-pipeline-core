@@ -7,8 +7,7 @@ import pytest
 from imap_db.model import DownloadProgress
 from imap_mag.db import IDatabase
 from imap_mag.util import get_dates_for_download
-
-from .testUtils import (  # noqa: F401  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401  # noqa: F401
     BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,

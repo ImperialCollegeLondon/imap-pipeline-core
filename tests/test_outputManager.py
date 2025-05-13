@@ -10,8 +10,11 @@ from imap_mag.io import (
     OutputManager,
     StandardSPDFMetadataProvider,
 )
-
-from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
+    create_test_file,
+    enableLogging,
+    tidyDataFolders,
+)
 
 
 def test_copy_new_file():

@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -48,21 +48,27 @@ class FetchBinary:
 
         downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
-        date_range: pd.DatetimeIndex = pd.date_range(
-            start=start_date,
-            end=end_date,
-            freq="D",
-            normalize=True,
-        )
-        dates: list[datetime] = date_range.to_pydatetime().tolist()
-
-        if len(dates) == 1:
-            dates += [
-                pd.Timestamp(dates[0] + pd.Timedelta(days=1))
-                .normalize()
+        if start_date == end_date:
+            start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            dates: list[datetime] = [start, start + timedelta(days=1)]
+        else:
+            dates = (
+                pd.date_range(
+                    start=start_date.replace(hour=0, minute=0, second=0, microsecond=0),
+                    end=end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    + timedelta(days=1),
+                    freq="D",
+                    normalize=True,
+                    inclusive="both",
+                )
                 .to_pydatetime()
-            ]
+                .tolist()
+            )
 
+            dates[:] = [x for x in dates if start_date < x < end_date]
+            dates = [start_date, *dates, end_date]
+
+        # Download the data in chunks of 1 day.
         for d in range(len(dates) - 1):
             file = self.__web_poda.download(
                 packet=packet,

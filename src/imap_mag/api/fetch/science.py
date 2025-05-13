@@ -77,6 +77,11 @@ def fetch_science(
         )
     )
 
+    if not downloaded_science:
+        logger.info(
+            f"No data downloaded for packet {level.value} from {start_date} to {end_date}."
+        )
+
     output_manager = appUtils.getOutputManager(configFile.destination)
     output_binaries: dict[Path, SDCMetadataProvider] = dict()
 

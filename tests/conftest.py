@@ -1,7 +1,7 @@
 import pytest
 from wiremock.testing.testcontainer import wiremock_container
 
-from tests.wiremockUtils import WireMockManager
+from tests.util.wiremock import WireMockManager
 
 
 @pytest.fixture(scope="session", autouse=False)

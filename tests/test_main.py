@@ -13,10 +13,7 @@ from typer.testing import CliRunner
 
 from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.main import app
-
-from .testUtils import tidyDataFolders  # noqa: F401
-
-# from .wiremockUtils import wiremock_manager
+from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 runner = CliRunner()
 

@@ -17,8 +17,7 @@ from imap_mag.io import (
     IOutputManager,
     StandardSPDFMetadataProvider,
 )
-
-from .testUtils import (  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
     TODAY,
     YESTERDAY,
     create_test_file,

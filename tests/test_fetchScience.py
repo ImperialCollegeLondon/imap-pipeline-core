@@ -13,8 +13,7 @@ from imap_mag.cli.fetchScience import (
 )
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.util import MAGSensor, ScienceMode
-
-from .testUtils import enableLogging, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import enableLogging, tidyDataFolders  # noqa: F401
 
 
 @pytest.fixture
