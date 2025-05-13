@@ -11,8 +11,10 @@ day_to_process = datetime(date);
 day_before = day_to_process - days(1);
 day_after = day_to_process + days(1);
 
+disp("Loading science file: " + sciencefile);
 baseScience = readstruct(sciencefile);
 
+disp("Generating offsets for " + datestr(day_to_process, 'yyyy-mm-dd'));
 epoch = [baseScience.values.time];
 values = {baseScience.values.value};
 

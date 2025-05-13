@@ -21,11 +21,11 @@ repos:
       - id: remove-crlf
       - id: remove-tabs
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: "0.31.1"
+    rev: "0.33.0"
     hooks:
       - id: check-github-workflows
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.4
+    rev: v0.11.9
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -36,6 +36,6 @@ repos:
       - id: markdownlint-fix
         args: [--ignore, LICENSE.md]
   - repo: https://github.com/python-poetry/poetry
-    rev: "2.0.1"
+    rev: "2.1.3"
     hooks:
     -   id: poetry-check
