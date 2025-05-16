@@ -111,6 +111,8 @@ async def test_poll_hk_autoflow_first_ever_run(
         {p for p in HKPacket}.difference(available_hk)
     )
 
+    wiremock_manager.reset()
+
     # Some data is available for "today", only for specific packets.
     for hk_type in available_hk:
         wiremock_manager.add_file_mapping(
@@ -169,6 +171,8 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     not_available_hk: list[HKPacket] = list(
         {p for p in HKPacket}.difference(available_hk)
     )
+
+    wiremock_manager.reset()
 
     # Some data is available for "today", only for specific packets.
     for hk_type in available_hk:

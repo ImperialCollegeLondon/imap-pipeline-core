@@ -10,7 +10,7 @@ from tests.util.miscellaneous import set_env
 
 @pytest.fixture(scope="function")
 def test_database():
-    with PostgresContainer("postgres:15") as postgres:
+    with PostgresContainer(driver="psycopg") as postgres:
         engine = create_engine(postgres.get_connection_url())
         Base.metadata.create_all(engine)
 
