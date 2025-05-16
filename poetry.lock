@@ -1309,23 +1309,22 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "imap-data-access"
-version = "0.16.0"
+version = "0.25.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "imap_data_access-0.25.0-py3-none-any.whl", hash = "sha256:0187d665e1aa75694e0460e25f3d0e19e27a3950c81eb55ef581003e8d32a815"},
+    {file = "imap_data_access-0.25.0.tar.gz", hash = "sha256:aef3b740b7e0ba9aa03d0ef70c6c38836684d45d176043398a6847e0df2f6b63"},
+]
+
+[package.dependencies]
+requests = ">=2.29"
 
 [package.extras]
 dev = ["imap_data_access[test]", "pre-commit", "ruff"]
 test = ["pytest", "pytest-cov"]
-
-[package.source]
-type = "git"
-url = "https://github.com/daralynnrhode/imap-data-access"
-reference = "query_by_ingestion"
-resolved_reference = "0cd6514325c0bb326fe69628cebda3f3aed4ea94"
 
 [[package]]
 name = "importlib-metadata"
@@ -4553,4 +4552,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "e5c7b0049a2254422af214e6fd8d2d3b9f01fd16273ad4eeb820d08ae2735d1f"
+content-hash = "5155b910d67ebfc0b4a8d70babbfe5cb21fc333b85792974a116792661d2cd35"
