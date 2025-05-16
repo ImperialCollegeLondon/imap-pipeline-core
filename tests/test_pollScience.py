@@ -153,7 +153,10 @@ async def test_poll_science_autoflow_first_ever_run(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()):
+    with (
+        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("SDC_AUTH_CODE", "12345"),
+    ):
         await poll_science_flow()
 
     # Verify.
@@ -200,7 +203,10 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()):
+    with (
+        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("SDC_AUTH_CODE", "12345"),
+    ):
         await poll_science_flow()
 
     # Verify.
@@ -247,7 +253,10 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()):
+    with (
+        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("SDC_AUTH_CODE", "12345"),
+    ):
         await poll_science_flow(
             modes=[ScienceMode.Burst],
             start_date=start_date,
