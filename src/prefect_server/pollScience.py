@@ -8,7 +8,7 @@ from imap_mag.api.fetch.science import (
     SDCMetadataProvider,
     fetch_science,
 )
-from imap_mag.appConfig import manage_config
+from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.util import DatetimeProvider, Level, ScienceMode, get_dates_for_download
 from prefect_server.constants import CONSTANTS
@@ -52,6 +52,7 @@ async def poll_science_flow(
     """
 
     logger = get_run_logger()
+    database = Database()
 
     auth_code = await get_secret_or_env_var(
         CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
@@ -59,9 +60,10 @@ async def poll_science_flow(
     )
 
     # If this is an automated flow run, use the database to figure out what to download,
-    # and use the ingestion date to download data; otherwise use the file start date.
-    use_database_and_ingestion_date = (start_date is None) and (end_date is None)
-    database = Database()
+    # and use the ingestion date to download data.
+    automated_flow_run: bool = (start_date is None) and (end_date is None)
+    use_database: bool = force_database_update or automated_flow_run
+    use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     for mode in modes:
         packet_name = mode.packet
@@ -73,7 +75,7 @@ async def poll_science_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=use_database_and_ingestion_date,
+            check_and_update_database=use_database,
             logger=logger,
         )
 
@@ -83,18 +85,15 @@ async def poll_science_flow(
             (packet_start_date, packet_end_date) = packet_dates
 
         # Download binary from SDC
-        with manage_config(export_to_database=True) as config_file:
-            downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
-                auth_code=auth_code,
-                level=level,
-                modes=[mode],
-                start_date=packet_start_date,
-                end_date=packet_end_date,
-                use_ingestion_date=(
-                    use_database_and_ingestion_date or force_ingestion_date
-                ),
-                config=config_file,
-            )
+        downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
+            auth_code=auth_code,
+            level=level,
+            modes=[mode],
+            start_date=packet_start_date,
+            end_date=packet_end_date,
+            use_ingestion_date=(use_ingestion_date or force_ingestion_date),
+            fetch_mode=FetchMode.DownloadAndUpdateProgress,
+        )
 
         if not downloaded_science:
             logger.info(
@@ -103,7 +102,7 @@ async def poll_science_flow(
             continue
 
         # Update database with latest ingestion date as progress (for science)
-        if use_database_and_ingestion_date or force_database_update:
+        if use_database or force_database_update:
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,

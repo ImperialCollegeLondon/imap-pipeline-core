@@ -50,12 +50,16 @@ def fetch_binary(
 ) -> dict[Path, WebPODAMetadataProvider]:
     """Download binary data from WebPODA."""
 
-    # must provide a apid or a packet
+    if not auth_code:
+        logger.critical("No WebPODA authorization code provided")
+        raise ValueError("No WebPODA authorization code provided")
+
+    # Must provide a apid or a packet.
     if (not apid and not packet) or (apid and packet):
         raise ValueError("Must provide either --apid or --packet, and not both")
 
     settings_overrides = (
-        {"fetch_binary": {"webpoda": {"auth_code": auth_code}}} if auth_code else {}
+        {"fetch_binary": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
     app_settings = AppSettings(**settings_overrides)
@@ -69,15 +73,11 @@ def fetch_binary(
     else:
         packet_name: str = packet.packet  # type: ignore
 
-    if not auth_code:
-        logger.critical("No WebPODA authorization code provided")
-        raise ValueError("No SDC_AUTH_CODE API key provided")
-
     logger.info(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
     )
 
-    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.webpoda.url_base)
+    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.api.url_base)
 
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, WebPODAMetadataProvider] = (

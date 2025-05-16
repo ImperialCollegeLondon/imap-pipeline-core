@@ -5,13 +5,15 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit
+from imap_mag import appUtils
+from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.cli.fetchScience import (
     FetchScience,
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.config.AppSettings import AppSettings
+from imap_mag.config.FetchMode import FetchMode
 from imap_mag.util import Level, MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -45,26 +47,32 @@ def fetch_science(
     ] = [
         "norm",  # type: ignore
         "burst",  # type: ignore
-    ],  # for some reason Typer does not like these being enums -
+    ],  # for some reason Typer does not like these being enums
     sensors: Annotated[list[MAGSensor], typer.Option(help="Sensors to download")] = [
         MAGSensor.IBS,
         MAGSensor.OBS,
     ],
-    config: Annotated[Path, typer.Option()] = Path("config.yaml"),
+    fetch_mode: Annotated[
+        FetchMode, typer.Option("--mode", case_sensitive=False)
+    ] = FetchMode.DownloadOnly,
 ) -> dict[Path, SDCMetadataProvider]:
     """Download science data from the SDC."""
-
-    configFile: appConfig.CommandConfigBase = commandInit(config)
 
     if not auth_code:
         logger.critical("No SDC_AUTH_CODE API key provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logger.info(f"Downloading {level.value} science from {start_date} to {end_date}.")
+    settings_overrides = (
+        {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
+    )
+
+    app_settings = AppSettings(**settings_overrides)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
 
     data_access = SDCDataAccess(
-        data_dir=configFile.work_folder,
-        sdc_url=configFile.api.sdc_url if configFile.api else None,
+        data_dir=work_folder,
+        sdc_url=app_settings.fetch_science.api.url_base,
     )
 
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
@@ -82,7 +90,9 @@ def fetch_science(
             f"No data downloaded for packet {level.value} from {start_date} to {end_date}."
         )
 
-    output_manager = appUtils.getOutputManager(configFile.destination)
+    output_manager = appUtils.getOutputManagerByMode(
+        app_settings.data_store, mode=fetch_mode
+    )
     output_binaries: dict[Path, SDCMetadataProvider] = dict()
 
     for file, metadata_provider in downloaded_science.items():

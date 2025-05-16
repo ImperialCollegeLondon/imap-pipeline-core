@@ -20,7 +20,6 @@ class AppSettings(BaseSettings):
     Application configuration class.
 
     Can be configured with imap-mag-config.yaml, with ENV vars like MAG_FIELD_SUBFIELD=123 and kwargs to AppSettsings(data_store="some_path")
-
     """
 
     config_file: ClassVar[str] = "imap-mag-config.yaml"
@@ -38,6 +37,7 @@ class AppSettings(BaseSettings):
 
     # Command settings
     fetch_binary: FetchConfig
+    fetch_science: FetchConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

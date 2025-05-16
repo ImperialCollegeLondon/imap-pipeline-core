@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.main import app
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
@@ -110,7 +109,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
+        "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
     }
 
     args = [
@@ -168,7 +167,7 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
+        "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
     }
 
     args = [
@@ -243,10 +242,9 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         priority=2,
     )
 
-    (_, config_file) = create_and_serialize_config(
-        destination_file="result.cdf",
-        sdc_url=wiremock_manager.get_url().rstrip("/"),
-    )
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+    }
 
     # Exercise.
     result = runner.invoke(
@@ -255,8 +253,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--verbose",
             "fetch",
             "science",
-            "--config",
-            str(config_file),
             "--auth-code",
             "12345",
             "--level",
@@ -266,6 +262,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--end-date",
             "2025-05-02",
         ],
+        env=settings_overrides_for_env,
     )
 
     print("\n" + str(result.stdout))
@@ -326,10 +323,9 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         priority=2,
     )
 
-    (_, config_file) = create_and_serialize_config(
-        destination_file="result.cdf",
-        sdc_url=wiremock_manager.get_url().rstrip("/"),
-    )
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+    }
 
     # Exercise.
     result = runner.invoke(
@@ -338,8 +334,6 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "--verbose",
             "fetch",
             "science",
-            "--config",
-            str(config_file),
             "--auth-code",
             "12345",
             "--level",
@@ -350,6 +344,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "2024-07-16",
             "--ingestion-date",
         ],
+        env=settings_overrides_for_env,
     )
 
     print("\n" + str(result.stdout))

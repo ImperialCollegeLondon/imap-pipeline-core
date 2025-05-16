@@ -154,7 +154,7 @@ async def test_poll_hk_autoflow_first_ever_run(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_BINARY_WEBPODA_URL_BASE", wiremock_manager.get_url()):
+    with set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()):
         await poll_hk_flow()
 
     # Verify.
@@ -223,7 +223,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_BINARY_WEBPODA_URL_BASE", wiremock_manager.get_url()):
+    with set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()):
         await poll_hk_flow()
 
     # Verify.
@@ -304,7 +304,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with set_env("MAG_FETCH_BINARY_WEBPODA_URL_BASE", wiremock_manager.get_url()):
+    with set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()):
         await poll_hk_flow(
             start_date=start_date,
             end_date=end_date,
