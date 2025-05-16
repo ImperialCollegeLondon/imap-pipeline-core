@@ -53,7 +53,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     assert actual_downloaded == dict()
 
 
-def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
+def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     # Set up.
     fetchScience = FetchScience(
         mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
@@ -77,7 +77,7 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         fetchScience.download_latest_science(
             level="l1b",
             start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
         )
     )
 
@@ -86,7 +86,7 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         level="l1b",
         descriptor="norm-mago",
         start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
         extension="cdf",
     )
     mock_soc.download.assert_called_once_with(
@@ -107,6 +107,80 @@ def test_fetch_science_with_same_start_end_date(mock_soc: mock.Mock) -> None:
         )
         in actual_downloaded.values()
     )
+
+
+@pytest.mark.parametrize(
+    "start_date, end_date, expected_start_date, expected_end_date",
+    [
+        (
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 2),
+        ),
+        (
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3),
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3),
+        ),
+        (
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3),
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3),
+        ),
+        (
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3, 12, 45, 29),
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3, 12, 45, 29),
+        ),
+        (
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3, 12, 45, 29),
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3, 12, 45, 29),
+        ),
+        (
+            datetime(2025, 6, 2, 5, 30, 0),
+            datetime(2025, 6, 2, 23, 59, 59, 999999),
+            datetime(2025, 6, 2, 5, 30, 0),
+            datetime(2025, 6, 2, 23, 59, 59, 999999),
+        ),
+    ],
+)
+def test_fetch_binary_different_start_end_dates(
+    mock_soc: mock.Mock, start_date, end_date, expected_start_date, expected_end_date
+) -> None:
+    # Set up.
+    fetchScience = FetchScience(
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
+    )
+
+    mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
+
+    # Exercise.
+    actual_downloaded: dict[Path, SDCMetadataProvider] = (
+        fetchScience.download_latest_science(
+            level="l1b",
+            start_date=start_date,
+            end_date=end_date,
+        )
+    )
+
+    # Verify.
+    mock_soc.get_filename.assert_called_once_with(
+        level="l1b",
+        descriptor="norm-mago",
+        start_date=expected_start_date,
+        end_date=expected_end_date,
+        extension="cdf",
+    )
+
+    mock_soc.download.assert_not_called()
+
+    assert actual_downloaded == dict()
 
 
 def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> None:

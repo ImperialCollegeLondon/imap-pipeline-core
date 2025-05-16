@@ -34,7 +34,7 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
         fetchBinary.download_binaries(
             packet="MAG_HSK_PW",
             start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
+            end_date=datetime(2025, 5, 2),
         )
     )
 
@@ -63,7 +63,7 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
         fetchBinary.download_binaries(
             packet="MAG_HSK_PW",
             start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
+            end_date=datetime(2025, 5, 2),
         )
     )
 
@@ -101,14 +101,14 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2)],
-            [datetime(2025, 5, 3)],
+            [datetime(2025, 5, 2), datetime(2025, 5, 3)],
+            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2, 12, 45, 29)],
-            [datetime(2025, 5, 3)],
+            [datetime(2025, 5, 2, 12, 45, 29), datetime(2025, 5, 3)],
+            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
         ),
         (
             datetime(2025, 5, 2),
@@ -182,7 +182,7 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
         fetchBinary.download_binaries(
             packet="MAG_HSK_PW",
             start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
+            end_date=datetime(2025, 5, 2),
             use_ert=True,
         )
     )

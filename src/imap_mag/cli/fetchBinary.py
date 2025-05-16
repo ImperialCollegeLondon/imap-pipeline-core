@@ -68,6 +68,11 @@ class FetchBinary:
             dates[:] = [x for x in dates if start_date < x < end_date]
             dates = [start_date, *dates, end_date]
 
+            if end_date == end_date.replace(hour=0, minute=0, second=0, microsecond=0):
+                dates.append(
+                    end_date + timedelta(days=1),
+                )
+
         # Download the data in chunks of 1 day.
         for d in range(len(dates) - 1):
             file = self.__web_poda.download(

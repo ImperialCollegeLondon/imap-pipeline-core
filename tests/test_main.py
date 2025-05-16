@@ -124,7 +124,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "--start-date",
         "2025-05-02",
         "--end-date",
-        "2025-05-03",
+        "2025-05-02",
     ]
 
     if mode is not None:
@@ -182,7 +182,7 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
         "--start-date",
         "2025-06-02",
         "--end-date",
-        "2025-06-03",
+        "2025-06-02",
         "--ert",
     ]
 
