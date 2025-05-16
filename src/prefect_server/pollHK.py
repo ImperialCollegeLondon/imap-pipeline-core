@@ -112,7 +112,7 @@ async def poll_hk_flow(
                 process(file=Path(file.name), config=config_file)
 
         # Update database with latest content date as progress (for HK)
-        if use_database or force_database_update:
+        if use_database:
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,

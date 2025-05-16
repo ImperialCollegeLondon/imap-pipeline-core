@@ -91,7 +91,7 @@ async def poll_science_flow(
             modes=[mode],
             start_date=packet_start_date,
             end_date=packet_end_date,
-            use_ingestion_date=(use_ingestion_date or force_ingestion_date),
+            use_ingestion_date=use_ingestion_date,
             fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
@@ -102,7 +102,7 @@ async def poll_science_flow(
             continue
 
         # Update database with latest ingestion date as progress (for science)
-        if use_database or force_database_update:
+        if use_database:
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,

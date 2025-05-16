@@ -24,14 +24,14 @@ def define_unavailable_data_webpoda_mappings(wiremock_manager):
 
     wiremock_manager.add_file_mapping(
         re.escape("/packets/SID2/")
-        + ".*"
+        + r".*"
         + re.escape(".bin?")
-        + "(?:ert|time)"
+        + r"(?:ert|time)"
         + re.escape("%3E=")
-        + ".*"
+        + r".*"
         + re.escape("&")
-        + "(?:ert|time)"
-        + ".*"
+        + r"(?:ert|time)"
+        + r".*"
         + re.escape("&project(packet)"),
         empty_file,
         is_pattern=True,
@@ -40,17 +40,17 @@ def define_unavailable_data_webpoda_mappings(wiremock_manager):
 
     wiremock_manager.add_string_mapping(
         re.escape("/packets/SID2/")
-        + ".*"
+        + r".*"
         + re.escape(".csv?")
-        + "(?:ert|time)"
+        + r"(?:ert|time)"
         + re.escape("%3E=")
-        + ".*"
+        + r".*"
         + re.escape("&")
-        + "(?:ert|time)"
+        + r"(?:ert|time)"
         + re.escape("%3C")
-        + ".*"
+        + r".*"
         + re.escape("&project(")
-        + "(?:ert|time)"
+        + r"(?:ert|time)"
         + re.escape(")&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)"),
         "time_var\n",
         is_pattern=True,
@@ -272,7 +272,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 
     wiremock_manager.reset()
 
-    # Some data is available for "today", only for specific packets.
+    # Some data is available for the requested dates, only for specific packets.
     for hk in available_hk:
         for date_pair in [
             (

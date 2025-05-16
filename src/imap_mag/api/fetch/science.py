@@ -93,12 +93,12 @@ def fetch_science(
     output_manager = appUtils.getOutputManagerByMode(
         app_settings.data_store, mode=fetch_mode
     )
-    output_binaries: dict[Path, SDCMetadataProvider] = dict()
+    output_science: dict[Path, SDCMetadataProvider] = dict()
 
     for file, metadata_provider in downloaded_science.items():
         (output_file, output_metadata) = output_manager.add_file(
             file, metadata_provider
         )
-        output_binaries[output_file] = output_metadata
+        output_science[output_file] = output_metadata
 
-    return output_binaries
+    return output_science
