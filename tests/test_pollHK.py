@@ -87,6 +87,10 @@ def verify_available_hk(
         assert os.path.exists(os.path.join(data_folder, csv_file))
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
 @pytest.mark.asyncio
 async def test_poll_hk_autoflow_first_ever_run(
     wiremock_manager,
@@ -148,6 +152,10 @@ async def test_poll_hk_autoflow_first_ever_run(
     )
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
 @pytest.mark.asyncio
 async def test_poll_hk_autoflow_continue_from_previous_download(
     wiremock_manager,
