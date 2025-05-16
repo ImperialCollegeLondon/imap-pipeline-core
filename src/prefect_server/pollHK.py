@@ -56,16 +56,18 @@ async def poll_hk_flow(
     """
 
     logger = get_run_logger()
+    database = Database()
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
         PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
-    use_database_and_ert = force_database_update or (
-        (start_date is None) and (end_date is None)
-    )
-    database = Database()
+    # If this is an automated flow run, use the database to figure out what to download,
+    # and use ERT to download data.
+    automated_flow_run: bool = (start_date is None) and (end_date is None)
+    use_database: bool = force_database_update or automated_flow_run
+    use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:
         packet_name = packet.packet
@@ -77,7 +79,7 @@ async def poll_hk_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=use_database_and_ert,
+            check_and_update_database=use_database,
             logger=logger,
         )
 
@@ -91,7 +93,7 @@ async def poll_hk_flow(
             packet=packet,
             start_date=packet_start_date,
             end_date=packet_end_date,
-            use_ert=use_database_and_ert or force_ert,
+            use_ert=use_ert,
             fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
@@ -110,7 +112,7 @@ async def poll_hk_flow(
                 process(file=Path(file.name), config=config_file)
 
         # Update database with latest content date as progress (for HK)
-        if use_database_and_ert or force_database_update:
+        if use_database or force_database_update:
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,
