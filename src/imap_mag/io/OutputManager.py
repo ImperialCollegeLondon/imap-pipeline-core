@@ -76,7 +76,7 @@ class OutputManager(IOutputManager):
 
         while destination_file.exists():
             logger.debug(
-                f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version}."
+                f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version + 1}."
             )
             metadata_provider.version += 1
             updated_file = self.__assemble_full_path(metadata_provider)
