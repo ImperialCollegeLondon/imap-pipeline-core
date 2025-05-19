@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from imap_mag.db import Database
 from imap_mag.util.DatetimeProvider import DatetimeProvider
@@ -41,11 +41,16 @@ class DownloadDateManager:
             and self.__progress_timestamp is None
             and self.__last_checked_date is not None
         ):
-            # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday as the start date.
-            self.__logger.info(
-                f"Start date not provided. Using {DatetimeProvider.yesterday()} as default download date for {self.__packet_name}, as this packet has been checked at least once."
+            # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday or the last checked date,
+            # whichever comes first, as the start date.
+            inferred_start_date: datetime = min(
+                DatetimeProvider.yesterday(),
+                self.__last_checked_date - timedelta(hours=1),
             )
-            return DatetimeProvider.yesterday()
+            self.__logger.info(
+                f"Start date not provided. Using {inferred_start_date} as default download date for {self.__packet_name}, as this packet has been checked at least once."
+            )
+            return inferred_start_date
         elif original_start_date is None and self.__progress_timestamp is not None:
             self.__logger.info(
                 f"Start date not provided. Using last updated date {self.__progress_timestamp} for {self.__packet_name} from database."
