@@ -17,15 +17,6 @@ logger = logging.getLogger(__name__)
 app.command()(apply.apply)
 
 
-@app.command()
-def generate(
-    method: CalibrationMethod,
-    from_date: Annotated[datetime, typer.Option("--from")],
-    to_date: Annotated[datetime, typer.Option("--to")],
-):
-    pass
-
-
 # TODO: ?
 def interpolate():
     pass
