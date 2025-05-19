@@ -87,14 +87,14 @@ def apply(
         level="l2",
         date=from_date,
         descriptor="norm-mago",
-        version=1,
+        version=0,
         extension=l2_output_type.value,
     )
     cal_metadata_provider = StandardSPDFMetadataProvider(
         level="l2",
         descriptor="norm-offsets",
         date=from_date,
-        version=1,
+        version=0,
         extension=calibration_output_type.value,
     )
 
