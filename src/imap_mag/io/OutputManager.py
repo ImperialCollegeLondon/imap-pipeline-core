@@ -28,9 +28,16 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
+        (metadata_provider.version, skip_file_copy) = self.__get_next_available_version(
+            metadata_provider,
+            original_hash=generate_hash(original_file),
+        )
         destination_file: Path = self.assemble_full_path(
             self.location, metadata_provider
         )
+
+        if skip_file_copy:
+            return (destination_file, metadata_provider)
 
         if not destination_file.parent.exists():
             logger.debug(
@@ -38,42 +45,43 @@ class OutputManager(IOutputManager):
             )
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
-        if destination_file.exists():
-            if generate_hash(destination_file) == generate_hash(original_file):
-                logger.info(
-                    f"File {destination_file} already exists and is the same. Skipping update."
-                )
-                return (destination_file, metadata_provider)
-
-            metadata_provider.version = self.__get_next_available_version(
-                destination_file, metadata_provider
-            )
-            destination_file = self.assemble_full_path(self.location, metadata_provider)
-
         logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
         destination = shutil.copy2(original_file, destination_file)
-        logger.info(f"Copied to {destination}.")
+        logger.debug(f"Copied to {destination}.")
 
         return (destination_file, metadata_provider)
 
     def __get_next_available_version(
-        self, destination_file: Path, metadata_provider: IFileMetadataProvider
-    ) -> int:
+        self,
+        metadata_provider: IFileMetadataProvider,
+        original_hash: str,
+    ) -> tuple[int, bool]:
         """Find a viable version for a file."""
 
         if not metadata_provider.supports_versioning():
             logger.warning(
-                f"File {destination_file} already exists and is different. Overwriting."
+                "Versioning not supported. File may be overwritten if it already exists."
             )
-            return metadata_provider.version
+            return (metadata_provider.version, False)
+
+        destination_file: Path = self.assemble_full_path(
+            self.location, metadata_provider
+        )
 
         while destination_file.exists():
+            if generate_hash(destination_file) == original_hash:
+                logger.info(
+                    f"File {destination_file} already exists and is the same. Skipping update."
+                )
+                return (metadata_provider.version, True)
+
             logger.debug(
                 f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version + 1}."
             )
             metadata_provider.version += 1
             updated_file = self.assemble_full_path(self.location, metadata_provider)
 
+            # Make sure file has changed, otherwise this in an infinite loop
             if destination_file == updated_file:
                 logger.error(
                     f"File {destination_file} already exists and is different. Cannot increase version."
@@ -84,4 +92,4 @@ class OutputManager(IOutputManager):
 
             destination_file = updated_file
 
-        return metadata_provider.version
+        return (metadata_provider.version, False)

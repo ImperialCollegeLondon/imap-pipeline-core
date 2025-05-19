@@ -48,6 +48,7 @@ class FetchBinary:
 
         downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
+        # If the start and end dates are the same, download all the data from that day.
         if start_date == end_date:
             start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
             dates: list[datetime] = [start, start + timedelta(days=1)]

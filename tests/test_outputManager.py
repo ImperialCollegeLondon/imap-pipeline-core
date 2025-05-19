@@ -17,7 +17,7 @@ from tests.util.miscellaneous import (  # noqa: F401
 )
 
 
-def test_copy_new_file():
+def test_copy_new_file(caplog):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -32,10 +32,12 @@ def test_copy_new_file():
     )
 
     # Verify.
+    assert "Copied to output/2025/05/02/imap_mag_pwr_20250502_v000.txt." in caplog.text
+
     assert Path("output/2025/05/02/imap_mag_pwr_20250502_v000.txt").exists()
 
 
-def test_copy_file_same_content():
+def test_copy_file_same_content(caplog):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -55,11 +57,50 @@ def test_copy_file_same_content():
     )
 
     # Verify.
+    assert (
+        "File output/2025/05/02/imap_mag_pwr_20250502_v000.txt already exists and is the same. Skipping update."
+        in caplog.text
+    )
+
     assert not Path("output/2025/05/02/imap_mag_pwr_20250502_v001.txt").exists()
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
-def test_copy_file_existing_versions():
+def test_copy_file_second_existing_file_with_same_content(caplog):
+    # Set up.
+    manager = OutputManager(Path("output"))
+
+    original_file = create_test_file(Path(".work/some_test_file.txt"), "some content")
+    existing_file = create_test_file(
+        Path("output/2025/05/02/imap_mag_pwr_20250502_v001.txt"), "some content"
+    )
+    create_test_file(Path("output/2025/05/02/imap_mag_pwr_20250502_v000.txt"))
+
+    existing_modification_time = existing_file.stat().st_mtime
+
+    # Exercise.
+    manager.add_spdf_format_file(
+        original_file,
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    # Verify.
+    assert (
+        "File output/2025/05/02/imap_mag_pwr_20250502_v000.txt already exists and is different. Increasing version to 1."
+        in caplog.text
+    )
+    assert (
+        "File output/2025/05/02/imap_mag_pwr_20250502_v001.txt already exists and is the same. Skipping update."
+        in caplog.text
+    )
+
+    assert not Path("output/2025/05/02/imap_mag_pwr_20250502_v002.txt").exists()
+    assert existing_file.stat().st_mtime == existing_modification_time
+
+
+def test_copy_file_existing_versions(caplog):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -79,6 +120,12 @@ def test_copy_file_existing_versions():
     )
 
     # Verify.
+    for version in range(2):
+        assert (
+            f"File output/2025/05/02/imap_mag_pwr_20250502_v{version:03}.txt already exists and is different. Increasing version to {version + 1}."
+            in caplog.text
+        )
+
     assert Path("output/2025/05/02/imap_mag_pwr_20250502_v002.txt").exists()
 
 
@@ -159,7 +206,7 @@ class TestMetadataProvider(IFileMetadataProvider):
         return "def"
 
 
-def test_copy_file_custom_providers():
+def test_copy_file_custom_providers(caplog):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -169,6 +216,11 @@ def test_copy_file_custom_providers():
     manager.add_file(original_file, TestMetadataProvider())
 
     # Verify.
+    assert (
+        "Versioning not supported. File may be overwritten if it already exists."
+        in caplog.text
+    )
+
     assert Path("output/abc/def").exists()
 
 
