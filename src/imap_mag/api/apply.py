@@ -22,7 +22,10 @@ class FileType(Enum):
 
 # E.g., imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
-    layers: list[str],
+    layers: Annotated[
+        list[str],
+        typer.Option(help="Calibration layers to apply to the input science file"),
+    ],
     from_date: Annotated[
         datetime,
         typer.Option("--from", help="Date to apply calibration parameters from"),
