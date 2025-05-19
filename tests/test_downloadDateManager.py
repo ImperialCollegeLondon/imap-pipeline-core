@@ -64,7 +64,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         in caplog.text
     )
     assert (
-        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM."
+        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM, as this is the first time it is downloaded"
         in caplog.text
     )
 
@@ -113,7 +113,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
 
     assert "Using provided end date" in caplog.text
     assert (
-        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM."
+        f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM, as this is the first time it is downloaded"
         in caplog.text
     )
 
@@ -171,7 +171,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
 
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
-def test_get_start_end_dates_no_dates_defined_with_database(
+def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     caplog,
     mock_database,
     check_and_update_database,
@@ -218,6 +218,59 @@ def test_get_start_end_dates_no_dates_defined_with_database(
         assert mock_database.save.called
     else:
         assert download_progress.last_checked_date is None
+        assert not mock_database.save.called
+
+
+@pytest.mark.parametrize("check_and_update_database", [True, False])
+def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
+    caplog,
+    mock_database,
+    check_and_update_database,
+    mock_datetime_provider,  # noqa: F811
+) -> None:
+    # Set up
+    download_progress = DownloadProgress()
+    download_progress.item_name = "MAG_SCI_NORM"
+    download_progress.last_checked_date = datetime(2025, 3, 21, 12, 45, 7)
+
+    mock_database.get_download_progress.return_value = download_progress
+
+    caplog.set_level(logging.INFO)
+
+    # Exercise
+    result = get_dates_for_download(
+        packet_name="MAG_SCI_NORM",
+        database=mock_database,
+        original_start_date=None,
+        original_end_date=None,
+        check_and_update_database=check_and_update_database,
+        logger=LOGGER,
+    )
+
+    # Verify
+    assert result is not None
+
+    start_date, end_date = result
+
+    assert start_date == YESTERDAY
+    assert end_date == END_OF_TODAY
+
+    assert (
+        "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
+        in caplog.text
+    )
+    assert (
+        f"Start date not provided. Using {YESTERDAY} as default download date for MAG_SCI_NORM, as this packet has been checked at least once."
+        in caplog.text
+    )
+
+    if check_and_update_database:
+        assert download_progress.last_checked_date == NOW
+        assert mock_database.save.called
+    else:
+        assert (
+            download_progress.last_checked_date is download_progress.last_checked_date
+        )
         assert not mock_database.save.called
 
 

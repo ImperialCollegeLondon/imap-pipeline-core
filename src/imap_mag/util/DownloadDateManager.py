@@ -16,29 +16,50 @@ class DownloadDateManager:
     def __init__(
         self,
         packet_name: str,
-        last_updated_date: datetime,
+        last_checked_date: datetime | None,
+        progress_timestamp: datetime | None,
         logger: logging.Logger | logging.LoggerAdapter,
     ):
         self.__packet_name = packet_name
-        self.__last_updated_date = last_updated_date
+        self.__last_checked_date = last_checked_date
+        self.__progress_timestamp = progress_timestamp
         self.__logger = logger
 
     def get_start_date(self, original_start_date: datetime | None) -> datetime:
-        if original_start_date is None and self.__last_updated_date is None:
+        if (
+            original_start_date is None
+            and self.__progress_timestamp is None
+            and self.__last_checked_date is None
+        ):
+            # If this is the first time the packet is downloaded, use the beginning of IMAP as the start date.
             self.__logger.info(
-                f"Start date not provided. Using {DatetimeProvider.beginning_of_imap()} as default download date for {self.__packet_name}."
+                f"Start date not provided. Using {DatetimeProvider.beginning_of_imap()} as default download date for {self.__packet_name}, as this is the first time it is downloaded."
             )
             return DatetimeProvider.beginning_of_imap()
-        elif original_start_date is None:
+        elif (
+            original_start_date is None
+            and self.__progress_timestamp is None
+            and self.__last_checked_date is not None
+        ):
+            # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday as the start date.
             self.__logger.info(
-                f"Start date not provided. Using last updated date {self.__last_updated_date} for {self.__packet_name} from database."
+                f"Start date not provided. Using {DatetimeProvider.yesterday()} as default download date for {self.__packet_name}, as this packet has been checked at least once."
             )
-            return self.__last_updated_date
-        else:
+            return DatetimeProvider.yesterday()
+        elif original_start_date is None and self.__progress_timestamp is not None:
+            self.__logger.info(
+                f"Start date not provided. Using last updated date {self.__progress_timestamp} for {self.__packet_name} from database."
+            )
+            return self.__progress_timestamp
+        elif original_start_date is not None:
             self.__logger.info(
                 f"Using provided start date {original_start_date} for {self.__packet_name}."
             )
             return force_utc_timezone(original_start_date)
+        else:
+            message = f"Start date {original_start_date} is not compatible with last checked date {self.__last_checked_date} and progress timestamp {self.__progress_timestamp}."
+            self.__logger.error(message)
+            raise ValueError(message)
 
     def get_end_date(self, original_end_date: datetime | None) -> datetime:
         if original_end_date is None:
@@ -55,20 +76,20 @@ class DownloadDateManager:
     def validate_download_dates(
         self, start_date: datetime, end_date: datetime
     ) -> tuple[datetime, datetime] | None:
-        if self.__last_updated_date is None or self.__last_updated_date <= start_date:
+        if self.__progress_timestamp is None or self.__progress_timestamp <= start_date:
             self.__logger.info(
                 f"Packet {self.__packet_name} is not up to date. Downloading from {start_date}."
             )
-        elif self.__last_updated_date >= end_date:
+        elif self.__progress_timestamp >= end_date:
             self.__logger.info(
                 f"Packet {self.__packet_name} is already up to date. Not downloading."
             )
             return None
         else:
             self.__logger.info(
-                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__last_updated_date}."
+                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__progress_timestamp}."
             )
-            start_date = self.__last_updated_date
+            start_date = self.__progress_timestamp
 
         return start_date, end_date
 
@@ -83,13 +104,17 @@ def get_dates_for_download(
     logger: logging.Logger | logging.LoggerAdapter,
 ) -> tuple[datetime, datetime] | None:
     download_progress = database.get_download_progress(packet_name)
-    last_updated_date = download_progress.get_progress_timestamp()
+
+    last_checked_date = download_progress.get_last_checked_date()
+    progress_timestamp = download_progress.get_progress_timestamp()
 
     if check_and_update_database:
         download_progress.record_checked_download(DatetimeProvider.now())
         database.save(download_progress)
 
-    manager = DownloadDateManager(packet_name, last_updated_date, logger)
+    manager = DownloadDateManager(
+        packet_name, last_checked_date, progress_timestamp, logger
+    )
 
     start_date = manager.get_start_date(original_start_date)
     end_date = manager.get_end_date(original_end_date)
