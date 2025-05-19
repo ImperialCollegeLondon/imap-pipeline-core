@@ -58,7 +58,7 @@ def test_copy_file_same_content(caplog):
 
     # Verify.
     assert (
-        "File output/2025/05/02/imap_mag_pwr_20250502_v000.txt already exists and is the same. Skipping update."
+        f"File {Path('output/2025/05/02/imap_mag_pwr_20250502_v000.txt')} already exists and is the same. Skipping update."
         in caplog.text
     )
 
