@@ -27,8 +27,10 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
 
     def get_folder_structure(self) -> str:
         if self.content_date is None:
-            logger.error("No 'date' defined. Cannot generate folder structure.")
-            raise ValueError("No 'date' defined. Cannot generate folder structure.")
+            logger.error("No 'content_date' defined. Cannot generate folder structure.")
+            raise ValueError(
+                "No 'content_date' defined. Cannot generate folder structure."
+            )
 
         return self.content_date.strftime("%Y/%m/%d")
 
@@ -40,10 +42,10 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             or self.extension is None
         ):
             logger.error(
-                "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
             )
             raise ValueError(
-                "No 'descriptor', 'date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
             )
 
         descriptor = self.descriptor
@@ -66,6 +68,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             r"(?P<prefix>imap_mag)?_?(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
+        logger.debug(f"Filename {filename} matches {match} with SPDF standard regex.")
 
         if match is None:
             return None

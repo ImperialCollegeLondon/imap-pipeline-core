@@ -19,3 +19,14 @@ class IOutputManager(abc.ABC):
         self, original_file: Path, **metadata: typing.Any
     ) -> tuple[Path, StandardSPDFMetadataProvider]:
         return self.add_file(original_file, StandardSPDFMetadataProvider(**metadata))
+
+    def assemble_full_path(
+        self, location: Path, metadata_provider: IFileMetadataProvider
+    ) -> Path:
+        """Assemble full path from metadata."""
+
+        return (
+            location
+            / metadata_provider.get_folder_structure()
+            / metadata_provider.get_filename()
+        )

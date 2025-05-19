@@ -40,6 +40,16 @@ def mock_database() -> mock.Mock:
     return mock.create_autospec(IDatabase, spec_set=True)
 
 
+def check_inserted_file(file: File, test_file: Path, version: int):
+    # Two instances of `File` will never be equal, so we check the attributes.
+    assert file.name == "test_file.txt"
+    assert file.path == test_file.absolute().as_posix()
+    assert file.version == version
+    assert file.hash == hashlib.md5(b"some content").hexdigest()
+    assert file.date == datetime(2025, 5, 2)
+    assert file.software_version == __version__
+
+
 def test_database_output_manager_writes_to_database(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
@@ -62,16 +72,9 @@ def test_database_output_manager_writes_to_database(
         metadata_provider,
     )
 
-    def check_inserted_file(file: File):
-        # Two instances of `File` will never be equal, so we check the attributes.
-        assert file.name == "test_file.txt"
-        assert file.path == test_file.absolute().as_posix()
-        assert file.version == 1
-        assert file.hash == hashlib.md5(b"some content").hexdigest()
-        assert file.date == datetime(2025, 5, 2)
-        assert file.software_version == __version__
-
-    mock_database.insert_file.side_effect = lambda file: check_inserted_file(file)
+    mock_database.insert_file.side_effect = lambda file: check_inserted_file(
+        file, test_file, version=1
+    )
 
     # Exercise.
     (actual_file, actual_metadata_provider) = database_manager.add_file(
@@ -85,6 +88,128 @@ def test_database_output_manager_writes_to_database(
 
     assert actual_file == test_file
     assert actual_metadata_provider == metadata_provider
+
+
+def test_database_output_manager_same_file_already_exists_in_database(
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, caplog
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    metadata_provider = StandardSPDFMetadataProvider(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    mock_database.get_files.return_value = [
+        File(
+            name=metadata_provider.get_filename(),
+            path=metadata_provider.get_folder_structure(),
+            version=1,
+            hash=hashlib.md5(b"some content").hexdigest(),
+            size=0,
+            date=datetime(2025, 5, 2),
+            software_version=__version__,
+        )
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        metadata_provider,
+    )
+
+    # Exercise.
+    (actual_file, actual_metadata_provider) = database_manager.add_file(
+        original_file, metadata_provider
+    )
+
+    # Verify.
+    mock_output_manager.add_file.assert_called_once_with(
+        original_file, metadata_provider
+    )
+
+    mock_database.insert_file.assert_not_called()
+
+    assert (
+        f"File {test_file} already exists in database and is the same. Skipping insertion."
+        in caplog.text
+    )
+
+    assert actual_file == test_file
+    assert actual_metadata_provider == metadata_provider
+
+
+def test_database_output_manager_file_different_hash_already_exists_in_database(
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, caplog
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    metadata_provider = StandardSPDFMetadataProvider(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    unique_metadata_provider = StandardSPDFMetadataProvider(
+        version=2,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    database_file = (
+        Path(metadata_provider.get_folder_structure())
+        / metadata_provider.get_filename()
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        unique_metadata_provider,
+    )
+
+    mock_database.get_files.return_value = [
+        File(
+            name=metadata_provider.get_filename(),
+            path=metadata_provider.get_folder_structure(),
+            version=1,
+            hash=0,
+            size=0,
+            date=datetime(2025, 5, 2),
+            software_version=__version__,
+        )
+    ]
+    mock_database.insert_file.side_effect = lambda file: check_inserted_file(
+        file, test_file, version=2
+    )
+
+    # Exercise.
+    (actual_file, actual_metadata_provider) = database_manager.add_file(
+        original_file, metadata_provider
+    )
+
+    # Verify.
+    mock_output_manager.add_file.assert_called_once_with(
+        original_file, unique_metadata_provider
+    )
+
+    assert (
+        f"File {database_file} already exists in database and is different. Increasing version to 2."
+        in caplog.text
+    )
+    assert f"Inserting {test_file} into database." in caplog.text
+
+    assert actual_file == test_file
+    assert actual_metadata_provider == unique_metadata_provider
 
 
 def test_database_output_manager_errors_when_destination_file_is_not_found(

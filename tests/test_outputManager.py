@@ -101,6 +101,53 @@ def test_copy_file_forced_version():
     assert Path("output/2025/05/02/imap_mag_pwr_20250502_v003.txt").exists()
 
 
+def test_get_folder_structure_error_on_no_date():
+    # Set up.
+    provider = StandardSPDFMetadataProvider()
+
+    # Exercise.
+    with pytest.raises(ValueError) as excinfo:
+        provider.get_folder_structure()
+
+    # Verify.
+    assert (
+        excinfo.value.args[0]
+        == "No 'content_date' defined. Cannot generate folder structure."
+    )
+
+
+@pytest.mark.parametrize(
+    "provider",
+    (
+        StandardSPDFMetadataProvider(
+            content_date=datetime(2024, 12, 10),
+            version=3,
+            extension="pkts",
+        ),
+        StandardSPDFMetadataProvider(
+            descriptor="hsk-pw",
+            version=3,
+            extension="pkts",
+        ),
+        StandardSPDFMetadataProvider(
+            descriptor="hsk-pw",
+            content_date=datetime(2024, 12, 10),
+            version=3,
+        ),
+    ),
+)
+def test_get_filename_error_on_no_required_parameter(provider):
+    # Exercise.
+    with pytest.raises(ValueError) as excinfo:
+        provider.get_filename()
+
+    # Verify.
+    assert (
+        excinfo.value.args[0]
+        == "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
+    )
+
+
 class TestMetadataProvider(IFileMetadataProvider):
     def supports_versioning(self) -> bool:
         return False

@@ -22,6 +22,11 @@ class IDatabase(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_files(self, **filters) -> list[File]:
+        """Get a list of files from the database with optional filters."""
+        pass
+
+    @abc.abstractmethod
     def save(self, model: Base) -> None:
         """Save an object to the database."""
         pass

@@ -28,7 +28,9 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        destination_file: Path = self.__assemble_full_path(metadata_provider)
+        destination_file: Path = self.assemble_full_path(
+            self.location, metadata_provider
+        )
 
         if not destination_file.parent.exists():
             logger.debug(
@@ -46,22 +48,13 @@ class OutputManager(IOutputManager):
             metadata_provider.version = self.__get_next_available_version(
                 destination_file, metadata_provider
             )
-            destination_file = self.__assemble_full_path(metadata_provider)
+            destination_file = self.assemble_full_path(self.location, metadata_provider)
 
         logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
         destination = shutil.copy2(original_file, destination_file)
         logger.info(f"Copied to {destination}.")
 
         return (destination_file, metadata_provider)
-
-    def __assemble_full_path(self, metadata_provider: IFileMetadataProvider) -> Path:
-        """Assemble full path from metadata."""
-
-        return (
-            self.location
-            / metadata_provider.get_folder_structure()
-            / metadata_provider.get_filename()
-        )
 
     def __get_next_available_version(
         self, destination_file: Path, metadata_provider: IFileMetadataProvider
@@ -79,7 +72,7 @@ class OutputManager(IOutputManager):
                 f"File {destination_file} already exists and is different. Increasing version to {metadata_provider.version + 1}."
             )
             metadata_provider.version += 1
-            updated_file = self.__assemble_full_path(metadata_provider)
+            updated_file = self.assemble_full_path(self.location, metadata_provider)
 
             if destination_file == updated_file:
                 logger.error(
