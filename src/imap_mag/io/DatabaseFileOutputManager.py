@@ -30,48 +30,24 @@ class DatabaseFileOutputManager(IOutputManager):
             self.__database = database
 
     def add_file(self, original_file: Path, metadata_provider: T) -> tuple[Path, T]:
-        # Check database for existing files with same name and path
-        preliminary_destination_file: Path = self.assemble_full_path(
-            Path(""), metadata_provider
-        )
-        skip_database_insertion = False
-
-        database_files: list[File] = self.__database.get_files(
-            name=preliminary_destination_file.name
-        )
-        database_files = [
-            file
-            for file in database_files
-            if preliminary_destination_file.parent.as_posix() in file.path
-        ]
-
-        logger.info(
-            f"Found {len(database_files)} existing files with same name in database."
-        )
-
-        # If the hash is the same, skip the file
+        # Check if the version needs to be increased
         original_hash: str = generate_hash(original_file)
 
-        for file in database_files:
-            if file.hash == original_hash:
-                skip_database_insertion = True
-                break
-
-        # If the hash is different, increase the version
-        if database_files and not skip_database_insertion:
-            metadata_provider.version = self.__get_next_available_version(
-                preliminary_destination_file, database_files, metadata_provider
+        (metadata_provider.version, skip_database_insertion) = (
+            self.__get_next_available_version(
+                metadata_provider,
+                original_hash=original_hash,
             )
+        )
 
         # Add file locally
         (destination_file, metadata_provider) = self.__output_manager.add_file(
             original_file, metadata_provider
         )
 
-        file_hash: str = generate_hash(original_file)
-
         if not (
-            destination_file.exists() and (generate_hash(destination_file) == file_hash)
+            destination_file.exists()
+            and (generate_hash(destination_file) == original_hash)
         ):
             logger.error(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
@@ -94,7 +70,7 @@ class DatabaseFileOutputManager(IOutputManager):
                         name=destination_file.name,
                         path=destination_file.absolute().as_posix(),
                         version=metadata_provider.version,
-                        hash=file_hash,
+                        hash=original_hash,
                         size=destination_file.stat().st_size,
                         date=metadata_provider.content_date,
                         software_version=__version__,
@@ -107,29 +83,65 @@ class DatabaseFileOutputManager(IOutputManager):
 
         return (destination_file, metadata_provider)
 
+    def __get_matching_database_file(
+        self, metadata_provider: IFileMetadataProvider
+    ) -> File | None:
+        """Get all files in the database with the same name and path."""
+
+        database_files: list[File] = self.__database.get_files(
+            name=metadata_provider.get_filename()
+        )
+        database_files = [
+            file
+            for file in database_files
+            if metadata_provider.get_folder_structure() in file.path
+        ]
+
+        return database_files[0] if database_files else None
+
     def __get_next_available_version(
         self,
-        destination_file: Path,
-        database_files: list[File],
         metadata_provider: IFileMetadataProvider,
-    ) -> int:
+        original_hash: str,
+    ) -> tuple[int, bool]:
         """Find a viable version for a file."""
 
         if not metadata_provider.supports_versioning():
             logger.warning(
-                f"File {destination_file} already exists and is different. Overwriting."
+                "Versioning not supported. File may be overwritten if it already exists."
             )
-            return metadata_provider.version
+            return (metadata_provider.version, False)
 
-        max_version: int = max(
-            [
-                file.version
-                for file in database_files
-                if file.name == destination_file.name
-            ]
+        preliminary_destination_file: Path = self.assemble_full_path(
+            Path(""), metadata_provider
         )
-        logger.info(
-            f"File {destination_file} already exists in database and is different. Increasing version to {max_version + 1}."
+        database_file: File | None = self.__get_matching_database_file(
+            metadata_provider
         )
 
-        return max_version + 1
+        while database_file is not None:
+            if original_hash == database_file.hash:
+                logger.info(
+                    f"File {preliminary_destination_file} already exists in database and is the same. Skipping insertion."
+                )
+                return (metadata_provider.version, True)
+
+            logger.debug(
+                f"File {preliminary_destination_file} already exists in database and is different. Increasing version to {metadata_provider.version + 1}."
+            )
+            metadata_provider.version += 1
+            updated_file: Path = self.assemble_full_path(Path(""), metadata_provider)
+
+            # Make sure file has changed, otherwise this in an infinite loop
+            if preliminary_destination_file == updated_file:
+                logger.error(
+                    f"File {preliminary_destination_file} already exists and is different. Cannot increase version."
+                )
+                raise FileExistsError(
+                    f"File {preliminary_destination_file} already exists and is different. Cannot increase version."
+                )
+
+            preliminary_destination_file = updated_file
+            database_file = self.__get_matching_database_file(metadata_provider)
+
+        return (metadata_provider.version, False)

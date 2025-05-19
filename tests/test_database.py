@@ -145,6 +145,80 @@ def test_database_output_manager_same_file_already_exists_in_database(
     assert actual_metadata_provider == metadata_provider
 
 
+def test_database_output_manager_same_file_already_exists_as_second_file_in_database(
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, caplog
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    metadata_provider = StandardSPDFMetadataProvider(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    matched_metadata_provider = StandardSPDFMetadataProvider(
+        version=2,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    mock_database.get_files.side_effect = [
+        [
+            File(  # first call returns this list
+                name="imap_mag_hsk-pw_20250502_v001.txt",
+                path="2025/05/02",
+                version=1,
+                hash="",
+                size=0,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            )
+        ],
+        [
+            File(  # second call returns this list
+                name="imap_mag_hsk-pw_20250502_v002.txt",
+                path="2025/05/02",
+                version=2,
+                hash=hashlib.md5(b"some content").hexdigest(),
+                size=0,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            )
+        ],
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        matched_metadata_provider,
+    )
+
+    # Exercise.
+    (actual_file, actual_metadata_provider) = database_manager.add_file(
+        original_file, metadata_provider
+    )
+
+    # Verify.
+    mock_output_manager.add_file.assert_called_once_with(
+        original_file, matched_metadata_provider
+    )
+
+    mock_database.insert_file.assert_not_called()
+
+    assert (
+        f"File {test_file} already exists in database and is the same. Skipping insertion."
+        in caplog.text
+    )
+
+    assert actual_file == test_file
+    assert actual_metadata_provider == matched_metadata_provider
+
+
 def test_database_output_manager_file_different_hash_already_exists_in_database(
     mock_output_manager: mock.Mock, mock_database: mock.Mock, caplog
 ) -> None:
@@ -161,14 +235,10 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         extension="txt",
     )
     unique_metadata_provider = StandardSPDFMetadataProvider(
-        version=2,
+        version=3,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
-    )
-    database_file = (
-        Path(metadata_provider.get_folder_structure())
-        / metadata_provider.get_filename()
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
@@ -177,19 +247,33 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         unique_metadata_provider,
     )
 
-    mock_database.get_files.return_value = [
-        File(
-            name=metadata_provider.get_filename(),
-            path=metadata_provider.get_folder_structure(),
-            version=1,
-            hash=0,
-            size=0,
-            date=datetime(2025, 5, 2),
-            software_version=__version__,
-        )
+    mock_database.get_files.side_effect = [
+        [
+            File(  # first call returns this list
+                name="imap_mag_hsk-pw_20250502_v001.txt",
+                path="2025/05/02",
+                version=1,
+                hash=0,
+                size=0,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            )
+        ],
+        [
+            File(  # second call returns this list
+                name="imap_mag_hsk-pw_20250502_v002.txt",
+                path="2025/05/02",
+                version=2,
+                hash=0,
+                size=0,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            )
+        ],
+        [],  # third call returns an empty list
     ]
     mock_database.insert_file.side_effect = lambda file: check_inserted_file(
-        file, test_file, version=2
+        file, test_file, version=3
     )
 
     # Exercise.
@@ -203,7 +287,11 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     assert (
-        f"File {database_file} already exists in database and is different. Increasing version to 2."
+        "File 2025/05/02/imap_mag_hsk-pw_20250502_v001.txt already exists in database and is different. Increasing version to 2."
+        in caplog.text
+    )
+    assert (
+        "File 2025/05/02/imap_mag_hsk-pw_20250502_v002.txt already exists in database and is different. Increasing version to 3."
         in caplog.text
     )
     assert f"Inserting {test_file} into database." in caplog.text
