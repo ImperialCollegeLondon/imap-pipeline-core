@@ -55,4 +55,4 @@ def calibrate(
 
     result = CalibrationFormatProcessor.writeToFile(calibration, tempOutputFile)
 
-    appUtils.copyFileToDestination(result, configFile.destination)
+    appUtils.copyFileToDestination(Path(result), configFile.destination)
