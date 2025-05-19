@@ -26,45 +26,36 @@ class DownloadDateManager:
         self.__logger = logger
 
     def get_start_date(self, original_start_date: datetime | None) -> datetime:
-        if (
-            original_start_date is None
-            and self.__progress_timestamp is None
-            and self.__last_checked_date is None
-        ):
+        if original_start_date is not None:
+            self.__logger.info(
+                f"Using provided start date {original_start_date} for {self.__packet_name}."
+            )
+            return force_utc_timezone(original_start_date)
+
+        elif self.__progress_timestamp is not None:
+            self.__logger.info(
+                f"Start date not provided. Using last updated date {self.__progress_timestamp} for {self.__packet_name} from database."
+            )
+            return self.__progress_timestamp
+
+        elif self.__last_checked_date is not None:
+            # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday or the last checked date,
+            # whichever comes first, as the start date.
+            inferred = min(
+                DatetimeProvider.yesterday(),
+                self.__last_checked_date - timedelta(hours=1),
+            )
+            self.__logger.info(
+                f"Start date not provided. Using {inferred} as default download date for {self.__packet_name}, as this packet has been checked at least once."
+            )
+            return inferred
+
+        else:
             # If this is the first time the packet is downloaded, use the beginning of IMAP as the start date.
             self.__logger.info(
                 f"Start date not provided. Using {DatetimeProvider.beginning_of_imap()} as default download date for {self.__packet_name}, as this is the first time it is downloaded."
             )
             return DatetimeProvider.beginning_of_imap()
-        elif (
-            original_start_date is None
-            and self.__progress_timestamp is None
-            and self.__last_checked_date is not None
-        ):
-            # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday or the last checked date,
-            # whichever comes first, as the start date.
-            inferred_start_date: datetime = min(
-                DatetimeProvider.yesterday(),
-                self.__last_checked_date - timedelta(hours=1),
-            )
-            self.__logger.info(
-                f"Start date not provided. Using {inferred_start_date} as default download date for {self.__packet_name}, as this packet has been checked at least once."
-            )
-            return inferred_start_date
-        elif original_start_date is None and self.__progress_timestamp is not None:
-            self.__logger.info(
-                f"Start date not provided. Using last updated date {self.__progress_timestamp} for {self.__packet_name} from database."
-            )
-            return self.__progress_timestamp
-        elif original_start_date is not None:
-            self.__logger.info(
-                f"Using provided start date {original_start_date} for {self.__packet_name}."
-            )
-            return force_utc_timezone(original_start_date)
-        else:
-            message = f"Start date {original_start_date} is not compatible with last checked date {self.__last_checked_date} and progress timestamp {self.__progress_timestamp}."
-            self.__logger.error(message)
-            raise ValueError(message)
 
     def get_end_date(self, original_end_date: datetime | None) -> datetime:
         if original_end_date is None:
