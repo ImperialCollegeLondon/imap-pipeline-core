@@ -8,13 +8,14 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CDF_FLOAT_FILLVAL,
     CalibrationMethod,
     CalibrationValue,
+    ValueType,
 )
 from mag_toolkit.calibration.Layer import Layer
 
 
 class CalibrationLayer(Layer):
     method: CalibrationMethod
-    value_type: str
+    value_type: ValueType
     values: list[CalibrationValue]
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):

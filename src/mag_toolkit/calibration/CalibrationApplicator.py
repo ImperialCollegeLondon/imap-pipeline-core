@@ -16,6 +16,7 @@ from .CalibrationDefinitions import (
     ScienceValue,
     Sensor,
     Validity,
+    ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
 from .ScienceLayer import ScienceLayer
@@ -74,7 +75,7 @@ class CalibrationApplicator:
             sensor=science_data.sensor,
             version=1,
             metadata=metadata,
-            value_type="vector",
+            value_type=ValueType.VECTOR,
             values=sum_layer_values,  # type: ignore
         )
 
@@ -140,7 +141,7 @@ class CalibrationApplicator:
             version=0,
             metadata=metadata,
             science_file="",
-            value_type="vector",
+            value_type=ValueType.VECTOR,
             values=values,
         )
 

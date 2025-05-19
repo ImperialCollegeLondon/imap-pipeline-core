@@ -21,6 +21,10 @@ class Sensor(str, Enum):
     MAGI = "MAGi"
 
 
+class ValueType(str, Enum):
+    VECTOR = "vector"
+
+
 class Mission(str, Enum):
     IMAP = "IMAP"
 

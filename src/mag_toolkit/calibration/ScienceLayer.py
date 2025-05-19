@@ -11,13 +11,14 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     ScienceValue,
     Sensor,
     Validity,
+    ValueType,
 )
 from mag_toolkit.calibration.Layer import Layer
 
 
 class ScienceLayer(Layer):
     science_file: str
-    value_type: str
+    value_type: ValueType
     values: list[ScienceValue]
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
@@ -109,7 +110,7 @@ class ScienceLayer(Layer):
                 science=[],
                 creation_timestamp=datetime.now(),
             ),
-            value_type="vector",
+            value_type=ValueType.VECTOR,
             science_file=str(path),
             values=values,
         )
@@ -148,7 +149,7 @@ class ScienceLayer(Layer):
             sensor=sensor,
             version=version,
             metadata=metadata,
-            value_type="vector",
+            value_type=ValueType.VECTOR,
             science_file=str(path),
             values=values,
         )
