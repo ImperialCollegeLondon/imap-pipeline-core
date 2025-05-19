@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
@@ -45,7 +44,7 @@ class Layer(BaseModel, ABC):
         json = self.model_dump_json()
 
         if createDirectory:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            filepath.parent.mkdir(parents=True, exist_ok=True)
 
         with open(filepath, "w+") as f:
             f.write(json)
