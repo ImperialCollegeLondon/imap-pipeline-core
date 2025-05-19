@@ -32,7 +32,10 @@ def test_copy_new_file(caplog):
     )
 
     # Verify.
-    assert "Copied to output/2025/05/02/imap_mag_pwr_20250502_v000.txt." in caplog.text
+    assert (
+        f"Copied to {Path('output/2025/05/02/imap_mag_pwr_20250502_v000.txt')}."
+        in caplog.text
+    )
 
     assert Path("output/2025/05/02/imap_mag_pwr_20250502_v000.txt").exists()
 
