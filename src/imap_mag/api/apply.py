@@ -36,8 +36,12 @@ def apply(
     config: Annotated[Path, typer.Option()] = Path(
         "calibration_application_config.yaml"
     ),
-    calibration_output_type: Annotated[FileType, typer.Option()] = FileType.CDF,
-    l2_output_type: Annotated[FileType, typer.Option()] = FileType.CDF,
+    calibration_output_type: Annotated[
+        FileType, typer.Option(help="Output type of the calibration file")
+    ] = FileType.CDF,
+    l2_output_type: Annotated[
+        FileType, typer.Option(help="Output type of the L2 file")
+    ] = FileType.CDF,
     rotation: Annotated[Path | None, typer.Option()] = None,
     input: str = typer.Argument(
         help="The file name or pattern to match for the input file"
