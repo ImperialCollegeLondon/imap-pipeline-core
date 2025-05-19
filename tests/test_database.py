@@ -287,11 +287,11 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     assert (
-        "File 2025/05/02/imap_mag_hsk-pw_20250502_v001.txt already exists in database and is different. Increasing version to 2."
+        f"File {Path('2025/05/02/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
         in caplog.text
     )
     assert (
-        "File 2025/05/02/imap_mag_hsk-pw_20250502_v002.txt already exists in database and is different. Increasing version to 3."
+        f"File {Path('2025/05/02/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in caplog.text
     )
     assert f"Inserting {test_file} into database." in caplog.text

@@ -88,11 +88,11 @@ def test_copy_file_second_existing_file_with_same_content(caplog):
 
     # Verify.
     assert (
-        "File output/2025/05/02/imap_mag_pwr_20250502_v000.txt already exists and is different. Increasing version to 1."
+        f"File {Path('output/2025/05/02/imap_mag_pwr_20250502_v000.txt')} already exists and is different. Increasing version to 1."
         in caplog.text
     )
     assert (
-        "File output/2025/05/02/imap_mag_pwr_20250502_v001.txt already exists and is the same. Skipping update."
+        f"File {Path('output/2025/05/02/imap_mag_pwr_20250502_v001.txt')} already exists and is the same. Skipping update."
         in caplog.text
     )
 
@@ -122,7 +122,7 @@ def test_copy_file_existing_versions(caplog):
     # Verify.
     for version in range(2):
         assert (
-            f"File output/2025/05/02/imap_mag_pwr_20250502_v{version:03}.txt already exists and is different. Increasing version to {version + 1}."
+            f"File {Path(f'output/2025/05/02/imap_mag_pwr_20250502_v{version:03}.txt')} already exists and is different. Increasing version to {version + 1}."
             in caplog.text
         )
 
