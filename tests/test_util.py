@@ -43,7 +43,7 @@ def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
 @pytest.mark.parametrize(
     "date",
     [
-        datetime(2025, 3, 20, 9, 0, 0, tzinfo=timezone(timedelta(hours=-1))),
+        datetime(2025, 3, 20, 10, 0, 0, tzinfo=timezone(timedelta(hours=-1))),
         datetime(2025, 3, 20, 10, 0, 0, tzinfo=timezone.utc),
         datetime(2025, 3, 20, 10, 0, 0, tzinfo=None),
     ],
