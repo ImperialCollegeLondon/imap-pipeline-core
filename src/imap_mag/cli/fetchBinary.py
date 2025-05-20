@@ -48,11 +48,13 @@ class FetchBinary:
 
         downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
-        # If the start and end dates are the same, download all the data from that day.
         if start_date == end_date:
+            # If the start and end dates are the same, download all the data from that day.
             start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
             dates: list[datetime] = [start, start + timedelta(days=1)]
         else:
+            # Download all the data from the start date to the end date for each day separately.
+            # Force the date ranges to include midnights to avoid missing data.
             dates = (
                 pd.date_range(
                     start=start_date.replace(hour=0, minute=0, second=0, microsecond=0),
@@ -66,9 +68,12 @@ class FetchBinary:
                 .tolist()
             )
 
+            # Remove any data outside of bounds, and forcibly re-add the start and end dates.
             dates[:] = [x for x in dates if start_date < x < end_date]
             dates = [start_date, *dates, end_date]
 
+            # If the end date is at midnight, it means we want to download that full day, too.
+            # So include the next midnight as the end date.
             if end_date == end_date.replace(hour=0, minute=0, second=0, microsecond=0):
                 dates.append(
                     end_date + timedelta(days=1),
