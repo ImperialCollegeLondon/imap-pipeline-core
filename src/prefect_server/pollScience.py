@@ -1,8 +1,10 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
+from pydantic import Field
 
 from imap_mag.api.fetch.science import (
     SDCMetadataProvider,
@@ -40,12 +42,60 @@ def generate_flow_run_name() -> str:
     flow_run_name=generate_flow_run_name,
 )
 async def poll_science_flow(
-    level: Level = Level.level_1c,
-    modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
-    force_ingestion_date: bool = False,
-    force_database_update: bool = False,
+    level: Annotated[
+        Level,
+        Field(
+            json_schema_extra={
+                "title": "Level to download",
+                "description": "Processing level to download. Default is L1c.",
+            }
+        ),
+    ] = Level.level_1c,
+    modes: Annotated[
+        list[ScienceMode],
+        Field(
+            json_schema_extra={
+                "title": "Science modes to download",
+                "description": "List of science modes to download. Default is both Normal and Burst.",
+            }
+        ),
+    ] = [ScienceMode.Normal, ScienceMode.Burst],
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the mode.",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today.",
+            }
+        ),
+    ] = None,
+    force_ingestion_date: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force input dates to be ingestion dates",
+                "description": "If 'True' input dates are the ingestion date. Otherwise, input dates are in S/C clock time.",
+            }
+        ),
+    ] = False,
+    force_database_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force database update",
+                "description": "Whether to force an update of the database with the downloaded science.",
+            }
+        ),
+    ] = False,
 ):
     """
     Poll housekeeping data from WebPODA.
