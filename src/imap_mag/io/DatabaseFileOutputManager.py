@@ -121,9 +121,6 @@ class DatabaseFileOutputManager(IOutputManager):
 
         while database_file is not None:
             if original_hash == database_file.hash:
-                logger.info(
-                    f"File {preliminary_destination_file} already exists in database and is the same. Skipping insertion."
-                )
                 return (metadata_provider.version, True)
 
             logger.debug(
