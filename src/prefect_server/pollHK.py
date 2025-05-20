@@ -6,8 +6,7 @@ from prefect.runtime import flow_run
 
 from imap_mag.api.fetch.binary import WebPODAMetadataProvider, fetch_binary
 from imap_mag.api.process import process
-from imap_mag.appConfig import manage_config
-from imap_mag.config.FetchMode import FetchMode
+from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.util import DatetimeProvider, HKPacket, get_dates_for_download
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
@@ -105,11 +104,7 @@ async def poll_hk_flow(
 
         # Process binary data into CSV
         for file, _ in downloaded_binaries.items():
-            # TODO: get rid of all use of the dynamic config files
-            with manage_config(
-                source=file.parent, export_to_database=True
-            ) as config_file:
-                process(file=Path(file.name), config=config_file)
+            process(file=file, save_mode=SaveMode.LocalAndDatabase)
 
         # Update database with latest content date as progress (for HK)
         if use_database:

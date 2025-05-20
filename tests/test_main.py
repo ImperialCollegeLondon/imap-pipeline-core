@@ -12,7 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from imap_mag.main import app
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import set_env, tidyDataFolders  # noqa: F401
 
 runner = CliRunner()
 
@@ -25,26 +25,26 @@ def test_app_says_hello():
 
 
 def test_process_with_valid_config_does_not_error():
+    # Exercise.
     result = runner.invoke(
         app,
         [
             "process",
-            "--config",
-            "config.yaml",
-            "imap_mag_l1a_norm-mago_20250502_v000.cdf",
+            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v000.cdf")),
         ],
     )
 
     print("\n" + str(result.stdout))
+
+    # Verify.
     assert result.exit_code == 0
-    # check that file output/result.cdf exists
     assert Path("output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf").exists()
 
 
 @pytest.mark.parametrize(
     "binary_file, output_file",
     [
-        ("MAG_HSK_PW.pkts", "output/result.csv"),
+        ("MAG_HSK_PW.pkts", "output/MAG_HSK_PW.csv"),
         (
             "imap_mag_hsk-pw_20250214_v000.pkts",
             "output/2025/02/14/imap_mag_hsk-pw_20250214_v000.csv",
@@ -63,9 +63,7 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         app,
         [
             "process",
-            "--config",
-            "tests/config/hk_process.yaml",
-            binary_file,
+            str(Path("tests/data/2025") / binary_file),
         ],
     )
 

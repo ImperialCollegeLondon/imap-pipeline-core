@@ -8,7 +8,7 @@ from pathlib import Path
 import xarray as xr
 from space_packet_parser import definitions
 
-from . import appConfig, appUtils
+from . import appUtils
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class FileProcessor(abc.ABC):
     """Interface for IMAP processing."""
 
     @abc.abstractmethod
-    def initialize(self, config: appConfig.CommandConfigBase) -> None:
+    def initialize(self, packet_definition: Path) -> None:
         pass
 
     @abc.abstractmethod
@@ -26,7 +26,7 @@ class FileProcessor(abc.ABC):
 
 
 class ScienceProcessor(FileProcessor):
-    def initialize(self, config: appConfig.CommandConfigBase) -> None:
+    def initialize(self, packet_definition: Path) -> None:
         pass
 
     def process(self, file: Path) -> Path:
@@ -36,45 +36,36 @@ class ScienceProcessor(FileProcessor):
 class HKProcessor(FileProcessor):
     xtcePacketDefinition: Path
 
-    def initialize(self, config: appConfig.CommandConfigBase) -> None:
+    def initialize(self, packet_definition: Path) -> None:
         # first try the file path as is, then in the same directory as the module, then fallback to a default
-        pythonModuleRelativePath = Path(
-            os.path.join(os.path.dirname(__file__), config.packet_definition.hk)
-        )
+        pythonModuleRelativePath = Path(os.path.dirname(__file__)) / packet_definition
         defaultFallbackPath = Path("tlm.xml")
         logger.debug(
             "Trying XTCE packet definition file from these paths in turn: \n  %s\n  %s\n  %s\n",
-            config.packet_definition.hk,
+            packet_definition,
             pythonModuleRelativePath,
             defaultFallbackPath,
         )
-        if (
-            config.packet_definition is not None
-            and config.packet_definition.hk is not None
-            and config.packet_definition.hk.exists()
-        ):
+        if packet_definition is not None and packet_definition.exists():
             logger.debug(
-                "Using XTCE packet definition file from relative path: %s",
-                config.packet_definition.hk,
+                f"Using XTCE packet definition file from relative path: {packet_definition!s}",
             )
-            self.xtcePacketDefinition = config.packet_definition.hk
+            self.xtcePacketDefinition = packet_definition
         # otherwise try path relative to the module
         elif pythonModuleRelativePath.exists():
             logger.debug(
-                "Using XTCE packet definition file from module path: %s",
-                pythonModuleRelativePath,
+                f"Using XTCE packet definition file from module path: {pythonModuleRelativePath!s}",
             )
             self.xtcePacketDefinition = pythonModuleRelativePath
         else:
             logger.debug(
-                "Using XTCE packet definition file from default path: %s",
-                defaultFallbackPath,
+                f"Using XTCE packet definition file from default path: {defaultFallbackPath!s}",
             )
             self.xtcePacketDefinition = defaultFallbackPath
 
         if not self.xtcePacketDefinition.exists():
             raise FileNotFoundError(
-                f"XTCE packet definition file not found: {config.packet_definition.hk}"
+                f"XTCE packet definition file not found: {packet_definition!s}"
             )
 
     def process(self, file: Path) -> Path:
@@ -140,7 +131,7 @@ class HKProcessor(FileProcessor):
 
 
 class UnknownProcessor(FileProcessor):
-    def initialize(self, config: appConfig.CommandConfigBase) -> None:
+    def initialize(self, packet_definition: Path) -> None:
         pass
 
     def process(self, file: Path) -> Path:

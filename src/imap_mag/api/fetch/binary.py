@@ -9,8 +9,7 @@ from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
 from imap_mag.client.webPODA import WebPODA
-from imap_mag.config.AppSettings import AppSettings
-from imap_mag.config.FetchMode import FetchMode
+from imap_mag.config import AppSettings, FetchMode
 from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)
@@ -96,7 +95,8 @@ def fetch_binary(
 
     if app_settings.fetch_binary.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
-            app_settings.data_store, mode=fetch_mode
+            app_settings.data_store,
+            use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
         output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
 

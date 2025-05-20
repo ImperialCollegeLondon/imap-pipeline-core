@@ -22,3 +22,6 @@ fetch_science:
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
+
+process:
+    work_sub_folder:

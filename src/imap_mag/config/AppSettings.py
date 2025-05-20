@@ -38,6 +38,7 @@ class AppSettings(BaseSettings):
     # Command settings
     fetch_binary: FetchConfig
     fetch_science: FetchConfig
+    process: CommandConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:
