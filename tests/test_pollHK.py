@@ -113,7 +113,11 @@ async def test_poll_hk_autoflow_first_ever_run(
     mock_datetime_provider,  # noqa: F811
 ):
     # Set up.
-    binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
+    }
 
     today = TODAY.strftime("%Y-%m-%dT%H:%M:%S")
     end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
@@ -136,7 +140,7 @@ async def test_poll_hk_autoflow_first_ever_run(
     for hk in available_hk:
         wiremock_manager.add_file_mapping(
             f"/packets/SID2/{hk.packet}.bin?ert%3E={today}&ert%3C{end_of_today}&project(packet)",
-            binary_file,
+            binary_files[hk.packet],
             priority=1,
         )
         wiremock_manager.add_string_mapping(
@@ -181,7 +185,11 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     mock_datetime_provider,  # noqa: F811
 ):
     # Set up.
-    binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SID15": os.path.abspath("tests/data/2025/MAG_HSK_SID15.pkts"),
+    }
 
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
     end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
@@ -208,7 +216,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 
         wiremock_manager.add_file_mapping(
             f"/packets/SID2/{hk.packet}.bin?ert%3E={progress_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}&ert%3C{end_of_today}&project(packet)",
-            binary_file,
+            binary_files[hk.packet],
             priority=1,
         )
         wiremock_manager.add_string_mapping(
@@ -255,14 +263,18 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     force_database_update,
 ):
     # Set up.
-    binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SCI": os.path.abspath("tests/data/2025/MAG_HSK_SCI.pkts"),
+    }
 
-    start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 2)
-    actual_end_date_for_download = datetime(2025, 4, 3)
+    start_date = datetime(2025, 5, 1)
+    end_date = datetime(2025, 5, 2)
+    actual_end_date_for_download = datetime(2025, 5, 3)
 
-    ert_timestamp = datetime(2025, 4, 2, 13, 37, 9)
-    actual_timestamp = datetime(2025, 4, 2, 11, 37, 9)
+    ert_timestamp = datetime(2025, 5, 2, 13, 37, 9)
+    actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
 
     available_hk: list[HKPacket] = [
         HKPacket.SID3_PW,
@@ -292,7 +304,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
         ]:
             wiremock_manager.add_file_mapping(
                 f"/packets/SID2/{hk.packet}.bin?time%3E={date_pair[0]}&time%3C{date_pair[1]}&project(packet)",
-                binary_file,
+                binary_files[hk.packet],
                 priority=1,
             )
             wiremock_manager.add_string_mapping(

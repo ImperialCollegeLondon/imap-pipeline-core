@@ -146,7 +146,7 @@ async def poll_hk_flow(
 
         # Process binary data into CSV
         for file, _ in downloaded_binaries.items():
-            process(file=file, save_mode=SaveMode.LocalAndDatabase)
+            process([file], save_mode=SaveMode.LocalAndDatabase)
 
         # Update database with latest content date as progress (for HK)
         if use_database:
