@@ -4,23 +4,24 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils, imapProcessing
+from imap_mag import appUtils
 from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
     prepareWorkFile,
 )
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
+from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
 
 
 # E.g., imap-mag process solo_L2_mag-rtn-ll-internal_20240210_V00.cdf --save-mode localanddatabase
 def process(
-    file: Annotated[
-        Path,
+    files: Annotated[
+        list[Path],
         typer.Argument(
-            help="The file name or pattern to match for the input file",
+            help="The file names or patterns to match for the input files",
             exists=False,  # can be a pattern
             file_okay=True,
             dir_okay=False,
@@ -29,39 +30,55 @@ def process(
         ),
     ],
     save_mode: Annotated[
-        SaveMode, typer.Option(help="The mode to save the processed file")
+        SaveMode, typer.Option(help="The mode to save the processed files")
     ] = SaveMode.LocalOnly,
-) -> tuple[Path, IFileMetadataProvider]:
-    """Sample processing job."""
-    # TODO: semantic logging
-    # TODO: handle file system/cloud files - abstraction layer needed for files
-    # TODO: move shared logic to a library
+) -> list[tuple[Path, IFileMetadataProvider]]:
+    """Process a single file."""
 
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.process)
     initialiseLoggingForCommand(work_folder)
 
-    work_file = prepareWorkFile(file, work_folder)
+    work_files: list[Path] = []
 
-    if work_file is None:
-        logger.critical(
-            f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-        )
-        raise FileNotFoundError(
-            f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-        )
+    for file in files:
+        work_file = prepareWorkFile(file, work_folder)
 
-    file_processor = imapProcessing.dispatchFile(work_file)
+        if work_file is None:
+            logger.critical(
+                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
+            )
+            raise FileNotFoundError(
+                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
+            )
+
+        work_files.append(work_file)
+
+    # Process files
+    file_processor: FileProcessor = dispatch(work_files, work_folder)
     file_processor.initialize(app_settings.packet_definition)
-    processed_file = file_processor.process(work_file)
+    processed_files = file_processor.process(work_files)
 
-    spdf_metadata = StandardSPDFMetadataProvider.from_filename(processed_file)
+    # Copy files to the output directory
+    copied_files: list[tuple[Path, IFileMetadataProvider]] = []
 
-    if spdf_metadata is None:
-        return appUtils.copyFileToDestination(processed_file, app_settings.data_store)
-    else:
-        output_manager = appUtils.getOutputManagerByMode(
-            app_settings.data_store,
-            use_database=(save_mode == SaveMode.LocalAndDatabase),
+    output_manager = appUtils.getOutputManagerByMode(
+        app_settings.data_store,
+        use_database=(save_mode == SaveMode.LocalAndDatabase),
+    )
+
+    for processed_file in processed_files:
+        spdf_metadata: IFileMetadataProvider | None = (
+            StandardSPDFMetadataProvider.from_filename(processed_file)
         )
-        return output_manager.add_file(processed_file, spdf_metadata)
+
+        if spdf_metadata is None:
+            copied_file = appUtils.copyFileToDestination(
+                processed_file, app_settings.data_store
+            )
+        else:
+            copied_file = output_manager.add_file(processed_file, spdf_metadata)
+
+        copied_files.append((copied_file, spdf_metadata))
+
+    return copied_files

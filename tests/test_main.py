@@ -24,30 +24,13 @@ def test_app_says_hello():
     assert "Hello Bob" in result.stdout
 
 
-def test_process_with_valid_config_does_not_error():
-    # Exercise.
-    result = runner.invoke(
-        app,
-        [
-            "process",
-            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v000.cdf")),
-        ],
-    )
-
-    print("\n" + str(result.stdout))
-
-    # Verify.
-    assert result.exit_code == 0
-    assert Path("output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf").exists()
-
-
 @pytest.mark.parametrize(
     "binary_file, output_file",
     [
-        ("MAG_HSK_PW.pkts", "output/MAG_HSK_PW.csv"),
+        ("MAG_HSK_PW.pkts", "output/2025/05/02/imap_mag_hsk-pw_20250502_v000.csv"),
         (
             "imap_mag_hsk-pw_20250214_v000.pkts",
-            "output/2025/02/14/imap_mag_hsk-pw_20250214_v000.csv",
+            "output/2025/05/02/imap_mag_hsk-pw_20250502_v000.csv",
         ),
     ],
 )
@@ -79,6 +62,32 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         assert expectedFirstLine == lines[1]
         assert expectedLastLine == lines[-1]
         assert expectedNumRows == len(lines)
+
+
+def test_process_error_with_unsupported_file_type():
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "process",
+            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v000.cdf")),
+        ],
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 1
+
+    assert result.exception is not None
+    assert (
+        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v000.cdf')} contains unknown data. File suffix .cdf cannot be processed."
+        in result.exception.args[0]
+    )
+
+    assert not Path(
+        "output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf"
+    ).exists()
 
 
 @pytest.mark.skipif(
