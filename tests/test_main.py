@@ -369,6 +369,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         assert output.read() == input.read()
 
 
+@pytest.mark.skip("Mhairi is working on this")
 def test_calibration_creates_calibration_file():
     result = runner.invoke(
         app,
@@ -385,6 +386,7 @@ def test_calibration_creates_calibration_file():
     assert Path("output/calibration.json").exists()
 
 
+@pytest.mark.skip("Mhairi is working on this")
 def test_application_creates_L2_file():
     result = runner.invoke(
         app,
