@@ -73,11 +73,13 @@ def process(
         )
 
         if spdf_metadata is None:
-            copied_file = appUtils.copyFileToDestination(
+            (copied_file, spdf_metadata) = appUtils.copyFileToDestination(
                 processed_file, app_settings.data_store
             )
         else:
-            copied_file = output_manager.add_file(processed_file, spdf_metadata)
+            (copied_file, spdf_metadata) = output_manager.add_file(
+                processed_file, spdf_metadata
+            )
 
         copied_files.append((copied_file, spdf_metadata))
 

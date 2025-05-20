@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 @overload
-def dispatch(file: Path) -> FileProcessor:
+def dispatch(file: Path, work_folder: Path) -> FileProcessor:
     pass
 
 
 @overload
-def dispatch(file: list[Path]) -> FileProcessor:
+def dispatch(file: list[Path], work_folder: Path) -> FileProcessor:
     pass
 
 
