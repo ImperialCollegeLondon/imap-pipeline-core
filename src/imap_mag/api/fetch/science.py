@@ -12,8 +12,7 @@ from imap_mag.cli.fetchScience import (
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
-from imap_mag.config.AppSettings import AppSettings
-from imap_mag.config.FetchMode import FetchMode
+from imap_mag.config import AppSettings, FetchMode
 from imap_mag.util import Level, MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -91,7 +90,8 @@ def fetch_science(
         )
 
     output_manager = appUtils.getOutputManagerByMode(
-        app_settings.data_store, mode=fetch_mode
+        app_settings.data_store,
+        use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
     )
     output_science: dict[Path, SDCMetadataProvider] = dict()
 

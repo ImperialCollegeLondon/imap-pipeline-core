@@ -5,7 +5,6 @@ from typing import Optional
 import numpy as np
 
 from imap_mag import appConfig
-from imap_mag.config.FetchMode import FetchMode
 from imap_mag.io import (
     DatabaseFileOutputManager,
     IFileMetadataProvider,
@@ -43,20 +42,22 @@ def getOutputManager(destination: appConfig.Destination) -> IOutputManager:
     return output_manager
 
 
-def getOutputManagerByMode(destination_folder: Path, mode: FetchMode) -> IOutputManager:
-    """Retrieve output manager based on destination and mode."""
+def getOutputManagerByMode(
+    destination_folder: Path, use_database: bool
+) -> IOutputManager:
+    """use_databaseieve output manager based on destination and mode."""
 
-    if mode == FetchMode.DownloadOnly:
-        return OutputManager(destination_folder)
-    elif mode == FetchMode.DownloadAndUpdateProgress:
-        return DatabaseFileOutputManager(OutputManager(destination_folder))
+    output_manager: IOutputManager = OutputManager(destination_folder)
+
+    if use_database:
+        return DatabaseFileOutputManager(output_manager)
     else:
-        raise ValueError(f"Unsupported mode: {mode}")
+        return output_manager
 
 
 def copyFileToDestination(
     file_path: Path,
-    destination: appConfig.Destination,
+    destination: appConfig.Destination | Path,
     output_manager: Optional[OutputManager] = None,
 ) -> tuple[Path, IFileMetadataProvider]:
     """Copy file to destination folder."""
@@ -76,11 +77,14 @@ def copyFileToDestination(
         def get_filename(self) -> str:
             return self.filename
 
-    destination_folder = Path(destination.folder)
+    if isinstance(destination, appConfig.Destination):
+        destination_fullpath = Path(destination.folder) / destination.filename
+    else:
+        destination_fullpath = destination
 
     if output_manager is None:
-        output_manager = OutputManager(destination_folder)
+        output_manager = OutputManager(destination_fullpath.parent)
 
     return output_manager.add_file(
-        file_path, SimpleMetadataProvider(destination.filename)
+        file_path, SimpleMetadataProvider(destination_fullpath.name)
     )
