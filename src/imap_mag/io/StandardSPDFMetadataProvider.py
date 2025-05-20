@@ -68,7 +68,9 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             r"(?P<prefix>imap_mag)?_?(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
-        logger.debug(f"Filename {filename} matches {match} with SPDF standard regex.")
+        logger.debug(
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+        )
 
         if match is None:
             return None
