@@ -1,8 +1,10 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
+from pydantic import Field
 
 from imap_mag.api.fetch.binary import WebPODAMetadataProvider, fetch_binary
 from imap_mag.api.process import process
@@ -44,11 +46,51 @@ def generate_flow_run_name() -> str:
     flow_run_name=generate_flow_run_name,
 )
 async def poll_hk_flow(
-    hk_packets: list[HKPacket] = [hk for hk in HKPacket],  # type: ignore
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
-    force_ert: bool = False,
-    force_database_update: bool = False,
+    hk_packets: Annotated[
+        list[HKPacket],
+        Field(
+            json_schema_extra={
+                "title": "HK packets to download",
+                "description": "List of HK packets to download from WebPODA. Default is all HK packets.",
+            }
+        ),
+    ] = [hk for hk in HKPacket],  # type: ignore
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the packet.",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today.",
+            }
+        ),
+    ] = None,
+    force_ert: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force input dates in ERT",
+                "description": "If 'True' input dates are in Earth Received Time (ERT). Otherwise, input dates are in S/C clock time.",
+            }
+        ),
+    ] = False,
+    force_database_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force database update",
+                "description": "Whether to force an update of the database with the downloaded packets.",
+            }
+        ),
+    ] = False,
 ):
     """
     Poll housekeeping data from WebPODA.

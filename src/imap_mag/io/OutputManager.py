@@ -37,6 +37,9 @@ class OutputManager(IOutputManager):
         )
 
         if skip_file_copy:
+            logger.info(
+                f"File {destination_file} already exists and is the same. Skipping update."
+            )
             return (destination_file, metadata_provider)
 
         if not destination_file.parent.exists():
@@ -70,9 +73,6 @@ class OutputManager(IOutputManager):
 
         while destination_file.exists():
             if generate_hash(destination_file) == original_hash:
-                logger.info(
-                    f"File {destination_file} already exists and is the same. Skipping update."
-                )
                 return (metadata_provider.version, True)
 
             logger.debug(

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from imap_mag.db import Database
 from imap_mag.util.DatetimeProvider import DatetimeProvider
@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def force_utc_timezone(date: datetime) -> datetime:
-    """Convert given datetime objects to UTC timezone and remove timezone."""
-    return date.astimezone(timezone.utc).replace(tzinfo=None)
+    """No matter the timezone of the input date, it will be treated as UTC."""
+    return date.replace(tzinfo=None)
 
 
 class DownloadDateManager:
