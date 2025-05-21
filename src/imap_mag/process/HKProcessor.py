@@ -5,6 +5,7 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
+import pandas as pd
 import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
@@ -98,7 +99,7 @@ class HKProcessor(FileProcessor):
                 extension="csv",
             )
 
-            dataframe = data.to_dataframe()
+            dataframe: pd.DataFrame = data.to_dataframe()
 
             # Split dataframe by day.
             dates: list[date] = TimeConversion.convert_j2000ns_to_date(
@@ -119,7 +120,7 @@ class HKProcessor(FileProcessor):
                 )
                 file_path = self.__work_folder / metadata_provider.get_filename()
 
-                daily_data.to_csv(file_path)
+                daily_data.sort_index(inplace=False).to_csv(file_path)
                 processed_files.append(file_path)
 
         return processed_files
