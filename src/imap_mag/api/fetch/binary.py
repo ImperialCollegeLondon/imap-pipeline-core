@@ -92,13 +92,18 @@ def fetch_binary(
         logger.info(
             f"No data downloaded for packet {packet_name} from {start_date} to {end_date}."
         )
+    else:
+        logger.debug(
+            f"Downloaded {len(downloaded_binaries)} files:\n{'\n'.join(str(f) for f in downloaded_binaries.keys())}"
+        )
+
+    output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
             app_settings.data_store,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
-        output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
 
         for file, metadata_provider in downloaded_binaries.items():
             (output_file, output_metadata) = output_manager.add_file(
@@ -106,7 +111,6 @@ def fetch_binary(
             )
             output_binaries[output_file] = output_metadata
     else:
-        output_binaries = dict()
         logger.info("Files not published to data store based on config.")
 
     return output_binaries
