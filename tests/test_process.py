@@ -180,3 +180,24 @@ def test_decode_hk_packet_with_data_from_multiple_apids(caplog):
         "Splitting data for ApID 1064 (MAG_HSK_STATUS) into separate files."
         in caplog.text
     )
+
+
+def test_decode_hk_packet_groupby_returns_tuple_for_day():
+    """Very specific test to check that we support the `groupby` method returning a tuple for the `day` parameter."""
+
+    # Set up.
+    packet_path = Path("tests/data/2025/groupby_day_as_tuple.bin")
+
+    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    # Exercise.
+    processed_paths = processor.process(packet_path)
+
+    # Verify.
+    assert len(processed_paths) == 1
+
+    processed_path = processed_paths[0]
+    assert processed_path.exists()
+
+    assert processed_path.name == "imap_mag_hsk-status_20250331_v000.csv"

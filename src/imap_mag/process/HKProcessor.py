@@ -99,6 +99,7 @@ class HKProcessor(FileProcessor):
             )
 
             for day, daily_data in dataframe.groupby(dates):
+                day = day[0] if isinstance(day, tuple) else day
                 logger.debug(f"Generating file for {day.strftime('%Y-%m-%d')}.")  # type: ignore
 
                 metadata_provider.content_date = datetime.combine(
