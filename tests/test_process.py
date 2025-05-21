@@ -134,7 +134,8 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     assert all([d == date(2025, 5, 3) for d in epoch_day2])
 
     assert (
-        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files." in caplog.text
+        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:"
+        in caplog.text
     )
     assert "Generating file for 2025-05-02." in caplog.text
     assert "Generating file for 2025-05-03." in caplog.text
@@ -173,11 +174,13 @@ def test_decode_hk_packet_with_data_from_multiple_apids(caplog):
     assert processed_paths[0].name == "imap_mag_hsk-pw_20250502_v000.csv"
     assert processed_paths[1].name == "imap_mag_hsk-status_20250502_v000.csv"
 
+    assert f"Found 2 ApIDs (1063, 1064) in {packet_path}." in caplog.text
     assert (
-        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files." in caplog.text
+        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:"
+        in caplog.text
     )
     assert (
-        "Splitting data for ApID 1064 (MAG_HSK_STATUS) into separate files."
+        "Splitting data for ApID 1064 (MAG_HSK_STATUS) into separate files for each day:"
         in caplog.text
     )
 

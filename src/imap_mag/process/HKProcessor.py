@@ -75,27 +75,38 @@ class HKProcessor(FileProcessor):
 
         for file in track(files, description="Processing HK files..."):
             file_results: dict[int, xr.DataArray] = self.__do_process(file)
-            combined_results.update(file_results)
+            logger.info(
+                f"Found {len(file_results.keys())} ApIDs ({', '.join(str(key) for key in file_results.keys())}) in {file}."
+            )
+
+            for apid, data in file_results.items():
+                if apid in combined_results:
+                    combined_results[apid] = xr.concat(
+                        [combined_results[apid], data], dim="epoch"
+                    )
+                else:
+                    combined_results[apid] = data
 
         # Split each ApID into a separate file per day.
         processed_files: list[Path] = []
 
         for apid, data in combined_results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
-            logger.debug(
-                f"Splitting data for ApID {apid} ({hk_packet}) into separate files."
-            )
-
             metadata_provider = StandardSPDFMetadataProvider(
                 descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
                 content_date=None,
                 extension="csv",
             )
+
             dataframe = data.to_dataframe()
 
             # Split dataframe by day.
             dates: list[date] = TimeConversion.convert_j2000ns_to_date(
                 dataframe.index.values
+            )
+            logger.info(
+                f"Splitting data for ApID {apid} ({hk_packet}) into separate files for each day:\n    "
+                f"{'\n    '.join(d.strftime('%Y%m%d') for d in set(dates))}"
             )
 
             for day, daily_data in dataframe.groupby(dates):
