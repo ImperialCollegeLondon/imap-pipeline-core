@@ -37,22 +37,32 @@ def fetch_science(
             help="Use ingestion date into SDC database, rather than science measurement date",
         ),
     ] = False,
-    level: Annotated[Level, typer.Option(help="Level to download")] = Level.level_2,
+    level: Annotated[
+        Level, typer.Option(case_sensitive=False, help="Level to download")
+    ] = Level.level_2,
     modes: Annotated[
         list[ScienceMode],
         typer.Option(
+            case_sensitive=False,
             help="Science modes to download",
         ),
     ] = [
         "norm",  # type: ignore
         "burst",  # type: ignore
     ],  # for some reason Typer does not like these being enums
-    sensors: Annotated[list[MAGSensor], typer.Option(help="Sensors to download")] = [
+    sensors: Annotated[
+        list[MAGSensor], typer.Option(case_sensitive=False, help="Sensors to download")
+    ] = [
         MAGSensor.IBS,
         MAGSensor.OBS,
     ],
     fetch_mode: Annotated[
-        FetchMode, typer.Option("--mode", case_sensitive=False)
+        FetchMode,
+        typer.Option(
+            "--mode",
+            case_sensitive=False,
+            help="Whether to download only or download and update progress in database",
+        ),
     ] = FetchMode.DownloadOnly,
 ) -> dict[Path, SDCMetadataProvider]:
     """Download science data from the SDC."""

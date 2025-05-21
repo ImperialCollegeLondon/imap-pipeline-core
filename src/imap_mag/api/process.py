@@ -30,7 +30,8 @@ def process(
         ),
     ],
     save_mode: Annotated[
-        SaveMode, typer.Option(help="The mode to save the processed files")
+        SaveMode,
+        typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
 ) -> list[tuple[Path, IFileMetadataProvider]]:
     """Process a single file."""

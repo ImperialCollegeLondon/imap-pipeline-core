@@ -41,10 +41,17 @@ def fetch_binary(
     ] = None,
     packet: Annotated[
         Optional[HKPacket],  # type: ignore
-        typer.Option("--packet", help="Packet to download, e.g., SID1"),
+        typer.Option(
+            "--packet", case_sensitive=False, help="Packet to download, e.g., SID1"
+        ),
     ] = None,
     fetch_mode: Annotated[
-        FetchMode, typer.Option("--mode", case_sensitive=False)
+        FetchMode,
+        typer.Option(
+            "--mode",
+            case_sensitive=False,
+            help="Whether to download only or download and update progress in database",
+        ),
     ] = FetchMode.DownloadOnly,
 ) -> dict[Path, WebPODAMetadataProvider]:
     """Download binary data from WebPODA."""
