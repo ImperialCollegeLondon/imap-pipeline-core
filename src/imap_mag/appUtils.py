@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
-
 from imap_mag import appConfig
 from imap_mag.io import (
     DatabaseFileOutputManager,
@@ -11,23 +9,8 @@ from imap_mag.io import (
     IOutputManager,
     OutputManager,
 )
-from imap_mag.util import CONSTANTS
 
 logger = logging.getLogger(__name__)
-
-
-def convertMETToJ2000ns(
-    met: np.typing.ArrayLike,
-    reference_epoch: np.datetime64 = CONSTANTS.IMAP_EPOCH,
-) -> np.typing.ArrayLike:
-    """Convert mission elapsed time (MET) to nanoseconds from J2000."""
-    time_array = (np.asarray(met, dtype=float) * 1e9).astype(np.int64)
-    j2000_offset = (
-        (reference_epoch - CONSTANTS.J2000_EPOCH)
-        .astype("timedelta64[ns]")
-        .astype(np.int64)
-    )
-    return j2000_offset + time_array
 
 
 # TODO: Replace all uses of this with getOutputManagerByMode version
