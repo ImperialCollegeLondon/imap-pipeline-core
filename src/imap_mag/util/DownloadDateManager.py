@@ -28,7 +28,7 @@ class DownloadDateManager:
     def get_start_date(self, original_start_date: datetime | None) -> datetime:
         if original_start_date is not None:
             self.__logger.info(
-                f"Using provided start date {original_start_date} for {self.__packet_name}."
+                f"Using provided start date {force_utc_timezone(original_start_date)} for {self.__packet_name}."
             )
             return force_utc_timezone(original_start_date)
 
@@ -65,7 +65,7 @@ class DownloadDateManager:
             return DatetimeProvider.end_of_today()
         else:
             self.__logger.info(
-                f"Using provided end date {original_end_date} for {self.__packet_name}."
+                f"Using provided end date {force_utc_timezone(original_end_date)} for {self.__packet_name}."
             )
             return force_utc_timezone(original_end_date)
 
