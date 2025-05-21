@@ -36,7 +36,7 @@ def process(
 ) -> list[tuple[Path, IFileMetadataProvider]]:
     """Process a single file."""
 
-    logger.info(f"Processing {len(files)} files:\n{'\n'.join(str(f) for f in files)}")
+    logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.process)

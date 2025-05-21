@@ -101,7 +101,7 @@ def fetch_binary(
         )
     else:
         logger.debug(
-            f"Downloaded {len(downloaded_binaries)} files:\n{'\n'.join(str(f) for f in downloaded_binaries.keys())}"
+            f"Downloaded {len(downloaded_binaries)} files:\n{', '.join(str(f) for f in downloaded_binaries.keys())}"
         )
 
     output_binaries: dict[Path, WebPODAMetadataProvider] = dict()

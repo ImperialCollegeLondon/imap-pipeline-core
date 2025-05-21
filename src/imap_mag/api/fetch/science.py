@@ -100,7 +100,7 @@ def fetch_science(
         )
     else:
         logger.debug(
-            f"Downloaded {len(downloaded_science)} files:\n{'\n'.join(str(f) for f in downloaded_science.keys())}"
+            f"Downloaded {len(downloaded_science)} files:\n{', '.join(str(f) for f in downloaded_science.keys())}"
         )
 
     output_science: dict[Path, SDCMetadataProvider] = dict()
