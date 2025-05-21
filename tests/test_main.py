@@ -81,7 +81,7 @@ def test_process_error_with_unsupported_file_type():
 
     assert result.exception is not None
     assert (
-        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v000.cdf')} contains unknown data. File suffix .cdf cannot be processed."
+        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v000.cdf')} is not supported and cannot be processed."
         in result.exception.args[0]
     )
 

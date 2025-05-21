@@ -21,17 +21,19 @@ def dispatch(file: list[Path], work_folder: Path) -> FileProcessor:
 def dispatch(file: Path | list[Path], work_folder: Path) -> FileProcessor:
     """Dispatch a file or a list of files to the appropriate processor."""
 
+    available_processor_types: list[type] = [
+        HKProcessor,
+    ]
+
     if isinstance(file, list):
         file = file[0]
 
-    match file.suffix:
-        case ".pkts" | ".bin":
-            logger.info(f"File {file} contains HK.")
-            return HKProcessor(work_folder)
-        case _:
-            logger.error(
-                f"File {file} contains unknown data. File suffix {file.suffix} cannot be processed."
-            )
-            raise NotImplementedError(
-                f"File {file} contains unknown data. File suffix {file.suffix} cannot be processed."
-            )
+    for processor_type in available_processor_types:
+        processor = processor_type(work_folder)
+
+        if processor.is_supported(file):
+            logger.info(f"File {file} is supported by {processor_type.__name__}.")
+            return processor
+
+    logger.error(f"File {file} is not supported and cannot be processed.")
+    raise NotImplementedError(f"File {file} is not supported and cannot be processed.")
