@@ -1,6 +1,6 @@
 # Application settings used by CLI and Prefect tasks See AppSettings for strongly typed python class
 
-# Settings in this file can be overridden by environment variables e.g. MAG_FETCH_BINARY_WEBPODA_URL_BASE=http://localhost:1234
+# Settings in this file can be overridden by environment variables e.g. MAG_FETCH_BINARY_API_URL_BASE=http://localhost:1234
 # and by dictionaries passed into the constructor of the AppSettings class
 
 # General application conifguration:
@@ -10,8 +10,18 @@ packet_definition: 'xtce/tlm_20241024.xml'
 
 # Command specific configuration:
 fetch_binary:
-    webpoda:
+    api:
         url_base: 'https://lasp.colorado.edu/ops/imap/poda/dap2/'
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
+
+fetch_science:
+    api:
+        url_base: 'https://api.dev.imap-mission.com'
+        auth_code:
+    work_sub_folder:
+    publish_to_data_store: true
+
+process:
+    work_sub_folder:

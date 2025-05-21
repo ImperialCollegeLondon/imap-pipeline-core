@@ -1,27 +1,24 @@
 """Program to retrieve and process MAG CDF files."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 
-import pandas as pd
-
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.util import MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: Move these Enums to their own files or to a constants file
-class MAGMode(str, Enum):
-    Normal = "norm"
-    Burst = "burst"
+@dataclass
+class SDCMetadataProvider(StandardSPDFMetadataProvider):
+    """
+    Metadata for SDC files.
+    """
 
-
-class MAGSensor(str, Enum):
-    IBS = "magi"
-    OBS = "mago"
+    ingestion_date: datetime | None = None  # date data was ingested by SDC
 
 
 # TODO: why is this class in a folder named "cli" when it is not a command line app?
@@ -30,13 +27,13 @@ class FetchScience:
 
     __data_access: ISDCDataAccess
 
-    __modes: list[MAGMode]
+    __modes: list[ScienceMode]
     __sensor: list[MAGSensor]
 
     def __init__(
         self,
         data_access: ISDCDataAccess,
-        modes: list[MAGMode] = [MAGMode.Normal, MAGMode.Burst],
+        modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
         sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:
         """Initialize SDC interface."""
@@ -46,53 +43,54 @@ class FetchScience:
         self.__sensor = sensors
 
     def download_latest_science(
-        self, level: str, start_date: datetime, end_date: datetime
-    ) -> dict[Path, StandardSPDFMetadataProvider]:
+        self,
+        level: str,
+        start_date: datetime,
+        end_date: datetime,
+        use_ingestion_date: bool = False,
+    ) -> dict[Path, SDCMetadataProvider]:
         """Retrieve SDC data."""
 
-        downloaded: dict[Path, StandardSPDFMetadataProvider] = dict()
+        downloaded: dict[Path, SDCMetadataProvider] = dict()
+
+        dates: dict[str, datetime] = {
+            "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
+            "ingestion_end_date" if use_ingestion_date else "end_date": end_date,
+        }
 
         for mode in self.__modes:
-            date_range: pd.DatetimeIndex = pd.date_range(
-                start=start_date,
-                end=end_date,
-                freq="D",
-                normalize=True,
-            )
+            for sensor in self.__sensor:
+                file_details = self.__data_access.get_filename(
+                    level=level,
+                    descriptor=mode.short_name + "-" + sensor.value,
+                    extension="cdf",
+                    **dates,
+                )
 
-            for date in date_range.to_pydatetime():
-                for sensor in self.__sensor:
-                    file_details = self.__data_access.get_filename(
-                        level=level,
-                        descriptor=mode.value + "-" + sensor.value,
-                        start_date=date,
-                        end_date=date,
-                        version="latest",
-                        extension="cdf",
-                    )
+                if file_details is not None:
+                    for file in file_details:
+                        downloaded_file = self.__data_access.download(file["file_path"])
 
-                    if file_details is not None:
-                        for file in file_details:
-                            downloaded_file = self.__data_access.download(
-                                file["file_path"]
+                        if downloaded_file.stat().st_size > 0:
+                            logger.info(
+                                f"Downloaded file from SDC Data Access: {downloaded_file}"
                             )
 
-                            if downloaded_file.stat().st_size > 0:
-                                logger.info(
-                                    f"Downloaded file from SDC Data Access: {downloaded_file}"
-                                )
-
-                                downloaded[downloaded_file] = (
-                                    StandardSPDFMetadataProvider(
-                                        level=level,
-                                        descriptor=file["descriptor"],
-                                        date=date,
-                                        extension="cdf",
-                                    )
-                                )
-                            else:
-                                logger.debug(
-                                    f"Downloaded file {downloaded_file} is empty and will not be used."
-                                )
+                            downloaded[downloaded_file] = SDCMetadataProvider(
+                                level=level,
+                                descriptor=file["descriptor"],
+                                content_date=datetime.strptime(
+                                    file["start_date"], "%Y%m%d"
+                                ),
+                                ingestion_date=datetime.strptime(
+                                    file["ingestion_date"], "%Y%m%d %H:%M:%S"
+                                ),
+                                version=int(file["version"].lstrip("v")),
+                                extension="cdf",
+                            )
+                        else:
+                            logger.debug(
+                                f"Downloaded file {downloaded_file} is empty and will not be used."
+                            )
 
         return downloaded

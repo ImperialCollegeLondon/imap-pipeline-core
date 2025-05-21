@@ -69,46 +69,47 @@ def initialiseLoggingForCommand(folder):
         raise typer.Abort()
 
 
-def prepareWorkFile(file: Path | str, configFile) -> Path | None:
-    logger.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
+def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
+    logger.debug(f"Grabbing file matching {file} in {work_folder}")
 
-    if isinstance(file, Path):
-        file = file.as_posix()
+    files: list[Path] = []
 
-    files = []
-    folder = configFile.source.folder
+    source_folder = file.parent
+    filename = file.name
 
-    if not folder.exists():
-        logger.warning(f"Folder {folder} does not exist")
+    if not source_folder.exists():
+        logger.warning(f"Folder {source_folder} does not exist")
         return None
 
     # if pattern contains a %
-    if "%" in file:
-        updatedFile = datetime.now().strftime(file)
-        logger.info(f"Pattern contains a %, replacing '{file} with {updatedFile}")
-        file = updatedFile
+    if "%" in filename:
+        updated_file = datetime.now().strftime(filename)
+        logger.info(f"Pattern contains a %, replacing {filename} with {updated_file}")
+        filename = updated_file
 
     # list all files in the share
-    for matchedFile in folder.iterdir():
-        if matchedFile.is_file():
-            if matchedFile.match(file):
-                files.append(matchedFile)
+    for matched_file in source_folder.iterdir():
+        if matched_file.is_file():
+            if matched_file.match(filename):
+                files.append(matched_file)
 
     # get the most recently modified matching file
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
     if len(files) == 0:
-        logger.critical(f"No files matching {file} found in {folder}")
-        raise FileNotFoundError(f"No files matching {file} found in {folder}")
+        logger.critical(f"No files matching {filename} found in {source_folder}")
+        raise FileNotFoundError(
+            f"No files matching {filename} found in {source_folder}"
+        )
 
     logger.info(
         f"Found {len(files)} matching files. Select the most recent one: "
         f"{files[0].absolute().as_posix()}"
     )
 
-    # copy the file to configFile.work_folder
-    workFile = Path(configFile.work_folder, files[0].name)
-    logger.debug(f"Copying {files[0]} to {workFile}")
-    workFile = Path(shutil.copy2(files[0], configFile.work_folder))
+    # copy the file to work_folder
+    work_file = Path(work_folder, files[0].name)
+    logger.debug(f"Copying {files[0]} to {work_file}")
+    work_file = Path(shutil.copy2(files[0], work_folder))
 
-    return workFile
+    return work_file

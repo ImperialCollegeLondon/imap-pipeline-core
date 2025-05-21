@@ -1,24 +1,17 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
-import pandas as pd
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
+from pydantic import Field
 
-from imap_mag.api.fetch.binary import fetch_binary
+from imap_mag.api.fetch.binary import WebPODAMetadataProvider, fetch_binary
 from imap_mag.api.process import process
-from imap_mag.appConfig import manage_config
-from imap_mag.appUtils import (
-    HK_PACKETS,
-    DatetimeProvider,
-    HKPacket,
-    get_dates_for_download,
-    update_database_with_progress,
-)
-from imap_mag.config.FetchMode import FetchMode
-from imap_mag.DB import Database
-from imap_mag.outputManager import StandardSPDFMetadataProvider
-from prefect_server.constants import CONSTANTS
+from imap_mag.config import FetchMode, SaveMode
+from imap_mag.db import Database, update_database_with_progress
+from imap_mag.util import DatetimeProvider, HKPacket, get_dates_for_download
+from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
 )
@@ -37,7 +30,9 @@ def generate_flow_run_name() -> str:
 
     packet_names = [hk.name for hk in hk_packets]
     packet_text = (
-        f"{','.join(packet_names)}-Packets" if packet_names != HK_PACKETS else "all-HK"
+        f"{','.join(packet_names)}-Packets"
+        if packet_names != HKPacket.list()
+        else "all-HK"
     )
 
     return (
@@ -46,34 +41,78 @@ def generate_flow_run_name() -> str:
 
 
 @flow(
-    name=CONSTANTS.FLOW_NAMES.POLL_HK,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
 )
 async def poll_hk_flow(
-    hk_packets: list[HKPacket] = [hk for hk in HKPacket],  # type: ignore
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
-    force_database_update: bool = False,
+    hk_packets: Annotated[
+        list[HKPacket],
+        Field(
+            json_schema_extra={
+                "title": "HK packets to download",
+                "description": "List of HK packets to download from WebPODA. Default is all HK packets.",
+            }
+        ),
+    ] = [hk for hk in HKPacket],  # type: ignore
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the packet.",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today.",
+            }
+        ),
+    ] = None,
+    force_ert: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force input dates in ERT",
+                "description": "If 'True' input dates are in Earth Received Time (ERT). Otherwise, input dates are in S/C clock time.",
+            }
+        ),
+    ] = False,
+    force_database_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force database update",
+                "description": "Whether to force an update of the database with the downloaded packets.",
+            }
+        ),
+    ] = False,
 ):
     """
     Poll housekeeping data from WebPODA.
     """
 
     logger = get_run_logger()
-
-    auth_code = await get_secret_or_env_var(
-        CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
-        CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
-    )
-
-    check_and_update_database = force_database_update or (
-        (start_date is None) and (end_date is None)
-    )
     database = Database()
 
+    auth_code = await get_secret_or_env_var(
+        PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
+        PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
+    )
+
+    # If this is an automated flow run, use the database to figure out what to download,
+    # and use ERT to download data.
+    automated_flow_run: bool = (start_date is None) and (end_date is None)
+    use_database: bool = force_database_update or automated_flow_run
+    use_ert: bool = force_ert or automated_flow_run
+
     for packet in hk_packets:
-        packet_name = packet.name
+        packet_name = packet.packet
+
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
         packet_dates = get_dates_for_download(
@@ -81,7 +120,7 @@ async def poll_hk_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=check_and_update_database,
+            check_and_update_database=use_database,
             logger=logger,
         )
 
@@ -90,11 +129,12 @@ async def poll_hk_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = fetch_binary(
+        downloaded_binaries: dict[Path, WebPODAMetadataProvider] = fetch_binary(
             auth_code=auth_code,
             packet=packet,
             start_date=packet_start_date,
             end_date=packet_end_date,
+            use_ert=use_ert,
             fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
@@ -105,29 +145,20 @@ async def poll_hk_flow(
             continue
 
         # Process binary data into CSV
-        latest_timestamps: list[datetime] = []
+        files = [file for file in downloaded_binaries.keys()]
+        process(files, save_mode=SaveMode.LocalAndDatabase)
 
-        for file, _ in downloaded_binaries.items():
-            # TODO: get rid of all use of the dynamic config files
-            with manage_config(
-                source=file.parent, export_to_database=True
-            ) as config_file:
-                (processed_file, _) = process(file=Path(file.name), config=config_file)
-
-            latest_timestamps.append(
-                datetime.fromtimestamp(
-                    pd.read_csv(processed_file).iloc[-1].epoch / 10**9
-                    + datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
-                )
+        # Update database with latest content date as progress (for HK)
+        if use_database:
+            update_database_with_progress(
+                packet_name=packet_name,
+                database=database,
+                latest_timestamp=max(
+                    metadata.ert for metadata in downloaded_binaries.values()
+                ),
+                logger=logger,
             )
-
-        # Update database
-        update_database_with_progress(
-            packet_name=packet_name,
-            database=database,
-            latest_timestamp=max(latest_timestamps),
-            check_and_update_database=check_and_update_database,
-            logger=logger,
-        )
+        else:
+            logger.info(f"Database not updated for {packet_name}.")
 
     logger.info("---------- Finished ----------")

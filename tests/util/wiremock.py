@@ -65,6 +65,11 @@ class WireMockManager:
 
         Mappings.create_mapping(mapping)
 
+    def reset(self) -> None:
+        """Reset WireMock server."""
+
+        Mappings.delete_all_mappings()
+
     def __add_mapping(
         self,
         url: str,

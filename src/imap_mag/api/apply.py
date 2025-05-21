@@ -29,4 +29,4 @@ def apply(
 
     L2_file = applier.apply(workCalibrationFile, workDataFile, workOutputFile)
 
-    appUtils.copyFileToDestination(L2_file, configFile.destination)
+    appUtils.copyFileToDestination(Path(L2_file), configFile.destination)

@@ -7,8 +7,7 @@ from pathlib import Path
 import imap_data_access
 
 from imap_mag.client.sdcDataAccess import SDCDataAccess
-
-from .testUtils import tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_sdc_data_access_constructor_sets_config() -> None:

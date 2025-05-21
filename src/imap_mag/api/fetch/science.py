@@ -1,28 +1,25 @@
 import logging
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit
-from imap_mag.cli.fetchScience import FetchScience, MAGMode, MAGSensor
+from imap_mag import appUtils
+from imap_mag.api.apiUtils import initialiseLoggingForCommand
+from imap_mag.cli.fetchScience import (
+    FetchScience,
+    SDCMetadataProvider,
+)
 from imap_mag.client.sdcDataAccess import SDCDataAccess
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.config import AppSettings, FetchMode
+from imap_mag.util import Level, MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
 
 
-class Level(str, Enum):
-    level_1a = "l1a"
-    level_1b = "l1b"
-    level_1c = "l1c"
-    level_2 = "l2"
-
-
-# E.g., imap-mag fetch-science --start-date 2025-05-02 --end-date 2025-05-03
+# E.g., imap-mag fetch science --start-date 2025-05-02 --end-date 2025-05-03
+# E.g., imap-mag fetch science --ingestion-date --start-date 2025-05-02 --end-date 2025-05-03
 def fetch_science(
     auth_code: Annotated[
         str,
@@ -33,46 +30,93 @@ def fetch_science(
     ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
-    level: Annotated[Level, typer.Option(help="Level to download")] = Level.level_2,
-    modes: Annotated[list[MAGMode], typer.Option(help="Science modes to download")] = [
-        MAGMode.Normal,
-        MAGMode.Burst,
-    ],
-    sensors: Annotated[list[MAGSensor], typer.Option(help="Sensors to download")] = [
+    use_ingestion_date: Annotated[
+        bool,
+        typer.Option(
+            "--ingestion-date",
+            help="Use ingestion date into SDC database, rather than science measurement date",
+        ),
+    ] = False,
+    level: Annotated[
+        Level, typer.Option(case_sensitive=False, help="Level to download")
+    ] = Level.level_2,
+    modes: Annotated[
+        list[ScienceMode],
+        typer.Option(
+            case_sensitive=False,
+            help="Science modes to download",
+        ),
+    ] = [
+        "norm",  # type: ignore
+        "burst",  # type: ignore
+    ],  # for some reason Typer does not like these being enums
+    sensors: Annotated[
+        list[MAGSensor], typer.Option(case_sensitive=False, help="Sensors to download")
+    ] = [
         MAGSensor.IBS,
         MAGSensor.OBS,
     ],
-    config: Annotated[Path, typer.Option()] = Path("config.yaml"),
-) -> dict[Path, StandardSPDFMetadataProvider]:
+    fetch_mode: Annotated[
+        FetchMode,
+        typer.Option(
+            "--mode",
+            case_sensitive=False,
+            help="Whether to download only or download and update progress in database",
+        ),
+    ] = FetchMode.DownloadOnly,
+) -> dict[Path, SDCMetadataProvider]:
     """Download science data from the SDC."""
-
-    configFile: appConfig.CommandConfigBase = commandInit(config)
 
     if not auth_code:
         logger.critical("No SDC_AUTH_CODE API key provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logger.info(f"Downloading {level.value} science from {start_date} to {end_date}.")
+    settings_overrides = (
+        {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
+    )
+
+    app_settings = AppSettings(**settings_overrides)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
 
     data_access = SDCDataAccess(
-        data_dir=configFile.work_folder,
-        sdc_url=configFile.api.sdc_url if configFile.api else None,
+        data_dir=work_folder,
+        sdc_url=app_settings.fetch_science.api.url_base,
     )
 
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
-    downloaded_science: dict[Path, StandardSPDFMetadataProvider] = (
+    downloaded_science: dict[Path, SDCMetadataProvider] = (
         fetch_science.download_latest_science(
-            level=level.value, start_date=start_date, end_date=end_date
+            level=level.value,
+            start_date=start_date,
+            end_date=end_date,
+            use_ingestion_date=use_ingestion_date,
         )
     )
 
-    output_manager = appUtils.getOutputManager(configFile.destination)
-    output_binaries: dict[Path, StandardSPDFMetadataProvider] = dict()
-
-    for file, metadata_provider in downloaded_science.items():
-        (output_file, output_metadata) = output_manager.add_file(
-            file, metadata_provider
+    if not downloaded_science:
+        logger.info(
+            f"No data downloaded for packet {level.value} from {start_date} to {end_date}."
         )
-        output_binaries[output_file] = output_metadata
+    else:
+        logger.debug(
+            f"Downloaded {len(downloaded_science)} files:\n{', '.join(str(f) for f in downloaded_science.keys())}"
+        )
 
-    return output_binaries
+    output_science: dict[Path, SDCMetadataProvider] = dict()
+
+    if app_settings.fetch_science.publish_to_data_store:
+        output_manager = appUtils.getOutputManagerByMode(
+            app_settings.data_store,
+            use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
+        )
+
+        for file, metadata_provider in downloaded_science.items():
+            (output_file, output_metadata) = output_manager.add_file(
+                file, metadata_provider
+            )
+            output_science[output_file] = output_metadata
+    else:
+        logger.info("Files not published to data store based on config.")
+
+    return output_science

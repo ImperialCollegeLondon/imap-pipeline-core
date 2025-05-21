@@ -1,21 +1,19 @@
 import os
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from imap_mag import appLogging
-from imap_mag.appUtils import DatetimeProvider
+from imap_mag.util import DatetimeProvider
 
-NOW = datetime.now()
-TODAY = datetime.today()
-TOMORROW = datetime.today() + timedelta(days=1)
-YESTERDAY = datetime.today().replace(
-    hour=0, minute=0, second=0, microsecond=0
-) - timedelta(days=1)
-END_OF_TODAY = datetime.today().replace(
-    hour=23, minute=59, second=59, microsecond=999999
-)
+NOW = datetime(2025, 6, 2, 12, 37, 9)
+TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+TOMORROW = TODAY + timedelta(days=1)
+YESTERDAY = TODAY - timedelta(days=1)
+BEGINNING_OF_IMAP = YESTERDAY
+END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
 @pytest.fixture(autouse=True)
@@ -49,6 +47,9 @@ def mock_datetime_provider(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "tomorrow", lambda: TOMORROW)
     monkeypatch.setattr(DatetimeProvider, "yesterday", lambda: YESTERDAY)
     monkeypatch.setattr(DatetimeProvider, "end_of_today", lambda: END_OF_TODAY)
+    monkeypatch.setattr(
+        DatetimeProvider, "beginning_of_imap", lambda: BEGINNING_OF_IMAP
+    )
 
 
 def create_test_file(file_path: Path, content: str | None = None) -> Path:
@@ -63,3 +64,17 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
         file_path.write_text(content)
 
     return file_path
+
+
+@contextmanager
+def set_env(key, value):
+    original_value = os.environ.get(key)
+    os.environ[key] = value
+
+    try:
+        yield
+    finally:
+        if original_value is None:
+            del os.environ[key]
+        else:
+            os.environ[key] = original_value

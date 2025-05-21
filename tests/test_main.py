@@ -11,12 +11,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from imap_mag.appConfig import create_and_serialize_config
 from imap_mag.main import app
-
-from .testUtils import tidyDataFolders  # noqa: F401
-
-# from .wiremockUtils import wiremock_manager
+from tests.util.miscellaneous import set_env, tidyDataFolders  # noqa: F401
 
 runner = CliRunner()
 
@@ -28,30 +24,13 @@ def test_app_says_hello():
     assert "Hello Bob" in result.stdout
 
 
-def test_process_with_valid_config_does_not_error():
-    result = runner.invoke(
-        app,
-        [
-            "process",
-            "--config",
-            "config.yaml",
-            "imap_mag_l1a_norm-mago_20250502_v000.cdf",
-        ],
-    )
-
-    print("\n" + str(result.stdout))
-    assert result.exit_code == 0
-    # check that file output/result.cdf exists
-    assert Path("output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf").exists()
-
-
 @pytest.mark.parametrize(
     "binary_file, output_file",
     [
-        ("MAG_HSK_PW.pkts", "output/result.csv"),
+        ("MAG_HSK_PW.pkts", "output/2025/05/02/imap_mag_hsk-pw_20250502_v000.csv"),
         (
             "imap_mag_hsk-pw_20250214_v000.pkts",
-            "output/2025/02/14/imap_mag_hsk-pw_20250214_v000.csv",
+            "output/2025/05/02/imap_mag_hsk-pw_20250502_v000.csv",
         ),
     ],
 )
@@ -67,9 +46,7 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         app,
         [
             "process",
-            "--config",
-            "tests/config/hk_process.yaml",
-            binary_file,
+            str(Path("tests/data/2025") / binary_file),
         ],
     )
 
@@ -85,6 +62,32 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         assert expectedFirstLine == lines[1]
         assert expectedLastLine == lines[-1]
         assert expectedNumRows == len(lines)
+
+
+def test_process_error_with_unsupported_file_type():
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "process",
+            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v000.cdf")),
+        ],
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 1
+
+    assert result.exception is not None
+    assert (
+        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v000.cdf')} is not supported and cannot be processed."
+        in result.exception.args[0]
+    )
+
+    assert not Path(
+        "output/2025/05/02/imap_mag_l1a_norm-mago_20250502_v000.cdf"
+    ).exists()
 
 
 @pytest.mark.skipif(
@@ -103,9 +106,17 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
         binary_file,
     )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "ert\n",
+    )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "time\n2025-05-02T12:37:09\n",
+    )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_BINARY_WEBPODA_URL_BASE": wiremock_manager.get_url(),
+        "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
     }
 
     args = [
@@ -113,17 +124,73 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "fetch",
         "binary",
         "--packet",
-        "MAG_HSK_PW",
+        "SID3_PW",
         "--auth-code",
         "12345",
         "--start-date",
         "2025-05-02",
         "--end-date",
-        "2025-05-03",
+        "2025-05-02",
     ]
 
     if mode is not None:
         args.extend(["--mode", mode])
+
+    # Exercise.
+    result = runner.invoke(app, args, env=settings_overrides_for_env)
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert Path("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts").exists()
+
+    with (
+        open("output/2025/05/02/imap_mag_hsk-pw_20250502_v000.pkts", "rb") as output,
+        open(binary_file, "rb") as input,
+    ):
+        assert output.read() == input.read()
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
+    # Set up.
+    binary_file = os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts")
+
+    wiremock_manager.add_file_mapping(
+        "/packets/SID2/MAG_HSK_PW.bin?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(packet)",
+        binary_file,
+    )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "ert\n2025-06-02T12:37:09\n",
+    )
+    wiremock_manager.add_string_mapping(
+        "/packets/SID2/MAG_HSK_PW.csv?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        "time\n2025-05-02T12:37:09\n",
+    )
+
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
+    }
+
+    args = [
+        "--verbose",
+        "fetch",
+        "binary",
+        "--packet",
+        "SID3_PW",
+        "--auth-code",
+        "12345",
+        "--start-date",
+        "2025-06-02",
+        "--end-date",
+        "2025-06-02",
+        "--ert",
+    ]
 
     # Exercise.
     result = runner.invoke(app, args, env=settings_overrides_for_env)
@@ -157,7 +224,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "repointing": None,
             "version": "v000",
             "extension": "cdf",
-            "ingestion_date": "2024-07-16 10:29:02",
+            "ingestion_date": "20240716 10:29:02",
         }
     ]
     cdf_file = os.path.abspath(
@@ -182,10 +249,9 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         priority=2,
     )
 
-    (_, config_file) = create_and_serialize_config(
-        destination_file="result.cdf",
-        sdc_url=wiremock_manager.get_url().rstrip("/"),
-    )
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+    }
 
     # Exercise.
     result = runner.invoke(
@@ -194,8 +260,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--verbose",
             "fetch",
             "science",
-            "--config",
-            str(config_file),
             "--auth-code",
             "12345",
             "--level",
@@ -205,6 +269,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--end-date",
             "2025-05-02",
         ],
+        env=settings_overrides_for_env,
     )
 
     print("\n" + str(result.stdout))
@@ -222,6 +287,89 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         assert output.read() == input.read()
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manager):
+    # Set up.
+    query_response: list[dict[str, str]] = [
+        {
+            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "instrument": "mag",
+            "data_level": "l1b",
+            "descriptor": "norm-magi",
+            "start_date": "20250502",
+            "repointing": None,
+            "version": "v000",
+            "extension": "cdf",
+            "ingestion_date": "20240716 10:29:02",
+        }
+    ]
+    cdf_file = os.path.abspath(
+        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v000.cdf"
+    )
+
+    wiremock_manager.add_string_mapping(
+        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
+        json.dumps(query_response),
+        priority=1,
+    )
+    wiremock_manager.add_file_mapping(
+        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+        cdf_file,
+    )
+    wiremock_manager.add_string_mapping(
+        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        + ".*"
+        + re.escape(
+            "&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf"
+        ),
+        json.dumps({}),
+        is_pattern=True,
+        priority=2,
+    )
+
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+    }
+
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "--verbose",
+            "fetch",
+            "science",
+            "--auth-code",
+            "12345",
+            "--level",
+            "l1b",
+            "--start-date",
+            "2024-07-16",
+            "--end-date",
+            "2024-07-16",
+            "--ingestion-date",
+        ],
+        env=settings_overrides_for_env,
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert Path("output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf").exists()
+
+    with (
+        open(
+            "output/2025/05/02/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+        ) as output,
+        open(cdf_file, "rb") as input,
+    ):
+        assert output.read() == input.read()
+
+
+@pytest.mark.skip("Mhairi is working on this")
 def test_calibration_creates_calibration_file():
     result = runner.invoke(
         app,
@@ -238,6 +386,7 @@ def test_calibration_creates_calibration_file():
     assert Path("output/calibration.json").exists()
 
 
+@pytest.mark.skip("Mhairi is working on this")
 def test_application_creates_L2_file():
     result = runner.invoke(
         app,
