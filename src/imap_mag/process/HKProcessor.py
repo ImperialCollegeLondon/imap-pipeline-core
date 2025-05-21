@@ -9,10 +9,9 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
 
-from imap_mag.appUtils import convertMETToJ2000ns
 from imap_mag.io import StandardSPDFMetadataProvider
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import CONSTANTS, HKPacket
+from imap_mag.util import HKPacket, TimeConversion
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,9 @@ class HKProcessor(FileProcessor):
 
     def __init__(self, work_folder: Path) -> None:
         self.__work_folder = work_folder
+
+    def is_supported(self, file: Path) -> bool:
+        return file.suffix in [".pkts", ".bin"]
 
     def initialize(self, packet_definition: Path) -> None:
         pythonModuleRelativePath = (
@@ -79,21 +81,22 @@ class HKProcessor(FileProcessor):
         processed_files: list[Path] = []
 
         for apid, data in combined_results.items():
-            logger.debug(f"Splitting data for ApID {apid} into separate files.")
+            hk_packet: str = HKPacket.from_apid(apid).packet
+            logger.debug(
+                f"Splitting data for ApID {apid} ({hk_packet}) into separate files."
+            )
 
             metadata_provider = StandardSPDFMetadataProvider(
-                descriptor=HKPacket.from_apid(apid)
-                .packet.lower()
-                .strip("mag_")
-                .replace("_", "-"),
+                descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
                 content_date=None,
                 extension="csv",
             )
             dataframe = data.to_dataframe()
 
             # Split dataframe by day.
-            timestamps = dataframe.index.values / 10**9 + CONSTANTS.J2000_EPOCH_POSIX
-            dates: list[date] = [datetime.fromtimestamp(t).date() for t in timestamps]
+            dates: list[date] = TimeConversion.convert_j2000ns_to_date(
+                dataframe.index.values
+            )
 
             for day, daily_data in dataframe.groupby(dates):
                 logger.debug(f"Generating file for {day.strftime('%Y-%m-%d')}.")  # type: ignore
@@ -141,7 +144,7 @@ class HKProcessor(FileProcessor):
 
         for apid, data in data_dict.items():
             time_key = next(iter(data.keys()))
-            time_data = convertMETToJ2000ns(data[time_key])
+            time_data = TimeConversion.convert_met_to_j2000ns(data[time_key])
 
             ds = xr.Dataset(
                 {
