@@ -34,8 +34,12 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             )
 
         folder: str = self.level or self.descriptor or ""
+
         return (
-            Path(self.instrument) / folder / self.content_date.strftime("%Y/%m")
+            Path(self.mission)
+            / self.instrument
+            / folder
+            / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self) -> str:

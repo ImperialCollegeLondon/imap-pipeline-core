@@ -171,7 +171,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
         [
             File(  # first call returns this list
                 name="imap_mag_hsk-pw_20250502_v001.txt",
-                path="mag/hsk-pw/2025/05",
+                path="imap/mag/hsk-pw/2025/05",
                 version=1,
                 hash="",
                 size=0,
@@ -182,7 +182,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
         [
             File(  # second call returns this list
                 name="imap_mag_hsk-pw_20250502_v002.txt",
-                path="mag/hsk-pw/2025/05",
+                path="imap/mag/hsk-pw/2025/05",
                 version=2,
                 hash=hashlib.md5(b"some content").hexdigest(),
                 size=0,
@@ -251,7 +251,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         [
             File(  # first call returns this list
                 name="imap_mag_hsk-pw_20250502_v001.txt",
-                path="mag/hsk-pw/2025/05",
+                path="imap/mag/hsk-pw/2025/05",
                 version=1,
                 hash=0,
                 size=0,
@@ -262,7 +262,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         [
             File(  # second call returns this list
                 name="imap_mag_hsk-pw_20250502_v002.txt",
-                path="mag/hsk-pw/2025/05",
+                path="imap/mag/hsk-pw/2025/05",
                 version=2,
                 hash=0,
                 size=0,
@@ -287,11 +287,11 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     assert (
-        f"File {Path('mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
+        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
         in caplog.text
     )
     assert (
-        f"File {Path('mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in caplog.text
     )
     assert f"Inserting {test_file} into database." in caplog.text
