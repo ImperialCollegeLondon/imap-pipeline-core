@@ -57,6 +57,7 @@ def deploy_flows(local_debug: bool = False):
 
     shared_job_env_variables = dict(
         {
+            CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
             CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
                 CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
             ),
@@ -66,7 +67,7 @@ def deploy_flows(local_debug: bool = False):
             CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
                 CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
             ),
-            "PREFECT_LOGGING_EXTRA_LOGGERS": CONSTANTS.DEFAULT_LOGGERS,
+            CONSTANTS.ENV_VAR_NAMES.PREFECT_LOGGING_EXTRA_LOGGERS: CONSTANTS.DEFAULT_LOGGERS,
         }
     )
 
