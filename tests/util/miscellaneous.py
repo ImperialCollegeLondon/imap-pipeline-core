@@ -34,7 +34,7 @@ def enableLogging():
 @pytest.fixture(autouse=True)
 def tidyDataFolders():
     os.system("rm -rf .work")
-    os.system("rm -rf output/*")
+    os.system("rm -rf data/*")
     yield
 
 
