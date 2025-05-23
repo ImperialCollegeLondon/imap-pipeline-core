@@ -118,7 +118,7 @@ def verify_available_modes(
         assert download_progress.get_progress_timestamp() == ingestion_timestamp
 
         # Files.
-        data_folder = os.path.join("output", actual_timestamp.strftime("%Y/%m/%d"))
+        data_folder = os.path.join("output/mag/l1c", actual_timestamp.strftime("%Y/%m"))
         cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_v000.cdf"
 
         assert os.path.exists(os.path.join(data_folder, cdf_file))

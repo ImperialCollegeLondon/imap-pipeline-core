@@ -88,18 +88,15 @@ def verify_available_hk(
         assert download_progress.get_progress_timestamp() == ert_timestamp
 
         # Files.
-        data_folder = os.path.join("output", actual_timestamp.strftime("%Y/%m/%d"))
-        bin_file = (
-            f"imap_mag_{hk.packet.lstrip('MAG_').lower().replace('_', '-')}_"
-            + f"{actual_timestamp.strftime('%Y%m%d')}_v000.pkts"
-        )
-        csv_file = (
-            f"imap_mag_{hk.packet.lstrip('MAG_').lower().replace('_', '-')}_"
-            + f"{actual_timestamp.strftime('%Y%m%d')}_v000.csv"
-        )
+        descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
-        assert os.path.exists(os.path.join(data_folder, bin_file))
-        assert os.path.exists(os.path.join(data_folder, csv_file))
+        data_folder = os.path.join(
+            "output/mag", descriptor, actual_timestamp.strftime("%Y/%m")
+        )
+        file_base = f"imap_mag_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000"
+
+        assert os.path.exists(os.path.join(data_folder, file_base + ".pkts"))
+        assert os.path.exists(os.path.join(data_folder, file_base + ".csv"))
 
 
 @pytest.mark.skipif(

@@ -16,7 +16,8 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
     See: https://imap-processing.readthedocs.io/en/latest/data-access/naming-conventions.html#data-product-science-file-naming-conventions
     """
 
-    prefix: str | None = "imap_mag"
+    mission: str = "imap"
+    instrument: str = "mag"
     level: str | None = None
     descriptor: str | None = None
     content_date: datetime | None = None  # date data belongs to
@@ -32,7 +33,10 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
                 "No 'content_date' defined. Cannot generate folder structure."
             )
 
-        return self.content_date.strftime("%Y/%m/%d")
+        folder: str = self.level or self.descriptor or ""
+        return (
+            Path(self.instrument) / folder / self.content_date.strftime("%Y/%m")
+        ).as_posix()
 
     def get_filename(self) -> str:
         if (
@@ -53,10 +57,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         if self.level is not None:
             descriptor = f"{self.level}_{descriptor}"
 
-        if self.prefix is not None:
-            descriptor = f"{self.prefix}_{descriptor}"
-
-        return f"{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
     @classmethod
     def from_filename(
@@ -65,7 +66,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"(?P<prefix>imap_mag)?_?(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -76,7 +77,6 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             return None
         else:
             return cls(
-                prefix=match["prefix"],
                 level=match["level"],
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
