@@ -29,11 +29,11 @@ def test_app_says_hello():
     [
         (
             "MAG_HSK_PW.pkts",
-            "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
         ),
         (
             "imap_mag_hsk-pw_20250214_v000.pkts",
-            "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
         ),
     ],
 )
@@ -89,7 +89,7 @@ def test_process_error_with_unsupported_file_type():
     )
 
     assert not Path(
-        "data/imap/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v000.cdf"
+        "output/imap/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v000.cdf"
     ).exists()
 
 
@@ -147,12 +147,12 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
+        "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
+            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
         ) as output,
         open(binary_file, "rb") as input,
     ):
@@ -207,12 +207,12 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
+        "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "data/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
+            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
         ) as output,
         open(binary_file, "rb") as input,
     ):
@@ -288,12 +288,12 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "data/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
     ).exists()
 
     with (
         open(
-            "data/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
         ) as output,
         open(cdf_file, "rb") as input,
     ):
@@ -372,12 +372,12 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "data/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
     ).exists()
 
     with (
         open(
-            "data/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
         ) as output,
         open(cdf_file, "rb") as input,
     ):
@@ -398,7 +398,7 @@ def test_calibration_creates_calibration_file():
         ],
     )
     assert result.exit_code == 0
-    assert Path("data/calibration.json").exists()
+    assert Path("output/calibration.json").exists()
 
 
 @pytest.mark.skip("Mhairi is working on this")
@@ -417,4 +417,4 @@ def test_application_creates_L2_file():
 
     print("\n" + str(result.stdout))
     assert result.exit_code == 0
-    assert Path("data/L2.cdf").exists()
+    assert Path("output/L2.cdf").exists()

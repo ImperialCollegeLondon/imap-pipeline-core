@@ -91,7 +91,7 @@ def verify_available_hk(
         descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
         data_folder = os.path.join(
-            "data/imap/mag", descriptor, actual_timestamp.strftime("%Y/%m")
+            "output/imap/mag", descriptor, actual_timestamp.strftime("%Y/%m")
         )
         file_base = f"imap_mag_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000"
 

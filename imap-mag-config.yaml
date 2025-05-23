@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  'data/'
+data_store:  'output/'
 packet_definition: 'xtce/tlm_20241024.xml'
 
 # Command specific configuration:
