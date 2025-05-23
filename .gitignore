@@ -133,6 +133,7 @@ dmypy.json
 site/
 
 .work
+/data
 /output
 dev.env
 debug
