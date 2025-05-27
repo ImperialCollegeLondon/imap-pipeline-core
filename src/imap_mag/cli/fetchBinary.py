@@ -105,9 +105,7 @@ class FetchBinary:
                 )
 
                 downloaded[file] = WebPODAMetadataProvider(
-                    descriptor=packet.lower()
-                    .strip(self.__MAG_PREFIX)
-                    .replace("_", "-"),
+                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}-raw",
                     content_date=(
                         min_time.replace(hour=0, minute=0, second=0)
                         if min_time

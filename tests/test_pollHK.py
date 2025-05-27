@@ -90,13 +90,22 @@ def verify_available_hk(
         # Files.
         descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
-        data_folder = os.path.join(
+        bin_folder = os.path.join(
+            "output/imap/mag", f"{descriptor}-raw", actual_timestamp.strftime("%Y/%m")
+        )
+        bin_file = (
+            f"imap_mag_{descriptor}-raw_{actual_timestamp.strftime('%Y%m%d')}_v000.pkts"
+        )
+
+        csv_folder = os.path.join(
             "output/imap/mag", descriptor, actual_timestamp.strftime("%Y/%m")
         )
-        file_base = f"imap_mag_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000"
+        csv_file = (
+            f"imap_mag_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000.csv"
+        )
 
-        assert os.path.exists(os.path.join(data_folder, file_base + ".pkts"))
-        assert os.path.exists(os.path.join(data_folder, file_base + ".csv"))
+        assert os.path.exists(os.path.join(bin_folder, bin_file))
+        assert os.path.exists(os.path.join(csv_folder, csv_file))
 
 
 @pytest.mark.skipif(

@@ -147,12 +147,13 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
+        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
+            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "rb",
         ) as output,
         open(binary_file, "rb") as input,
     ):
@@ -207,12 +208,13 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts"
+        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.pkts", "rb"
+            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "rb",
         ) as output,
         open(binary_file, "rb") as input,
     ):

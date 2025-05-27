@@ -80,7 +80,7 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     assert test_file in actual_downloaded.keys()
     assert (
         WebPODAMetadataProvider(
-            descriptor="hsk-pw",
+            descriptor="hsk-pw-raw",
             content_date=datetime(2025, 5, 2),
             extension="pkts",
             ert=datetime(2025, 6, 3, 8, 58, 39),
@@ -200,7 +200,7 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     assert test_file in actual_downloaded.keys()
     assert (
         WebPODAMetadataProvider(
-            descriptor="hsk-pw",
+            descriptor="hsk-pw-raw",
             content_date=datetime(2025, 4, 3),
             extension="pkts",
             ert=datetime(2025, 5, 2, 12, 45, 29),
