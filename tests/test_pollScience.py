@@ -90,7 +90,7 @@ def define_unavailable_data_sdc_mappings(wiremock_manager):
 
 def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode]):
     for mode in not_requested_modes:
-        download_progress = database.get_download_progress(mode.packet)
+        download_progress = database.get_download_progress(mode.packet + "_L1C")
 
         assert download_progress.get_last_checked_date() is None
         assert download_progress.get_progress_timestamp() is None
@@ -98,7 +98,7 @@ def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode])
 
 def verify_not_available_modes(database, not_available_modes: list[ScienceMode]):
     for mode in not_available_modes:
-        download_progress = database.get_download_progress(mode.packet)
+        download_progress = database.get_download_progress(mode.packet + "_L1C")
 
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() is None
@@ -112,7 +112,7 @@ def verify_available_modes(
 ):
     for mode in available_modes:
         # Database.
-        download_progress = database.get_download_progress(mode.packet)
+        download_progress = database.get_download_progress(mode.packet + "_L1C")
 
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() == ingestion_timestamp
@@ -188,7 +188,9 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager.reset()
 
     # Some data is available for "today" for Normal mode.
-    download_progress = test_database.get_download_progress(ScienceMode.Normal.packet)
+    download_progress = test_database.get_download_progress(
+        ScienceMode.Normal.packet + "_L1C"
+    )
     download_progress.record_successful_download(progress_timestamp)
     test_database.save(download_progress)
 

@@ -117,11 +117,12 @@ async def poll_science_flow(
 
     for mode in modes:
         packet_name = mode.packet
+        database_name = f"{packet_name}_{level.value.upper()}"
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
         packet_dates = get_dates_for_download(
-            packet_name=packet_name,
+            packet_name=database_name,
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
@@ -154,7 +155,7 @@ async def poll_science_flow(
         # Update database with latest ingestion date as progress (for science)
         if use_database:
             update_database_with_progress(
-                packet_name=packet_name,
+                packet_name=database_name,
                 database=database,
                 latest_timestamp=max(
                     metadata.ingestion_date for metadata in downloaded_science.values()
