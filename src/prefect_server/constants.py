@@ -17,7 +17,8 @@ class CONSTANTS:
 
         IMAP_PIPELINE_CRON = "IMAP_CRON_HEALTHCHECK"
         POLL_HK_CRON = "IMAP_CRON_POLL_HK"
-        POLL_SCIENCE_CRON = "IMAP_CRON_POLL_SCIENCE"
+        POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1B_NORM"
+        POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1C_BURST"
 
         WEBPODA_AUTH_CODE = "WEBPODA_AUTH_CODE"
         SDC_AUTH_CODE = "SDC_AUTH_CODE"
@@ -36,4 +37,5 @@ class CONSTANTS:
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"
-        POLL_SCIENCE = "poll_science"
+        POLL_L1C_NORM = "poll_l1c_norm_science"
+        POLL_L1B_BURST = "poll_l1b_burst_science"

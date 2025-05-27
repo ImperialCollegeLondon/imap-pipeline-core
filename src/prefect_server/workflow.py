@@ -97,15 +97,29 @@ def deploy_flows(local_debug: bool = False):
     )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
-        name=CONSTANTS.FLOW_NAMES.POLL_HK,
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
         job_variables=shared_job_variables,
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
-    poll_science_deployable = poll_science_flow.to_deployment(
-        name=CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_SCIENCE_CRON),
+    poll_science_norm_l1c_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
+        parameters={
+            "modes": ["norm"],
+            "level": "l1c",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+    poll_science_burst_l1b_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
+        parameters={
+            "modes": ["burst"],
+            "level": "l1b",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
         job_variables=shared_job_variables,
         tags=[CONSTANTS.PREFECT_TAG],
     )
@@ -113,7 +127,8 @@ def deploy_flows(local_debug: bool = False):
     deployables = (
         imap_pipeline_deployable,
         poll_hk_deployable,
-        poll_science_deployable,
+        poll_science_norm_l1c_deployable,
+        poll_science_burst_l1b_deployable,
     )
 
     if local_debug:
