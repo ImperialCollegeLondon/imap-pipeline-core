@@ -134,7 +134,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     assert all([d == date(2025, 5, 3) for d in epoch_day2])
 
     assert (
-        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:"
+        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:\n20250502, 20250503"
         in caplog.text
     )
     assert "Generating file for 2025-05-02." in caplog.text
