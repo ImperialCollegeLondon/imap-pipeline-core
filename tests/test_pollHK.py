@@ -87,7 +87,15 @@ def verify_available_hk(
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() == ert_timestamp
 
-        # Files.
+    # Files.
+    check_file_existence(available_hk, actual_timestamp)
+
+
+def check_file_existence(
+    hk_to_check: list[HKPacket],
+    actual_timestamp: datetime,
+):
+    for hk in hk_to_check:
         descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
         bin_folder = os.path.join(
@@ -267,6 +275,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811,
     force_database_update,
+    caplog,
 ):
     # Set up.
     binary_files: dict[str, str] = {
@@ -290,9 +299,6 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     not_available_hk: list[HKPacket] = [HKPacket.SID11_PROCSTAT, HKPacket.SID15]
 
     requested_hk: list[HKPacket] = available_hk + not_available_hk
-    not_requested_hk: list[HKPacket] = list(
-        {p for p in HKPacket}.difference(requested_hk)
-    )
 
     wiremock_manager.reset()
 
@@ -340,15 +346,106 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
         )
 
     # Verify.
+    check_file_existence(available_hk, actual_timestamp)
+
     if force_database_update:
-        verify_not_requested_hk(test_database, not_requested_hk)
-        verify_not_available_hk(test_database, not_available_hk)
-        verify_available_hk(
-            test_database,
-            available_hk,
-            ert_timestamp,
-            actual_timestamp,
+        assert (
+            "Database cannot be updated without forcing ERT. Database will not be updated."
+            in caplog.text
         )
-    else:
-        # Database should not be updated by default, when start and end dates are provided.
-        verify_not_requested_hk(test_database, [p for p in HKPacket])
+
+    # Database should not be updated when non-ERT start and end dates are provided.
+    verify_not_requested_hk(test_database, [p for p in HKPacket])
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_hk_specify_ert_start_end_dates(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+):
+    # Set up.
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SCI": os.path.abspath("tests/data/2025/MAG_HSK_SCI.pkts"),
+    }
+
+    start_date = datetime(2025, 5, 1)
+    end_date = datetime(2025, 5, 2)
+    actual_end_date_for_download = datetime(2025, 5, 3)
+
+    ert_timestamp = datetime(2025, 5, 2, 13, 37, 9)
+    actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
+
+    available_hk: list[HKPacket] = [
+        HKPacket.SID3_PW,
+        HKPacket.SID4_STATUS,
+        HKPacket.SID5_SCI,
+    ]
+    not_available_hk: list[HKPacket] = [HKPacket.SID11_PROCSTAT, HKPacket.SID15]
+
+    requested_hk: list[HKPacket] = available_hk + not_available_hk
+    not_requested_hk: list[HKPacket] = list(
+        {p for p in HKPacket}.difference(requested_hk)
+    )
+
+    wiremock_manager.reset()
+
+    # Some data is available for the requested dates, only for specific packets.
+    for hk in available_hk:
+        for date_pair in [
+            (
+                start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            ),
+            (
+                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+                actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
+            ),
+        ]:
+            wiremock_manager.add_file_mapping(
+                f"/packets/SID2/{hk.packet}.bin?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(packet)",
+                binary_files[hk.packet],
+                priority=1,
+            )
+            wiremock_manager.add_string_mapping(
+                f"/packets/SID2/{hk.packet}.csv?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+                f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
+                priority=1,
+            )
+            wiremock_manager.add_string_mapping(
+                f"/packets/SID2/{hk.packet}.csv?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+                f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
+                priority=1,
+            )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_webpoda_mappings(wiremock_manager)
+
+    # Exercise.
+    with (
+        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("WEBPODA_AUTH_CODE", "12345"),
+    ):
+        await poll_hk_flow(
+            start_date=start_date,
+            end_date=end_date,
+            hk_packets=requested_hk,
+            force_database_update=True,
+            force_ert=True,
+        )
+
+    # Verify.
+    verify_not_requested_hk(test_database, not_requested_hk)
+    verify_not_available_hk(test_database, not_available_hk)
+    verify_available_hk(
+        test_database,
+        available_hk,
+        ert_timestamp,
+        actual_timestamp,
+    )

@@ -109,10 +109,17 @@ async def poll_science_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
+    if force_database_update and not force_ingestion_date:
+        logger.warning(
+            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+        )
+
     # If this is an automated flow run, use the database to figure out what to download,
     # and use the ingestion date to download data.
     automated_flow_run: bool = (start_date is None) and (end_date is None)
-    use_database: bool = force_database_update or automated_flow_run
+    use_database: bool = (
+        force_database_update and force_ingestion_date
+    ) or automated_flow_run
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     for mode in modes:

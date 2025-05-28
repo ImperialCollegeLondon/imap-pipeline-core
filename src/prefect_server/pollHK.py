@@ -104,10 +104,15 @@ async def poll_hk_flow(
         PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
+    if force_database_update and not force_ert:
+        logger.warning(
+            "Database cannot be updated without forcing ERT. Database will not be updated."
+        )
+
     # If this is an automated flow run, use the database to figure out what to download,
     # and use ERT to download data.
     automated_flow_run: bool = (start_date is None) and (end_date is None)
-    use_database: bool = force_database_update or automated_flow_run
+    use_database: bool = (force_database_update and force_ert) or automated_flow_run
     use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:

@@ -117,7 +117,12 @@ def verify_available_modes(
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() == ingestion_timestamp
 
-        # Files.
+    # Files.
+    check_file_existence(available_modes, actual_timestamp)
+
+
+def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: datetime):
+    for mode in modes_to_check:
         data_folder = os.path.join(
             "output/imap/mag/l1c", actual_timestamp.strftime("%Y/%m")
         )
@@ -234,6 +239,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     force_database_update,
+    caplog,
 ):
     # Set up.
     start_date = datetime(2025, 4, 1)
@@ -269,14 +275,67 @@ async def test_poll_science_specify_packets_and_start_end_dates(
         )
 
     # Verify.
+    check_file_existence([ScienceMode.Burst], start_date)
+
     if force_database_update:
-        verify_not_requested_modes(test_database, [ScienceMode.Normal])
-        verify_available_modes(
-            test_database,
-            [ScienceMode.Burst],
-            ingestion_timestamp,
-            start_date,
+        assert (
+            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+            in caplog.text
         )
-    else:
-        # Database should not be updated by default, when start and end dates are provided.
-        verify_not_requested_modes(test_database, [m for m in ScienceMode])
+
+    # Database should not be updated by default, when start and end dates are provided.
+    verify_not_requested_modes(test_database, [m for m in ScienceMode])
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_science_specify_ingestion_start_end_dates(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
+):
+    # Set up.
+    start_date = datetime(2025, 4, 1)
+    end_date = datetime(2025, 4, 2)
+
+    ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+
+    wiremock_manager.reset()
+
+    # Some data is available for the requested dates for Burst mode.
+    define_available_data_sdc_mappings(
+        wiremock_manager,
+        ScienceMode.Burst,
+        start_date,
+        end_date,
+        ingestion_timestamp,
+        is_ingestion_date=True,
+    )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with (
+        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("SDC_AUTH_CODE", "12345"),
+    ):
+        await poll_science_flow(
+            modes=[ScienceMode.Burst],
+            start_date=start_date,
+            end_date=end_date,
+            force_database_update=True,
+            force_ingestion_date=True,
+        )
+
+    # Verify.
+    verify_not_requested_modes(test_database, [ScienceMode.Normal])
+    verify_available_modes(
+        test_database,
+        [ScienceMode.Burst],
+        ingestion_timestamp,
+        start_date,
+    )
