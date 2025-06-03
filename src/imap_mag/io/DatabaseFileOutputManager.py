@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 
 from imap_db.model import File
@@ -83,21 +84,26 @@ class DatabaseFileOutputManager(IOutputManager):
 
         return (destination_file, metadata_provider)
 
-    def __get_matching_database_file(
+    def __get_matching_database_files(
         self, metadata_provider: IFileMetadataProvider
-    ) -> File | None:
+    ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
-        database_files: list[File] = self.__database.get_files(
-            name=metadata_provider.get_filename()
+        matching_filename: str = metadata_provider.get_filename()
+        matching_filename = re.sub(r"v\d{3}", "v*", matching_filename)
+
+        logger.debug(
+            f"Searching for files in database with name matching {matching_filename}."
         )
+
+        database_files: list[File] = self.__database.get_files(name=matching_filename)
         database_files = [
             file
             for file in database_files
             if metadata_provider.get_folder_structure() in file.path
         ]
 
-        return database_files[0] if database_files else None
+        return database_files
 
     def __get_next_available_version(
         self,
@@ -115,30 +121,32 @@ class DatabaseFileOutputManager(IOutputManager):
         preliminary_destination_file: Path = self.assemble_full_path(
             Path(""), metadata_provider
         )
-        database_file: File | None = self.__get_matching_database_file(
+
+        database_files: list[File] = self.__get_matching_database_files(
             metadata_provider
         )
 
-        while database_file is not None:
-            if original_hash == database_file.hash:
-                return (metadata_provider.version, True)
+        # Find the file whose hash matches the original file
+        matching_files: list[File] = [
+            f for f in database_files if f.hash == original_hash
+        ]
 
+        if matching_files:
+            logger.debug(
+                f"File {preliminary_destination_file} already exists in database and is the same. Skipping insertion."
+            )
+            return (matching_files[0].version, True)
+
+        # Find first available version (note that this might not be the sequential next version)
+        existing_versions: set[int] = set(file.version for file in database_files)
+
+        while metadata_provider.version in existing_versions:
             logger.debug(
                 f"File {preliminary_destination_file} already exists in database and is different. Increasing version to {metadata_provider.version + 1}."
             )
             metadata_provider.version += 1
+
             updated_file: Path = self.assemble_full_path(Path(""), metadata_provider)
-
-            # Make sure file has changed, otherwise this in an infinite loop
-            if preliminary_destination_file == updated_file:
-                logger.error(
-                    f"File {preliminary_destination_file} already exists and is different. Cannot increase version."
-                )
-                raise FileExistsError(
-                    f"File {preliminary_destination_file} already exists and is different. Cannot increase version."
-                )
-
             preliminary_destination_file = updated_file
-            database_file = self.__get_matching_database_file(metadata_provider)
 
         return (metadata_provider.version, False)

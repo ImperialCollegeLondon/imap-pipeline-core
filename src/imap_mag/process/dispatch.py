@@ -25,6 +25,7 @@ def dispatch(file: Path | list[Path], work_folder: Path) -> FileProcessor:
         HKProcessor,
     ]
 
+    # TODO: Should each file have its own processor?
     if isinstance(file, list):
         file = file[0]
 

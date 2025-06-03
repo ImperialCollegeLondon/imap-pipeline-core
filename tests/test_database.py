@@ -169,7 +169,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
 
     mock_database.get_files.side_effect = [
         [
-            File(  # first call returns this list
+            File(
                 name="imap_mag_hsk-pw_20250502_v001.txt",
                 path="imap/mag/hsk-pw/2025/05",
                 version=1,
@@ -177,10 +177,8 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
                 size=0,
                 date=datetime(2025, 5, 2),
                 software_version=__version__,
-            )
-        ],
-        [
-            File(  # second call returns this list
+            ),
+            File(
                 name="imap_mag_hsk-pw_20250502_v002.txt",
                 path="imap/mag/hsk-pw/2025/05",
                 version=2,
@@ -188,8 +186,8 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
                 size=0,
                 date=datetime(2025, 5, 2),
                 software_version=__version__,
-            )
-        ],
+            ),
+        ]
     ]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
@@ -249,7 +247,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
 
     mock_database.get_files.side_effect = [
         [
-            File(  # first call returns this list
+            File(
                 name="imap_mag_hsk-pw_20250502_v001.txt",
                 path="imap/mag/hsk-pw/2025/05",
                 version=1,
@@ -257,10 +255,8 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
                 size=0,
                 date=datetime(2025, 5, 2),
                 software_version=__version__,
-            )
-        ],
-        [
-            File(  # second call returns this list
+            ),
+            File(
                 name="imap_mag_hsk-pw_20250502_v002.txt",
                 path="imap/mag/hsk-pw/2025/05",
                 version=2,
@@ -268,9 +264,8 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
                 size=0,
                 date=datetime(2025, 5, 2),
                 software_version=__version__,
-            )
-        ],
-        [],  # third call returns an empty list
+            ),
+        ]
     ]
     mock_database.insert_file.side_effect = lambda file: check_inserted_file(
         file, test_file, version=3

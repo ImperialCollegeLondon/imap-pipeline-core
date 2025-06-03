@@ -60,7 +60,7 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "Start date",
-                "description": "Start date for the download. Default is the last progress date for the packet.",
+                "description": "Start date for the download. Default is the last progress date for the packet (ERT).",
             }
         ),
     ] = None,
@@ -69,7 +69,7 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "End date",
-                "description": "End date for the download. Default is the end of today.",
+                "description": "End date for the download. Default is the end of today (ERT).",
             }
         ),
     ] = None,
@@ -78,7 +78,7 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "Force input dates in ERT",
-                "description": "If 'True' input dates are in Earth Received Time (ERT). Otherwise, input dates are in S/C clock time.",
+                "description": "If 'True' input dates are in Earth Received Time (ERT). Otherwise, input dates are in S/C clock time. Ignored if 'start_date' and 'end_date' are not provided.",
             }
         ),
     ] = False,
@@ -87,7 +87,7 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded packets.",
+                "description": "Whether to force an update of the database with the downloaded packets. Ignored if 'start_date' and 'end_date' are not provided.",
             }
         ),
     ] = False,

@@ -65,7 +65,7 @@ async def poll_science_flow(
         Field(
             json_schema_extra={
                 "title": "Start date",
-                "description": "Start date for the download. Default is the last progress date for the mode.",
+                "description": "Start date for the download. Default is the last progress date for the mode (ingestion date).",
             }
         ),
     ] = None,
@@ -74,7 +74,7 @@ async def poll_science_flow(
         Field(
             json_schema_extra={
                 "title": "End date",
-                "description": "End date for the download. Default is the end of today.",
+                "description": "End date for the download. Default is the end of today (ingestion date).",
             }
         ),
     ] = None,
@@ -83,7 +83,7 @@ async def poll_science_flow(
         Field(
             json_schema_extra={
                 "title": "Force input dates to be ingestion dates",
-                "description": "If 'True' input dates are the ingestion date. Otherwise, input dates are in S/C clock time.",
+                "description": "If 'True' input dates are the ingestion date. Otherwise, input dates are in S/C clock time. Ignored if 'start_date' and 'end_date' are not provided.",
             }
         ),
     ] = False,
@@ -92,7 +92,7 @@ async def poll_science_flow(
         Field(
             json_schema_extra={
                 "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded science.",
+                "description": "Whether to force an update of the database with the downloaded science. Ignored if 'start_date' and 'end_date' are not provided.",
             }
         ),
     ] = False,
