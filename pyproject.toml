@@ -46,7 +46,7 @@ pyinstaller = "^6.10.0"
 pre-commit = "^3.8.0"
 ruff = "^0.8.1"
 docker = "^7.1.0"
-testcontainers = "^4.8.1"
+testcontainers = "^4.10.0"
 wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git", rev = "fix-test-containers-on-windows"}
 
 [tool.poetry.scripts]
