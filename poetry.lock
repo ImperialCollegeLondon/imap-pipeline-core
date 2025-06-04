@@ -3120,7 +3120,7 @@ version = "1.0.1"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 optional = false
 python-versions = ">=3.8"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
     {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
@@ -4007,18 +4007,19 @@ full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart 
 
 [[package]]
 name = "testcontainers"
-version = "4.8.1"
+version = "4.10.0"
 description = "Python library for throwaway instances of anything that can run in a Docker container"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["dev"]
 files = [
-    {file = "testcontainers-4.8.1-py3-none-any.whl", hash = "sha256:d8ae43e8fe34060fcd5c3f494e0b7652b7774beabe94568a2283d0881e94d489"},
-    {file = "testcontainers-4.8.1.tar.gz", hash = "sha256:5ded4820b7227ad526857eb3caaafcabce1bbac05d22ad194849b136ffae3cb0"},
+    {file = "testcontainers-4.10.0-py3-none-any.whl", hash = "sha256:31ed1a81238c7e131a2a29df6db8f23717d892b592fa5a1977fd0dcd0c23fc23"},
+    {file = "testcontainers-4.10.0.tar.gz", hash = "sha256:03f85c3e505d8b4edeb192c72a961cebbcba0dd94344ae778b4a159cb6dcf8d3"},
 ]
 
 [package.dependencies]
 docker = "*"
+python-dotenv = "*"
 typing-extensions = "*"
 urllib3 = "*"
 wrapt = "*"
@@ -4552,4 +4553,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "dfb2461c65727678b6201c93db9494bdb24761600c87c5c4b92cfaa65c199e05"
+content-hash = "79df504cc76ae7e63fdf9da4c81360ffff912fcfddab8d6bcb1327cb0e8b0512"
