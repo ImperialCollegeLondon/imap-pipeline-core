@@ -151,7 +151,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.python-versions }})
@@ -206,7 +206,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.os }}) (${{ matrix.python-versions }})

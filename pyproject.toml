@@ -24,13 +24,13 @@ space-packet-parser = "^5.0.1"
 xarray = "^2024.7.0"
 numpy = "^2.1.3"
 typer = "^0.15.2"
-sqlalchemy = "^2.0.35"
+sqlalchemy = "^2.0.41"
 alembic = "^1.13.2"
 sqlalchemy-utils = "^0.41.2"
 requests = "^2.32.3"
 pandas = "^2.2.2"
 imap-data-access = "^0.25.0"
-cdflib = "^1.3.1"
+cdflib = "^1.3.4"
 psycopg = {extras = ["binary"], version = "^3.2.1"}
 prefect = {extras = ["shell"], version = "^3.1.7"}
 prefect-docker = "^0.6.1"
@@ -46,7 +46,7 @@ pyinstaller = "^6.10.0"
 pre-commit = "^3.8.0"
 ruff = "^0.8.1"
 docker = "^7.1.0"
-testcontainers = "^4.8.1"
+testcontainers = "^4.10.0"
 wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git", rev = "fix-test-containers-on-windows"}
 
 [tool.poetry.scripts]
