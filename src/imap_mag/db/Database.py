@@ -83,9 +83,9 @@ class Database(IDatabase):
             session.add(file)
 
     @__session_manager(expire_on_commit=False)
-    def get_files(self, **filters) -> list[File]:
+    def get_files(self, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
-        return session.query(File).filter_by(**filters).all()
+        return session.query(File).filter(*args).filter_by(**kwargs).all()
 
     @__session_manager(expire_on_commit=False)
     def get_download_progress(self, item_name: str) -> DownloadProgress:

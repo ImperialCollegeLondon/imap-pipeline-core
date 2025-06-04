@@ -17,6 +17,7 @@ from imap_mag.io import (
     IOutputManager,
     StandardSPDFMetadataProvider,
 )
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (  # noqa: F401
     TODAY,
     YESTERDAY,
@@ -472,3 +473,80 @@ def test_update_database_update_needed_old_data(
 
     assert download_progress.progress_timestamp is TODAY
     assert mock_database.save.called
+
+
+def test_database_output_manager_real_database(
+    mock_output_manager: mock.Mock,
+    test_database,  # noqa: F811
+    caplog,
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    metadata_provider = StandardSPDFMetadataProvider(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    unique_metadata_provider = StandardSPDFMetadataProvider(
+        version=3,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        unique_metadata_provider,
+    )
+
+    test_database.insert_files(
+        [
+            File(
+                name="imap_mag_hsk-pw_20250502_v001.txt",
+                path="imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt",
+                version=1,
+                hash=0,
+                size=123,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            ),
+            File(
+                name="imap_mag_hsk-pw_20250502_v002.txt",
+                path="imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt",
+                version=2,
+                hash=0,
+                size=456,
+                date=datetime(2025, 5, 2),
+                software_version=__version__,
+            ),
+        ]
+    )
+
+    # Exercise.
+    (actual_file, actual_metadata_provider) = database_manager.add_file(
+        original_file, metadata_provider
+    )
+
+    # Verify.
+    mock_output_manager.add_file.assert_called_once_with(
+        original_file, unique_metadata_provider
+    )
+
+    assert (
+        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
+        in caplog.text
+    )
+    assert (
+        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        in caplog.text
+    )
+    assert f"Inserting {test_file} into database." in caplog.text
+
+    assert actual_file == test_file
+    assert actual_metadata_provider == unique_metadata_provider

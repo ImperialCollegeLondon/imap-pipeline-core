@@ -90,13 +90,15 @@ class DatabaseFileOutputManager(IOutputManager):
         """Get all files in the database with the same name and path."""
 
         matching_filename: str = metadata_provider.get_filename()
-        matching_filename = re.sub(r"v\d{3}", "v*", matching_filename)
+        matching_filename = re.sub(r"v\d{3}", "v%", matching_filename)
 
         logger.debug(
             f"Searching for files in database with name matching {matching_filename}."
         )
 
-        database_files: list[File] = self.__database.get_files(name=matching_filename)
+        database_files: list[File] = self.__database.get_files(
+            File.name.like(matching_filename)
+        )
         database_files = [
             file
             for file in database_files
