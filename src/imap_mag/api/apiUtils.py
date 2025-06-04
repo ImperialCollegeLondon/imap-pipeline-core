@@ -9,45 +9,50 @@ import yaml
 
 from imap_mag import appConfig, appLogging
 
+logger = logging.getLogger(__name__)
 globalState = {"verbose": False}
 
 
-def commandInit(config: Path | None) -> appConfig.AppConfig:
+def commandInit(config: Path | None) -> appConfig.CommandConfigBase:
     # load and verify the config file
     if config is None:
-        logging.critical("No config file")
+        logger.critical("No config file")
         raise typer.Abort()
     if config.is_file():
         configFileDict = yaml.safe_load(open(config))
-        logging.debug(
+        logger.debug(
             "Config file loaded from %s with content %s: ", config, configFileDict
         )
     elif config.is_dir():
-        logging.critical("Config %s is a directory, need a yml file", config)
+        logger.critical("Config %s is a directory, need a yml file", config)
         raise typer.Abort()
     elif not config.exists():
-        logging.critical("The config at %s does not exist", config)
+        logger.critical("The config at %s does not exist", config)
         raise typer.Abort()
     else:
         pass
 
-    configFile = appConfig.AppConfig(**configFileDict)
+    configFile = appConfig.CommandConfigBase(**configFileDict)
 
     # set up the work folder
     if not configFile.work_folder:
         configFile.work_folder = Path(".work")
 
     if not os.path.exists(configFile.work_folder):
-        logging.debug(f"Creating work folder {configFile.work_folder}")
+        logger.debug(f"Creating work folder {configFile.work_folder}")
         os.makedirs(configFile.work_folder)
 
+    initialiseLoggingForCommand(configFile.work_folder)
+
+    return configFile
+
+
+def initialiseLoggingForCommand(folder):
     # initialise all logging into the workfile
     level = "debug" if globalState["verbose"] else "info"
 
-    # TODO: the log file location should be configurable so we can keep the logs on RDS
-    # Or maybe just ship them there after the fact? Or log to both?
     logFile = Path(
-        configFile.work_folder,
+        folder,
         f"{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.log",
     )
     if not appLogging.set_up_logging(
@@ -63,47 +68,48 @@ def commandInit(config: Path | None) -> appConfig.AppConfig:
         print("Failed to set up logging, aborting.")
         raise typer.Abort()
 
-    return configFile
 
+def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
+    logger.debug(f"Grabbing file matching {file} in {work_folder}")
 
-def prepareWorkFile(file, configFile) -> Path | None:
-    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
+    files: list[Path] = []
 
-    # get all files in \\RDS.IMPERIAL.AC.UK\rds\project\solarorbitermagnetometer\live\SO-MAG-Web\quicklooks_py\
-    files = []
-    folder = configFile.source.folder
+    source_folder = file.parent
+    filename = file.name
 
-    if not folder.exists():
-        logging.warning(f"Folder {folder} does not exist")
+    if not source_folder.exists():
+        logger.warning(f"Folder {source_folder} does not exist")
         return None
 
     # if pattern contains a %
-    if "%" in file:
-        updatedFile = datetime.now().strftime(file)
-        logging.info(f"Pattern contains a %, replacing '{file} with {updatedFile}")
-        file = updatedFile
+    if "%" in filename:
+        updated_file = datetime.now().strftime(filename)
+        logger.info(f"Pattern contains a %, replacing {filename} with {updated_file}")
+        filename = updated_file
 
     # list all files in the share
-    for matchedFile in folder.iterdir():
-        if matchedFile.is_file():
-            if matchedFile.match(file):
-                files.append(matchedFile)
+    for matched_file in source_folder.iterdir():
+        if matched_file.is_file():
+            if matched_file.match(filename):
+                files.append(matched_file)
 
     # get the most recently modified matching file
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
     if len(files) == 0:
-        logging.critical(f"No files matching {file} found in {folder}")
-        raise typer.Abort()
+        logger.critical(f"No files matching {filename} found in {source_folder}")
+        raise FileNotFoundError(
+            f"No files matching {filename} found in {source_folder}"
+        )
 
-    logging.info(
-        f"Found {len(files)} matching files. Select the most recent one:"
+    logger.info(
+        f"Found {len(files)} matching files. Select the most recent one: "
         f"{files[0].absolute().as_posix()}"
     )
 
-    # copy the file to configFile.work_folder
-    workFile = Path(configFile.work_folder, files[0].name)
-    logging.debug(f"Copying {files[0]} to {workFile}")
-    workFile = Path(shutil.copy2(files[0], configFile.work_folder))
+    # copy the file to work_folder
+    work_file = Path(work_folder, files[0].name)
+    logger.debug(f"Copying {files[0]} to {work_file}")
+    work_file = Path(shutil.copy2(files[0], work_folder))
 
-    return workFile
+    return work_file

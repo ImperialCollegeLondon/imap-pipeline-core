@@ -1,18 +1,23 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
-from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit
-from imap_mag.cli.fetchBinary import FetchBinary
+from imap_mag import appUtils
+from imap_mag.api.apiUtils import initialiseLoggingForCommand
+from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
 from imap_mag.client.webPODA import WebPODA
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.config import AppSettings, FetchMode
+from imap_mag.util import HKPacket
+
+logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag fetch binary --apid 1063 --start-date 2025-05-02 --end-date 2025-05-03
+# E.g.,
+# imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_binary(
     auth_code: Annotated[
         str,
@@ -21,41 +26,98 @@ def fetch_binary(
             help="WebPODA authentication code",
         ),
     ],
-    apid: Annotated[int, typer.Option(help="ApID to download")],
-    start_date: Annotated[str, typer.Option(help="Start date for the download")],
-    end_date: Annotated[str, typer.Option(help="End date for the download")],
-    config: Annotated[Path, typer.Option()] = Path("config.yaml"),
-):
+    start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
+    end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    use_ert: Annotated[
+        bool,
+        typer.Option(
+            "--ert",
+            help="Use ERT (Earth Received Time), rather than HK measurement time",
+        ),
+    ] = False,
+    apid: Annotated[
+        Optional[int],
+        typer.Option("--apid", help="ApID to download"),
+    ] = None,
+    packet: Annotated[
+        Optional[HKPacket],  # type: ignore
+        typer.Option(
+            "--packet", case_sensitive=False, help="Packet to download, e.g., SID1"
+        ),
+    ] = None,
+    fetch_mode: Annotated[
+        FetchMode,
+        typer.Option(
+            "--mode",
+            case_sensitive=False,
+            help="Whether to download only or download and update progress in database",
+        ),
+    ] = FetchMode.DownloadOnly,
+) -> dict[Path, WebPODAMetadataProvider]:
     """Download binary data from WebPODA."""
 
-    configFile: appConfig.AppConfig = commandInit(config)
-
     if not auth_code:
-        logging.critical("No WebPODA authorization code provided")
-        raise typer.Abort()
+        logger.critical("No WebPODA authorization code provided")
+        raise ValueError("No WebPODA authorization code provided")
 
-    packet: str = appUtils.getPacketFromApID(apid)
-    start_datetime: datetime = appUtils.convertToDatetime(start_date)
-    end_datetime: datetime = appUtils.convertToDatetime(end_date)
+    # Must provide a apid or a packet.
+    if (not apid and not packet) or (apid and packet):
+        raise ValueError("Must provide either --apid or --packet, and not both")
 
-    logging.info(
-        f"Downloading raw packet {packet} from {start_datetime} to {end_datetime}."
+    settings_overrides = (
+        {"fetch_binary": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
-    poda = WebPODA(
-        auth_code,
-        configFile.work_folder,
-        configFile.api.webpoda_url if configFile.api else None,
+    app_settings = AppSettings(**settings_overrides)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
+    initialiseLoggingForCommand(work_folder)
+
+    if apid is not None:
+        packet_name: str = HKPacket.from_apid(apid).name
+    elif packet is not None and isinstance(packet, str):
+        packet_name: str = packet
+    else:
+        packet_name: str = packet.packet  # type: ignore
+
+    logger.info(
+        f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
     )
+
+    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.api.url_base)
 
     fetch_binary = FetchBinary(poda)
-    downloaded_binaries: dict[Path, StandardSPDFMetadataProvider] = (
+    downloaded_binaries: dict[Path, WebPODAMetadataProvider] = (
         fetch_binary.download_binaries(
-            packet=packet, start_date=start_datetime, end_date=end_datetime
+            packet=packet_name,
+            start_date=start_date,
+            end_date=end_date,
+            use_ert=use_ert,
         )
     )
 
-    output_manager = appUtils.getOutputManager(configFile.destination)
+    if not downloaded_binaries:
+        logger.info(
+            f"No data downloaded for packet {packet_name} from {start_date} to {end_date}."
+        )
+    else:
+        logger.debug(
+            f"Downloaded {len(downloaded_binaries)} files:\n{', '.join(str(f) for f in downloaded_binaries.keys())}"
+        )
 
-    for file, metadata_provider in downloaded_binaries.items():
-        output_manager.add_file(file, metadata_provider)
+    output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
+
+    if app_settings.fetch_binary.publish_to_data_store:
+        output_manager = appUtils.getOutputManagerByMode(
+            app_settings.data_store,
+            use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
+        )
+
+        for file, metadata_provider in downloaded_binaries.items():
+            (output_file, output_metadata) = output_manager.add_file(
+                file, metadata_provider
+            )
+            output_binaries[output_file] = output_metadata
+    else:
+        logger.info("Files not published to data store based on config.")
+
+    return output_binaries

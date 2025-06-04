@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from datetime import date, datetime
@@ -9,10 +10,11 @@ from prefect.client.schemas.objects import (
 )
 from prefect_shell import ShellOperation
 
-
-class CONSTANTS:
-    DEFAULT_WORKPOOL = "default-pool"
-    DEPLOYMENT_TAG = "NASA_IMAP"
+from prefect_server.constants import CONSTANTS
+from prefect_server.pollHK import poll_hk_flow
+from prefect_server.pollScience import poll_science_flow
+from prefect_server.prefectUtils import get_cron_from_env
+from prefect_server.serverConfig import ServerConfig
 
 
 @flow(log_prints=True)
@@ -29,18 +31,9 @@ def run_imap_pipeline(start_date: date, end_date: date):
     print("Finished IMAP pipeline")
 
 
-def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | None:
-    cron = os.getenv(env_var_name, default)
-
-    if cron is None or cron == "":
-        return None
-    else:
-        cron = cron.strip(" '\"")
-        print(f"Using cron schedule: {env_var_name}={cron}")
-        return cron
-
-
 def deploy_flows(local_debug: bool = False):
+    asyncio.get_event_loop().run_until_complete(ServerConfig.initialise(local_debug))
+
     # Docker image and tag, e.g. so-pipeline-core:latest. May include registry, e.g. ghcr.io/imperialcollegelondon/so-pipeline-core:latest
     docker_image = os.getenv(
         "IMAP_IMAGE",
@@ -63,11 +56,21 @@ def deploy_flows(local_debug: bool = False):
     docker_networks = [x for x in docker_networks if x]
 
     shared_job_env_variables = dict(
-        WEBPODA_AUTH_CODE=os.getenv("WEBPODA_AUTH_CODE"),
-        SDC_AUTH_CODE=os.getenv("SDC_AUTH_CODE"),
-        SQLALCHEMY_URL=os.getenv("SQLALCHEMY_URL"),
-        PREFECT_LOGGING_EXTRA_LOGGERS="imap_mag,imap_db,mag_toolkit",
+        {
+            CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
+            CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
+            ),
+            CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
+            ),
+            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
+                CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
+            ),
+            CONSTANTS.ENV_VAR_NAMES.PREFECT_LOGGING_EXTRA_LOGGERS: CONSTANTS.DEFAULT_LOGGERS,
+        }
     )
+
     if local_debug:
         shared_job_variables = dict(env=shared_job_env_variables)
         print("Deploying IMAP Pipeline to Prefect with local server")
@@ -85,15 +88,48 @@ def deploy_flows(local_debug: bool = False):
     imap_flow_name = "imappipeline"
     imap_pipeline_deployable = run_imap_pipeline.to_deployment(
         name=imap_flow_name,
-        cron=get_cron_from_env("IMAP_CRON_HEALTHCHECK"),
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.IMAP_PIPELINE_CRON),
         job_variables=shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-        tags=[CONSTANTS.DEPLOYMENT_TAG],
+        tags=[CONSTANTS.PREFECT_TAG],
     )
 
-    deployables = (imap_pipeline_deployable,)
+    poll_hk_deployable = poll_hk_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_science_norm_l1c_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
+        parameters={
+            "modes": ["norm"],
+            "level": "l1c",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+    poll_science_burst_l1b_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
+        parameters={
+            "modes": ["burst"],
+            "level": "l1b",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    deployables = (
+        imap_pipeline_deployable,
+        poll_hk_deployable,
+        poll_science_norm_l1c_deployable,
+        poll_science_burst_l1b_deployable,
+    )
 
     if local_debug:
         for deployable in deployables:

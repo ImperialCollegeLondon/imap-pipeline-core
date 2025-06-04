@@ -23,9 +23,9 @@
             "previewLimit": 50,
             "server": "host.docker.internal",
             "port": 5432,
+            "askForPassword": true,
             "driver": "PostgreSQL",
             "name": "postgres",
-            "password": "",
             "database": "imap",
             "username": "postgres"
         }

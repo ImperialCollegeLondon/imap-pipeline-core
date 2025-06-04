@@ -8,4 +8,4 @@ destination:
   filename: result.cdf
 
 packet-definition:
-  hk: src/imap_mag/xtce/tlm_20240724.xml
+  hk: src/imap_mag/xtce/tlm_20241024.xml
