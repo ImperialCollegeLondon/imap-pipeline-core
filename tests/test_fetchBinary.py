@@ -90,48 +90,48 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
 
 
 @pytest.mark.parametrize(
-    "start_date, end_date, expected_start_dates, expected_end_dates",
+    "start_date, end_date, expected_start_date, expected_end_date",
     [
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 2),
-            [datetime(2025, 5, 2)],
-            [datetime(2025, 5, 3)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 2, 23, 59, 59, 999999),
         ),
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3, 23, 59, 59, 999999),
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2, 12, 45, 29), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3, 23, 59, 59, 999999),
         ),
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 3, 12, 45, 29),
-            [datetime(2025, 5, 2), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 3, 12, 45, 29)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3, 12, 45, 29),
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3, 12, 45, 29),
-            [datetime(2025, 5, 2, 12, 45, 29), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 3, 12, 45, 29)],
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3, 12, 45, 29),
         ),
         (
             datetime(2025, 6, 2, 5, 30, 0),
             datetime(2025, 6, 2, 23, 59, 59, 999999),
-            [datetime(2025, 6, 2, 5, 30, 0)],
-            [datetime(2025, 6, 2, 23, 59, 59, 999999)],
+            datetime(2025, 6, 2, 5, 30, 0),
+            datetime(2025, 6, 2, 23, 59, 59, 999999),
         ),
     ],
 )
 def test_fetch_binary_different_start_end_dates(
-    mock_poda: mock.Mock, start_date, end_date, expected_start_dates, expected_end_dates
+    mock_poda: mock.Mock, start_date, end_date, expected_start_date, expected_end_date
 ) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
@@ -149,21 +149,12 @@ def test_fetch_binary_different_start_end_dates(
     )
 
     # Verify.
-    assert mock_poda.download.call_count == len(expected_start_dates)
-
-    calls = []
-
-    for i in range(len(expected_start_dates)):
-        calls.append(
-            mock.call(
-                packet="MAG_HSK_PW",
-                start_date=expected_start_dates[i],
-                end_date=expected_end_dates[i],
-                ert=False,
-            )
-        )
-
-    mock_poda.download.assert_has_calls(calls)
+    mock_poda.download.assert_called_once_with(
+        packet="MAG_HSK_PW",
+        start_date=expected_start_date,
+        end_date=expected_end_date,
+        ert=False,
+    )
 
     assert actual_downloaded == dict()
 
