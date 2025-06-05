@@ -1,14 +1,18 @@
 # imap-pipline-core
 
-## Development
+TODO: fill this in!
 
-### Dev Container
+## Developer setup steps - option 1: Dev Container
+
+clone, install vscode, install docker desktop.
 
 Open Dev Container in Visual Studio Code. Requires the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
 
+The container has all your tools installed and ready to go. You can run the tests, build the package, and run the CLI from the terminal in the container.
+
 To use WebPODA APIs, an access token needs to be defined in the environment as `WEBPODA_AUTH_CODE`. If this variable exists in WSL's `~/.bashrc` or `~/.zshrc`, then this will be automatically copied over to the Dev Container. The access token needs to be defined as an encrypted string, as explained on the [WebPODA documentation](https://lasp.colorado.edu/ops/imap/poda/#auth).
 
-### WSL Setup
+## Developer setup steps - option 2 manual linux/WSL Setup
 
 1. [Download and install Poetry](https://python-poetry.org/docs/#installation) following the instructions for your OS.
 2. Set up the virtual environment:
@@ -39,7 +43,7 @@ sudo adduser -u 5678 --disabled-password --gecos "" appuser
 chown -R appuser:appuser /mnt/imap-data
 ```
 
-### Build, pack and test
+## Build, pack and test
 
 ```bash
 ./build.sh
@@ -48,7 +52,7 @@ chown -R appuser:appuser /mnt/imap-data
 
 You can also build a compiled linux executable with `./build-linux.sh` and a docker image with `./build-docker.sh`
 
-### Using the CLI inside the docker container
+## Using the CLI inside the docker container
 
 ```bash
 # Using the so-mag CLI:
@@ -67,12 +71,49 @@ From a linux host or WSL (i.e. not in a dev container) you can use the container
 ./pack.sh
 ./build-docker.sh
 
+source dev.env
+
 docker run -it --rm \
     --network mag-lab-data-platform \
-    -e PREFECT_API_URL=http://prefect:4200/api \
-    -e IMAP_IMAGE_TAG=local-dev \
-    -e IMAP_VOLUMES=/mnt/imap-data/dev:/data \
+    --env-file defaults.env \
+    --env-file dev.env \
     --entrypoint /bin/bash \
     ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev \
     -c "python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows()'"
+```
+
+## Get the prefect server running in a local dev env
+
+```bash
+# in the root of the repo, start a local dev prefect server in a terminal
+poetry install
+source .venv/bin/activate
+prefect server start
+
+# in another terminal start a database for the imap app to use (add -d for detached mode)
+docker run --name postgres_imap_dev -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:17-alpine
+
+# in a third terminal, deploy the imap flows
+source .venv/bin/activate
+source defaults.env
+# [optional] source dev.env
+python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
+
+# Now open the UI in a browser at http://127.0.0.1:4200/deployments
+# Go to the blocks page and make sure to add any credentials such as the web poda auth code
+```
+
+## Debugging a prefect flow
+
+This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode witha  debugger attached and then run your flow from there.
+
+## CLI Commands
+
+All core functionality and logic should be available as simnple CLI commands as well as the usual prefect based flows.
+
+```bash
+# Download HK from WebPODA
+export WEBPODA_AUTH_CODE=[YOUR_SECRET_HERE!]
+imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch binary --packet MAG_HSK_PW --start-date 2025-01-02 --end-date 2025-01-03
 ```

@@ -46,10 +46,17 @@ def calibrate(
     # TODO: Define specific calibration configuration
     # Using AppConfig for now to piggyback off of configuration
     # verification and work area setup
+    configFile: appConfig.CommandConfigBase = commandInit(config)
 
-    configFile: appConfig.AppConfig = commandInit(config)
+    full_input_path = (
+        Path(configFile.source.folder)
+        / "l1b"
+        / str(from_date.year)
+        / f"{from_date.month:02d}"
+        / input
+    )
 
-    workFile = prepareWorkFile(input, configFile)
+    workFile = prepareWorkFile(full_input_path, configFile.work_folder)
 
     if workFile is None:
         logging.critical(
@@ -70,7 +77,7 @@ def calibrate(
     temp_cal_file_name = configFile.work_folder / configFile.destination.filename
 
     cal_folder = (
-        configFile.destination.folder / str(from_date.year) / str(from_date.month)
+        configFile.destination.folder / str(from_date.year) / f"{from_date.month:02d}"
     )
 
     # TODO: Standardised constant?
@@ -78,7 +85,7 @@ def calibrate(
 
     cal_file_destination = appConfig.Destination(
         folder=cal_folder,
-        filename=f"{from_date.strftime(TIMEFORMAT)}_{to_date.strftime(TIMEFORMAT)}_{calibrator.name.value}_v000.json",
+        filename=f"{from_date.strftime(TIMEFORMAT)}_{to_date.strftime(TIMEFORMAT)}_{scienceLayer.sensor.value}-{calibrator.name.value}-offsets_v000.json",
     )
 
     result: Path = calibrator.runCalibration(

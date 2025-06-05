@@ -1,6 +1,17 @@
 {
     "configurations": [
         {
+            "code": "import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PREFECT_API_URL": "http://127.0.0.1:4200/api",
+                "SQLALCHEMY_URL": "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap"
+            },
+            "name": "Python Debugger: Prefect deploy and run",
+            "request": "launch",
+            "type": "debugpy"
+        },
+        {
             "console": "integratedTerminal",
             "justMyCode": false,
             "name": "Python: Debug Tests",

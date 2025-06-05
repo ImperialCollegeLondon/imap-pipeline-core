@@ -7,7 +7,7 @@ from typing import Annotated
 import typer
 
 from imap_mag import appConfig
-from imap_mag.api.apiUtils import commandInit, prepareCalibrationFile, prepareWorkFile
+from imap_mag.api.apiUtils import commandInit, prepareWorkFile
 from imap_mag.outputManager import OutputManager, StandardSPDFMetadataProvider
 from mag_toolkit.calibration import CalibrationApplicator
 
@@ -33,15 +33,13 @@ def apply(
     to_date: Annotated[
         datetime, typer.Option("--to", help="Date to apply calibration parameters to")
     ],
-    config: Annotated[Path, typer.Option()] = Path(
-        "calibration_application_config.yaml"
-    ),
+    config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
     calibration_output_type: Annotated[
-        FileType, typer.Option(help="Output type of the calibration file")
-    ] = FileType.CDF,
+        str, typer.Option(help="Output type of the calibration file")
+    ] = FileType.CDF.value,
     l2_output_type: Annotated[
-        FileType, typer.Option(help="Output type of the L2 file")
-    ] = FileType.CDF,
+        str, typer.Option(help="Output type of the L2 file")
+    ] = FileType.CDF.value,
     rotation: Annotated[Path | None, typer.Option()] = None,
     input: str = typer.Argument(
         help="The file name or pattern to match for the input file"
@@ -53,26 +51,48 @@ def apply(
     imap-mag calibration apply --from [date] --to [date] --rotation [rotation] [layers] [input]
     e.g. imap-mag calibration apply --from 2025-10-17 --to 2025-10-17 --rotation imap_mag_l2-calibration-matrices_20251017_v004.cdf 17-10-2025_17-10-2025_noop_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
     """
-    configFile: appConfig.AppConfig = commandInit(config)
+    configFile: appConfig.CommandConfigBase = commandInit(config)
 
-    workDataFile = prepareWorkFile(input, configFile)
+    full_input_path = (
+        Path(configFile.source.folder)
+        / "l1b"
+        / str(from_date.year)
+        / f"{from_date.month:02d}"
+        / input
+    )
+
+    workDataFile = prepareWorkFile(Path(full_input_path), configFile.work_folder)
 
     if workDataFile is None:
         raise ValueError("Data file does not exist")
 
     workLayers = []
     for layer in layers:
-        workLayers.append(prepareCalibrationFile(layer, configFile))
+        full_layer_path = (
+            Path(configFile.source.folder)
+            / "calibration"
+            / str(from_date.year)
+            / f"{from_date.month:02d}"
+            / layer
+        )
+        workLayers.append(prepareWorkFile(full_layer_path, configFile.work_folder))
 
-    workRotationFile = (
-        prepareCalibrationFile(str(rotation), configFile) if rotation else None
-    )
+    if rotation:
+        full_rotation_path = (
+            Path(configFile.source.folder)
+            / "calibration"
+            / str(from_date.year)
+            / f"{from_date.month:02d}"
+            / rotation
+        )
 
-    workCalFile = (
-        configFile.work_folder / f"calibration.{calibration_output_type.value}"
-    )
+        workRotationFile = prepareWorkFile(full_rotation_path, configFile.work_folder)
+    else:
+        workRotationFile = None
 
-    workL2File = configFile.work_folder / f"L2.{l2_output_type.value}"
+    workCalFile = configFile.work_folder / f"calibration.{calibration_output_type}"
+
+    workL2File = configFile.work_folder / f"L2.{l2_output_type}"
 
     applier = CalibrationApplicator()
 
@@ -88,14 +108,14 @@ def apply(
         date=from_date,
         descriptor="norm-mago",
         version=0,
-        extension=l2_output_type.value,
+        extension=l2_output_type,
     )
     cal_metadata_provider = StandardSPDFMetadataProvider(
         level="l2",
         descriptor="norm-offsets",
         date=from_date,
         version=0,
-        extension=calibration_output_type.value,
+        extension=calibration_output_type,
     )
 
     outputManager = OutputManager(configFile.destination.folder)

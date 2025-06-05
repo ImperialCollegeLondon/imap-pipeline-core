@@ -217,5 +217,5 @@ class CalibrationApplicator:
         if data.epoch[0] < np.datetime64(
             calibrationCollection.valid_start
         ) or data.epoch[1] > np.datetime64(calibrationCollection.valid_end):
-            logging.debug("Data outside of calibration validity range")
+            logger.debug("Data outside of calibration validity range")
             raise CalibrationValidityError("Data outside of calibration validity range")

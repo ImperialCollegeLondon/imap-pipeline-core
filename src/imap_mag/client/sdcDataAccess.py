@@ -2,40 +2,13 @@
 
 import abc
 import logging
-import typing
 from datetime import datetime
 from pathlib import Path
 
 import imap_data_access
 import imap_data_access.io
-import typing_extensions
 
-
-class FileOptions(typing.TypedDict):
-    """Options for generating file name."""
-
-    level: str | None
-    descriptor: str | None
-    start_date: datetime | None
-    version: str | None
-
-
-class VersionOptions(typing.TypedDict):
-    """Options for determining unique version."""
-
-    level: str | None
-    start_date: datetime | None
-
-
-class QueryOptions(typing.TypedDict):
-    """Options for query."""
-
-    level: str | None
-    descriptor: str | None
-    start_date: datetime | None
-    end_date: datetime | None
-    version: str | None
-    extension: str | None
+logger = logging.getLogger(__name__)
 
 
 class ISDCDataAccess(abc.ABC):
@@ -44,32 +17,53 @@ class ISDCDataAccess(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def get_file_path(
-        **options: typing_extensions.Unpack[FileOptions],
+        level: str,
+        descriptor: str,
+        start_date: datetime,
+        version: str,
     ) -> tuple[Path, Path]:
         """Get file path for data from imap-data-access."""
         pass
 
     @abc.abstractmethod
-    def upload(self, file_name: str) -> None:
+    def upload(self, filename: str) -> None:
         """Upload data to imap-data-access."""
         pass
 
     @abc.abstractmethod
     def query(
-        self, **options: typing_extensions.Unpack[QueryOptions]
+        self,
+        *,
+        level: str | None = None,
+        descriptor: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        ingestion_start_date: datetime | None = None,
+        ingestion_end_date: datetime | None = None,
+        version: str | None = None,
+        extension: str | None = None,
     ) -> list[dict[str, str]]:
         """Download data from imap-data-access."""
         pass
 
     @abc.abstractmethod
     def get_filename(
-        self, **options: typing_extensions.Unpack[QueryOptions]
+        self,
+        *,
+        level: str | None = None,
+        descriptor: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        ingestion_start_date: datetime | None = None,
+        ingestion_end_date: datetime | None = None,
+        version: str | None = None,
+        extension: str | None = None,
     ) -> list[dict[str, str]] | None:
         """Wait for file to be available in imap-data-access."""
         pass
 
     @abc.abstractmethod
-    def download(self, file_name: str) -> Path:
+    def download(self, filename: str) -> Path:
         """Download data from imap-data-access."""
         pass
 
@@ -87,56 +81,88 @@ class SDCDataAccess(ISDCDataAccess):
 
     @staticmethod
     def get_file_path(
-        **options: typing_extensions.Unpack[FileOptions],
+        level: str,
+        descriptor: str,
+        start_date: datetime,
+        version: str,
     ) -> tuple[Path, Path]:
         science_file = imap_data_access.ScienceFilePath.generate_from_inputs(
             instrument="mag",
-            data_level=options["level"],
-            descriptor=options["descriptor"],
-            start_time=options["start_date"].strftime("%Y%m%d"),
-            version=options["version"],
+            data_level=level,
+            descriptor=descriptor,
+            start_time=start_date.strftime("%Y%m%d"),
+            version=version,
         )
 
         return (science_file.filename, science_file.construct_path())
 
-    def upload(self, file_name: str) -> None:
-        logging.debug(f"Uploading {file_name} to imap-data-access.")
+    def upload(self, filename: str) -> None:
+        logger.debug(f"Uploading {filename} to imap-data-access.")
 
         try:
-            imap_data_access.upload(file_name)
+            imap_data_access.upload(filename)
         except imap_data_access.io.IMAPDataAccessError as e:
-            logging.error(f"Upload failed: {e}")
+            logger.error(f"Upload failed: {e}")
             raise e
 
     def query(
-        self, **options: typing_extensions.Unpack[QueryOptions]
+        self,
+        *,
+        level: str | None = None,
+        descriptor: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        ingestion_start_date: datetime | None = None,
+        ingestion_end_date: datetime | None = None,
+        version: str | None = None,
+        extension: str | None = None,
     ) -> list[dict[str, str]]:
         return imap_data_access.query(
             instrument="mag",
-            data_level=options["level"],
-            descriptor=options["descriptor"],
-            start_date=(
-                options["start_date"].strftime("%Y%m%d")
-                if options["start_date"]
+            data_level=level,
+            descriptor=descriptor,
+            start_date=(start_date.strftime("%Y%m%d") if start_date else None),
+            end_date=(end_date.strftime("%Y%m%d") if end_date else None),
+            ingestion_start_date=(
+                ingestion_start_date.strftime("%Y%m%d")
+                if ingestion_start_date
                 else None
             ),
-            end_date=(
-                options["end_date"].strftime("%Y%m%d") if options["end_date"] else None
+            ingestion_end_date=(
+                ingestion_end_date.strftime("%Y%m%d") if ingestion_end_date else None
             ),
-            version=options["version"],
-            extension=options["extension"],
+            version=version,
+            extension=extension,
         )
 
     def get_filename(
-        self, **options: typing_extensions.Unpack[QueryOptions]
+        self,
+        *,
+        level: str | None = None,
+        descriptor: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        ingestion_start_date: datetime | None = None,
+        ingestion_end_date: datetime | None = None,
+        version: str | None = None,
+        extension: str | None = None,
     ) -> list[dict[str, str]] | None:
-        file_details: list[dict[str, str]] = self.query(**options)
+        file_details: list[dict[str, str]] = self.query(
+            level=level,
+            descriptor=descriptor,
+            start_date=start_date,
+            end_date=end_date,
+            ingestion_start_date=ingestion_start_date,
+            ingestion_end_date=ingestion_end_date,
+            version=version,
+            extension=extension,
+        )
 
         file_names: str = ", ".join([value["file_path"] for value in file_details])
-        logging.info(f"Found {len(file_details)} matching files:\n{file_names}")
+        logger.info(f"Found {len(file_details)} matching files:\n{file_names}")
 
         return file_details
 
-    def download(self, file_name: str) -> Path:
-        logging.debug(f"Downloading {file_name} from imap-data-access.")
-        return imap_data_access.download(file_name)
+    def download(self, filename: str) -> Path:
+        logger.debug(f"Downloading {filename} from imap-data-access.")
+        return imap_data_access.download(filename)

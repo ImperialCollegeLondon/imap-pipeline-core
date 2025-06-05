@@ -8,6 +8,7 @@ def get_version() -> str:
         return version("imap-mag")
     except PackageNotFoundError:
         print("IMAP MAG CLI Version unknown, not installed via pip.")
+        return "unknown"
 
 
 __version__ = get_version()

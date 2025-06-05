@@ -25,8 +25,13 @@ permissions:
   packages: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 env:
   PREFERED_PYTHON_VERSION: '3.12'
+  # TODO: test should not rely on a real auth code
   WEBPODA_AUTH_CODE: ${{ secrets.WEBPODA_AUTH_CODE }}
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
 jobs:
@@ -152,7 +157,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.python-versions }})
@@ -161,6 +166,7 @@ jobs:
 
       - name: Coverage Report
         uses: 5monkeys/cobertura-action@v14
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           report_name: Coverage Report (${{ matrix.python-versions }})
           path: "coverage.xml"
@@ -299,7 +305,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.os }}) (${{ matrix.python-versions }})

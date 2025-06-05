@@ -1,23 +1,25 @@
 """Program to retrieve and process MAG binary files."""
 
 import logging
-import typing
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
-import typing_extensions
 
 from imap_mag.client.webPODA import WebPODA
-from imap_mag.outputManager import StandardSPDFMetadataProvider
+from imap_mag.io import StandardSPDFMetadataProvider
+
+logger = logging.getLogger(__name__)
 
 
-class FetchBinaryOptions(typing.TypedDict):
-    """Options for WebPODA interactions."""
+@dataclass
+class WebPODAMetadataProvider(StandardSPDFMetadataProvider):
+    """
+    Metadata for WebPODA binaries.
+    """
 
-    packet: str
-    start_date: datetime
-    end_date: datetime
+    ert: datetime | None = None  # date data was received by WebPODA
 
 
 class FetchBinary:
@@ -36,44 +38,83 @@ class FetchBinary:
         self.__web_poda = web_poda
 
     def download_binaries(
-        self, **options: typing_extensions.Unpack[FetchBinaryOptions]
-    ) -> dict[Path, StandardSPDFMetadataProvider]:
+        self,
+        packet: str,
+        start_date: datetime,
+        end_date: datetime,
+        use_ert: bool = False,
+    ) -> dict[Path, WebPODAMetadataProvider]:
         """Retrieve WebPODA data."""
 
-        downloaded: dict[Path, StandardSPDFMetadataProvider] = dict()
+        downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
-        date_range: pd.DatetimeIndex = pd.date_range(
-            start=options["start_date"],
-            end=options["end_date"],
-            freq="D",
-            normalize=True,
-        )
-        dates: list[datetime] = date_range.to_pydatetime().tolist()
-
-        if len(dates) == 1:
-            dates += [
-                pd.Timestamp(dates[0] + pd.Timedelta(days=1))
-                .normalize()
+        if start_date == end_date:
+            # If the start and end dates are the same, download all the data from that day.
+            start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            dates: list[datetime] = [start, start + timedelta(days=1)]
+        else:
+            # Download all the data from the start date to the end date for each day separately.
+            # Force the date ranges to include midnights to avoid missing data.
+            dates = (
+                pd.date_range(
+                    start=start_date.replace(hour=0, minute=0, second=0, microsecond=0),
+                    end=end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    + timedelta(days=1),
+                    freq="D",
+                    normalize=True,
+                    inclusive="both",
+                )
                 .to_pydatetime()
-            ]
+                .tolist()
+            )
 
+            # Remove any data outside of bounds, and forcibly re-add the start and end dates.
+            dates[:] = [x for x in dates if start_date < x < end_date]
+            dates = [start_date, *dates, end_date]
+
+            # If the end date is at midnight, it means we want to download that full day, too.
+            # So include the next midnight as the end date.
+            if end_date == end_date.replace(hour=0, minute=0, second=0, microsecond=0):
+                dates.append(
+                    end_date + timedelta(days=1),
+                )
+
+        # Download the data in chunks of 1 day.
         for d in range(len(dates) - 1):
-            file: Path = self.__web_poda.download(
-                packet=options["packet"], start_date=dates[d], end_date=dates[d + 1]
+            file = self.__web_poda.download(
+                packet=packet,
+                start_date=dates[d],
+                end_date=dates[d + 1],
+                ert=use_ert,
             )
 
             if file.stat().st_size > 0:
-                logging.info(f"Downloaded file from WebPODA: {file}")
+                logger.info(f"Downloaded file from WebPODA: {file}")
 
-                downloaded[file] = StandardSPDFMetadataProvider(
-                    descriptor=options["packet"]
-                    .lower()
-                    .strip(self.__MAG_PREFIX)
-                    .replace("_", "-"),
-                    date=dates[d],
+                max_ert: datetime | None = self.__web_poda.get_max_ert(
+                    packet=packet,
+                    start_date=dates[d],
+                    end_date=dates[d + 1],
+                    ert=use_ert,
+                )
+                min_time: datetime | None = self.__web_poda.get_min_sctime(
+                    packet=packet,
+                    start_date=dates[d],
+                    end_date=dates[d + 1],
+                    ert=use_ert,
+                )
+
+                downloaded[file] = WebPODAMetadataProvider(
+                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}-raw",
+                    content_date=(
+                        min_time.replace(hour=0, minute=0, second=0)
+                        if min_time
+                        else None
+                    ),
+                    ert=max_ert,
                     extension="pkts",
                 )
             else:
-                logging.debug(f"Downloaded file {file} is empty and will not be used.")
+                logger.debug(f"Downloaded file {file} is empty and will not be used.")
 
         return downloaded
