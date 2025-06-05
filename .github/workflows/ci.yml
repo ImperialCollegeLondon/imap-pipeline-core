@@ -218,7 +218,7 @@ jobs:
         os: [linux, windows]
         include:
           - os: linux
-            image: batonogov/pyinstaller-linux:latest
+            image: batonogov/pyinstaller-linux:v4.7.2 # This is the version that supports Python 3.12
             executable: imap-mag
             folder: manylinux_2_36_x86_64
           - os: windows
