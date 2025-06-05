@@ -113,3 +113,6 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     work_file = Path(shutil.copy2(files[0], work_folder))
 
     return work_file
+
+
+# TODO: Need to handloe configuration of calibration folder, and multiple input/output folders

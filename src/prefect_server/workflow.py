@@ -1,15 +1,19 @@
 import asyncio
 import os
 import sys
-from datetime import date, datetime
+from datetime import datetime
+from pathlib import Path
 
-from prefect import deploy, flow, serve
+from prefect import deploy, flow, get_run_logger, serve
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
-from prefect_shell import ShellOperation
+from prefect.variables import Variable
 
+from imap_mag.api.apply import FileType, apply
+from imap_mag.api.calibrate import calibrate
+from mag_toolkit.calibration import CalibrationMethod
 from prefect_server.constants import CONSTANTS
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
@@ -17,18 +21,54 @@ from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.serverConfig import ServerConfig
 
 
+@flow(name="calibrate", log_prints=True)
+def calibrate_flow(
+    from_date: datetime, to_date: datetime, method: CalibrationMethod, science_file: str
+):
+    logger = get_run_logger()
+
+    if not os.path.isfile(science_file):
+        logger.error(
+            f"Cannot calibrate non-existent file: {science_file} is not a file"
+        )
+        raise ValueError(f"{science_file} is not a file")
+
+    calibrate(from_date, to_date, method, science_file)
+
+
 @flow(log_prints=True)
-def run_imap_pipeline(start_date: date, end_date: date):
-    print(f"Starting IMAP pipeline for {start_date} to {end_date}")
+def apply_flow(
+    cal_layer: Path,
+    file: Path,
+    date: datetime,
+    calibration_output_type: FileType = FileType.CDF,
+    L2_output_type: FileType = FileType.CDF,
+):
+    logger = get_run_logger()
 
-    ShellOperation(
-        commands=[
-            f"./entrypoint.sh {start_date.strftime('%Y-%m-%d')} {end_date.strftime('%Y-%m-%d')}"
-        ],
-        env={"today": datetime.today().strftime("%Y%m%d")},
-    ).run()
+    if not os.path.isfile(file):
+        logger.error(f"Cannot apply offsets to non-existent file: {file} is not a file")
+        raise ValueError(f"{file} is not a file")
 
-    print("Finished IMAP pipeline")
+    if not os.path.isfile(cal_layer):
+        logger.error(f"Calibration layer does not exist: {cal_layer} is not a file")
+        raise ValueError(f"{cal_layer} is not a file")
+
+    apply(
+        [str(cal_layer)],
+        from_date=date,
+        to_date=date,
+        input=str(file),
+        calibration_output_type=calibration_output_type.value,
+        l2_output_type=L2_output_type.value,
+    )
+
+
+async def get_matlab_license_server():
+    return await Variable.get(
+        "matlab_license",
+        default=os.getenv("MLM_LICENSE_FILE"),  # type: ignore
+    )
 
 
 def deploy_flows(local_debug: bool = False):
@@ -42,6 +82,11 @@ def deploy_flows(local_debug: bool = False):
     docker_tag = os.getenv(
         "IMAP_IMAGE_TAG",
         "main",
+    )
+
+    matlab_docker_tag = os.getenv(
+        "IMAP_MATLAB_IMAGE_TAG",
+        "matlab-main",
     )
     # Comma separated docker volumes, e.g. /mnt/imap-data/dev:/data
     docker_volumes = os.getenv("IMAP_VOLUMES", "").split(",")
@@ -85,17 +130,6 @@ def deploy_flows(local_debug: bool = False):
             f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
         )
 
-    imap_flow_name = "imappipeline"
-    imap_pipeline_deployable = run_imap_pipeline.to_deployment(
-        name=imap_flow_name,
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.IMAP_PIPELINE_CRON),
-        job_variables=shared_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
-        tags=[CONSTANTS.PREFECT_TAG],
-    )
-
     poll_hk_deployable = poll_hk_flow.to_deployment(
         name=CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
@@ -124,8 +158,27 @@ def deploy_flows(local_debug: bool = False):
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
+    calibration_deployable = calibrate_flow.to_deployment(
+        name="calibrate",
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    apply_deployable = apply_flow.to_deployment(
+        name="apply",
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    matlab_deployables = (calibration_deployable, apply_deployable)
+
     deployables = (
-        imap_pipeline_deployable,
         poll_hk_deployable,
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,
@@ -139,17 +192,28 @@ def deploy_flows(local_debug: bool = False):
         serve(
             *deployables,
         )
+
     else:
         deploy_ids = deploy(
-            *deployables,
+            *deployables,  # type: ignore
             work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
             build=False,
             push=False,
             image=f"{docker_image}:{docker_tag}",
-        )
+        )  # type: ignore
 
-        if len(deploy_ids) != len(deployables):
-            print(f"Incomplete deployment: {deploy_ids}")
+        matlab_deploy_ids = deploy(
+            *matlab_deployables,  # type: ignore
+            work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+            build=False,
+            push=False,
+            image=f"{docker_image}:{matlab_docker_tag}",
+        )  # type: ignore
+
+        if len(deploy_ids) != len(deployables) or len(matlab_deploy_ids) != len(  # type: ignore
+            matlab_deployables
+        ):
+            print(f"Incomplete deployment: {deploy_ids} {matlab_deploy_ids}")
             sys.exit(1)
 
 
