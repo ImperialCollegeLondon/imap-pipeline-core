@@ -12,20 +12,24 @@ from imap_mag.api.calibrate import calibrate
 from mag_toolkit.calibration import CalibrationMethod
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 
-from .testUtils import create_test_file, enableLogging, tidyDataFolders  # noqa: F401
+from .util.miscellaneous import (  # noqa: F401
+    create_test_file,
+    enableLogging,
+    tidyDataFolders,
+)
 
 
 def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag/calibration
 
     work-folder: .work
 
     destination:
         folder: output
-        filename: imap_mag_l2_norm-mago_20251017_v001.cdf
+        filename: imap_mag_l2_norm-mago_20251017_v000.cdf
     """
 
     test_config_path = create_test_file(
@@ -40,15 +44,15 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
         to_date=datetime(2025, 10, 17),
     )
 
-    assert Path("output/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf").exists()
-    assert Path("output/2025/10/imap_mag_l2_norm-offsets_20251017_v001.cdf").exists()
+    assert Path("output/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf").exists()
+    assert Path("output/2025/10/imap_mag_l2_norm-offsets_20251017_v000.cdf").exists()
 
 
 def test_apply_fails_when_timestamps_dont_align(tmp_path):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag/calibration
 
     work-folder: .work
 
@@ -83,8 +87,8 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
 def test_apply_fails_when_no_layers_provided(tmp_path):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag/calibration
 
     work-folder: .work
 
@@ -107,10 +111,10 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         )
 
     assert not Path(
-        "output/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+        "output/l2/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
     ).exists()
     assert not Path(
-        "output/l2/2025/10/imap_mag_l2_norm-offsets_20251017_v001.cdf"
+        "output/l2/2025/10/imap_mag_l2_norm-offsets_20251017_v000.cdf"
     ).exists()
 
     assert str(exc_info.value) == "No calibration layers or rotation file provided"
@@ -119,8 +123,8 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
 def test_apply_performs_correct_rotation(tmp_path):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag/calibration
 
     work-folder: .work
 
@@ -136,15 +140,15 @@ def test_apply_performs_correct_rotation(tmp_path):
     apply(
         layers=[],
         input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        rotation=Path(
-            "tests/data/imap/mag/calibration/2025/10/imap_mag_l2-calibration-matrices_20251017_v004.cdf"
-        ),
+        rotation=Path("imap_mag_l2-calibration-matrices_20251017_v004.cdf"),
         config=test_config_path,
         from_date=datetime(2025, 10, 17),
         to_date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+    output_file = "output/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
+
+    print(os.walk("output"))
 
     assert Path(output_file).exists()
 
@@ -166,14 +170,14 @@ def test_apply_performs_correct_rotation(tmp_path):
 def test_apply_adds_offsets_together_correctly(tmp_path):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag/calibration
 
     work-folder: .work
 
     destination:
         folder: output
-        filename: imap_mag_l2_norm-mago_20251017_v001.cdf
+        filename: imap_mag_l2_norm-mago_20251017_v000.cdf
     """
 
     test_config_path = create_test_file(
@@ -188,7 +192,7 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         to_date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+    output_file = "output/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
@@ -225,8 +229,8 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
 ):
     test_config_content = """
     source:
-        folder: tests/data/imap/mag/l1c/2025/10
-        calibration_folder: tests/data/imap/mag/calibration/2025/10
+        folder: tests/data/imap/mag
+        calibration_folder: tests/data/imap/mag
 
     work-folder: .work
 

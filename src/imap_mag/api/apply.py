@@ -53,9 +53,10 @@ def apply(
     """
     configFile: appConfig.CommandConfigBase = commandInit(config)
 
+    input_folder = "l1b" if "burst" in input else "l1c"
     full_input_path = (
         Path(configFile.source.folder)
-        / "l1b"
+        / input_folder
         / str(from_date.year)
         / f"{from_date.month:02d}"
         / input
