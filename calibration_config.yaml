@@ -1,8 +1,8 @@
 source:
-  folder: data/imap/mag
+  folder: /data/imap/mag
 
 work-folder: .work
 
 destination:
-  folder: data/imap/mag/calibration
+  folder: /data/imap/mag/calibration
   filename: calibration.json
