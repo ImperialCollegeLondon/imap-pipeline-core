@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -475,6 +476,10 @@ def test_update_database_update_needed_old_data(
     assert mock_database.save.called
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
 def test_database_output_manager_real_database(
     mock_output_manager: mock.Mock,
     test_database,  # noqa: F811
