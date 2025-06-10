@@ -78,6 +78,10 @@ def deploy_flows(local_debug: bool = False):
         "mag-lab-data-platform",
     ).split(",")
 
+    matlab_license = asyncio.get_event_loop().run_until_complete(
+        get_matlab_license_server()
+    )
+
     # remove empty strings
     docker_volumes = [x for x in docker_volumes if x]
     docker_networks = [x for x in docker_networks if x]
@@ -95,6 +99,7 @@ def deploy_flows(local_debug: bool = False):
                 CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
             ),
             CONSTANTS.ENV_VAR_NAMES.PREFECT_LOGGING_EXTRA_LOGGERS: CONSTANTS.DEFAULT_LOGGERS,
+            CONSTANTS.ENV_VAR_NAMES.MATLAB_LICENSE: matlab_license,
         }
     )
 

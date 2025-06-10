@@ -26,6 +26,8 @@ class CONSTANTS:
 
         PREFECT_LOGGING_EXTRA_LOGGERS = "PREFECT_LOGGING_EXTRA_LOGGERS"
 
+        MATLAB_LICENSE = "MLM_LICENSE_FILE"
+
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
         DEFAULT = "default"
