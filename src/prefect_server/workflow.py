@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from prefect import deploy, flow, get_run_logger, serve
+from prefect import deploy, flow, serve
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
@@ -25,18 +25,10 @@ from prefect_server.serverConfig import ServerConfig
 def calibrate_flow(
     from_date: datetime, to_date: datetime, method: CalibrationMethod, science_file: str
 ):
-    logger = get_run_logger()
-
-    if not os.path.isfile(science_file):
-        logger.error(
-            f"Cannot calibrate non-existent file: {science_file} is not a file"
-        )
-        raise ValueError(f"{science_file} is not a file")
-
     calibrate(from_date, to_date, method, science_file)
 
 
-@flow(log_prints=True)
+@flow(name="apply calibration", log_prints=True)
 def apply_flow(
     cal_layer: Path,
     file: Path,
@@ -44,16 +36,6 @@ def apply_flow(
     calibration_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
 ):
-    logger = get_run_logger()
-
-    if not os.path.isfile(file):
-        logger.error(f"Cannot apply offsets to non-existent file: {file} is not a file")
-        raise ValueError(f"{file} is not a file")
-
-    if not os.path.isfile(cal_layer):
-        logger.error(f"Calibration layer does not exist: {cal_layer} is not a file")
-        raise ValueError(f"{cal_layer} is not a file")
-
     apply(
         [str(cal_layer)],
         from_date=date,
