@@ -63,6 +63,38 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
 
         return f"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
+    def get_unversioned_pattern(self) -> re.Pattern:
+        """Get regex pattern for unversioned files."""
+
+        if not self.content_date:
+            logger.error("No 'content_date' defined. Cannot generate pattern.")
+            raise ValueError("No 'content_date' defined. Cannot generate pattern.")
+
+        descriptor = self.descriptor
+
+        if self.level is not None:
+            descriptor = f"{self.level}_{descriptor}"
+
+        return re.compile(
+            rf"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+        )
+
+    def get_versioned_pattern(self) -> re.Pattern:
+        """Get regex pattern for unversioned files."""
+
+        if not self.content_date:
+            logger.error("No 'content_date' defined. Cannot generate pattern.")
+            raise ValueError("No 'content_date' defined. Cannot generate pattern.")
+
+        descriptor = self.descriptor
+
+        if self.level is not None:
+            descriptor = f"{self.level}_{descriptor}"
+
+        return re.compile(
+            rf"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        )
+
     @classmethod
     def from_filename(
         cls, filename: str | Path
