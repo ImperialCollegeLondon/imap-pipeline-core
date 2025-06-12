@@ -31,8 +31,6 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: '3.12'
-  # TODO: test should not rely on a real auth code
-  WEBPODA_AUTH_CODE: ${{ secrets.WEBPODA_AUTH_CODE }}
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
 jobs:
   qa:
@@ -319,11 +317,11 @@ jobs:
         os: [linux, windows]
         include:
           - os: linux
-            image: batonogov/pyinstaller-linux:latest
+            image: batonogov/pyinstaller-linux:v4.7.2 # This is the version that supports Python 3.12
             executable: imap-mag
             folder: manylinux_2_36_x86_64
           - os: windows
-            image: batonogov/pyinstaller-windows:latest
+            image: batonogov/pyinstaller-windows:v4.7.1 # This is the version that supports Python 3.12
             executable: imap-mag.exe
             folder: win_amd64
 
