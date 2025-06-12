@@ -1,49 +1,20 @@
 import asyncio
 import os
 import sys
-from datetime import datetime
-from pathlib import Path
 
-from prefect import deploy, flow, serve
+from prefect import deploy, serve
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
 from prefect.variables import Variable
 
-from imap_mag.api.apply import FileType, apply
-from imap_mag.api.calibrate import calibrate
-from mag_toolkit.calibration import CalibrationMethod
 from prefect_server.constants import CONSTANTS
+from prefect_server.performCalibration import apply_flow, calibrate_flow
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.serverConfig import ServerConfig
-
-
-@flow(name="calibrate", log_prints=True)
-def calibrate_flow(
-    from_date: datetime, to_date: datetime, method: CalibrationMethod, science_file: str
-):
-    calibrate(from_date, to_date, method, science_file)
-
-
-@flow(name="apply calibration", log_prints=True)
-def apply_flow(
-    cal_layer: Path,
-    file: Path,
-    date: datetime,
-    calibration_output_type: FileType = FileType.CDF,
-    L2_output_type: FileType = FileType.CDF,
-):
-    apply(
-        [str(cal_layer)],
-        from_date=date,
-        to_date=date,
-        input=str(file),
-        calibration_output_type=calibration_output_type.value,
-        l2_output_type=L2_output_type.value,
-    )
 
 
 async def get_matlab_license_server():

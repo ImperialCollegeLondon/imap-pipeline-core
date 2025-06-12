@@ -5,10 +5,22 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
 from imap_mag.api import apply
-from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from mag_toolkit.calibration import CalibrationMethod, EmptyCalibrator, ScienceLayer
+from imap_mag.api.apiUtils import initialiseLoggingForCommand, prepareWorkFile
+from imap_mag.config import AppSettings
+from imap_mag.io import (
+    CalibrationLayerMetadataProvider,
+    InputManager,
+    StandardSPDFMetadataProvider,
+)
+from imap_mag.outputManager import OutputManager
+from imap_mag.util import Level, ScienceMode
+from mag_toolkit.calibration import (
+    CalibrationMethod,
+    EmptyCalibrator,
+    ScienceLayer,
+    Sensor,
+)
 
 app = typer.Typer()
 
@@ -28,13 +40,16 @@ def publish():
 
 # E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
-    from_date: Annotated[datetime, typer.Option("--from")],
-    to_date: Annotated[datetime, typer.Option("--to")],
-    method: Annotated[CalibrationMethod, typer.Option()] = CalibrationMethod.KEPKO,
-    input: str = typer.Argument(
-        help="The file name or pattern to match for the input file"
-    ),
-    config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
+    date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
+    method: Annotated[
+        CalibrationMethod, typer.Option(help="Calibration method")
+    ] = CalibrationMethod.KEPKO,
+    mode: Annotated[
+        ScienceMode, typer.Option(help="Science mode")
+    ] = ScienceMode.Normal,
+    sensor: Annotated[
+        Sensor, typer.Option(help="Sensor to calibrate, e.g., mago")
+    ] = Sensor.MAGO,
 ):
     """
     Generate calibration parameters for a given input file.
@@ -43,30 +58,35 @@ def calibrate(
     e.g. imap-mag calibrate --from 2025-10-17 --to 2025-10-17 --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
 
     """
-    # TODO: Define specific calibration configuration
-    # Using AppConfig for now to piggyback off of configuration
-    # verification and work area setup
-    configFile: appConfig.CommandConfigBase = commandInit(config)
+    app_settings = AppSettings()  # type: ignore
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
 
-    input_folder = "l1b" if "burst" in input else "l1c"
-    full_input_path = (
-        Path(configFile.source.folder)
-        / input_folder
-        / str(from_date.year)
-        / f"{from_date.month:02d}"
-        / input
+    # TODO: Input manager for getting data of a given level?
+
+    level = Level.level_1b if mode == ScienceMode.Burst else Level.level_1c
+    metadata_provider = StandardSPDFMetadataProvider(
+        level=level,
+        content_date=date,
+        descriptor=f"{mode.short_name}-{sensor.value.lower()}",
     )
 
-    workFile = prepareWorkFile(full_input_path, configFile.work_folder)
+    input_manager = InputManager(app_settings.data_store)
+    input_file = input_manager.get_versioned_file(metadata_provider)
+
+    workFile = prepareWorkFile(input_file, app_settings.work_folder)
 
     if workFile is None:
         logging.critical(
-            "Unable to find a file to process in %s", configFile.source.folder
+            "Unable to find a file to process matching %s", input_file.name
         )
         raise typer.Abort()
 
     scienceLayer = ScienceLayer.from_file(workFile)
-    scienceLayerPath = configFile.work_folder / f"{scienceLayer.id}.json"
+    scienceLayerMetadata = CalibrationLayerMetadataProvider(
+        calibration_descriptor="science", content_date=date
+    )
+    scienceLayerPath = app_settings.work_folder / scienceLayerMetadata.get_filename()
     scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
@@ -75,23 +95,16 @@ def calibrate(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    temp_cal_file_name = configFile.work_folder / configFile.destination.filename
-
-    cal_folder = (
-        configFile.destination.folder / str(from_date.year) / f"{from_date.month:02d}"
+    calibrationLayerMetadata = CalibrationLayerMetadataProvider(
+        calibration_descriptor=method.value, content_date=date
     )
-
-    # TODO: Standardised constant?
-    TIMEFORMAT = "%Y%m%d"
-
-    cal_file_destination = appConfig.Destination(
-        folder=cal_folder,
-        filename=f"{from_date.strftime(TIMEFORMAT)}_{to_date.strftime(TIMEFORMAT)}_{scienceLayer.sensor.value}-{calibrator.name.value}-offsets_v000.json",
-    )
-
     result: Path = calibrator.runCalibration(
-        from_date, scienceLayerPath, temp_cal_file_name, configFile.work_folder, None
+        date,
+        scienceLayerPath,
+        Path(calibrationLayerMetadata.get_filename()),
+        app_settings.data_store,
+        None,
     )
 
-    appUtils.copyFileToDestination(result, cal_file_destination)
-    logger.info(f"Calibration file written to {cal_file_destination}")
+    outputManager = OutputManager(app_settings.data_store)
+    outputManager.add_file(result, metadata_provider=calibrationLayerMetadata)  # type: ignore
