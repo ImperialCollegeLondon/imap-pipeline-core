@@ -4,7 +4,7 @@ FROM mathworks/matlab:r2024a AS matlab_install
 
 USER root
 
-ARG IMAP_USERID
+ARG IMAP_USERID=5679
 
 #  mpm dependencies
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -56,10 +56,11 @@ COPY ${SRC_DIR}/*.p /home/matlab/Documents/MATLAB/
 
 FROM python:${PYTHON_VERSION}-slim AS compile-image
 
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
+
 ARG TOOL_PACKAGE="imap_mag-*.tar.gz"
 ARG PYTHON_VERSION
-ARG IMAP_USERNAME
-ARG IMAP_USERID
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -85,6 +86,9 @@ RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
+
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
 COPY --from=matlab_install /home/matlab/Documents/MATLAB /opt/matlab/R2024a/toolbox/local

@@ -2,10 +2,11 @@ ARG PYTHON_VERSION="3.12"
 
 FROM python:${PYTHON_VERSION}-slim AS compile-image
 
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
+
 ARG TOOL_PACKAGE="imap_mag-*.tar.gz"
 ARG PYTHON_VERSION
-ARG IMAP_USERNAME
-ARG IMAP_USERID
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -31,6 +32,10 @@ RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
+
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
+
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
 
