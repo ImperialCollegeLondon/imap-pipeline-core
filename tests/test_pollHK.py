@@ -11,6 +11,7 @@ from tests.util.miscellaneous import (
     END_OF_TODAY,
     NOW,
     TODAY,
+    YESTERDAY,
     enableLogging,  # noqa: F401
     mock_datetime_provider,  # noqa: F401
     set_env,
@@ -133,7 +134,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
     }
 
-    today = TODAY.strftime("%Y-%m-%dT%H:%M:%S")
+    yesterday = YESTERDAY.strftime("%Y-%m-%dT%H:%M:%S")
     end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
 
     ert_timestamp = datetime(2025, 4, 2, 13, 37, 9)
@@ -150,20 +151,20 @@ async def test_poll_hk_autoflow_first_ever_run(
 
     wiremock_manager.reset()
 
-    # Some data is available for "today", only for specific packets.
+    # Some data is available only for specific packets.
     for hk in available_hk:
         wiremock_manager.add_file_mapping(
-            f"/packets/SID2/{hk.packet}.bin?ert%3E={today}&ert%3C{end_of_today}&project(packet)",
+            f"/packets/SID2/{hk.packet}.bin?ert%3E={yesterday}&ert%3C{end_of_today}&project(packet)",
             binary_files[hk.packet],
             priority=1,
         )
         wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={today}&ert%3C{end_of_today}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+            f"/packets/SID2/{hk.packet}.csv?ert%3E={yesterday}&ert%3C{end_of_today}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
             f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
             priority=1,
         )
         wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={today}&ert%3C{end_of_today}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+            f"/packets/SID2/{hk.packet}.csv?ert%3E={yesterday}&ert%3C{end_of_today}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
             f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
             priority=1,
         )
@@ -222,7 +223,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 
     wiremock_manager.reset()
 
-    # Some data is available for "today", only for specific packets.
+    # Some data is available only for specific packets.
     for hk in available_hk:
         download_progress = test_database.get_download_progress(hk.packet)
         download_progress.record_successful_download(progress_timestamp)

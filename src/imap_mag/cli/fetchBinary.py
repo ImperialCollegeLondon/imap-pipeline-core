@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from imap_mag.client.webPODA import WebPODA
@@ -46,13 +46,10 @@ class FetchBinary:
 
         downloaded: dict[Path, WebPODAMetadataProvider] = dict()
 
+        # If the start and end dates are the same, download all the data for that day.
         if start_date == end_date:
-            # If the start and end dates are the same, download all the data for that day.
             start_date = datetime.combine(start_date, datetime.min.time())
-            end_date = datetime.combine(start_date, datetime.max.time())
-        elif end_date.time() == datetime.min.time():
-            # If the end date is at midnight, adjust it to the next day.
-            end_date = datetime.combine(end_date, datetime.max.time())
+            end_date = start_date + timedelta(days=1)
 
         # Download the data in chunks of 1 day.
         file = self.__web_poda.download(
