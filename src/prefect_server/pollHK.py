@@ -29,11 +29,13 @@ def generate_flow_run_name() -> str:
     end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
     packet_names = [hk.name for hk in hk_packets]
-    packet_text = (
-        f"{','.join(packet_names)}-Packets"
-        if packet_names != HKPacket.list()
-        else "all-HK"
-    )
+
+    if packet_names == HKPacket.get_all_mag():
+        packet_text = "all-MAG-HK"
+    elif packet_names == HKPacket.get_all_other():
+        packet_text = "all-S/C-HK"
+    else:
+        packet_text = f"{','.join(packet_names)}-Packets"
 
     return (
         f"Download-{packet_text}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
@@ -51,10 +53,10 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "HK packets to download",
-                "description": "List of HK packets to download from WebPODA. Default is all HK packets.",
+                "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
             }
         ),
-    ] = [hk for hk in HKPacket],  # type: ignore
+    ] = HKPacket.get_all_mag(),  # type: ignore
     start_date: Annotated[
         datetime | None,
         Field(

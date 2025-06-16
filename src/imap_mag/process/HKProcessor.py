@@ -94,6 +94,7 @@ class HKProcessor(FileProcessor):
         for apid, data in combined_results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
             metadata_provider = StandardSPDFMetadataProvider(
+                instrument=HKPacket.from_apid(apid).instrument,
                 descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
                 content_date=None,
                 extension="csv",

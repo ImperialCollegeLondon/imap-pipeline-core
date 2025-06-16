@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/space/xtce" name="MAG">
-    <xtce:Header date="2023-09-01 00:00:00" version="1" author="IMAP SDC" />
+    <xtce:Header date="2023-09-01 00:00:00" version="1" author="IMAP SDC" source_file="TLM_MAG.xls" />
     <xtce:TelemetryMetaData>
         <xtce:ParameterTypeSet>
             <xtce:IntegerParameterType name="VERSION" signed="false">
@@ -8050,12 +8050,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />
@@ -9500,12 +9500,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />
@@ -9987,12 +9987,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />

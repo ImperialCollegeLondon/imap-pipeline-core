@@ -5,5 +5,18 @@
 To generate XML file with XTCE tool (from [`imap_processing`](https://github.com/IMAP-Science-Operations-Center/imap_processing)):
 
 ``` shell
-imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.3.037/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/xtce/tlm_YYYYMMDD.xml
+imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.6.041/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/imap_mag/xtce/tlm_mag_17.6.xml
 ```
+
+> [!TIP]
+> For generating S/C HK XTCE files, use the `../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.6.041/MOC/TLM_SC.xls`, after removing any page that is not needed.
+> Also make sure to remove any page including the type `STRING`, which is not supported by `imap_xtce`.
+
+## Combine Multiple XTCE Files
+
+``` shell
+poetry run python utils/combine_xtce_files.py src/imap_mag/xtce/tlm_mag_17.6.xml src/imap_mag/xtce/tlm_sc_4.1.xml src/imap_mag/xtce/tlm_YYYYMMDD.xml
+```
+
+> [!NOTE]
+> The utility will add duplicate definitions (of the CCSDS header), which need to be manually removed.

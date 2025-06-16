@@ -80,7 +80,7 @@ def create_and_serialize_config(
             filename=destination_file,
             export_to_database=export_to_database,
         ),
-        packet_definition=PacketDefinition(hk=Path("xtce/tlm_20241024.xml")),
+        packet_definition=PacketDefinition(hk=Path("xtce/tlm_20250610.xml")),
         api=API(webpoda_url=webpoda_url, sdc_url=sdc_url),
     )
 

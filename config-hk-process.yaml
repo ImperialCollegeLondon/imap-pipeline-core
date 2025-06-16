@@ -8,4 +8,4 @@ destination:
   filename: result.csv
 
 packet-definition:
-  hk: xtce/tlm_20240724.xml
+  hk: xtce/tlm_20250610.xml

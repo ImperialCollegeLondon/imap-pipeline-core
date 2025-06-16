@@ -9,4 +9,4 @@ destination:
   export-to-database: false
 
 packet-definition:
-  hk: src/imap_mag/xtce/tlm_20241024.xml
+  hk: src/imap_mag/xtce/tlm_20250610.xml

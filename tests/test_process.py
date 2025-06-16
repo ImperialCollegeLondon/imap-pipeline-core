@@ -78,7 +78,7 @@ def test_decode_hk_packet(packet_type):
     expected_path = Path("tests/data/truth") / (packet_type.packet + ".csv")
 
     processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor.initialize(Path("xtce/tlm_20250610.xml"))
 
     # Exercise.
     processed_paths = processor.process(packet_path)
@@ -111,7 +111,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     packet_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
 
     processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor.initialize(Path("xtce/tlm_20250610.xml"))
 
     # Exercise.
     processed_paths = processor.process(packet_path)
@@ -160,7 +160,7 @@ def test_decode_hk_packet_with_data_from_multiple_apids(caplog):
         combined_file.write(combined_data)
 
     processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor.initialize(Path("xtce/tlm_20250610.xml"))
 
     # Exercise.
     processed_paths = processor.process(packet_path)
@@ -192,7 +192,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     packet_path = Path("tests/data/2025/groupby_day_as_tuple.bin")
 
     processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor.initialize(Path("xtce/tlm_20250610.xml"))
 
     # Exercise.
     processed_paths = processor.process(packet_path)

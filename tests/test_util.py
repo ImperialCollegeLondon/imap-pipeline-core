@@ -11,11 +11,41 @@ from imap_mag.util import (
 from tests.util.miscellaneous import enableLogging, tidyDataFolders  # noqa: F401
 
 
+def test_get_all_mag_packets() -> None:
+    """Test listing all MAG HK packets."""
+    packets_list = HKPacket.get_all_mag()
+
+    assert len(packets_list) == 10
+    assert packets_list == [
+        HKPacket.SID1,
+        HKPacket.SID2,
+        HKPacket.SID3_PW,
+        HKPacket.SID4_STATUS,
+        HKPacket.SID5_SCI,
+        HKPacket.SID11_PROCSTAT,
+        HKPacket.SID12,
+        HKPacket.SID15,
+        HKPacket.SID16,
+        HKPacket.SID20,
+    ]
+
+
+def test_get_all_other_packets() -> None:
+    """Test listing all other HK packets."""
+    packets_list = HKPacket.get_all_other()
+
+    assert len(packets_list) == 2
+    assert packets_list == [
+        HKPacket.SCID_X285,
+        HKPacket.ILO_APP_NHK,
+    ]
+
+
 def test_list_all_packets() -> None:
     """Test listing all HK packets."""
     packets_list = HKPacket.list()
 
-    assert len(packets_list) == 10
+    assert len(packets_list) == 12
     assert packets_list == [
         "SID1",
         "SID2",
@@ -27,6 +57,8 @@ def test_list_all_packets() -> None:
         "SID15",
         "SID16",
         "SID20",
+        "SCID_X285",
+        "ILO_APP_NHK",
     ]
 
 
