@@ -38,9 +38,9 @@ To use WebPODA APIs, an access token needs to be defined in the environment as `
 ```bash
 # in WSL on your HOST
 mkdir -p /mnt/imap-data
-sudo adduser -u 5678 --disabled-password --gecos "" appuser
+sudo adduser -u $IMAP_USERID --disabled-password --gecos "" $IMAP_USERNAME
 # you have created the user with the same UID as in the container. now grant the folder to the user
-chown -R appuser:appuser /mnt/imap-data
+chown -R $IMAP_USERNAME:$IMAP_USERNAME /mnt/imap-data
 ```
 
 ## Build, pack and test
