@@ -120,10 +120,6 @@ class DatabaseFileOutputManager(IOutputManager):
             )
             return (metadata_provider.version, False)
 
-        preliminary_destination_file: Path = self.assemble_full_path(
-            Path(""), metadata_provider
-        )
-
         database_files: list[File] = self.__get_matching_database_files(
             metadata_provider
         )
@@ -132,10 +128,16 @@ class DatabaseFileOutputManager(IOutputManager):
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
+        assert len(matching_files) <= 1, (
+            "There should be at most one file with the same hash in the database."
+        )
 
         if matching_files:
+            metadata_provider.version = matching_files[0].version
+            preliminary_file = self.assemble_full_path(Path(""), metadata_provider)
+
             logger.debug(
-                f"File {preliminary_destination_file} already exists in database and is the same. Skipping insertion."
+                f"File {preliminary_file} already exists in database and is the same. Skipping insertion."
             )
             return (matching_files[0].version, True)
 
@@ -143,12 +145,13 @@ class DatabaseFileOutputManager(IOutputManager):
         existing_versions: set[int] = set(file.version for file in database_files)
 
         while metadata_provider.version in existing_versions:
+            preliminary_file = self.assemble_full_path(Path(""), metadata_provider)
             logger.debug(
-                f"File {preliminary_destination_file} already exists in database and is different. Increasing version to {metadata_provider.version + 1}."
+                f"File {preliminary_file} already exists in database and is different. Increasing version to {metadata_provider.version + 1}."
             )
             metadata_provider.version += 1
 
             updated_file: Path = self.assemble_full_path(Path(""), metadata_provider)
-            preliminary_destination_file = updated_file
+            preliminary_file = updated_file
 
         return (metadata_provider.version, False)
