@@ -87,8 +87,8 @@ def apply(
     """
     Apply calibration rotation and layers to an input science file.
 
-    imap-mag calibration apply --from [date] --to [date] --rotation [rotation] [layers] [input]
-    e.g. imap-mag calibration apply --from 2025-10-17 --to 2025-10-17 --rotation imap_mag_l2-calibration-matrices_20251017_v004.cdf 17-10-2025_17-10-2025_noop_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
+    imap-mag calibration apply --date [date] --rotation [rotation] [layers] [input]
+    e.g. imap-mag calibration apply --date --rotation imap_mag_l2-calibration_20251017_v004.cdf imap_mag_noop-layer_20251017_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
@@ -116,12 +116,18 @@ def apply(
     l2_metadata_provider = StandardSPDFMetadataProvider(
         level="l2",
         content_date=date,
-        descriptor="norm-mago",
+        descriptor=original_input_metadata.descriptor,
         version=0,
         extension=l2_output_type,
     )
+    norm_or_burst = (
+        "burst"
+        if original_input_metadata.descriptor
+        and "burst" in original_input_metadata.descriptor
+        else "norm"
+    )
     cal_metadata_provider = StandardSPDFMetadataProvider(
-        descriptor="l2-norm-offsets",
+        descriptor=f"l2-{norm_or_burst}-offsets",
         content_date=date,
         version=0,
         extension=calibration_output_type,

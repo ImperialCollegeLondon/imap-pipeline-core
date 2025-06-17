@@ -55,7 +55,7 @@ def calibrate(
     Generate calibration parameters for a given input file.
     imap-mag calibrate --from [date] --to [date] --method [method] [input]
 
-    e.g. imap-mag calibrate --from 2025-10-17 --to 2025-10-17 --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
 
     """
     app_settings = AppSettings()  # type: ignore
