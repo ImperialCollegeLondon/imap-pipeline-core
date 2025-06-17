@@ -25,7 +25,3 @@ fetch_science:
 
 process:
     work_sub_folder:
-
-calibration:
-    work_sub_folder:
-    publish: false
