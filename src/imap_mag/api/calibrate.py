@@ -117,4 +117,8 @@ def calibrate(
     )
 
     outputManager = OutputManager(app_settings.data_store)
-    outputManager.add_file(result, metadata_provider=calibrationLayerMetadata)  # type: ignore
+    (output_calibration_path, _) = outputManager.add_file(
+        result, metadata_provider=calibrationLayerMetadata
+    )  # type: ignore
+
+    return (output_calibration_path, input_file)
