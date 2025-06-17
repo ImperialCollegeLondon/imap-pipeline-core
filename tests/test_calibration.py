@@ -173,7 +173,7 @@ def test_apply_performs_correct_rotation(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
+    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
@@ -211,7 +211,7 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
+    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
