@@ -5,7 +5,7 @@ FROM mathworks/matlab:r2024a AS matlab_install
 
 USER root
 
-ARG USERID
+ARG IMAP_USERID=5679
 
 #  mpm dependencies
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -23,7 +23,7 @@ ARG MATLAB_CDF_PATCH="https://spdf.gsfc.nasa.gov/pub/software/cdf/dist/latest/ma
 ARG MATLAB_MICE="https://naif.jpl.nasa.gov/pub/naif/toolkit//MATLAB/PC_Linux_GCC_MATLAB9.x_64bit/packages/mice.tar.Z"
 
 # Change matlab user id to chosen id so it has the specified access
-RUN usermod -u ${USERID} matlab
+RUN usermod -u ${IMAP_USERID} matlab
 
 WORKDIR /tmp
 USER matlab
@@ -57,7 +57,8 @@ COPY ${SRC_DIR}/ /home/matlab/Documents/MATLAB/
 
 FROM python:${PYTHON_VERSION}-slim AS compile-image
 
-ARG USERID
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
 
 ARG TOOL_PACKAGE="imap_mag-*.tar.gz"
 ARG PYTHON_VERSION
@@ -72,9 +73,9 @@ RUN apt-get update && apt-get install -y libpq-dev gcc
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-RUN adduser -u ${USERID} --disabled-password --gecos "" appuser
+RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME}
 
-USER appuser
+USER ${IMAP_USERNAME}
 
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
@@ -87,38 +88,39 @@ RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
 
-ARG USERID
+ARG IMAP_USERNAME="imap_pipeline"
+ARG IMAP_USERID=5679
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
 COPY --from=matlab_install /home/matlab/Documents/MATLAB /home/matlab/Documents/MATLAB
 
-COPY --from=compile-image /home/appuser/.local /home/appuser/.local
+COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
 
 RUN apt-get update && apt-get install -y libxt6
 
-RUN adduser -u ${USERID} --disabled-password --gecos "" appuser && \
-    chown -R appuser /app && \
+RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} && \
+    chown -R ${IMAP_USERNAME} /app && \
     mkdir -p /data && \
-    chown -R appuser /data && \
-    chown -R appuser /home/appuser && \
-    chmod +x /app/example-entrypoint.sh
+    chown -R ${IMAP_USERNAME} /data && \
+    chown -R ${IMAP_USERNAME} /home/appuser && \
+    chmod +x /app/entrypoint.sh
 
 WORKDIR /app
-USER appuser
+USER ${IMAP_USERNAME}
 
 # Make sure scripts in .local are usable:
-ENV PATH="$PATH:/home/appuser/.local/bin:/opt/matlab/R2024a/bin"
+
 ENV PREFECT_HOME=/app/.prefect
 ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 
 #include the prefect workflows
 COPY src/ /app/
 
-#RUN matlab -nojvm -nodesktop -batch "addpath(genpath(\"/home/matlab/Documents/MATLAB\")); savepath"
+ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/R2024a/bin"
 
 # Now the imap-mag CLI is available on the path and
-# the 3.12 python package for imap-mag is intalled at /home/appuser/.local/bin
+# the 3.12 python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
 CMD ["/app/example-entrypoint.sh"]
