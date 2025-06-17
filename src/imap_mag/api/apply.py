@@ -6,9 +6,17 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig
-from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from imap_mag.outputManager import OutputManager, StandardSPDFMetadataProvider
+from imap_mag.api.apiUtils import (
+    initialiseLoggingForCommand,
+    prepareWorkFile,
+)
+from imap_mag.config import AppSettings
+from imap_mag.io import (
+    CalibrationLayerMetadataProvider,
+    InputManager,
+    OutputManager,
+    StandardSPDFMetadataProvider,
+)
 from mag_toolkit.calibration import CalibrationApplicator
 
 logger = logging.getLogger(__name__)
@@ -20,20 +28,53 @@ class FileType(Enum):
     JSON = "json"
 
 
+def prepare_layers_for_application(layers, appSettings):
+    """
+    Prepare the calibration layers for application by fetching the versioned files.
+    """
+    inputManager = InputManager(appSettings.data_store)
+    workLayers = []
+    for layer in layers:
+        cal_layer_metadata = CalibrationLayerMetadataProvider.from_filename(layer)
+        if not cal_layer_metadata:
+            logger.error(f"Could not parse metadata from calibration layer: {layer}")
+            raise ValueError(
+                f"Could not parse metadata from calibration layer: {layer}"
+            )
+        versioned_cal_file = inputManager.get_versioned_file(
+            metadata_provider=cal_layer_metadata, latest_version=False
+        )
+        workLayers.append(prepareWorkFile(versioned_cal_file, appSettings.work_folder))
+    return workLayers
+
+
+def prepare_rotation_layer_for_application(rotation, appSettings):
+    """
+    Prepare the rotation layer for application by fetching the versioned file.
+    """
+    if rotation:
+        inputManager = InputManager(appSettings.data_store)
+        rotation_metadata = StandardSPDFMetadataProvider.from_filename(rotation)
+        if not rotation_metadata:
+            logger.error(f"Could not parse metadata from rotation file: {rotation}")
+            raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
+        versioned_rotation_file = inputManager.get_versioned_file(
+            metadata_provider=rotation_metadata, latest_version=False
+        )
+        return prepareWorkFile(versioned_rotation_file, appSettings.work_folder)
+    return None
+
+
 # E.g., imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
     layers: Annotated[
         list[str],
         typer.Option(help="Calibration layers to apply to the input science file"),
     ],
-    from_date: Annotated[
+    date: Annotated[
         datetime,
-        typer.Option("--from", help="Date to apply calibration parameters from"),
+        typer.Option("--from", help="Date of the input file data"),
     ],
-    to_date: Annotated[
-        datetime, typer.Option("--to", help="Date to apply calibration parameters to")
-    ],
-    config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
     calibration_output_type: Annotated[
         str, typer.Option(help="Output type of the calibration file")
     ] = FileType.CDF.value,
@@ -41,9 +82,7 @@ def apply(
         str, typer.Option(help="Output type of the L2 file")
     ] = FileType.CDF.value,
     rotation: Annotated[Path | None, typer.Option()] = None,
-    input: str = typer.Argument(
-        help="The file name or pattern to match for the input file"
-    ),
+    input: str = typer.Argument(help="The file name for the input file"),
 ):
     """
     Apply calibration rotation and layers to an input science file.
@@ -51,52 +90,47 @@ def apply(
     imap-mag calibration apply --from [date] --to [date] --rotation [rotation] [layers] [input]
     e.g. imap-mag calibration apply --from 2025-10-17 --to 2025-10-17 --rotation imap_mag_l2-calibration-matrices_20251017_v004.cdf 17-10-2025_17-10-2025_noop_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
     """
-    configFile: appConfig.CommandConfigBase = commandInit(config)
+    app_settings = AppSettings()  # type: ignore
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
 
-    input_folder = "l1b" if "burst" in input else "l1c"
-    full_input_path = (
-        Path(configFile.source.folder)
-        / input_folder
-        / str(from_date.year)
-        / f"{from_date.month:02d}"
-        / input
+    original_input_metadata = StandardSPDFMetadataProvider.from_filename(input)  # type: ignore
+
+    if not original_input_metadata:
+        logger.error(f"Could not parse metadata from input file: {input}")
+        raise ValueError(f"Could not parse metadata from input file: {input}")
+
+    input_manager = InputManager(app_settings.data_store)
+    versioned_file = input_manager.get_versioned_file(
+        metadata_provider=original_input_metadata, latest_version=False
     )
 
-    workDataFile = prepareWorkFile(Path(full_input_path), configFile.work_folder)
+    workDataFile = prepareWorkFile(versioned_file, app_settings.work_folder)
 
     if workDataFile is None:
         raise ValueError("Data file does not exist")
 
-    workLayers = []
-    for layer in layers:
-        full_layer_path = (
-            Path(configFile.source.folder)
-            / "calibration"
-            / str(from_date.year)
-            / f"{from_date.month:02d}"
-            / layer
-        )
-        workLayers.append(prepareWorkFile(full_layer_path, configFile.work_folder))
+    workLayers = prepare_layers_for_application(layers, app_settings)
+    workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
-    if rotation:
-        full_rotation_path = (
-            Path(configFile.source.folder)
-            / "calibration"
-            / str(from_date.year)
-            / f"{from_date.month:02d}"
-            / rotation
-        )
+    l2_metadata_provider = StandardSPDFMetadataProvider(
+        level="l2",
+        content_date=date,
+        descriptor="norm-mago",
+        version=0,
+        extension=l2_output_type,
+    )
+    cal_metadata_provider = StandardSPDFMetadataProvider(
+        descriptor="l2-norm-offsets",
+        content_date=date,
+        version=0,
+        extension=calibration_output_type,
+    )
 
-        workRotationFile = prepareWorkFile(full_rotation_path, configFile.work_folder)
-    else:
-        workRotationFile = None
-
-    workCalFile = configFile.work_folder / f"calibration.{calibration_output_type}"
-
-    workL2File = configFile.work_folder / f"L2.{l2_output_type}"
+    workCalFile = app_settings.work_folder / cal_metadata_provider.get_filename()
+    workL2File = app_settings.work_folder / l2_metadata_provider.get_filename()
 
     applier = CalibrationApplicator()
-
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
@@ -104,25 +138,8 @@ def apply(
         workLayers, workRotationFile, workDataFile, workCalFile, workL2File
     )
 
-    l2_metadata_provider = StandardSPDFMetadataProvider(
-        level="l2",
-        date=from_date,
-        descriptor="norm-mago",
-        version=0,
-        extension=l2_output_type,
-    )
-    cal_metadata_provider = StandardSPDFMetadataProvider(
-        level="l2",
-        descriptor="norm-offsets",
-        date=from_date,
-        version=0,
-        extension=calibration_output_type,
-    )
+    outputManager = OutputManager(app_settings.data_store)
 
-    outputManager = OutputManager(configFile.destination.folder)
-
-    logger.info(f"Writing offsets file to {cal_file}")
-    logger.info(f"Writing L2 file to {L2_file}")
     outputManager.add_file(L2_file, l2_metadata_provider)
     outputManager.add_file(cal_file, cal_metadata_provider)
 

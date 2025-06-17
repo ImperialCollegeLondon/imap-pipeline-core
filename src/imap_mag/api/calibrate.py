@@ -11,9 +11,9 @@ from imap_mag.config import AppSettings
 from imap_mag.io import (
     CalibrationLayerMetadataProvider,
     InputManager,
+    OutputManager,
     StandardSPDFMetadataProvider,
 )
-from imap_mag.outputManager import OutputManager
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationMethod,
@@ -66,13 +66,23 @@ def calibrate(
 
     level = Level.level_1b if mode == ScienceMode.Burst else Level.level_1c
     metadata_provider = StandardSPDFMetadataProvider(
-        level=level,
+        level=level.value,
         content_date=date,
         descriptor=f"{mode.short_name}-{sensor.value.lower()}",
+        extension="cdf",
     )
 
     input_manager = InputManager(app_settings.data_store)
     input_file = input_manager.get_versioned_file(metadata_provider)
+
+    if not input_file:
+        logging.critical(
+            "Unable to find a file to process matching %s",
+            metadata_provider.get_filename(),
+        )
+        raise FileNotFoundError(
+            f"Unable to find a file to process matching {metadata_provider.get_filename()}"
+        )
 
     workFile = prepareWorkFile(input_file, app_settings.work_folder)
 

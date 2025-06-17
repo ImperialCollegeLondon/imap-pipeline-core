@@ -2,7 +2,7 @@ import glob
 import logging
 from pathlib import Path
 
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import CalibrationLayerMetadataProvider, StandardSPDFMetadataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class InputManager:
 
     def get_versioned_file(
         self,
-        metadata_provider: StandardSPDFMetadataProvider,
+        metadata_provider: "StandardSPDFMetadataProvider | CalibrationLayerMetadataProvider",
         latest_version: bool = True,
     ) -> Path:
         """Get file from data store."""
@@ -31,7 +31,7 @@ class InputManager:
         folder = self.location / metadata_provider.get_folder_structure()
 
         all_matching_files = [
-            (filename, int(pattern.search(filename).group("version")))
+            (filename, int(pattern.search(filename).group("version")))  # type: ignore
             for filename in glob.glob(folder.as_posix() + "/*")
             if pattern.search(filename)
         ]
