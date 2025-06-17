@@ -10,7 +10,11 @@ from prefect.client.schemas.objects import (
 from prefect.variables import Variable
 
 from prefect_server.constants import CONSTANTS
-from prefect_server.performCalibration import apply_flow, calibrate_flow
+from prefect_server.performCalibration import (
+    apply_flow,
+    calibrate_and_apply_flow,
+    calibrate_flow,
+)
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
@@ -134,7 +138,20 @@ def deploy_flows(local_debug: bool = False):
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
-    matlab_deployables = (calibration_deployable, apply_deployable)
+    calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
+        name="calibrate_and_apply",
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    matlab_deployables = (
+        calibration_deployable,
+        apply_deployable,
+        calibrate_and_apply_deployable,
+    )
 
     deployables = (
         poll_hk_deployable,
