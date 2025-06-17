@@ -18,7 +18,6 @@ def hyphenize(field: str):
 
 class Source(BaseModel):
     folder: Path
-    calibration_folder: Optional[Path] = None
 
 
 class Destination(BaseModel):
