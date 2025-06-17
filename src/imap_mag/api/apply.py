@@ -17,6 +17,7 @@ from imap_mag.io import (
     OutputManager,
     StandardSPDFMetadataProvider,
 )
+from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationApplicator
 
 logger = logging.getLogger(__name__)
@@ -121,10 +122,10 @@ def apply(
         extension=l2_output_type,
     )
     norm_or_burst = (
-        "burst"
+        ScienceMode.Burst.short_name
         if original_input_metadata.descriptor
-        and "burst" in original_input_metadata.descriptor
-        else "norm"
+        and ScienceMode.Burst.short_name in original_input_metadata.descriptor
+        else ScienceMode.Normal.short_name
     )
     cal_metadata_provider = StandardSPDFMetadataProvider(
         descriptor=f"l2-{norm_or_burst}-offsets",
