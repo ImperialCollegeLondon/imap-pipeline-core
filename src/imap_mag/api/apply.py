@@ -115,7 +115,7 @@ def apply(
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
     l2_metadata_provider = StandardSPDFMetadataProvider(
-        level="l2",
+        level="l2-pre",
         content_date=date,
         descriptor=original_input_metadata.descriptor,
         version=0,

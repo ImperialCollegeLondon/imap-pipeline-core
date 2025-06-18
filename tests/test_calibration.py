@@ -21,32 +21,6 @@ from .util.miscellaneous import (  # noqa: F401
 )
 
 
-def get_test_configuration_content():
-    return """
-    work_folder: '.work'
-    data_store:  'output/'
-    packet_definition: 'xtce/tlm_20241024.xml'
-
-    # Command specific configuration:
-    fetch_binary:
-        api:
-            url_base: 'https://lasp.colorado.edu/ops/imap/poda/dap2/'
-            auth_code:
-        work_sub_folder:
-        publish_to_data_store: true
-
-    fetch_science:
-        api:
-            url_base: 'https://api.dev.imap-mission.com'
-            auth_code:
-        work_sub_folder:
-        publish_to_data_store: true
-
-    process:
-        work_sub_folder:
-    """
-
-
 def prepare_test_file(test_file, sub_folders, year, month, rename=None):
     """
     Prepare a calibration test file by copying the specified calibration layer
@@ -91,7 +65,7 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
     )
 
     assert Path(
-        "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
+        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert Path(
         "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_v000.cdf"
@@ -119,7 +93,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
         )
 
     assert not Path(
-        "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
     ).exists()
     assert not Path(
         "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_v001.cdf"
@@ -144,7 +118,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         )
 
     assert not Path(
-        "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v000.cdf"
+        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert not Path(
         "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_v000.cdf"
@@ -173,7 +147,7 @@ def test_apply_performs_correct_rotation(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
@@ -211,7 +185,7 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2/2025/10/imap_mag_l2_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
