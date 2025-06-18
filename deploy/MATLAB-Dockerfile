@@ -97,7 +97,7 @@ COPY --from=matlab_install /home/matlab/Documents/MATLAB /home/matlab/Documents/
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
 
-RUN apt-get update && apt-get install -y libxt6
+RUN apt-get update && apt-get install -y libxt6 libgdk-pixbuf2.0-0
 
 RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} && \
     chown -R ${IMAP_USERNAME} /app && \
