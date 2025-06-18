@@ -1,5 +1,6 @@
 import abc
 import logging
+import re
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,10 @@ class IFileMetadataProvider(abc.ABC):
     @abc.abstractmethod
     def get_folder_structure(self) -> str:
         """Retrieve folder structure."""
+
+    @abc.abstractmethod
+    def get_unversioned_pattern(self) -> re.Pattern:
+        """Get regex pattern for unversioned files."""
 
     @abc.abstractmethod
     def get_filename(self) -> str:

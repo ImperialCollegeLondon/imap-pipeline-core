@@ -2,7 +2,9 @@ import glob
 import logging
 from pathlib import Path
 
-from imap_mag.io import CalibrationLayerMetadataProvider, StandardSPDFMetadataProvider
+from imap_mag.io import (
+    IFileMetadataProvider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +19,10 @@ class InputManager:
 
     def get_versioned_file(
         self,
-        metadata_provider: "StandardSPDFMetadataProvider | CalibrationLayerMetadataProvider",
+        metadata_provider: IFileMetadataProvider,
         latest_version: bool = True,
     ) -> Path:
         """Get file from data store."""
-
-        if not metadata_provider.content_date:
-            logger.error("No 'content_date' defined. Cannot generate filename")
-            raise ValueError("No 'content_date' defined. Cannot generate filename.")
 
         pattern = metadata_provider.get_unversioned_pattern()
 
