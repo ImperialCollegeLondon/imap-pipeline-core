@@ -1,9 +1,0 @@
-source:
-  folder: /data/science/imap/mag/l1b/2025/5
-  calibration_folder: /data/science/imap/mag/calibration/2025/5
-
-work-folder: .work
-
-destination:
-  folder: /data/science/imap/mag/l2
-  filename: imap_mag_l2_burst-mago_20250506_v000.csv
