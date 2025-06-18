@@ -83,7 +83,7 @@ def calibrate_and_apply_flow(
 
 
 @flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION,
     log_prints=True,
     flow_run_name=generate_apply_calibration_flow_run_name,
 )
