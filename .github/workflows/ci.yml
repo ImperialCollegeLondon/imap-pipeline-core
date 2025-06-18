@@ -270,8 +270,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=matlab_imap_pipeline_core
-          cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core
+          cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
+          cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
 
   test_on_windows:
     strategy:
