@@ -54,7 +54,11 @@ def calibrate_flow(
     return calibrate(date=date, method=method, mode=mode, sensor=sensor)
 
 
-@flow(name=PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY, log_prints=True)
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY,
+    log_prints=True,
+    flow_run_name=generate_calibrate_and_apply_flow_run_name,
+)
 def calibrate_and_apply_flow(
     date: datetime,
     method: CalibrationMethod,
