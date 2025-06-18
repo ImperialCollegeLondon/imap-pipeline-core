@@ -222,6 +222,13 @@ jobs:
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Check out calibration code
+        uses: actions/checkout@v4
+        with:
+            path: 'src/matlab'
+            repository: ImperialCollegeLondon/IMAP_MAG_Experimental_Calibration
+            ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+
       - name: build
         run: ./build.sh --skip-tests
 
