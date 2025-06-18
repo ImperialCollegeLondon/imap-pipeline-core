@@ -1,5 +1,6 @@
 """Tests for `OutputManager` class."""
 
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -241,6 +242,9 @@ def test_get_filename_error_on_no_required_parameter(provider):
 class TestMetadataProvider(IFileMetadataProvider):
     def supports_versioning(self) -> bool:
         return False
+
+    def get_unversioned_pattern(self):
+        return re.compile("")
 
     def get_folder_structure(self) -> str:
         return "abc"
