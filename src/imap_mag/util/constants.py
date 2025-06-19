@@ -7,3 +7,6 @@ class CONSTANTS:
     IMAP_EPOCH = np.datetime64("2010-01-01T00:00:00", "ns")
     J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
     J2000_EPOCH_POSIX = datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
+
+    WEBPODA_URL = "https://lasp.colorado.edu/ops/imap/poda/dap2/"
+    SDC_URL = "https://api.dev.imap-mission.com"

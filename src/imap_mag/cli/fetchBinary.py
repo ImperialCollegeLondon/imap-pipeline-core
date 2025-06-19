@@ -51,7 +51,7 @@ class FetchBinary:
             start_date = datetime.combine(start_date, datetime.min.time())
             end_date = start_date + timedelta(days=1)
 
-        # Download the data in chunks of 1 day.
+        # Download data as a whole.
         file = self.__web_poda.download(
             packet=packet,
             start_date=start_date,
