@@ -82,6 +82,15 @@ jobs:
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Ensure tag and version match (tag builds only)
+        run: |
+          if [[ "${{ github.ref_name }}" != "v${{ env.PACKAGE_VERSION }}" ]]; then
+            echo "Tag and version do not match. Tag: ${{ github.ref_name }}, Version: ${{ env.PACKAGE_VERSION }}"
+            exit 1
+          fi
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2
 
@@ -221,6 +230,15 @@ jobs:
           echo "Version used by poetry: $(poetry version --short)"
           echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Ensure tag and version match (tag builds only)
+        run: |
+          if [[ "${{ github.ref_name }}" != "v${{ env.PACKAGE_VERSION }}" ]]; then
+            echo "Tag and version do not match. Tag: ${{ github.ref_name }}, Version: ${{ env.PACKAGE_VERSION }}"
+            exit 1
+          fi
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository

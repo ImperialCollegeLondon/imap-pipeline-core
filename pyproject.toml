@@ -1,7 +1,7 @@
 [project]
 requires-python = ">=3.10"
 name = "imap-mag"
-version = "2.0.1"
+version = "2.1.0"
 
 [tool.poetry]
 name = "imap-mag"
