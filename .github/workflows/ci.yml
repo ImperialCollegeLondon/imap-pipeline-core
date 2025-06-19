@@ -3,16 +3,16 @@ name: Dev build CI
 on:
   push:
     paths-ignore:
-      - 'README**'
+      - "README**"
     branches:
-      - '**'
+      - "**"
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
     branches:
-      - '*'
+      - "*"
     paths-ignore:
-      - 'README**'
+      - "README**"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -30,9 +30,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PREFERED_PYTHON_VERSION: '3.12'
+  PREFERED_PYTHON_VERSION: "3.12"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
-  CALIBRATION_CODE_LOCATION: 'src/matlab/calibration'
+  CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python-versions: ['3.10', '3.11', '3.12']
+        python-versions: ["3.10", "3.11", "3.12"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -169,7 +169,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.python-versions }})
-          path: 'test-results.xml'
+          path: "test-results.xml"
           reporter: java-junit
 
       - name: Coverage Report
@@ -193,7 +193,7 @@ jobs:
   matlab-build:
     strategy:
       matrix:
-        python-versions: ['3.10', '3.11', '3.12']
+        python-versions: ["3.10", "3.11", "3.12"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -244,12 +244,12 @@ jobs:
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
         uses: actions/checkout@v4
         with:
-            path: ${{ env.CALIBRATION_CODE_LOCATION}}
-            sparse-checkout: |
-                +calibration
-                +general
-            repository: ${{ vars.CALIBRATION_REPO }}
-            ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+          path: ${{ env.CALIBRATION_CODE_LOCATION}}
+          sparse-checkout: |
+            +calibration
+            +general
+          repository: ${{ vars.CALIBRATION_REPO }}
+          ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
 
       - name: build
         run: ./build.sh --skip-tests
@@ -305,7 +305,7 @@ jobs:
   test_on_windows:
     strategy:
       matrix:
-        python-versions: ['3.10', '3.11', '3.12']
+        python-versions: ["3.10", "3.11", "3.12"]
         os: [windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -336,9 +336,8 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (${{ matrix.os }}) (${{ matrix.python-versions }})
-          path: 'test-results.xml'
+          path: "test-results.xml"
           reporter: java-junit
-
 
   build_single_file_binary:
     strategy:
@@ -356,75 +355,75 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-python@v5
-          with:
-            python-version: ${{ env.PREFERED_PYTHON_VERSION }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PREFERED_PYTHON_VERSION }}
 
-        - name: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Set REVISION
+        run: echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Declare version variables for dev builds
+        id: variables_step_dev
+        run: |
+          # Override the version with a dev suffix because we are not on a tag. Tag builds pull version directly from pyproject.toml
+          poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
+          echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
+          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
+          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+
+      - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
+        id: variables_step
+        run: |
+          echo "Version used by poetry: $(poetry version --short)"
+          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
+          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
+        shell: bash
+
+      - uses: addnab/docker-run-action@v3
+        with:
+          registry: gcr.io
+          image: ${{ matrix.image }}
+          options: -v ${{ github.workspace }}:/src/
           run: |
-              python -m pip install --upgrade pip
-              pip install poetry
+            python -m pip install poetry
+            python -m poetry self add poetry-pyinstaller-plugin
+            python -m poetry install
+            python -m poetry build
+            if [ ! -f dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }} ]
+            then
+                echo "Cannot find dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }}"
+                exit 1
+            fi
 
-        - name: Set REVISION
-          run: echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Zip up the binary
+        run: |
+          sudo chown -R $(whoami):$(whoami) .
+          cp pyinstaller/${{ matrix.folder }}/${{ matrix.executable}} .
+          zip -r ${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip  ${{ matrix.executable }}
+          echo "PACKAGE_ZIP=${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip" >> $GITHUB_ENV
+        working-directory: dist
 
-        - name: Declare version variables for dev builds
-          id: variables_step_dev
-          run: |
-            # Override the version with a dev suffix because we are not on a tag. Tag builds pull version directly from pyproject.toml
-            poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
-            echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
-            echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
-            echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-          if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          shell: bash
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_ZIP }}
+          path: dist/${{ env.PACKAGE_ZIP }}
+          if-no-files-found: error
 
-        - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
-          id: variables_step
-          run: |
-            echo "Version used by poetry: $(poetry version --short)"
-            echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
-            echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-          shell: bash
-
-        - uses: addnab/docker-run-action@v3
-          with:
-            registry: gcr.io
-            image: ${{ matrix.image }}
-            options: -v ${{ github.workspace }}:/src/
-            run: |
-                python -m pip install poetry
-                python -m poetry self add poetry-pyinstaller-plugin
-                python -m poetry install
-                python -m poetry build
-                if [ ! -f dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }} ]
-                then
-                    echo "Cannot find dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }}"
-                    exit 1
-                fi
-
-        - name: Zip up the binary
-          run: |
-            sudo chown -R $(whoami):$(whoami) .
-            cp pyinstaller/${{ matrix.folder }}/${{ matrix.executable}} .
-            zip -r ${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip  ${{ matrix.executable }}
-            echo "PACKAGE_ZIP=${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip" >> $GITHUB_ENV
-          working-directory: dist
-
-        - name: Upload build artifacts
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ env.PACKAGE_ZIP }}
-            path: dist/${{ env.PACKAGE_ZIP }}
-            if-no-files-found: error
-
-        - name: Upload artifacts to release (tagged only))
-          uses: softprops/action-gh-release@v2
-          if: startsWith(github.ref, 'refs/tags/')
-          with:
-            draft: false
-            prerelease: false
-            fail_on_unmatched_files: true
-            files: |
-              dist/${{ env.PACKAGE_ZIP }}
+      - name: Upload artifacts to release (tagged only))
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/${{ env.PACKAGE_ZIP }}
