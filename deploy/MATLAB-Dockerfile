@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 ARG PYTHON_VERSION="3.12"
+ARG USERID=5678
 FROM mathworks/matlab:r2024a AS matlab_install
 
 USER root
@@ -50,7 +51,7 @@ RUN mkdir -p /home/matlab/Documents/MATLAB/Libraries/MICE \
 
 ARG SRC_DIR="src/matlab"
 
-COPY ${SRC_DIR}/*.p /home/matlab/Documents/MATLAB/
+COPY ${SRC_DIR}/ /home/matlab/Documents/MATLAB/
 
 # For more information, please refer to https://aka.ms/vscode-docker-python
 
@@ -78,7 +79,7 @@ USER ${IMAP_USERNAME}
 
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
-RUN python3 -m pip install --user -r requirements.txt
+RUN python3 -m pip install --user --no-deps -r requirements.txt
 
 # now install the imap-mag package as the user
 COPY dist/python${PYTHON_VERSION}/${TOOL_PACKAGE} python${PYTHON_VERSION}/
@@ -91,7 +92,7 @@ ARG IMAP_USERNAME="imap_pipeline"
 ARG IMAP_USERID=5679
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
-COPY --from=matlab_install /home/matlab/Documents/MATLAB /opt/matlab/R2024a/toolbox/local
+COPY --from=matlab_install /home/matlab/Documents/MATLAB /home/matlab/Documents/MATLAB
 
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
@@ -102,12 +103,20 @@ RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} &&
     chown -R ${IMAP_USERNAME} /app && \
     mkdir -p /data && \
     chown -R ${IMAP_USERNAME} /data && \
+    chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME} && \
     chmod +x /app/entrypoint.sh
 
 WORKDIR /app
 USER ${IMAP_USERNAME}
 
 # Make sure scripts in .local are usable:
+
+ENV PREFECT_HOME=/app/.prefect
+ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
+
+#include the prefect workflows
+COPY src/ /app/
+
 ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/R2024a/bin"
 
 # Now the imap-mag CLI is available on the path and

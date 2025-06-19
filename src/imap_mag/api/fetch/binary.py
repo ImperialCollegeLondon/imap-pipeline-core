@@ -68,7 +68,7 @@ def fetch_binary(
         {"fetch_binary": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
-    app_settings = AppSettings(**settings_overrides)
+    app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
     initialiseLoggingForCommand(work_folder)
 

@@ -26,6 +26,8 @@ class CONSTANTS:
 
         PREFECT_LOGGING_EXTRA_LOGGERS = "PREFECT_LOGGING_EXTRA_LOGGERS"
 
+        MATLAB_LICENSE = "MLM_LICENSE_FILE"
+
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
         DEFAULT = "default"
@@ -34,6 +36,9 @@ class CONSTANTS:
     class FLOW_NAMES:
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
+        CALIBRATE = "calibrate"
+        APPLY_CALIBRATION = "apply-calibration"
+        CALIBRATE_AND_APPLY = "calibrate-and-apply"
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"

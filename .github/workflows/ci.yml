@@ -31,6 +31,7 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: '3.12'
+  MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -80,6 +81,9 @@ jobs:
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
       - name: build
         run: ./build.sh
 
@@ -128,6 +132,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Zip up the folder
         run: zip -r ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip python${{matrix.python-versions}}
@@ -173,6 +179,99 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
+
+  matlab-build:
+    strategy:
+      matrix:
+        python-versions: ['3.10', '3.11', '3.12']
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    # map step outputs to job outputs so they can be share among jobs
+    outputs:
+      package_version: ${{ env.PACKAGE_VERSION }}
+      package_name: ${{ env.PACKAGE_NAME }}
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-versions }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Declare version variables for dev builds
+        id: variables_step_dev
+        run: |
+          # Override the version with a dev suffix because we are not on a tag. Tag builds pull version directly from pyproject.toml
+          poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
+          echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
+          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
+          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+
+      - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
+        id: variables_step
+        run: |
+          echo "Version used by poetry: $(poetry version --short)"
+          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
+          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: build
+        run: ./build.sh --skip-tests
+
+      - name: Build wheels and source tarball
+        run: ./pack.sh
+
+      - name: Create Version file
+        run: echo "Version ${{ env.PACKAGE_VERSION }}, SHA ${{ github.sha }}, Ref ${{ github.ref_name }}" >  dist/python${{matrix.python-versions}}/version.txt
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+
+      - name: Login to GitHub Container registry ghcr.io
+        uses: docker/login-action@v3
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            # minimal
+            type=semver,pattern={{version}}
+            # use custom value instead of git tag,prefix=matlab-
+            type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }},prefix=matlab-
+            # set latest tag for default branch
+            type=raw,value=latest,prefix=matlab-
+            # branch event
+            type=ref,event=branch,prefix=matlab-
+            # pull request event
+            type=ref,event=pr,prefix=matlab-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          context: .
+          file: deploy/MATLAB-Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
+          cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
 
   test_on_windows:
     strategy:

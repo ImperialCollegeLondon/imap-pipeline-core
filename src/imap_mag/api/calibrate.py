@@ -1,58 +1,124 @@
 import logging
-import os
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-from imap_mag import appConfig, appUtils
-from imap_mag.api.apiUtils import commandInit, prepareWorkFile
-from mag_toolkit import CDFLoader
-from mag_toolkit.calibration.calibrationFormatProcessor import (
-    CalibrationFormatProcessor,
+from imap_mag.api import apply
+from imap_mag.api.apiUtils import initialiseLoggingForCommand, prepareWorkFile
+from imap_mag.config import AppSettings
+from imap_mag.io import (
+    CalibrationLayerMetadataProvider,
+    InputManager,
+    OutputManager,
+    StandardSPDFMetadataProvider,
 )
-from mag_toolkit.calibration.Calibrator import (
-    Calibrator,
-    CalibratorType,
-    SpinAxisCalibrator,
-    SpinPlaneCalibrator,
+from imap_mag.util import Level, ScienceMode
+from mag_toolkit.calibration import (
+    CalibrationMethod,
+    EmptyCalibrator,
+    ScienceLayer,
+    Sensor,
 )
+
+app = typer.Typer()
+
+logger = logging.getLogger(__name__)
+
+app.command()(apply.apply)
+
+
+# TODO: ?
+def interpolate():
+    pass
+
+
+def publish():
+    pass
 
 
 # E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
-    config: Annotated[Path, typer.Option()] = Path("calibration_config.yaml"),
-    method: Annotated[CalibratorType, typer.Option()] = "SpinAxisCalibrator",
-    input: str = typer.Argument(
-        help="The file name or pattern to match for the input file"
-    ),
+    date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
+    method: Annotated[
+        CalibrationMethod, typer.Option(help="Calibration method")
+    ] = CalibrationMethod.KEPKO,
+    mode: Annotated[
+        ScienceMode, typer.Option(help="Science mode")
+    ] = ScienceMode.Normal,
+    sensor: Annotated[
+        Sensor, typer.Option(help="Sensor to calibrate, e.g., mago")
+    ] = Sensor.MAGO,
 ):
-    # TODO: Define specific calibration configuration
-    # Using AppConfig for now to piggyback off of configuration
-    # verification and work area setup
-    configFile: appConfig.CommandConfigBase = commandInit(config)
+    """
+    Generate calibration parameters for a given input file.
+    imap-mag calibrate --from [date] --to [date] --method [method] [input]
 
-    workFile = prepareWorkFile(input, configFile)
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
+
+    """
+    app_settings = AppSettings()  # type: ignore
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
+
+    # TODO: Input manager for getting data of a given level?
+
+    level = Level.level_1b if mode == ScienceMode.Burst else Level.level_1c
+    metadata_provider = StandardSPDFMetadataProvider(
+        level=level.value,
+        content_date=date,
+        descriptor=f"{mode.short_name}-{sensor.value.lower()}",
+        extension="cdf",
+    )
+
+    input_manager = InputManager(app_settings.data_store)
+    input_file = input_manager.get_versioned_file(metadata_provider)
+
+    if not input_file:
+        logging.critical(
+            "Unable to find a file to process matching %s",
+            metadata_provider.get_filename(),
+        )
+        raise FileNotFoundError(
+            f"Unable to find a file to process matching {metadata_provider.get_filename()}"
+        )
+
+    workFile = prepareWorkFile(input_file, app_settings.work_folder)
 
     if workFile is None:
         logging.critical(
-            "Unable to find a file to process in %s", configFile.source.folder
+            "Unable to find a file to process matching %s", input_file.name
         )
         raise typer.Abort()
 
-    calibrator: Calibrator
+    scienceLayer = ScienceLayer.from_file(workFile)
+    scienceLayerMetadata = CalibrationLayerMetadataProvider(
+        calibration_descriptor="science", content_date=date
+    )
+    scienceLayerPath = app_settings.work_folder / scienceLayerMetadata.get_filename()
+    scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
-        case CalibratorType.SPINAXIS:
-            calibrator = SpinAxisCalibrator()
-        case CalibratorType.SPINPLANE:
-            calibrator = SpinPlaneCalibrator()
+        case CalibrationMethod.NOOP:
+            calibrator = EmptyCalibrator()
+        case _:
+            raise ValueError("Calibration method is not implemented")
 
-    inputData = CDFLoader.load_cdf(workFile)
-    calibration = calibrator.generateCalibration(inputData)
+    calibrationLayerMetadata = CalibrationLayerMetadataProvider(
+        calibration_descriptor=method.value, content_date=date
+    )
+    result: Path = calibrator.runCalibration(
+        date,
+        scienceLayerPath,
+        Path(calibrationLayerMetadata.get_filename()),
+        app_settings.data_store,
+        None,
+    )
 
-    tempOutputFile = os.path.join(configFile.work_folder, "calibration.json")
+    outputManager = OutputManager(app_settings.data_store)
+    (output_calibration_path, _) = outputManager.add_file(
+        result, metadata_provider=calibrationLayerMetadata
+    )  # type: ignore
 
-    result = CalibrationFormatProcessor.writeToFile(calibration, tempOutputFile)
-
-    appUtils.copyFileToDestination(Path(result), configFile.destination)
+    return (output_calibration_path, input_file)

@@ -28,4 +28,5 @@ find dist/ -maxdepth 1 -type f -name '*' -exec mv {} dist/python$PYTHON_VERSION 
 dockerFolder=dist/docker
 mkdir -p $dockerFolder
 cp deploy/entrypoint.sh $dockerFolder
+cp -r resource $dockerFolder
 cp *.yaml $dockerFolder

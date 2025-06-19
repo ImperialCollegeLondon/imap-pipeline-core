@@ -37,9 +37,7 @@ imap-mag fetch-science --level l1b --start-date $START_DATE --end-date $END_DATE
 
 imap-db query-db
 
-imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250511_v000.cdf
-
-imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1b_norm-mago_20250511_v000.cdf
+imap-mag calibrate --date 2025-10-31 --method noop --sensor MAGo --mode norm
 
 ls -l /data
 
