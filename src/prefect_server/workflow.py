@@ -36,6 +36,10 @@ def deploy_flows(local_debug: bool = False):
         "IMAP_IMAGE",
         "ghcr.io/imperialcollegelondon/imap-pipeline-core",
     )
+    matlab_docker_image = os.getenv(
+        "IMAP_MATLAB_IMAGE",
+        "ghcr.io/imperialcollegelondon/imap-pipeline-core/matlab-imap-pipeline-core",
+    )
     docker_tag = os.getenv(
         "IMAP_IMAGE_TAG",
         "main",
@@ -182,7 +186,7 @@ def deploy_flows(local_debug: bool = False):
             work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
             build=False,
             push=False,
-            image=f"{docker_image}:{matlab_docker_tag}",
+            image=f"{matlab_docker_image}:{matlab_docker_tag}",
         )  # type: ignore
 
         if len(deploy_ids) != len(deployables) or len(matlab_deploy_ids) != len(  # type: ignore

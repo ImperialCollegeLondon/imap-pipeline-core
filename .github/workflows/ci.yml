@@ -32,6 +32,7 @@ concurrency:
 env:
   PREFERED_PYTHON_VERSION: '3.12'
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
+  CALIBRATION_CODE_LOCATION: 'src/matlab/calibration'
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -222,6 +223,16 @@ jobs:
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
+        uses: actions/checkout@v4
+        with:
+            path: ${{ env.CALIBRATION_CODE_LOCATION}}
+            sparse-checkout: |
+                +calibration
+                +general
+            repository: ${{ vars.CALIBRATION_REPO }}
+            ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+
       - name: build
         run: ./build.sh --skip-tests
 
@@ -248,7 +259,7 @@ jobs:
         uses: docker/metadata-action@v5
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}/${{ vars.CALIBRATION_IMAGE_NAME }}
           tags: |
             # minimal
             type=semver,pattern={{version}}
