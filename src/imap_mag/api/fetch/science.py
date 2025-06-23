@@ -59,7 +59,6 @@ def fetch_science(
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
-            "--mode",
             case_sensitive=False,
             help="Whether to download only or download and update progress in database",
         ),
@@ -75,7 +74,7 @@ def fetch_science(
         {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
-    app_settings = AppSettings(**settings_overrides)
+    app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
     initialiseLoggingForCommand(work_folder)
 
@@ -87,7 +86,7 @@ def fetch_science(
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
     downloaded_science: dict[Path, SDCMetadataProvider] = (
         fetch_science.download_latest_science(
-            level=level.value,
+            level=level,
             start_date=start_date,
             end_date=end_date,
             use_ingestion_date=use_ingestion_date,

@@ -48,7 +48,6 @@ def fetch_binary(
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
-            "--mode",
             case_sensitive=False,
             help="Whether to download only or download and update progress in database",
         ),
