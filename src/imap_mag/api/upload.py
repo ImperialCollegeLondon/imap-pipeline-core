@@ -27,12 +27,27 @@ def upload(
             writable=False,
         ),
     ],
+    auth_code: Annotated[
+        str,
+        typer.Option(
+            envvar="SDC_AUTH_CODE",
+            help="IMAP Science Data Centre API Key",
+        ),
+    ],
 ) -> None:
-    """Process a single file."""
+    """Upload files to the SDC."""
+
+    if not auth_code:
+        logger.critical("No SDC_AUTH_CODE API key provided")
+        raise ValueError("No SDC_AUTH_CODE API key provided")
 
     logger.info(f"Uploading {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
-    app_settings = AppSettings()  # type: ignore
+    settings_overrides = (
+        {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
+    )
+
+    app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.process)
     initialiseLoggingForCommand(work_folder)
 
