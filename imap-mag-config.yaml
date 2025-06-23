@@ -23,5 +23,11 @@ fetch_science:
     work_sub_folder:
     publish_to_data_store: true
 
+upload:
+    api:
+        url_base: 'https://api.dev.imap-mission.com'
+        auth_code:
+    work_sub_folder:
+
 process:
     work_sub_folder:
