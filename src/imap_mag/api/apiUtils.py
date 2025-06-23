@@ -69,7 +69,19 @@ def initialiseLoggingForCommand(folder):
         raise typer.Abort()
 
 
-def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
+def throw_error_file_not_found(source_folder: Path, filename: str) -> None:
+    """Throw an error if the file is not found."""
+    logger.critical(
+        f"Unable to find file to process in {source_folder} with name/pattern {filename}."
+    )
+    raise FileNotFoundError(
+        f"Unable to find file to process in {source_folder} with name/pattern {filename}."
+    )
+
+
+def prepareWorkFile(
+    file: Path, work_folder: Path, *, throw_if_not_found: bool = False
+) -> Path | None:
     logger.debug(f"Grabbing file matching {file} in {work_folder}")
 
     files: list[Path] = []
@@ -78,6 +90,9 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     filename = file.name
 
     if not source_folder.exists():
+        if throw_if_not_found:
+            throw_error_file_not_found(source_folder, filename)
+
         logger.warning(f"Folder {source_folder} does not exist")
         return None
 
@@ -97,10 +112,7 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
     if len(files) == 0:
-        logger.critical(f"No files matching {filename} found in {source_folder}")
-        raise FileNotFoundError(
-            f"No files matching {filename} found in {source_folder}"
-        )
+        throw_error_file_not_found(source_folder, filename)
 
     logger.info(
         f"Found {len(files)} matching files. Select the most recent one: "

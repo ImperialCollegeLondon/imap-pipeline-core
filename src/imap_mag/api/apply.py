@@ -106,10 +106,9 @@ def apply(
         metadata_provider=original_input_metadata, latest_version=False
     )
 
-    workDataFile = prepareWorkFile(versioned_file, app_settings.work_folder)
-
-    if workDataFile is None:
-        raise ValueError("Data file does not exist")
+    workDataFile = prepareWorkFile(
+        versioned_file, app_settings.work_folder, throw_if_not_found=True
+    )
 
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)

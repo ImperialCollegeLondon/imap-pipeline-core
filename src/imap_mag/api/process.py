@@ -45,17 +45,7 @@ def process(
     work_files: list[Path] = []
 
     for file in files:
-        work_file = prepareWorkFile(file, work_folder)
-
-        if work_file is None:
-            logger.critical(
-                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-            )
-            raise FileNotFoundError(
-                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-            )
-
-        work_files.append(work_file)
+        work_files.append(prepareWorkFile(file, work_folder, throw_if_not_found=True))  # type: ignore
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)

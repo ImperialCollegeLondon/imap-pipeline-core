@@ -84,13 +84,9 @@ def calibrate(
             f"Unable to find a file to process matching {metadata_provider.get_filename()}"
         )
 
-    workFile = prepareWorkFile(input_file, app_settings.work_folder)
-
-    if workFile is None:
-        logging.critical(
-            "Unable to find a file to process matching %s", input_file.name
-        )
-        raise typer.Abort()
+    workFile = prepareWorkFile(
+        input_file, app_settings.work_folder, throw_if_not_found=True
+    )
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerMetadata = CalibrationLayerMetadataProvider(
