@@ -123,6 +123,16 @@ def deploy_flows(local_debug: bool = False):
         job_variables=shared_job_variables,
         tags=[CONSTANTS.PREFECT_TAG],
     )
+    poll_science_l2_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
+        parameters={
+            "modes": ["norm", "burst"],
+            "level": "l2",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
 
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
@@ -161,6 +171,7 @@ def deploy_flows(local_debug: bool = False):
         poll_hk_deployable,
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,
+        poll_science_l2_deployable,
     )
 
     if local_debug:
