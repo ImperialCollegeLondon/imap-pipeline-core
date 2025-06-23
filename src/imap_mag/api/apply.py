@@ -66,7 +66,7 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     return None
 
 
-# E.g., imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
+# E.g., imap-mag apply --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
     layers: Annotated[
         list[str],

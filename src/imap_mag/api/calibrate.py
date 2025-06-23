@@ -38,7 +38,7 @@ def publish():
     pass
 
 
-# E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
+# E.g., imap-mag calibrate --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
     date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
     method: Annotated[

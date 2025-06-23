@@ -1,50 +1,14 @@
 import logging
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 import typer
-import yaml
 
-from imap_mag import appConfig, appLogging
+from imap_mag import appLogging
 
 logger = logging.getLogger(__name__)
 globalState = {"verbose": False}
-
-
-def commandInit(config: Path | None) -> appConfig.CommandConfigBase:
-    # load and verify the config file
-    if config is None:
-        logger.critical("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        configFileDict = yaml.safe_load(open(config))
-        logger.debug(
-            "Config file loaded from %s with content %s: ", config, configFileDict
-        )
-    elif config.is_dir():
-        logger.critical("Config %s is a directory, need a yml file", config)
-        raise typer.Abort()
-    elif not config.exists():
-        logger.critical("The config at %s does not exist", config)
-        raise typer.Abort()
-    else:
-        pass
-
-    configFile = appConfig.CommandConfigBase(**configFileDict)
-
-    # set up the work folder
-    if not configFile.work_folder:
-        configFile.work_folder = Path(".work")
-
-    if not os.path.exists(configFile.work_folder):
-        logger.debug(f"Creating work folder {configFile.work_folder}")
-        os.makedirs(configFile.work_folder)
-
-    initialiseLoggingForCommand(configFile.work_folder)
-
-    return configFile
 
 
 def initialiseLoggingForCommand(folder):
@@ -127,4 +91,4 @@ def prepareWorkFile(
     return work_file
 
 
-# TODO: Need to handloe configuration of calibration folder, and multiple input/output folders
+# TODO: Need to handle configuration of calibration folder, and multiple input/output folders

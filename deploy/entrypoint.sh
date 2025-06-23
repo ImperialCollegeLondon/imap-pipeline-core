@@ -29,16 +29,14 @@ fi
 
 echo "Running pipeline for $START_DATE to $END_DATE"
 
-imap-mag fetch-binary --config config-hk-download.yaml --apid 1063 --start-date $START_DATE --end-date $END_DATE
+imap-mag fetch-binary --apid 1063 --start-date $START_DATE --end-date $END_DATE
 
-imap-mag process --config config-hk-process.yaml power.pkts
+imap-mag process power.pkts
 
-imap-mag fetch-science --level l1b --start-date $START_DATE --end-date $END_DATE --config config-sci.yaml
+imap-mag fetch-science --level l1b --start-date $START_DATE --end-date $END_DATE
 
 imap-db query-db
 
 imap-mag calibrate --date 2025-10-31 --method noop --sensor MAGo --mode norm
 
 ls -l /data
-
-
