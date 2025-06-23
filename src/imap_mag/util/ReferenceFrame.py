@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ReferenceFrame(Enum, str):
+class ReferenceFrame(str, Enum):
     DSRF = "dsrf"
     SRF = "srf"
     RTN = "rtn"
