@@ -12,9 +12,9 @@ from prefect_server.prefectUtils import get_secret_or_env_var
 
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
-    files: list[str] = parameters["files"]
+    files: list[Path] = parameters["files"]
 
-    return f"Upload-{','.join([f for f in files])}-to-SDC"
+    return f"Upload-{','.join([str(f) for f in files])}-to-SDC"
 
 
 @flow(
@@ -44,6 +44,6 @@ async def upload_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
-    logger.info(f"Uploading {len(files)} files:\n{', '.join(str(f) for f in files)}")
+    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
 
     upload(files, auth_code=auth_code)
