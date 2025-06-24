@@ -16,6 +16,9 @@ BEGINNING_OF_IMAP = YESTERDAY
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
+DATASTORE = Path("tests/data")
+
+
 @pytest.fixture(autouse=True)
 def enableLogging():
     appLogging.set_up_logging(
