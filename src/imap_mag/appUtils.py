@@ -1,4 +1,6 @@
 import logging
+import re
+import typing
 from pathlib import Path
 from typing import Optional
 
@@ -46,6 +48,13 @@ def copyFileToDestination(
 
         def get_filename(self) -> str:
             return self.filename
+
+        def get_unversioned_pattern(self) -> re.Pattern:
+            return re.compile(r"")
+
+        @classmethod
+        def from_filename(cls, filename: Path | str) -> typing.Self | None:
+            return cls(str(filename))
 
     if output_manager is None:
         output_manager = OutputManager(destination.parent)

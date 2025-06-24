@@ -32,7 +32,7 @@ class IFileMetadataProvider(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def from_filename(cls, filename: str | Path) -> "IFileMetadataProvider | None":
+    def from_filename(cls, filename: str | Path) -> typing.Self | None:
         """Create a metadata provider from a file name."""
 
 

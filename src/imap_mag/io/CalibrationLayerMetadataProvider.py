@@ -1,5 +1,6 @@
 import logging
 import re
+import typing
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -74,7 +75,7 @@ class CalibrationLayerMetadataProvider(IFileMetadataProvider):
         )
 
     @classmethod
-    def from_filename(cls, filename: str | Path) -> IFileMetadataProvider | None:
+    def from_filename(cls, filename: str | Path) -> typing.Self | None:
         """Create metadata provider from filename."""
 
         match = re.match(
