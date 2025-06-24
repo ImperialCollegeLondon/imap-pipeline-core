@@ -82,7 +82,7 @@ class FetchScience:
                             )
 
                             downloaded[downloaded_file] = SDCMetadataProvider(
-                                level=level,
+                                level=level.value,
                                 descriptor=file["descriptor"],
                                 content_date=datetime.strptime(
                                     file["start_date"], "%Y%m%d"
