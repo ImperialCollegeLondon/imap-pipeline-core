@@ -12,7 +12,7 @@ from imap_mag.cli.fetchScience import (
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.util import MAGSensor, ScienceMode
+from imap_mag.util import Level, MAGSensor, ScienceMode
 from tests.util.miscellaneous import enableLogging, tidyDataFolders  # noqa: F401
 
 
@@ -33,7 +33,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     # Exercise.
     actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
-            level="l1b",
+            level=Level.level_1b,
             start_date=datetime(2025, 5, 2),
             end_date=datetime(2025, 5, 2),
         )
@@ -75,7 +75,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     # Exercise.
     actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
-            level="l1b",
+            level=Level.level_1b,
             start_date=datetime(2025, 5, 2),
             end_date=datetime(2025, 5, 3),
         )
@@ -163,7 +163,7 @@ def test_fetch_binary_different_start_end_dates(
     # Exercise.
     actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
-            level="l1b",
+            level=Level.level_1b,
             start_date=start_date,
             end_date=end_date,
         )
@@ -205,7 +205,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     # Exercise.
     actual_downloaded: dict[Path, SDCMetadataProvider] = (
         fetchScience.download_latest_science(
-            level="l1b",
+            level=Level.level_1b,
             start_date=datetime(2025, 5, 2),
             end_date=datetime(2025, 5, 3),
             use_ingestion_date=True,
