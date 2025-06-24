@@ -252,6 +252,10 @@ class TestMetadataProvider(IFileMetadataProvider):
     def get_filename(self) -> str:
         return "def"
 
+    @classmethod
+    def from_filename(cls, filename: Path | str) -> IFileMetadataProvider | None:
+        return None
+
 
 def test_copy_file_custom_providers(caplog):
     # Set up.
