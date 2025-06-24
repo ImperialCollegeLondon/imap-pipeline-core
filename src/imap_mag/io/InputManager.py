@@ -2,9 +2,7 @@ import glob
 import logging
 from pathlib import Path
 
-from imap_mag.io import (
-    IFileMetadataProvider,
-)
+from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
 
 logger = logging.getLogger(__name__)
 

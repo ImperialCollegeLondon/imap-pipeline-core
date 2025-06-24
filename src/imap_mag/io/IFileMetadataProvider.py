@@ -1,7 +1,9 @@
 import abc
 import logging
 import re
+import typing
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -26,4 +28,12 @@ class IFileMetadataProvider(abc.ABC):
 
     @abc.abstractmethod
     def get_filename(self) -> str:
-        """Retireve file name."""
+        """Retrieve file name."""
+
+    @classmethod
+    @abc.abstractmethod
+    def from_filename(cls, filename: str | Path) -> "IFileMetadataProvider | None":
+        """Create a metadata provider from a file name."""
+
+
+T = typing.TypeVar("T", bound=IFileMetadataProvider)

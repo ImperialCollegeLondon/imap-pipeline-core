@@ -74,9 +74,7 @@ class CalibrationLayerMetadataProvider(IFileMetadataProvider):
         )
 
     @classmethod
-    def from_filename(
-        cls, filename: str | Path
-    ) -> "CalibrationLayerMetadataProvider | None":
+    def from_filename(cls, filename: str | Path) -> IFileMetadataProvider | None:
         """Create metadata provider from filename."""
 
         match = re.match(

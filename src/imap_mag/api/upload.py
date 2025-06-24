@@ -6,10 +6,10 @@ import typer
 
 from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
-    prepareWorkFile,
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings
+from imap_mag.io import InputManager, find_supported_provider
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def upload(
         logger.critical("No SDC_AUTH_CODE API key provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
-    logger.info(f"Uploading {len(files)} files:\n{', '.join(str(f) for f in files)}")
+    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
 
     settings_overrides = (
         {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
@@ -51,13 +51,18 @@ def upload(
     work_folder = app_settings.setup_work_folder_for_command(app_settings.process)
     initialiseLoggingForCommand(work_folder)
 
-    work_files: list[Path] = []
+    resolved_files: list[Path] = []
+    input_manager = InputManager(app_settings.data_store)
 
     for file in files:
-        work_files.append(prepareWorkFile(file, work_folder, throw_if_not_found=True))  # type: ignore
+        metadata_provider = find_supported_provider(file)
+        resolved_file = input_manager.get_versioned_file(
+            metadata_provider, latest_version=False
+        )
+        resolved_files.append(resolved_file)  # type: ignore
 
     logger.info(
-        f"Found {len(work_files)} files for upload:\n{', '.join(str(f) for f in work_files)}"
+        f"Found {len(resolved_files)} files for upload: {', '.join(str(f) for f in resolved_files)}"
     )
 
     # Upload file to SDC.
@@ -66,7 +71,7 @@ def upload(
         sdc_url=app_settings.upload.api.url_base,
     )
 
-    for file in work_files:
+    for file in resolved_files:
         data_access.upload(file.as_posix())
 
-    logger.info(f"Uploaded {len(work_files)} files successfully.")
+    logger.info(f"Uploaded {len(resolved_files)} files successfully.")
