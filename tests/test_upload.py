@@ -124,7 +124,7 @@ def test_failed_sdc_file_upload(wiremock_manager, caplog):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_upload_file_to_sdc_cli(wiremock_manager):
+def test_upload_file_to_sdc_cli(wiremock_manager, caplog):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
@@ -142,10 +142,10 @@ def test_upload_file_to_sdc_cli(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
 
-    assert f"Uploading 1 files: {upload_file}" in result.output
+    assert f"Uploading 1 files: {upload_file}" in caplog.text
     assert (
         f"Found 1 files for upload: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
-        in result.output
+        in caplog.text
     )
 
 

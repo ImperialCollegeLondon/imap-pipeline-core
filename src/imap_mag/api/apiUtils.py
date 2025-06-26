@@ -5,7 +5,7 @@ from pathlib import Path
 
 import typer
 
-from imap_mag import appLogging
+from imap_mag.appLogging import AppLogging
 
 logger = logging.getLogger(__name__)
 globalState = {"verbose": False}
@@ -19,7 +19,7 @@ def initialiseLoggingForCommand(folder):
         folder,
         f"{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.log",
     )
-    if not appLogging.set_up_logging(
+    if not AppLogging.set_up_logging(
         console_log_output="stdout",
         console_log_level=level,
         console_log_color=True,

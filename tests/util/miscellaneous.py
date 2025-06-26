@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from imap_mag import appLogging
+from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider
 
 NOW = datetime(2025, 6, 2, 12, 37, 9)
@@ -21,7 +21,7 @@ DATASTORE = Path("tests/data")
 
 @pytest.fixture(autouse=True)
 def enableLogging():
-    appLogging.set_up_logging(
+    AppLogging.set_up_logging(
         console_log_output="stdout",
         console_log_level="debug",
         console_log_color=True,
