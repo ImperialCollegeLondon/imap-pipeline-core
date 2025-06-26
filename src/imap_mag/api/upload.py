@@ -66,6 +66,8 @@ def upload(
     )
 
     # Upload file to SDC.
+    failed: int = 0
+
     data_access = SDCDataAccess(
         data_dir=work_folder,
         sdc_url=app_settings.upload.api.url_base,
@@ -75,8 +77,15 @@ def upload(
         try:
             data_access.upload(file.as_posix())
         except SDCUploadError as e:
+            failed += 1
             logger.warning(
                 f"Failed to upload file {file}: {e}. Continuing with next file."
             )
 
-    logger.info(f"Uploaded {len(resolved_files)} files successfully.")
+    if failed > 0:
+        logger.error(
+            f"Failed to upload {failed} files. Only {len(resolved_files) - failed} files uploaded successfully."
+        )
+        raise RuntimeError(f"Failed to upload {failed} files.")
+    else:
+        logger.info(f"Uploaded {len(resolved_files)} files successfully.")
