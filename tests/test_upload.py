@@ -22,14 +22,10 @@ from tests.util.miscellaneous import (
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
 
 
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-def test_upload_file(wiremock_manager, caplog):
-    # Set up.
-    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
-    aws_url = "https://s3.us-west-2.amazonaws.com/imap/mag/l1c/2025/10/imap_mag_l1c_norm-mago_20251017_v001.cdf?some-amazon-s3-query-params=12345"
+def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
+    """Add WireMock mapping for a successful SDC upload."""
+
+    aws_url = f"https://s3.us-west-2.amazonaws.com/imap/mag/{upload_file.as_posix()}?some-amazon-s3-query-params=12345"
 
     wiremock_manager.add_string_mapping(
         f"/upload/{upload_file.name}",
@@ -48,6 +44,16 @@ def test_upload_file(wiremock_manager, caplog):
             persistent=False,
         )
     )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_upload_file_to_sdc(wiremock_manager, caplog):
+    # Set up.
+    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     caplog.set_level(logging.DEBUG)
 
@@ -60,10 +66,54 @@ def test_upload_file(wiremock_manager, caplog):
 
     # Verify.
     assert f"Uploading 1 files: {upload_file}" in caplog.text
-    # assert (
-    #     f"Found 1 files for upload: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
-    #     in caplog.text
-    # )
+    assert (
+        f"Found 1 files for upload: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
+        in caplog.text
+    )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_failed_sdc_file_upload(wiremock_manager, caplog):
+    # Set up.
+    upload_file1 = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file1)
+
+    upload_file2 = Path("imap_mag_l1b_norm-mago_20251017_v001.cdf")
+    wiremock_manager.add_mapping(
+        Mapping(
+            request=MappingRequest(
+                method=HttpMethods.GET,
+                url=f"/upload/{upload_file2.name}",
+            ),
+            response=MappingResponse(
+                status=409,  # failed upload
+                body="{}",
+            ),
+            persistent=False,
+        )
+    )
+
+    # Exercise and verify.
+    with pytest.raises(
+        RuntimeError,
+        match="Failed to upload 1 files.",
+    ):
+        with (
+            set_env("MAG_DATA_STORE", str(DATASTORE)),
+            set_env("MAG_UPLOAD_API_URL_BASE", wiremock_manager.get_url()),
+        ):
+            upload([upload_file1, upload_file2], auth_code="12345")
+
+    assert (
+        f"Failed to upload file {DATASTORE / Path('imap/mag/l1b/2025/10') / upload_file2}"
+        in caplog.text
+    )
+    assert (
+        "Failed to upload 1 files. Only 1 files uploaded successfully." in caplog.text
+    )
 
 
 @pytest.mark.skipif(
@@ -71,28 +121,10 @@ def test_upload_file(wiremock_manager, caplog):
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-async def test_upload_flow(wiremock_manager, caplog):
+async def test_upload_flow_to_sdc(wiremock_manager, caplog):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
-    aws_url = "https://s3.us-west-2.amazonaws.com/imap/mag/l1c/2025/10/imap_mag_l1c_norm-mago_20251017_v001.cdf?some-amazon-s3-query-params=12345"
-
-    wiremock_manager.add_string_mapping(
-        f"/upload/{upload_file.name}",
-        json.dumps(aws_url),
-    )
-    wiremock_manager.add_mapping(
-        Mapping(
-            request=MappingRequest(
-                method=HttpMethods.PUT,
-                url=aws_url,
-            ),
-            response=MappingResponse(
-                status=200,
-                body="{}",
-            ),
-            persistent=False,
-        )
-    )
+    add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     caplog.set_level(logging.DEBUG)
 
