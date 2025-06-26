@@ -4,9 +4,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api.apiUtils import (
-    initialiseLoggingForCommand,
-)
+from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.client.sdcDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
 from imap_mag.io import InputManager, find_supported_provider
@@ -44,11 +42,11 @@ def upload(
     logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
 
     settings_overrides = (
-        {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
+        {"upload": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
     app_settings = AppSettings(**settings_overrides)  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.process)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.upload)
     initialiseLoggingForCommand(work_folder)
 
     resolved_files: list[Path] = []
