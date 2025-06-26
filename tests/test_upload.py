@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 from wiremock.client import (
     HttpMethods,
     Mapping,
@@ -12,6 +13,7 @@ from wiremock.client import (
 )
 
 from imap_mag.api.upload import upload
+from imap_mag.main import app
 from prefect_server.uploadFlow import upload_flow
 from tests.util.miscellaneous import (
     DATASTORE,
@@ -20,6 +22,8 @@ from tests.util.miscellaneous import (
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
+
+runner = CliRunner()
 
 
 def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
@@ -97,15 +101,15 @@ def test_failed_sdc_file_upload(wiremock_manager, caplog):
     )
 
     # Exercise and verify.
-    with pytest.raises(
-        RuntimeError,
-        match="Failed to upload 1 files.",
+    with (
+        pytest.raises(
+            RuntimeError,
+            match="Failed to upload 1 files.",
+        ),
+        set_env("MAG_DATA_STORE", str(DATASTORE)),
+        set_env("MAG_UPLOAD_API_URL_BASE", wiremock_manager.get_url()),
     ):
-        with (
-            set_env("MAG_DATA_STORE", str(DATASTORE)),
-            set_env("MAG_UPLOAD_API_URL_BASE", wiremock_manager.get_url()),
-        ):
-            upload([upload_file1, upload_file2], auth_code="12345")
+        upload([upload_file1, upload_file2], auth_code="12345")
 
     assert (
         f"Failed to upload file {DATASTORE / Path('imap/mag/l1b/2025/10') / upload_file2}"
@@ -113,6 +117,35 @@ def test_failed_sdc_file_upload(wiremock_manager, caplog):
     )
     assert (
         "Failed to upload 1 files. Only 1 files uploaded successfully." in caplog.text
+    )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_upload_file_to_sdc_cli(wiremock_manager):
+    # Set up.
+    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
+
+    # Exercise.
+    result = runner.invoke(
+        app,
+        ["upload", str(upload_file), "--auth-code", "12345"],
+        env={
+            "MAG_DATA_STORE": str(DATASTORE),
+            "MAG_UPLOAD_API_URL_BASE": wiremock_manager.get_url(),
+        },
+    )
+
+    # Verify.
+    assert result.exit_code == 0
+
+    assert f"Uploading 1 files: {upload_file}" in result.output
+    assert (
+        f"Found 1 files for upload: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
+        in result.output
     )
 
 

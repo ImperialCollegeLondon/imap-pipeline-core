@@ -6,7 +6,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api import calibrate, process
+from imap_mag.api import calibrate, process, upload
 from imap_mag.api.apiUtils import globalState
 from imap_mag.api.fetch import fetch
 
@@ -20,6 +20,7 @@ def hello(name: str):
 
 app.command()(process.process)
 app.command()(calibrate.calibrate)
+app.command()(upload.upload)
 
 
 def prepareWorkFile(file, configFile) -> Path | None:
