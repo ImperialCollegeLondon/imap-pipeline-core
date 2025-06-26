@@ -7,7 +7,7 @@ import typer
 from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
 )
-from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.client.sdcDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
 from imap_mag.io import InputManager, find_supported_provider
 
@@ -72,6 +72,11 @@ def upload(
     )
 
     for file in resolved_files:
-        data_access.upload(file.as_posix())
+        try:
+            data_access.upload(file.as_posix())
+        except SDCUploadError as e:
+            logger.warning(
+                f"Failed to upload file {file}: {e}. Continuing with next file."
+            )
 
     logger.info(f"Uploaded {len(resolved_files)} files successfully.")

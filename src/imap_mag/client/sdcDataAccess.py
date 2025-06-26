@@ -11,6 +11,10 @@ import imap_data_access.io
 logger = logging.getLogger(__name__)
 
 
+class SDCUploadError(Exception):
+    """Custom exception for upload errors."""
+
+
 class ISDCDataAccess(abc.ABC):
     """Interface for interacting with imap-data-access."""
 
@@ -103,7 +107,7 @@ class SDCDataAccess(ISDCDataAccess):
             imap_data_access.upload(filename)
         except imap_data_access.io.IMAPDataAccessError as e:
             logger.error(f"Upload failed: {e}")
-            raise e
+            raise SDCUploadError(f"Failed to upload file {filename}") from e
 
     def query(
         self,
