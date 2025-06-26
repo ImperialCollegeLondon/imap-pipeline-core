@@ -7,6 +7,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+T = typing.TypeVar("T", bound="IFileMetadataProvider")
+
 
 @dataclass
 class IFileMetadataProvider(abc.ABC):
@@ -32,8 +34,5 @@ class IFileMetadataProvider(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def from_filename(cls, filename: str | Path) -> typing.Self | None:
+    def from_filename(cls: type[T], filename: str | Path) -> T | None:
         """Create a metadata provider from a file name."""
-
-
-T = typing.TypeVar("T", bound=IFileMetadataProvider)

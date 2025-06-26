@@ -1,8 +1,6 @@
 import logging
 import re
-import typing
 from pathlib import Path
-from typing import Optional
 
 from imap_mag.io import (
     DatabaseFileOutputManager,
@@ -30,7 +28,7 @@ def getOutputManagerByMode(
 def copyFileToDestination(
     file_path: Path,
     destination: Path,
-    output_manager: Optional[OutputManager] = None,
+    output_manager: OutputManager | None = None,
 ) -> tuple[Path, IFileMetadataProvider]:
     """Copy file to destination folder."""
 
@@ -53,7 +51,7 @@ def copyFileToDestination(
             return re.compile(r"")
 
         @classmethod
-        def from_filename(cls, filename: Path | str) -> typing.Self | None:
+        def from_filename(cls, filename: Path | str) -> "SimpleMetadataProvider | None":
             return cls(str(filename))
 
     if output_manager is None:

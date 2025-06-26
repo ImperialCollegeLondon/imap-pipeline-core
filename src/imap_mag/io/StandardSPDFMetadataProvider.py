@@ -1,6 +1,5 @@
 import logging
 import re
-import typing
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -85,7 +84,9 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         )
 
     @classmethod
-    def from_filename(cls, filename: str | Path) -> typing.Self | None:
+    def from_filename(
+        cls, filename: str | Path
+    ) -> "StandardSPDFMetadataProvider | None":
         """Create metadata provider from filename."""
 
         match = re.match(

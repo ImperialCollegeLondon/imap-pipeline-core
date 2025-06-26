@@ -1,7 +1,6 @@
 """Tests for `OutputManager` class."""
 
 import re
-import typing
 from datetime import datetime
 from pathlib import Path
 
@@ -254,7 +253,7 @@ class TestMetadataProvider(IFileMetadataProvider):
         return "def"
 
     @classmethod
-    def from_filename(cls, filename: Path | str) -> typing.Self | None:
+    def from_filename(cls, filename: Path | str) -> "TestMetadataProvider | None":
         return None
 
 
