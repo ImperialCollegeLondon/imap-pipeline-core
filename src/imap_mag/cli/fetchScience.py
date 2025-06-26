@@ -62,12 +62,12 @@ class FetchScience:
 
         for mode in self.__modes:
             for sensor in self.__sensor:
+                sensor_suffix = "-" + sensor.value
+
                 file_details = self.__data_access.get_filename(
                     level=level.value,
                     descriptor=mode.short_name
-                    + (
-                        "-" + sensor.value if (level != Level.level_2) else frame_suffix
-                    ),
+                    + (frame_suffix if (level == Level.level_2) else sensor_suffix),
                     extension="cdf",
                     **dates,  # type: ignore
                 )

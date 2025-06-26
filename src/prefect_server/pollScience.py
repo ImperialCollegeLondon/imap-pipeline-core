@@ -12,7 +12,13 @@ from imap_mag.api.fetch.science import (
 )
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.util import DatetimeProvider, Level, ScienceMode, get_dates_for_download
+from imap_mag.util import (
+    DatetimeProvider,
+    Level,
+    ReferenceFrame,
+    ScienceMode,
+    get_dates_for_download,
+)
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
@@ -51,6 +57,15 @@ async def poll_science_flow(
             }
         ),
     ] = Level.level_1c,
+    reference_frame: Annotated[
+        ReferenceFrame | None,
+        Field(
+            json_schema_extra={
+                "title": "Reference frame",
+                "description": "Reference frame to download for L2. Only used if level is L2.",
+            }
+        ),
+    ] = None,
     modes: Annotated[
         list[ScienceMode],
         Field(
@@ -146,6 +161,7 @@ async def poll_science_flow(
         downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
             auth_code=auth_code,
             level=level,
+            reference_frame=reference_frame,
             modes=[mode],
             start_date=packet_start_date,
             end_date=packet_end_date,

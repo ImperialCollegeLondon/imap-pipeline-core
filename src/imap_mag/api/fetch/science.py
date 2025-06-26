@@ -13,7 +13,7 @@ from imap_mag.cli.fetchScience import (
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.util import Level, MAGSensor, ScienceMode
+from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,14 @@ def fetch_science(
     level: Annotated[
         Level, typer.Option(case_sensitive=False, help="Level to download")
     ] = Level.level_2,
+    reference_frame: Annotated[
+        ReferenceFrame | None,
+        typer.Option(
+            "--frame",
+            case_sensitive=False,
+            help="Reference frame to download for L2. Only used if level is L2.",
+        ),
+    ] = None,
     modes: Annotated[
         list[ScienceMode],
         typer.Option(
@@ -70,6 +78,12 @@ def fetch_science(
         logger.critical("No SDC_AUTH_CODE API key provided")
         raise ValueError("No SDC_AUTH_CODE API key provided")
 
+    if reference_frame is not None and level != Level.level_2:
+        logger.warning(
+            f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
+        )
+        reference_frame = None
+
     settings_overrides = (
         {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
@@ -87,6 +101,7 @@ def fetch_science(
     downloaded_science: dict[Path, SDCMetadataProvider] = (
         fetch_science.download_latest_science(
             level=level,
+            reference_frame=reference_frame,
             start_date=start_date,
             end_date=end_date,
             use_ingestion_date=use_ingestion_date,

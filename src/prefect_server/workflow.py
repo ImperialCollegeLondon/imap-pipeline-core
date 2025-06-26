@@ -129,6 +129,7 @@ def deploy_flows(local_debug: bool = False):
         parameters={
             "modes": ["norm", "burst"],
             "level": "l2",
+            "reference_frame": "dsrf",
         },
         cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
         job_variables=shared_job_variables,
