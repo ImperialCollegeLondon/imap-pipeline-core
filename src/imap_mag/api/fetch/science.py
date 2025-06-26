@@ -95,7 +95,7 @@ def fetch_science(
 
     if not downloaded_science:
         logger.info(
-            f"No data downloaded for packet {level.value} from {start_date} to {end_date}."
+            f"No data downloaded for level {level.value} from {start_date} to {end_date}."
         )
     else:
         logger.debug(
