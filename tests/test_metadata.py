@@ -40,7 +40,7 @@ def test_metadata_recovers_correct_values_from_file():
 
 
 def test_metadata_recovers_correct_values_from_file_without_level():
-    filename = "imap_mag_l2-norm-offsets_20251017_v001.cdf"
+    filename = "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     provider = StandardSPDFMetadataProvider.from_filename(filename)
 
     assert provider is not None
@@ -51,6 +51,7 @@ def test_metadata_recovers_correct_values_from_file_without_level():
     assert provider.content_date == datetime(2025, 10, 17)
     assert provider.version == 1
     assert provider.extension == "cdf"
+    assert provider.end_date == datetime(2025, 10, 17)
 
     # Check the generated filename matches the original
     assert provider.get_filename() == filename

@@ -68,7 +68,7 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_v000.cdf"
+        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
 
@@ -96,7 +96,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
     ).exists()
     assert not Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_v001.cdf"
+        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     ).exists()
 
     assert str(exc_info.value) == "Layer and data timestamps do not align"
@@ -121,7 +121,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert not Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_v000.cdf"
+        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
     assert str(exc_info.value) == "No calibration layers or rotation file provided"
