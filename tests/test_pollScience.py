@@ -238,7 +238,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     force_database_update,
-    capture_logs,
+    capture_cli_logs,
 ):
     # Set up.
     start_date = datetime(2025, 4, 1)
@@ -279,7 +279,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     if force_database_update:
         assert (
             "Database cannot be updated without forcing ingestion date. Database will not be updated."
-            in capture_logs.text
+            in capture_cli_logs.text
         )
 
     # Database should not be updated by default, when start and end dates are provided.

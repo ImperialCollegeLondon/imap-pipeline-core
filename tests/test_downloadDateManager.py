@@ -27,7 +27,7 @@ def mock_database() -> mock.Mock:
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_empty_database(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     check_and_update_database,
     mock_datetime_provider,  # noqa: F811
@@ -58,11 +58,11 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
 
     assert (
         "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM, as this is the first time it is downloaded"
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     if check_and_update_database:
@@ -75,7 +75,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
 def test_get_start_end_dates_end_date_defined_empty_database(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     check_and_update_database,
     mock_datetime_provider,  # noqa: F811
@@ -106,10 +106,10 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     assert start_date == BEGINNING_OF_IMAP
     assert end_date == original_end_date
 
-    assert "Using provided end date" in capture_logs.text
+    assert "Using provided end date" in capture_cli_logs.text
     assert (
         f"Start date not provided. Using {BEGINNING_OF_IMAP} as default download date for MAG_SCI_NORM, as this is the first time it is downloaded"
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     if check_and_update_database:
@@ -121,7 +121,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
 
 
 def test_get_start_end_dates_both_dates_defined_empty_database(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
@@ -152,11 +152,11 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
     assert start_date == original_start_date
     assert end_date == original_end_date
 
-    assert "Using provided end date" in capture_logs.text
-    assert "Using provided start date" in capture_logs.text
+    assert "Using provided end date" in capture_cli_logs.text
+    assert "Using provided start date" in capture_cli_logs.text
     assert (
         f"Not checking database and forcing download from {original_start_date} to {original_end_date}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.last_checked_date is None
@@ -165,7 +165,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     check_and_update_database,
     mock_datetime_provider,  # noqa: F811
@@ -197,11 +197,11 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
 
     assert (
         "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"Start date not provided. Using last updated date {download_progress.progress_timestamp} for MAG_SCI_NORM from database."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     if check_and_update_database:
@@ -214,7 +214,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     check_and_update_database,
     mock_datetime_provider,  # noqa: F811
@@ -248,11 +248,11 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
 
     assert (
         "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"Start date not provided. Using {YESTERDAY} as default download date for MAG_SCI_NORM, as this packet has been checked at least once."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     if check_and_update_database:
@@ -265,7 +265,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
 
 @pytest.mark.parametrize("check_and_update_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_yesterday(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     check_and_update_database,
     mock_datetime_provider,  # noqa: F811
@@ -300,11 +300,11 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
 
     assert (
         "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"Start date not provided. Using {expected_start_date} as default download date for MAG_SCI_NORM, as this packet has been checked at least once."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     if check_and_update_database:
@@ -316,7 +316,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
 
 
 def test_get_start_end_dates_not_up_to_date(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
@@ -348,12 +348,12 @@ def test_get_start_end_dates_not_up_to_date(
 
     assert (
         "End date not provided. Using end of today as default download date for MAG_SCI_NORM."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
-    assert "Using provided start date" in capture_logs.text
+    assert "Using provided start date" in capture_cli_logs.text
     assert (
         f"Packet MAG_SCI_NORM is not up to date. Downloading from {original_start_date}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.last_checked_date == NOW
@@ -361,7 +361,7 @@ def test_get_start_end_dates_not_up_to_date(
 
 
 def test_get_start_end_dates_fully_up_to_date(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
@@ -388,11 +388,11 @@ def test_get_start_end_dates_fully_up_to_date(
     # Verify
     assert result is None
 
-    assert "Using provided end date" in capture_logs.text
-    assert "Using provided start date" in capture_logs.text
+    assert "Using provided end date" in capture_cli_logs.text
+    assert "Using provided start date" in capture_cli_logs.text
     assert (
         "Packet MAG_SCI_NORM is already up to date. Not downloading."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.last_checked_date == NOW
@@ -400,7 +400,7 @@ def test_get_start_end_dates_fully_up_to_date(
 
 
 def test_get_start_end_dates_partially_up_to_date(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
@@ -432,11 +432,11 @@ def test_get_start_end_dates_partially_up_to_date(
     assert start_date == download_progress.progress_timestamp
     assert end_date == original_end_date
 
-    assert "Using provided end date" in capture_logs.text
-    assert "Using provided start date" in capture_logs.text
+    assert "Using provided end date" in capture_cli_logs.text
+    assert "Using provided start date" in capture_cli_logs.text
     assert (
         f"Packet MAG_SCI_NORM is partially up to date. Downloading from {download_progress.progress_timestamp}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.last_checked_date == NOW

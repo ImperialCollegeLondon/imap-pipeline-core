@@ -92,7 +92,7 @@ def test_database_output_manager_writes_to_database(
 
 
 def test_database_output_manager_same_file_already_exists_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_logs
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
@@ -139,7 +139,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
 
     assert (
         f"File {test_file} already exists in database and is the same. Skipping insertion."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert actual_file == test_file
@@ -147,7 +147,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
 
 
 def test_database_output_manager_same_file_already_exists_as_second_file_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_logs
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
@@ -211,7 +211,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
 
     assert (
         f"File {test_file} already exists in database and is the same. Skipping insertion."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert actual_file == test_file
@@ -219,7 +219,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
 
 
 def test_database_output_manager_file_different_hash_already_exists_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_logs
+    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
@@ -284,13 +284,13 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
 
     assert (
         f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
-    assert f"Inserting {test_file} into database." in capture_logs.text
+    assert f"Inserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
     assert actual_metadata_provider == unique_metadata_provider
@@ -382,7 +382,7 @@ def test_database_output_manager_errors_database_error(
 
 
 def test_update_database_no_update_needed(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
 ) -> None:
     # Set up
@@ -404,7 +404,7 @@ def test_update_database_no_update_needed(
     # Verify
     assert (
         f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.progress_timestamp is TODAY
@@ -412,7 +412,7 @@ def test_update_database_no_update_needed(
 
 
 def test_update_database_update_needed_no_data(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
 ) -> None:
     # Set up
@@ -432,7 +432,7 @@ def test_update_database_update_needed_no_data(
     # Verify
     assert (
         f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.progress_timestamp is YESTERDAY
@@ -440,7 +440,7 @@ def test_update_database_update_needed_no_data(
 
 
 def test_update_database_update_needed_old_data(
-    capture_logs,
+    capture_cli_logs,
     mock_database,
 ) -> None:
     # Set up
@@ -462,7 +462,7 @@ def test_update_database_update_needed_old_data(
     # Verify
     assert (
         f"Latest downloaded timestamp for packet MAG_SCI_NORM is {TODAY}."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
 
     assert download_progress.progress_timestamp is TODAY
@@ -476,7 +476,7 @@ def test_update_database_update_needed_old_data(
 def test_database_output_manager_real_database(
     mock_output_manager: mock.Mock,
     test_database,  # noqa: F811
-    capture_logs,
+    capture_cli_logs,
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
@@ -538,13 +538,13 @@ def test_database_output_manager_real_database(
 
     assert (
         f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
     assert (
         f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
-        in capture_logs.text
+        in capture_cli_logs.text
     )
-    assert f"Inserting {test_file} into database." in capture_logs.text
+    assert f"Inserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
     assert actual_metadata_provider == unique_metadata_provider
