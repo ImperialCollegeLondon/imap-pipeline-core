@@ -21,13 +21,6 @@ logger = logging.getLogger(__name__)
 # E.g., imap-mag fetch science --start-date 2025-05-02 --end-date 2025-05-03
 # E.g., imap-mag fetch science --ingestion-date --start-date 2025-05-02 --end-date 2025-05-03
 def fetch_science(
-    auth_code: Annotated[
-        str,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     use_ingestion_date: Annotated[
@@ -71,18 +64,15 @@ def fetch_science(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
+    auth_code: Annotated[
+        str | None,
+        typer.Option(
+            envvar="SDC_AUTH_CODE",
+            help="IMAP Science Data Centre API Key",
+        ),
+    ] = None,
 ) -> dict[Path, SDCMetadataProvider]:
     """Download science data from the SDC."""
-
-    if not auth_code:
-        logger.critical("No SDC_AUTH_CODE API key provided")
-        raise ValueError("No SDC_AUTH_CODE API key provided")
-
-    if reference_frame is not None and level != Level.level_2:
-        logger.warning(
-            f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
-        )
-        reference_frame = None
 
     settings_overrides = (
         {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
@@ -90,7 +80,15 @@ def fetch_science(
 
     app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
+
+    if reference_frame is not None and level != Level.level_2:
+        logger.warning(
+            f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
+        )
+        reference_frame = None
 
     data_access = SDCDataAccess(
         data_dir=work_folder,

@@ -26,12 +26,12 @@ def upload(
         ),
     ],
     auth_code: Annotated[
-        str,
+        str | None,
         typer.Option(
             envvar="SDC_AUTH_CODE",
             help="IMAP Science Data Centre API Key",
         ),
-    ],
+    ] = None,
 ) -> None:
     """Upload files to the SDC."""
 

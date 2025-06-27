@@ -19,13 +19,6 @@ logger = logging.getLogger(__name__)
 # imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
 # imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_binary(
-    auth_code: Annotated[
-        str,
-        typer.Option(
-            envvar="WEBPODA_AUTH_CODE",
-            help="WebPODA authentication code",
-        ),
-    ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     use_ert: Annotated[
@@ -52,12 +45,15 @@ def fetch_binary(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
+    auth_code: Annotated[
+        str | None,
+        typer.Option(
+            envvar="WEBPODA_AUTH_CODE",
+            help="WebPODA authentication code",
+        ),
+    ] = None,
 ) -> dict[Path, WebPODAMetadataProvider]:
     """Download binary data from WebPODA."""
-
-    if not auth_code:
-        logger.critical("No WebPODA authorization code provided")
-        raise ValueError("No WebPODA authorization code provided")
 
     # Must provide a apid or a packet.
     if (not apid and not packet) or (apid and packet):
@@ -69,7 +65,9 @@ def fetch_binary(
 
     app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     if apid is not None:
         packet_name: str = HKPacket.from_apid(apid).name

@@ -60,7 +60,9 @@ def calibrate(
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     # TODO: Input manager for getting data of a given level?
 
