@@ -130,6 +130,7 @@ def apply(
     cal_metadata_provider = StandardSPDFMetadataProvider(
         descriptor=f"l2-{norm_or_burst}-offsets",
         content_date=date,
+        end_date=date,
         version=0,
         extension=calibration_output_type,
     )
