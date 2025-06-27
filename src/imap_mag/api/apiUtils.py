@@ -48,7 +48,9 @@ def throw_error_file_not_found(source_folder: Path, filename: str) -> None:
 def fetch_file_for_work(
     file: Path, work_folder: Path, *, throw_if_not_found: bool = False
 ) -> Path | None:
-    logger.debug(f"Grabbing file matching {file} in {work_folder}")
+    logger.debug(
+        f"Grabbing file matching {file.name} in {file.parent} and copying it to {work_folder}"
+    )
 
     files: list[Path] = []
 

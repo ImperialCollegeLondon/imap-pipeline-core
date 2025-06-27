@@ -4,7 +4,10 @@ from imap_mag.io.CalibrationLayerMetadataProvider import (
 from imap_mag.io.DatabaseFileOutputManager import (
     DatabaseFileOutputManager,
 )
-from imap_mag.io.FileMetadataProviders import FileMetadataProviders
+from imap_mag.io.FileMetadataProviders import (
+    FileMetadataProviders,
+    NoProviderFoundError,
+)
 from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider, T
 from imap_mag.io.InputManager import InputManager
 from imap_mag.io.IOutputManager import IOutputManager
@@ -20,6 +23,7 @@ __all__ = [
     "IFileMetadataProvider",
     "IOutputManager",
     "InputManager",
+    "NoProviderFoundError",
     "OutputManager",
     "StandardSPDFMetadataProvider",
     "T",

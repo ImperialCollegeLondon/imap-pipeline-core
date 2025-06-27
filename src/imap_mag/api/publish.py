@@ -55,10 +55,12 @@ def publish(
 
     for file in files:
         metadata_provider = FileMetadataProviders.find_by_path(file)
+        assert metadata_provider is not None
+
         resolved_file = input_manager.get_versioned_file(
             metadata_provider, latest_version=False
         )
-        resolved_files.append(resolved_file)  # type: ignore
+        resolved_files.append(resolved_file)
 
     logger.info(
         f"Found {len(resolved_files)} files for publish: {', '.join(str(f) for f in resolved_files)}"
