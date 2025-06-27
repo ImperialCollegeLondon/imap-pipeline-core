@@ -32,6 +32,7 @@ def enableLogging():
         console_log_line_template="%(color_on)s%(message)s%(color_off)s",
     )
     yield
+    AppLogging.reset_setup_flag()  # Reset logging setup after test
 
 
 @pytest.fixture(autouse=True)

@@ -22,6 +22,8 @@ import sys
 
 
 class AppLogging:
+    __LOGGING_SETUP: bool = False
+
     # Logging formatter supporting colorized output
     class LogFormatter(logging.Formatter):
         COLOR_CODES = {  # noqa: RUF012
@@ -47,6 +49,12 @@ class AppLogging:
                 record.color_off = ""
             return super().format(record, *args, **kwargs)
 
+    # Reset logging setup flag
+    @staticmethod
+    def reset_setup_flag():
+        """Reset the logging setup flag to allow reconfiguration."""
+        AppLogging.__LOGGING_SETUP = False
+
     # Set up logging
     @staticmethod
     def set_up_logging(
@@ -58,7 +66,11 @@ class AppLogging:
         logfile_log_color,
         log_line_template,
         console_log_line_template,
-    ) -> bool:
+    ):
+        if AppLogging.__LOGGING_SETUP:
+            print("Logging already set up, skipping.")
+            return True
+
         # Create logger
         # For simplicity, we use the root logger, i.e. call 'logging.getLogger()'
         # without name argument. This way we can simply use module methods for
@@ -125,4 +137,5 @@ class AppLogging:
         logger.addHandler(logfile_handler)
 
         # Success
+        AppLogging.__LOGGING_SETUP = True
         return True
