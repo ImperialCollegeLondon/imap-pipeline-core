@@ -40,7 +40,7 @@ class AppSettings(BaseSettings):
     fetch_binary: FetchConfig
     fetch_science: FetchConfig
     process: CommandConfig
-    upload: UploadConfig
+    publish: UploadConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

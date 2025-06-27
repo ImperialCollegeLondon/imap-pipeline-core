@@ -5,7 +5,7 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.upload import upload
+from imap_mag.api.publish import publish
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
@@ -18,17 +18,17 @@ def generate_flow_run_name() -> str:
 
 
 @flow(
-    name=CONSTANTS.FLOW_NAMES.UPLOAD,
+    name=CONSTANTS.FLOW_NAMES.PUBLISH,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
 )
-async def upload_flow(
+async def publish_flow(
     files: Annotated[
         list[Path],
         Field(
             json_schema_extra={
-                "title": "Files to upload",
-                "description": "Paths to the files to upload.",
+                "title": "Files to publish",
+                "description": "Paths to the files to publish.",
             }
         ),
     ],
@@ -44,6 +44,6 @@ async def upload_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
-    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
+    logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
 
-    upload(files, auth_code=auth_code)
+    publish(files, auth_code=auth_code)

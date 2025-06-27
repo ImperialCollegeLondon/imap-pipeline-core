@@ -40,11 +40,11 @@ class CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
-        UPLOAD = "upload"
+        PUBLISH = "publish"
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
-        UPLOAD = "upload"
+        PUBLISH = "publish"

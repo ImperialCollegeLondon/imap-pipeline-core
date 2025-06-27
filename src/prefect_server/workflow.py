@@ -18,8 +18,8 @@ from prefect_server.performCalibration import (
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
+from prefect_server.publishFlow import publish_flow
 from prefect_server.serverConfig import ServerConfig
-from prefect_server.uploadFlow import upload_flow
 
 
 async def get_matlab_license_server():
@@ -136,8 +136,8 @@ def deploy_flows(local_debug: bool = False):
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
-    upload_deployable = upload_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.UPLOAD,
+    publish_deployable = publish_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.PUBLISH,
         job_variables=shared_job_variables,
         tags=[CONSTANTS.PREFECT_TAG],
     )
@@ -180,7 +180,7 @@ def deploy_flows(local_debug: bool = False):
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,
         poll_science_l2_deployable,
-        upload_deployable,
+        publish_deployable,
     )
 
     if local_debug:

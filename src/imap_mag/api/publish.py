@@ -7,17 +7,17 @@ import typer
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.client.sdcDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
-from imap_mag.io import InputManager, find_supported_provider
+from imap_mag.io import FileMetadataProviders, InputManager
 
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag upload imap_mag_l2-calibration_20251017_v004.cdf
-def upload(
+# E.g., imap-mag publish imap_mag_l2-calibration_20251017_v004.cdf
+def publish(
     files: Annotated[
         list[Path],
         typer.Argument(
-            help="The file names or patterns to match for the files to upload",
+            help="The file names or patterns to match for the files to publish",
             exists=False,  # can be a pattern
             file_okay=True,
             dir_okay=False,
@@ -33,32 +33,32 @@ def upload(
         ),
     ] = None,
 ) -> None:
-    """Upload files to the SDC."""
+    """Publish files to the SDC."""
 
     settings_overrides = (
-        {"upload": {"api": {"auth_code": auth_code}}} if auth_code else {}
+        {"publish": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
     app_settings = AppSettings(**settings_overrides)  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.upload)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.publish)
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
+    logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
 
     resolved_files: list[Path] = []
     input_manager = InputManager(app_settings.data_store)
 
     for file in files:
-        metadata_provider = find_supported_provider(file)
+        metadata_provider = FileMetadataProviders.find_by_path(file)
         resolved_file = input_manager.get_versioned_file(
             metadata_provider, latest_version=False
         )
         resolved_files.append(resolved_file)  # type: ignore
 
     logger.info(
-        f"Found {len(resolved_files)} files for upload: {', '.join(str(f) for f in resolved_files)}"
+        f"Found {len(resolved_files)} files for publish: {', '.join(str(f) for f in resolved_files)}"
     )
 
     # Upload file to SDC.
@@ -66,7 +66,7 @@ def upload(
 
     data_access = SDCDataAccess(
         data_dir=work_folder,
-        sdc_url=app_settings.upload.api.url_base,
+        sdc_url=app_settings.publish.api.url_base,
     )
 
     for file in resolved_files:
@@ -75,13 +75,13 @@ def upload(
         except SDCUploadError as e:
             failed += 1
             logger.warning(
-                f"Failed to upload file {file}: {e}. Continuing with next file."
+                f"Failed to publish file {file}: {e}. Continuing with next file."
             )
 
     if failed > 0:
         logger.error(
-            f"Failed to upload {failed} files. Only {len(resolved_files) - failed} files uploaded successfully."
+            f"Failed to publish {failed} files. Only {len(resolved_files) - failed} files published successfully."
         )
-        raise RuntimeError(f"Failed to upload {failed} files.")
+        raise RuntimeError(f"Failed to publish {failed} files.")
     else:
         logger.info(f"Uploaded {len(resolved_files)} files successfully.")
