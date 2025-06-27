@@ -10,7 +10,11 @@ from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
+from imap_mag.io import (
+    IFileMetadataProvider,
+    InputManager,
+    StandardSPDFMetadataProvider,
+)
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -47,9 +51,21 @@ def process(
     work_files: list[Path] = []
 
     for file in files:
-        work_files.append(
-            fetch_file_for_work(file, work_folder, throw_if_not_found=True)
-        )  # type: ignore
+        metadata_provider = StandardSPDFMetadataProvider.from_filename(file)
+
+        # If the file matches the SPDF format, find it in the data store.
+        if metadata_provider is not None:
+            input_manager = InputManager(app_settings.data_store)
+            file = input_manager.get_versioned_file(
+                metadata_provider, latest_version=False
+            )
+
+        matching_file: Path | None = fetch_file_for_work(
+            file, work_folder, throw_if_not_found=True
+        )
+        assert matching_file is not None
+
+        work_files.append(matching_file)
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)
