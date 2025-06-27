@@ -14,7 +14,7 @@ def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
     files: list[Path] = parameters["files"]
 
-    return f"Upload-{','.join([str(f) for f in files])}-to-SDC"
+    return f"Publish-{','.join([str(f) for f in files])}-to-SDC"
 
 
 @flow(
@@ -34,7 +34,7 @@ async def publish_flow(
     ],
 ):
     """
-    Upload files to the SDC.
+    Publish files to the SDC.
     """
 
     logger = get_run_logger()

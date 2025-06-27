@@ -112,7 +112,7 @@ def test_failed_sdc_file_publish(wiremock_manager, capture_cli_logs):
         in capture_cli_logs.text
     )
     assert (
-        "Failed to publish 1 files. Only 1 files uploaded successfully."
+        "Failed to publish 1 files. Only 1 files published successfully."
         in capture_cli_logs.text
     )
 

@@ -61,7 +61,7 @@ def publish(
         f"Found {len(resolved_files)} files for publish: {', '.join(str(f) for f in resolved_files)}"
     )
 
-    # Upload file to SDC.
+    # Publish file to SDC.
     failed: int = 0
 
     data_access = SDCDataAccess(
@@ -84,4 +84,4 @@ def publish(
         )
         raise RuntimeError(f"Failed to publish {failed} files.")
     else:
-        logger.info(f"Uploaded {len(resolved_files)} files successfully.")
+        logger.info(f"Published {len(resolved_files)} files successfully.")
