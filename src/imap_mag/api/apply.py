@@ -7,8 +7,8 @@ from typing import Annotated
 import typer
 
 from imap_mag.api.apiUtils import (
+    fetch_file_for_work,
     initialiseLoggingForCommand,
-    prepareWorkFile,
 )
 from imap_mag.config import AppSettings
 from imap_mag.io import (
@@ -45,7 +45,9 @@ def prepare_layers_for_application(layers, appSettings):
         versioned_cal_file = inputManager.get_versioned_file(
             metadata_provider=cal_layer_metadata, latest_version=False
         )
-        workLayers.append(prepareWorkFile(versioned_cal_file, appSettings.work_folder))
+        workLayers.append(
+            fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
+        )
     return workLayers
 
 
@@ -62,7 +64,7 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
         versioned_rotation_file = inputManager.get_versioned_file(
             metadata_provider=rotation_metadata, latest_version=False
         )
-        return prepareWorkFile(versioned_rotation_file, appSettings.work_folder)
+        return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
     return None
 
 
@@ -108,7 +110,7 @@ def apply(
         metadata_provider=original_input_metadata, latest_version=False
     )
 
-    workDataFile = prepareWorkFile(
+    workDataFile = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
 

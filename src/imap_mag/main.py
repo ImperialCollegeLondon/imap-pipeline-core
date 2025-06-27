@@ -23,7 +23,7 @@ app.command()(calibrate.calibrate)
 app.command()(publish.publish)
 
 
-def prepareWorkFile(file, configFile) -> Path | None:
+def fetch_file_for_work(file, configFile) -> Path | None:
     logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
 
 

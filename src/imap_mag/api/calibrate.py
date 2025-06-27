@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 
 from imap_mag.api import apply
-from imap_mag.api.apiUtils import initialiseLoggingForCommand, prepareWorkFile
+from imap_mag.api.apiUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.io import (
     CalibrationLayerMetadataProvider,
@@ -86,7 +86,7 @@ def calibrate(
             f"Unable to find a file to process matching {metadata_provider.get_filename()}"
         )
 
-    workFile = prepareWorkFile(
+    workFile = fetch_file_for_work(
         input_file, app_settings.work_folder, throw_if_not_found=True
     )
 

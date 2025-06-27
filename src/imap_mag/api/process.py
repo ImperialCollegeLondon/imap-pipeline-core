@@ -6,8 +6,8 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import (
+    fetch_file_for_work,
     initialiseLoggingForCommand,
-    prepareWorkFile,
 )
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
@@ -47,7 +47,9 @@ def process(
     work_files: list[Path] = []
 
     for file in files:
-        work_files.append(prepareWorkFile(file, work_folder, throw_if_not_found=True))  # type: ignore
+        work_files.append(
+            fetch_file_for_work(file, work_folder, throw_if_not_found=True)
+        )  # type: ignore
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)
