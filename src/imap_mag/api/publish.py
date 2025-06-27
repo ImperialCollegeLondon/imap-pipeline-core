@@ -35,6 +35,9 @@ def publish(
 ) -> None:
     """Publish files to the SDC."""
 
+    # "auth-code" is usually defined in the config file but the CLI allows for it to
+    # be specified on the command cli with "--auth-code" or in an env vars:
+    # SDC_AUTH_CODE or MAG_PUBLISH_API_AUTH_CODE
     settings_overrides = (
         {"publish": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
