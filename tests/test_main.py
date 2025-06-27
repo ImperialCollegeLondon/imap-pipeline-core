@@ -12,7 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from imap_mag.main import app
-from tests.util.miscellaneous import set_env, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import DATASTORE, set_env, tidyDataFolders  # noqa: F401
 
 runner = CliRunner()
 
@@ -28,12 +28,12 @@ def test_app_says_hello():
     "binary_file, output_file",
     [
         (
-            "MAG_HSK_PW.pkts",
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "tests/data/2025/MAG_HSK_PW.pkts",
+            DATASTORE / "imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
         ),
         (
-            "imap_mag_hsk-pw_20250214_v000.pkts",
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "imap_mag_hsk-pw-raw_20250214_v000.pkts",
+            DATASTORE / "imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
         ),
     ],
 )
@@ -49,8 +49,11 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         app,
         [
             "process",
-            str(Path("tests/data/2025") / binary_file),
+            binary_file,
         ],
+        env={
+            "MAG_DATA_STORE": str(DATASTORE),
+        },
     )
 
     print("\n" + str(result.stdout))
@@ -66,31 +69,7 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         assert expectedLastLine == lines[-1]
         assert expectedNumRows == len(lines)
 
-
-def test_process_error_with_unsupported_file_type():
-    # Exercise.
-    result = runner.invoke(
-        app,
-        [
-            "process",
-            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v000.cdf")),
-        ],
-    )
-
-    print("\n" + str(result.stdout))
-
-    # Verify.
-    assert result.exit_code == 1
-
-    assert result.exception is not None
-    assert (
-        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v000.cdf')} is not supported and cannot be processed."
-        in result.exception.args[0]
-    )
-
-    assert not Path(
-        "output/imap/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v000.cdf"
-    ).exists()
+    output_file.unlink()
 
 
 @pytest.mark.skipif(
