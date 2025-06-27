@@ -63,6 +63,7 @@ def fetch_binary(
         {"fetch_binary": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
+    # authcode is usually defined in the config file but the CLI allows for it to be specified on the command cli with --auth-code or in an ENV var WEBPODA_AUTH_CODE
     app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
     initialiseLoggingForCommand(
