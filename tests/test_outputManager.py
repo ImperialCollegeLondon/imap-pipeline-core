@@ -1,6 +1,7 @@
 """Tests for `OutputManager` class."""
 
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -238,6 +239,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
     )
 
 
+@dataclass
 class TestMetadataProvider(IFileMetadataProvider):
     def supports_versioning(self) -> bool:
         return False
