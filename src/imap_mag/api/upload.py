@@ -35,19 +35,17 @@ def upload(
 ) -> None:
     """Upload files to the SDC."""
 
-    if not auth_code:
-        logger.critical("No SDC_AUTH_CODE API key provided")
-        raise ValueError("No SDC_AUTH_CODE API key provided")
-
-    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
-
     settings_overrides = (
         {"upload": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
     app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.upload)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
+
+    logger.info(f"Uploading {len(files)} files: {', '.join(str(f) for f in files)}")
 
     resolved_files: list[Path] = []
     input_manager = InputManager(app_settings.data_store)

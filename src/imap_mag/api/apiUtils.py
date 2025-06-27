@@ -32,6 +32,8 @@ def initialiseLoggingForCommand(folder):
         print("Failed to set up logging, aborting.")
         raise typer.Abort()
 
+    logging.debug("Logging initialised for CLI command.")
+
 
 def throw_error_file_not_found(source_folder: Path, filename: str) -> None:
     """Throw an error if the file is not found."""

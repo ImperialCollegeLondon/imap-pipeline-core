@@ -19,7 +19,7 @@ END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 DATASTORE = Path("tests/data")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def enableLogging():
     AppLogging.set_up_logging(
         console_log_output="stdout",
