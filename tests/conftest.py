@@ -8,7 +8,7 @@ from tests.util.wiremock import WireMockManager
 
 
 @pytest.fixture(scope="function", autouse=False)
-def capture_logs(caplog, enableLogging):  # noqa: F811
+def capture_cli_logs(caplog, enableLogging):  # noqa: F811
     """Capture logs for the duration of the test."""
     caplog.set_level(logging.DEBUG)
     yield caplog
