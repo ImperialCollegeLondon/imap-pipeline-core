@@ -13,7 +13,7 @@ from imap_mag.cli.fetchScience import (
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.util import Level, MAGSensor, ScienceMode
+from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,6 @@ logger = logging.getLogger(__name__)
 # E.g., imap-mag fetch science --start-date 2025-05-02 --end-date 2025-05-03
 # E.g., imap-mag fetch science --ingestion-date --start-date 2025-05-02 --end-date 2025-05-03
 def fetch_science(
-    auth_code: Annotated[
-        str,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ],
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
     use_ingestion_date: Annotated[
@@ -40,6 +33,14 @@ def fetch_science(
     level: Annotated[
         Level, typer.Option(case_sensitive=False, help="Level to download")
     ] = Level.level_2,
+    reference_frame: Annotated[
+        ReferenceFrame | None,
+        typer.Option(
+            "--frame",
+            case_sensitive=False,
+            help="Reference frame to download for L2. Only used if level is L2.",
+        ),
+    ] = None,
     modes: Annotated[
         list[ScienceMode],
         typer.Option(
@@ -59,25 +60,38 @@ def fetch_science(
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
-            "--mode",
             case_sensitive=False,
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
+    auth_code: Annotated[
+        str | None,
+        typer.Option(
+            envvar="SDC_AUTH_CODE",
+            help="IMAP Science Data Centre API Key",
+        ),
+    ] = None,
 ) -> dict[Path, SDCMetadataProvider]:
     """Download science data from the SDC."""
 
-    if not auth_code:
-        logger.critical("No SDC_AUTH_CODE API key provided")
-        raise ValueError("No SDC_AUTH_CODE API key provided")
-
+    # "auth-code" is usually defined in the config file but the CLI allows for it to
+    # be specified on the command cli with "--auth-code" or in an env vars:
+    # SDC_AUTH_CODE or MAG_FETCH_SCIENCE_API_AUTH_CODE
     settings_overrides = (
         {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
     )
 
-    app_settings = AppSettings(**settings_overrides)
+    app_settings = AppSettings(**settings_overrides)  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
+
+    if reference_frame is not None and level != Level.level_2:
+        logger.warning(
+            f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
+        )
+        reference_frame = None
 
     data_access = SDCDataAccess(
         data_dir=work_folder,
@@ -87,7 +101,8 @@ def fetch_science(
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
     downloaded_science: dict[Path, SDCMetadataProvider] = (
         fetch_science.download_latest_science(
-            level=level.value,
+            level=level,
+            reference_frame=reference_frame,
             start_date=start_date,
             end_date=end_date,
             use_ingestion_date=use_ingestion_date,
@@ -96,7 +111,7 @@ def fetch_science(
 
     if not downloaded_science:
         logger.info(
-            f"No data downloaded for packet {level.value} from {start_date} to {end_date}."
+            f"No data downloaded for level {level.value} from {start_date} to {end_date}."
         )
     else:
         logger.debug(

@@ -11,7 +11,6 @@ from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
 from imap_mag.client.webPODA import IWebPODA
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
-    enableLogging,
     tidyDataFolders,
 )
 

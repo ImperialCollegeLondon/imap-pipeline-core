@@ -18,6 +18,7 @@ from prefect_server.performCalibration import (
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
+from prefect_server.publishFlow import publish_flow
 from prefect_server.serverConfig import ServerConfig
 
 
@@ -123,6 +124,23 @@ def deploy_flows(local_debug: bool = False):
         job_variables=shared_job_variables,
         tags=[CONSTANTS.PREFECT_TAG],
     )
+    poll_science_l2_deployable = poll_science_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
+        parameters={
+            "modes": ["norm", "burst"],
+            "level": "l2",
+            "reference_frame": "dsrf",
+        },
+        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
+    publish_deployable = publish_flow.to_deployment(
+        name=CONSTANTS.DEPLOYMENT_NAMES.PUBLISH,
+        job_variables=shared_job_variables,
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
 
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
@@ -161,6 +179,8 @@ def deploy_flows(local_debug: bool = False):
         poll_hk_deployable,
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,
+        poll_science_l2_deployable,
+        publish_deployable,
     )
 
     if local_debug:

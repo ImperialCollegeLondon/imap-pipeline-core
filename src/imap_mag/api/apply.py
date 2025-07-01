@@ -7,8 +7,8 @@ from typing import Annotated
 import typer
 
 from imap_mag.api.apiUtils import (
+    fetch_file_for_work,
     initialiseLoggingForCommand,
-    prepareWorkFile,
 )
 from imap_mag.config import AppSettings
 from imap_mag.io import (
@@ -45,7 +45,9 @@ def prepare_layers_for_application(layers, appSettings):
         versioned_cal_file = inputManager.get_versioned_file(
             metadata_provider=cal_layer_metadata, latest_version=False
         )
-        workLayers.append(prepareWorkFile(versioned_cal_file, appSettings.work_folder))
+        workLayers.append(
+            fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
+        )
     return workLayers
 
 
@@ -62,11 +64,11 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
         versioned_rotation_file = inputManager.get_versioned_file(
             metadata_provider=rotation_metadata, latest_version=False
         )
-        return prepareWorkFile(versioned_rotation_file, appSettings.work_folder)
+        return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
     return None
 
 
-# E.g., imap-mag apply --config calibration_application_config.yaml --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
+# E.g., imap-mag apply --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
     layers: Annotated[
         list[str],
@@ -93,7 +95,9 @@ def apply(
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     original_input_metadata = StandardSPDFMetadataProvider.from_filename(input)  # type: ignore
 
@@ -106,10 +110,9 @@ def apply(
         metadata_provider=original_input_metadata, latest_version=False
     )
 
-    workDataFile = prepareWorkFile(versioned_file, app_settings.work_folder)
-
-    if workDataFile is None:
-        raise ValueError("Data file does not exist")
+    workDataFile = fetch_file_for_work(
+        versioned_file, app_settings.work_folder, throw_if_not_found=True
+    )
 
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)

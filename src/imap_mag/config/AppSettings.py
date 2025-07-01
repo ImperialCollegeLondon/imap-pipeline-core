@@ -11,6 +11,7 @@ from pydantic_settings import (
 
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchConfig
+from imap_mag.config.UploadConfig import UploadConfig
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class AppSettings(BaseSettings):
     fetch_binary: FetchConfig
     fetch_science: FetchConfig
     process: CommandConfig
+    publish: UploadConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

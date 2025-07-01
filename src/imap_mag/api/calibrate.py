@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 
 from imap_mag.api import apply
-from imap_mag.api.apiUtils import initialiseLoggingForCommand, prepareWorkFile
+from imap_mag.api.apiUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.io import (
     CalibrationLayerMetadataProvider,
@@ -38,7 +38,7 @@ def publish():
     pass
 
 
-# E.g., imap-mag calibrate --config calibration_config.yaml --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
+# E.g., imap-mag calibrate --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
     date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
     method: Annotated[
@@ -60,7 +60,9 @@ def calibrate(
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     # TODO: Input manager for getting data of a given level?
 
@@ -84,13 +86,9 @@ def calibrate(
             f"Unable to find a file to process matching {metadata_provider.get_filename()}"
         )
 
-    workFile = prepareWorkFile(input_file, app_settings.work_folder)
-
-    if workFile is None:
-        logging.critical(
-            "Unable to find a file to process matching %s", input_file.name
-        )
-        raise typer.Abort()
+    workFile = fetch_file_for_work(
+        input_file, app_settings.work_folder, throw_if_not_found=True
+    )
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerMetadata = CalibrationLayerMetadataProvider(
