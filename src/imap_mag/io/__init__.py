@@ -1,3 +1,6 @@
+from imap_mag.io.AncillaryFileMetadataProvider import (
+    AncillaryFileMetadataProvider,
+)
 from imap_mag.io.CalibrationLayerMetadataProvider import (
     CalibrationLayerMetadataProvider,
 )
@@ -13,6 +16,7 @@ from imap_mag.io.StandardSPDFMetadataProvider import (
 )
 
 __all__ = [
+    "AncillaryFileMetadataProvider",
     "CalibrationLayerMetadataProvider",
     "DatabaseFileOutputManager",
     "IFileMetadataProvider",

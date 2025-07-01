@@ -12,6 +12,7 @@ from imap_mag.api.apiUtils import (
 )
 from imap_mag.config import AppSettings
 from imap_mag.io import (
+    AncillaryFileMetadataProvider,
     CalibrationLayerMetadataProvider,
     InputManager,
     OutputManager,
@@ -127,7 +128,7 @@ def apply(
         and ScienceMode.Burst.short_name in original_input_metadata.descriptor
         else ScienceMode.Normal.short_name
     )
-    cal_metadata_provider = StandardSPDFMetadataProvider(
+    cal_metadata_provider = AncillaryFileMetadataProvider(
         descriptor=f"l2-{norm_or_burst}-offsets",
         content_date=date,
         end_date=date,
