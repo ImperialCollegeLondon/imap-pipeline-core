@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from imap_mag.io import AncillaryFileMetadataProvider, StandardSPDFMetadataProvider
 
 
@@ -98,3 +100,83 @@ def test_metadata_recovers_correct_values_from_ancillary_file_name_without_level
 
     # Check the generated filename matches the original
     assert provider.get_filename() == filename
+
+
+def test_ancillary_file_metadata_gives_correct_unversioned_pattern():
+    provider = AncillaryFileMetadataProvider(
+        mission="imap",
+        instrument="mag",
+        level=None,
+        descriptor="l2-norm-offsets",
+        content_date=datetime(2025, 10, 17),
+        end_date=datetime(2025, 10, 17),
+        version=1,
+        extension="cdf",
+    )
+
+    assert provider.get_unversioned_pattern().pattern == (
+        r"imap_mag_l2-norm-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
+    )
+
+
+def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_date():
+    provider = AncillaryFileMetadataProvider(
+        mission="imap",
+        instrument="mag",
+        level=None,
+        descriptor="l2-rotation",
+        content_date=datetime(2025, 10, 17),
+        end_date=None,
+        version=1,
+        extension="cdf",
+    )
+
+    assert provider.get_unversioned_pattern().pattern == (
+        r"imap_mag_l2-rotation_20251017_v(?P<version>\d+)\.cdf"
+    )
+
+
+def test_get_filename_of_ancillary_metadata_provider_without_content_date__fails():
+    provider = AncillaryFileMetadataProvider(
+        mission="imap",
+        instrument="mag",
+        level=None,
+        descriptor="l2-norm-offsets",
+        end_date=datetime(2025, 10, 17),
+        extension="cdf",
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        provider.get_filename()
+
+    assert (
+        str(exc_info.value)
+        == "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
+    )
+
+
+def test_get_unversioned_pattern_of_ancillary_metadata_provider_without_content_date__fails():
+    provider = AncillaryFileMetadataProvider(
+        mission="imap",
+        instrument="mag",
+        level=None,
+        descriptor="l2-norm-offsets",
+        end_date=datetime(2025, 10, 17),
+        extension="cdf",
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        provider.get_unversioned_pattern()
+
+    assert (
+        str(exc_info.value)
+        == "No 'content_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
+    )
+
+
+def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():
+    filename = "imap_mag_notalevel_l2-rotation_20251017_v001.cdf"
+    ancillary_provider = AncillaryFileMetadataProvider.from_filename(filename)
+    assert ancillary_provider is None, (
+        "Should return None for invalid ancillary filenames."
+    )
