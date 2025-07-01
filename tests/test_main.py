@@ -137,7 +137,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     ]
 
     if mode is not None:
-        args.extend(["--mode", mode])
+        args.extend(["--fetch-mode", mode])
 
     # Exercise.
     result = runner.invoke(app, args, env=settings_overrides_for_env)

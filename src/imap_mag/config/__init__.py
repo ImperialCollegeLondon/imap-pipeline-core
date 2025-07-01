@@ -4,6 +4,7 @@ from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchConfig
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.config.SaveMode import SaveMode
+from imap_mag.config.UploadConfig import UploadConfig
 
 __all__ = [
     "ApiSource",
@@ -12,4 +13,5 @@ __all__ = [
     "FetchConfig",
     "FetchMode",
     "SaveMode",
+    "UploadConfig",
 ]

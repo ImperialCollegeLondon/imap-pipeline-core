@@ -7,7 +7,7 @@ from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.io import StandardSPDFMetadataProvider
-from imap_mag.util import MAGSensor, ScienceMode
+from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,10 @@ class FetchScience:
 
     def download_latest_science(
         self,
-        level: str,
+        level: Level,
         start_date: datetime,
         end_date: datetime,
+        reference_frame: ReferenceFrame | None = None,
         use_ingestion_date: bool = False,
     ) -> dict[Path, SDCMetadataProvider]:
         """Retrieve SDC data."""
@@ -57,14 +58,18 @@ class FetchScience:
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
             "ingestion_end_date" if use_ingestion_date else "end_date": end_date,
         }
+        frame_suffix = ("-" + reference_frame.value) if reference_frame else ""
 
         for mode in self.__modes:
             for sensor in self.__sensor:
+                sensor_suffix = "-" + sensor.value
+
                 file_details = self.__data_access.get_filename(
-                    level=level,
-                    descriptor=mode.short_name + "-" + sensor.value,
+                    level=level.value,
+                    descriptor=mode.short_name
+                    + (frame_suffix if (level == Level.level_2) else sensor_suffix),
                     extension="cdf",
-                    **dates,
+                    **dates,  # type: ignore
                 )
 
                 if file_details is not None:
@@ -77,7 +82,7 @@ class FetchScience:
                             )
 
                             downloaded[downloaded_file] = SDCMetadataProvider(
-                                level=level,
+                                level=level.value,
                                 descriptor=file["descriptor"],
                                 content_date=datetime.strptime(
                                     file["start_date"], "%Y%m%d"

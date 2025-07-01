@@ -7,10 +7,7 @@ import pytest
 
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import HKPacket, TimeConversion
-from tests.util.miscellaneous import (
-    enableLogging,  # noqa: F401
-    tidyDataFolders,  # noqa: F401
-)
+from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 @pytest.fixture(autouse=False)
@@ -46,7 +43,7 @@ def test_dispatch_hk_binary(extension):
     assert isinstance(processor, HKProcessor)
 
 
-def test_dispatch_unsupported_file(caplog):
+def test_dispatch_unsupported_file(capture_cli_logs):
     # Set up.
     packet_path = Path("tests/data/2025/MAG_HSK_SOME.txt")
 
@@ -55,7 +52,8 @@ def test_dispatch_unsupported_file(caplog):
         dispatch(packet_path, Path(tempfile.gettempdir()))
 
     assert (
-        f"File {packet_path} is not supported and cannot be processed." in caplog.text
+        f"File {packet_path} is not supported and cannot be processed."
+        in capture_cli_logs.text
     )
     assert f"File {packet_path} is not supported and cannot be processed." in str(
         excinfo.value
@@ -103,7 +101,7 @@ def test_decode_hk_packet(packet_type):
 
 
 def test_decode_hk_packet_with_data_spanning_two_days(
-    mock_met_to_j2000_conversion_for_hk_power_to_span_two_days, caplog
+    mock_met_to_j2000_conversion_for_hk_power_to_span_two_days, capture_cli_logs
 ):
     """Test that HKProcessor splits data into separate files for each day, for each ApID."""
 
@@ -135,13 +133,13 @@ def test_decode_hk_packet_with_data_spanning_two_days(
 
     assert (
         "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:\n20250502, 20250503"
-        in caplog.text
+        in capture_cli_logs.text
     )
-    assert "Generating file for 2025-05-02." in caplog.text
-    assert "Generating file for 2025-05-03." in caplog.text
+    assert "Generating file for 2025-05-02." in capture_cli_logs.text
+    assert "Generating file for 2025-05-03." in capture_cli_logs.text
 
 
-def test_decode_hk_packet_with_data_from_multiple_apids(caplog):
+def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     """Test that HKProcessor splits data into separate files for each day, for each ApID."""
 
     # Set up.
@@ -174,14 +172,14 @@ def test_decode_hk_packet_with_data_from_multiple_apids(caplog):
     assert processed_paths[0].name == "imap_mag_hsk-pw_20250502_v000.csv"
     assert processed_paths[1].name == "imap_mag_hsk-status_20250502_v000.csv"
 
-    assert f"Found 2 ApIDs (1063, 1064) in {packet_path}." in caplog.text
+    assert f"Found 2 ApIDs (1063, 1064) in {packet_path}." in capture_cli_logs.text
     assert (
         "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:"
-        in caplog.text
+        in capture_cli_logs.text
     )
     assert (
         "Splitting data for ApID 1064 (MAG_HSK_STATUS) into separate files for each day:"
-        in caplog.text
+        in capture_cli_logs.text
     )
 
 

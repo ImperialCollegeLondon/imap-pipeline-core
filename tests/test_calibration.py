@@ -16,7 +16,6 @@ from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 
 from .util.miscellaneous import (  # noqa: F401
     create_test_file,
-    enableLogging,
     tidyDataFolders,
 )
 

@@ -43,8 +43,7 @@ RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} &&
     chown -R ${IMAP_USERNAME} /app && \
     mkdir -p /data && \
     chown -R ${IMAP_USERNAME} /data && \
-    chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME} && \
-    chmod +x /app/entrypoint.sh
+    chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME}
 
 WORKDIR /app
 
@@ -56,9 +55,5 @@ ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 #include the prefect workflows
 COPY src/ /app/
 
-
 # Now the imap-mag CLI is available on the path and
 # the 3.12 python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
-
-# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["/app/entrypoint.sh"]

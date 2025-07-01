@@ -2,10 +2,8 @@ import abc
 import typing
 from pathlib import Path
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider, T
 from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
-
-T = typing.TypeVar("T", bound=IFileMetadataProvider)
 
 
 class IOutputManager(abc.ABC):

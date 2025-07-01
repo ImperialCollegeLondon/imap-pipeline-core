@@ -6,7 +6,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api import calibrate, process
+from imap_mag.api import calibrate, process, publish
 from imap_mag.api.apiUtils import globalState
 from imap_mag.api.fetch import fetch
 
@@ -20,9 +20,10 @@ def hello(name: str):
 
 app.command()(process.process)
 app.command()(calibrate.calibrate)
+app.command()(publish.publish)
 
 
-def prepareWorkFile(file, configFile) -> Path | None:
+def fetch_file_for_work(file, configFile) -> Path | None:
     logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
 
 
