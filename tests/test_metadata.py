@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
+from imap_mag.io import AncillaryFileMetadataProvider, StandardSPDFMetadataProvider
 
 
 def test_metadata_provider_returns_correct_values_for_standard_l2_file():
@@ -56,9 +56,17 @@ def test_metadata_recovers_correct_values_from_standard_l2_pre_file():
     assert provider.get_filename() == filename
 
 
-def test_metadata_recovers_correct_values_from_ancillary_file_without_level():
+def test_standard_metadata_provider_fails_if_given_ancillary_file():
     filename = "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     provider = StandardSPDFMetadataProvider.from_filename(filename)
+    assert provider is None, (
+        "StandardSPDFMetadataProvider should not handle ancillary files."
+    )
+
+
+def test_metadata_recovers_correct_values_from_ancillary_file_without_level():
+    filename = "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+    provider = AncillaryFileMetadataProvider.from_filename(filename)
 
     assert provider is not None
     assert provider.mission == "imap"
@@ -76,7 +84,7 @@ def test_metadata_recovers_correct_values_from_ancillary_file_without_level():
 
 def test_metadata_recovers_correct_values_from_ancillary_file_name_without_level_or_end_date():
     filename = "imap_mag_l2-rotation_20251017_v001.cdf"
-    provider = StandardSPDFMetadataProvider.from_filename(filename)
+    provider = AncillaryFileMetadataProvider.from_filename(filename)
 
     assert provider is not None
     assert provider.mission == "imap"
