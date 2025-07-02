@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from imap_mag.io import AncillaryFileMetadataProvider
+from imap_mag.io.AncillaryFileMetadataProvider import AncillaryFileMetadataProvider
 from imap_mag.io.CalibrationLayerMetadataProvider import (
     CalibrationLayerMetadataProvider,
 )

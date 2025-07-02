@@ -27,27 +27,28 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         return True
 
     def get_folder_structure(self) -> str:
-        if self.content_date is None:
-            logger.error("No 'content_date' defined. Cannot generate folder structure.")
-            raise ValueError(
-                "No 'content_date' defined. Cannot generate folder structure."
+        if not self.content_date or not self.level:
+            logger.error(
+                "No 'content_date', or 'level' defined. Cannot generate folder structure."
             )
-
-        folder: str = self.level or self.descriptor or ""
+            raise ValueError(
+                "No 'content_date', or 'level' defined. Cannot generate folder structure."
+            )
 
         return (
             Path(self.mission)
             / self.instrument
-            / folder
+            / self.level
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self) -> str:
         if (
-            self.descriptor is None
-            or self.content_date is None
-            or self.version is None
-            or self.extension is None
+            not self.descriptor
+            or not self.level
+            or not self.content_date
+            or not self.version
+            or not self.extension
         ):
             logger.error(
                 "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
@@ -56,40 +57,32 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
                 "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
             )
 
-        descriptor = self.descriptor
-        if self.level is not None:
-            descriptor = f"{self.level}_{descriptor}"
-
-        return f"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
     def get_unversioned_pattern(self) -> re.Pattern:
-        """Get regex pattern for unversioned files."""
-
-        if not self.content_date or not self.descriptor or not self.extension:
+        if (
+            not self.content_date
+            or not self.level
+            or not self.descriptor
+            or not self.extension
+        ):
             logger.error(
-                "No 'content_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
+                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
             )
             raise ValueError(
-                "No 'content_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
+                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
             )
 
-        descriptor = self.descriptor
-
-        if self.level is not None:
-            descriptor = f"{self.level}_{descriptor}"
-
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod
     def from_filename(
         cls, filename: str | Path
     ) -> "StandardSPDFMetadataProvider | None":
-        """Create metadata provider from filename."""
-
         match = re.match(
-            r"imap_mag_((?P<level>l\d[a-zA-Z]?(-pre)?)_)?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
