@@ -30,9 +30,9 @@ class FileMetadataProviders:
 
         # Providers to try in order of precedence.
         provider_to_try: list[type[IFileMetadataProvider]] = [
-            AncillaryFileMetadataProvider,
             StandardSPDFMetadataProvider,
             CalibrationLayerMetadataProvider,
+            AncillaryFileMetadataProvider,
         ]
 
         for provider in provider_to_try:

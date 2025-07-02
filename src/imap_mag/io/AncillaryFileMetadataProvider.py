@@ -75,18 +75,18 @@ class AncillaryFileMetadataProvider(StandardSPDFMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"imap_mag_((?P<level>l\d[a-zA-Z]?(-pre)?)_)?(?P<descr>[^_]+)_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+)_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with ancillary file regex."
         )
 
         if match is None:
             return None
         else:
             return cls(
-                level=match["level"],
+                level=None,  # Ancillary files do not have a level
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 end_date=datetime.strptime(match["enddate"], "%Y%m%d")
