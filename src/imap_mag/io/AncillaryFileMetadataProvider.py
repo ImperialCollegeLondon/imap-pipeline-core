@@ -33,8 +33,6 @@ class AncillaryFileMetadataProvider(StandardSPDFMetadataProvider):
             )
 
         descriptor = self.descriptor
-        if self.level is not None:
-            descriptor = f"{self.level}_{descriptor}"
 
         if self.end_date is None:
             valid_date_range = self.content_date.strftime("%Y%m%d")
@@ -56,9 +54,6 @@ class AncillaryFileMetadataProvider(StandardSPDFMetadataProvider):
 
         descriptor = self.descriptor
 
-        if self.level is not None:
-            descriptor = f"{self.level}_{descriptor}"
-
         if self.end_date is None:
             valid_date_range = self.content_date.strftime("%Y%m%d")
         else:
@@ -75,7 +70,7 @@ class AncillaryFileMetadataProvider(StandardSPDFMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
