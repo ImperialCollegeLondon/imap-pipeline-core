@@ -73,11 +73,10 @@ def fetch_binary(
     initialiseLoggingForCommand(work_folder)
 
     if apid is not None:
-        packet_name: str = HKPacket.from_apid(apid).name
-    elif packet is not None and isinstance(packet, str):
-        packet_name: str = packet
+        packet_name: str = HKPacket.from_apid(apid).packet
     else:
-        packet_name: str = packet.packet  # type: ignore
+        assert packet is not None
+        packet_name = packet.packet
 
     logger.info(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."

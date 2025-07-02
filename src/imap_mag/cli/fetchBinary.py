@@ -7,6 +7,7 @@ from pathlib import Path
 
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.util import convert_packet_to_spdf_name
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,6 @@ class WebPODAMetadataProvider(StandardSPDFMetadataProvider):
 
 class FetchBinary:
     """Manage WebPODA data."""
-
-    __MAG_PREFIX: str = "mag_"
 
     __web_poda: WebPODA
 
@@ -76,7 +75,7 @@ class FetchBinary:
             )
 
             downloaded[file] = WebPODAMetadataProvider(
-                descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}-raw",
+                descriptor=f"{convert_packet_to_spdf_name(packet)}-raw",
                 content_date=(
                     min_time.replace(hour=0, minute=0, second=0) if min_time else None
                 ),

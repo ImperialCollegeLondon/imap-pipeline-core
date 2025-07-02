@@ -12,7 +12,7 @@ from space_packet_parser import definitions
 
 from imap_mag.io import StandardSPDFMetadataProvider
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import HKPacket, TimeConversion
+from imap_mag.util import HKPacket, TimeConversion, convert_packet_to_spdf_name
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,9 @@ class HKProcessor(FileProcessor):
         processed_files: list[Path] = []
 
         for apid, data in combined_results.items():
-            hk_packet: str = HKPacket.from_apid(apid).packet
+            hk_packet: HKPacket = HKPacket.from_apid(apid)
             metadata_provider = StandardSPDFMetadataProvider(
-                descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
+                descriptor=convert_packet_to_spdf_name(hk_packet),
                 content_date=None,
                 extension="csv",
             )
@@ -106,7 +106,7 @@ class HKProcessor(FileProcessor):
                 dataframe.index.values
             )
             logger.info(
-                f"Splitting data for ApID {apid} ({hk_packet}) into separate files for each day:\n"
+                f"Splitting data for ApID {apid} ({hk_packet.packet}) into separate files for each day:\n"
                 f"{', '.join(d.strftime('%Y%m%d') for d in sorted(set(dates)))}"
             )
 
