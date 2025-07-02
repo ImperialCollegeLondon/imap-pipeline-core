@@ -81,7 +81,7 @@ class SDCDataAccess(ISDCDataAccess):
         """Initialize SDC API client."""
 
         imap_data_access.config["DATA_DIR"] = data_dir
-        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url or CONSTANTS.WEBPODA_URL
+        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url or CONSTANTS.SDC_URL
 
     @staticmethod
     def get_file_path(
