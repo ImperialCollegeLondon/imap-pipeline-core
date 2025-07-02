@@ -13,7 +13,7 @@ from imap_mag.cli.fetchScience import (
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,8 @@ def fetch_science(
         ),
     ] = False,
     level: Annotated[
-        Level, typer.Option(case_sensitive=False, help="Level to download")
-    ] = Level.level_2,
+        ScienceLevel, typer.Option(case_sensitive=False, help="Level to download")
+    ] = ScienceLevel.l2,
     reference_frame: Annotated[
         ReferenceFrame | None,
         typer.Option(
@@ -87,7 +87,7 @@ def fetch_science(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    if reference_frame is not None and level != Level.level_2:
+    if reference_frame is not None and level != ScienceLevel.l2:
         logger.warning(
             f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
         )

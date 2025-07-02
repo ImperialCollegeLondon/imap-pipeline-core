@@ -7,7 +7,7 @@ from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.io import StandardSPDFMetadataProvider
-from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class FetchScience:
 
     def download_latest_science(
         self,
-        level: Level,
+        level: ScienceLevel,
         start_date: datetime,
         end_date: datetime,
         reference_frame: ReferenceFrame | None = None,
@@ -67,7 +67,7 @@ class FetchScience:
                 file_details = self.__data_access.get_filename(
                     level=level.value,
                     descriptor=mode.short_name
-                    + (frame_suffix if (level == Level.level_2) else sensor_suffix),
+                    + (frame_suffix if (level == ScienceLevel.l2) else sensor_suffix),
                     extension="cdf",
                     **dates,  # type: ignore
                 )

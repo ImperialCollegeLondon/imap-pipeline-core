@@ -1,9 +1,9 @@
 from enum import Enum
 
 
-class Level(str, Enum):
-    level_1a = "l1a"
-    level_1b = "l1b"
-    level_1c = "l1c"
-    level_1d = "l1d"
-    level_2 = "l2"
+class ScienceLevel(str, Enum):
+    l1a = "l1a"
+    l1b = "l1b"
+    l1c = "l1c"
+    l1d = "l1d"
+    l2 = "l2"
