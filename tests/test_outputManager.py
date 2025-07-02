@@ -1,5 +1,7 @@
 """Tests for `OutputManager` class."""
 
+import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -12,12 +14,11 @@ from imap_mag.io import (
 )
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
-    enableLogging,
     tidyDataFolders,
 )
 
 
-def test_copy_new_file(caplog):
+def test_copy_new_file(capture_cli_logs):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -34,13 +35,13 @@ def test_copy_new_file(caplog):
     # Verify.
     assert (
         f"Copied to {Path('output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v000.txt')}."
-        in caplog.text
+        in capture_cli_logs.text
     )
 
     assert Path("output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v000.txt").exists()
 
 
-def test_copy_file_same_content(caplog):
+def test_copy_file_same_content(capture_cli_logs):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -63,7 +64,7 @@ def test_copy_file_same_content(caplog):
     # Verify.
     assert (
         f"File {Path('output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v000.txt')} already exists and is the same. Skipping update."
-        in caplog.text
+        in capture_cli_logs.text
     )
 
     assert not Path(
@@ -72,7 +73,7 @@ def test_copy_file_same_content(caplog):
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
-def test_copy_file_second_existing_file_with_same_content(caplog):
+def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -96,11 +97,11 @@ def test_copy_file_second_existing_file_with_same_content(caplog):
     # Verify.
     assert (
         f"File {Path('output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v000.txt')} already exists and is different. Increasing version to 1."
-        in caplog.text
+        in capture_cli_logs.text
     )
     assert (
         f"File {Path('output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v001.txt')} already exists and is the same. Skipping update."
-        in caplog.text
+        in capture_cli_logs.text
     )
 
     assert not Path(
@@ -109,7 +110,7 @@ def test_copy_file_second_existing_file_with_same_content(caplog):
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
-def test_copy_file_existing_versions(caplog):
+def test_copy_file_existing_versions(capture_cli_logs):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -132,7 +133,7 @@ def test_copy_file_existing_versions(caplog):
     for version in range(2):
         assert (
             f"File {Path(f'output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v{version:03}.txt')} already exists and is different. Increasing version to {version + 1}."
-            in caplog.text
+            in capture_cli_logs.text
         )
 
     assert Path("output/imap/mag/pwr/2025/05/imap_mag_pwr_20250502_v002.txt").exists()
@@ -238,9 +239,13 @@ def test_get_filename_error_on_no_required_parameter(provider):
     )
 
 
+@dataclass
 class TestMetadataProvider(IFileMetadataProvider):
     def supports_versioning(self) -> bool:
         return False
+
+    def get_unversioned_pattern(self):
+        return re.compile("")
 
     def get_folder_structure(self) -> str:
         return "abc"
@@ -248,8 +253,12 @@ class TestMetadataProvider(IFileMetadataProvider):
     def get_filename(self) -> str:
         return "def"
 
+    @classmethod
+    def from_filename(cls, filename: Path | str) -> "TestMetadataProvider | None":
+        return None
 
-def test_copy_file_custom_providers(caplog):
+
+def test_copy_file_custom_providers(capture_cli_logs):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -261,7 +270,7 @@ def test_copy_file_custom_providers(caplog):
     # Verify.
     assert (
         "Versioning not supported. File may be overwritten if it already exists."
-        in caplog.text
+        in capture_cli_logs.text
     )
 
     assert Path("output/abc/def").exists()

@@ -1,38 +1,36 @@
-from datetime import datetime
+import logging
+import subprocess
 
-import numpy as np
-from pydantic import BaseModel
-
-
-class BasicCalibration(BaseModel):
-    timestamps: list[datetime]
-    x_offsets: list[float]
-    y_offsets: list[float]
-    z_offsets: list[float]
+logger = logging.getLogger(__name__)
 
 
-def simulateSpinAxisCalibration(xarray) -> BasicCalibration:
-    # TODO: Transfer to MATLAB to get spin axis offsets
-    timestamps = [datetime(2022, 3, 3)]
-    offsets = [3.256]
-
-    return BasicCalibration(
-        timestamps=timestamps,
-        x_offsets=np.zeros(len(offsets)),
-        y_offsets=np.zeros(len(offsets)),
-        z_offsets=offsets,
+def setup_matlab_path(path, matlab_command):
+    subprocess.run(
+        [
+            matlab_command,
+            "-batch",
+            f'addpath(genpath("{path}")); savepath',
+        ]
     )
 
 
-def simulateSpinPlaneCalibration(xarray):
-    # TODO: Transfer to MATLAB to get spin plane offsets
-    timestamps = [datetime(2022, 3, 3)]
-    offsets_x = [3.256]
-    offsets_y = [2.76]
+def call_matlab(command, first_call=True):
+    MATLAB_COMMAND = "matlab"
+    if first_call:
+        default_matlab_path = "/home/matlab/Documents/MATLAB"
+        local_matlab_path = "src/matlab"
+        setup_matlab_path(default_matlab_path, MATLAB_COMMAND)
+        setup_matlab_path(local_matlab_path, MATLAB_COMMAND)
+        logger.info("Added necessary files to path")
 
-    return BasicCalibration(
-        timestamps=timestamps,
-        x_offsets=offsets_x,
-        y_offsets=offsets_y,
-        z_offsets=np.zeros(len(offsets_x)),
+    cmd = [MATLAB_COMMAND, "-nojvm", "-nodesktop", "-batch"]
+    cmd.append(command)
+
+    logger.debug(f"Calling MATLAB with command: {cmd}")
+    p = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
+
+    while (line := p.stdout.readline()) != "":  # type: ignore
+        line = line.rstrip()
+        logger.info(line)

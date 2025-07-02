@@ -24,9 +24,7 @@
         },
         {
             "args": [
-                "process",
-                "--config",
-                "config.yaml"
+                "process"
             ],
             "console": "integratedTerminal",
             "justMyCode": true,

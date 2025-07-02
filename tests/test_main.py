@@ -137,7 +137,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     ]
 
     if mode is not None:
-        args.extend(["--mode", mode])
+        args.extend(["--fetch-mode", mode])
 
     # Exercise.
     result = runner.invoke(app, args, env=settings_overrides_for_env)
@@ -384,39 +384,3 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         open(cdf_file, "rb") as input,
     ):
         assert output.read() == input.read()
-
-
-@pytest.mark.skip("Mhairi is working on this")
-def test_calibration_creates_calibration_file():
-    result = runner.invoke(
-        app,
-        [
-            "calibrate",
-            "--config",
-            "tests/config/calibration_config.yaml",
-            "--method",
-            "SpinAxisCalibrator",
-            "imap_mag_l1a_norm-mago_20250502_v000.cdf",
-        ],
-    )
-    assert result.exit_code == 0
-    assert Path("output/calibration.json").exists()
-
-
-@pytest.mark.skip("Mhairi is working on this")
-def test_application_creates_L2_file():
-    result = runner.invoke(
-        app,
-        [
-            "apply",
-            "--config",
-            "tests/config/calibration_application_config.yaml",
-            "--calibration",
-            "calibration.json",
-            "imap_mag_l1a_norm-mago_20250502_v000.cdf",
-        ],
-    )
-
-    print("\n" + str(result.stdout))
-    assert result.exit_code == 0
-    assert Path("output/L2.cdf").exists()

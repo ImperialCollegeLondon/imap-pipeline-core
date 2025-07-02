@@ -6,8 +6,8 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import (
+    fetch_file_for_work,
     initialiseLoggingForCommand,
-    prepareWorkFile,
 )
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
@@ -36,26 +36,20 @@ def process(
 ) -> list[tuple[Path, IFileMetadataProvider]]:
     """Process a single file."""
 
-    logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
-
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.process)
-    initialiseLoggingForCommand(work_folder)
+    initialiseLoggingForCommand(
+        work_folder
+    )  # DO NOT log anything before this point (it won't be captured in the log file)
+
+    logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
     work_files: list[Path] = []
 
     for file in files:
-        work_file = prepareWorkFile(file, work_folder)
-
-        if work_file is None:
-            logger.critical(
-                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-            )
-            raise FileNotFoundError(
-                f"Unable to find a file to process in {file.parent} with name/pattern {file.name}"
-            )
-
-        work_files.append(work_file)
+        work_files.append(
+            fetch_file_for_work(file, work_folder, throw_if_not_found=True)
+        )  # type: ignore
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)

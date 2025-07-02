@@ -12,7 +12,6 @@ from tests.util.miscellaneous import (
     NOW,
     TODAY,
     YESTERDAY,
-    enableLogging,  # noqa: F401
     mock_datetime_provider,  # noqa: F401
     set_env,
     tidyDataFolders,  # noqa: F401
@@ -276,7 +275,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811,
     force_database_update,
-    caplog,
+    capture_cli_logs,
 ):
     # Set up.
     binary_files: dict[str, str] = {
@@ -352,7 +351,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     if force_database_update:
         assert (
             "Database cannot be updated without forcing ERT. Database will not be updated."
-            in caplog.text
+            in capture_cli_logs.text
         )
 
     # Database should not be updated when non-ERT start and end dates are provided.

@@ -1,50 +1,14 @@
 import logging
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 import typer
-import yaml
 
-from imap_mag import appConfig, appLogging
+from imap_mag.appLogging import AppLogging
 
 logger = logging.getLogger(__name__)
 globalState = {"verbose": False}
-
-
-def commandInit(config: Path | None) -> appConfig.CommandConfigBase:
-    # load and verify the config file
-    if config is None:
-        logger.critical("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        configFileDict = yaml.safe_load(open(config))
-        logger.debug(
-            "Config file loaded from %s with content %s: ", config, configFileDict
-        )
-    elif config.is_dir():
-        logger.critical("Config %s is a directory, need a yml file", config)
-        raise typer.Abort()
-    elif not config.exists():
-        logger.critical("The config at %s does not exist", config)
-        raise typer.Abort()
-    else:
-        pass
-
-    configFile = appConfig.CommandConfigBase(**configFileDict)
-
-    # set up the work folder
-    if not configFile.work_folder:
-        configFile.work_folder = Path(".work")
-
-    if not os.path.exists(configFile.work_folder):
-        logger.debug(f"Creating work folder {configFile.work_folder}")
-        os.makedirs(configFile.work_folder)
-
-    initialiseLoggingForCommand(configFile.work_folder)
-
-    return configFile
 
 
 def initialiseLoggingForCommand(folder):
@@ -55,7 +19,7 @@ def initialiseLoggingForCommand(folder):
         folder,
         f"{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.log",
     )
-    if not appLogging.set_up_logging(
+    if not AppLogging.set_up_logging(
         console_log_output="stdout",
         console_log_level=level,
         console_log_color=True,
@@ -68,9 +32,25 @@ def initialiseLoggingForCommand(folder):
         print("Failed to set up logging, aborting.")
         raise typer.Abort()
 
+    logging.debug("Logging initialised for CLI command.")
 
-def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
-    logger.debug(f"Grabbing file matching {file} in {work_folder}")
+
+def throw_error_file_not_found(source_folder: Path, filename: str) -> None:
+    """Throw an error if the file is not found."""
+    logger.critical(
+        f"Unable to find file to process in {source_folder} with name/pattern {filename}."
+    )
+    raise FileNotFoundError(
+        f"Unable to find file to process in {source_folder} with name/pattern {filename}."
+    )
+
+
+def fetch_file_for_work(
+    file: Path, work_folder: Path, *, throw_if_not_found: bool = False
+) -> Path | None:
+    logger.debug(
+        f"Grabbing file matching {file.name} in {file.parent} and copying it to {work_folder}"
+    )
 
     files: list[Path] = []
 
@@ -78,6 +58,9 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     filename = file.name
 
     if not source_folder.exists():
+        if throw_if_not_found:
+            throw_error_file_not_found(source_folder, filename)
+
         logger.warning(f"Folder {source_folder} does not exist")
         return None
 
@@ -97,10 +80,7 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
     if len(files) == 0:
-        logger.critical(f"No files matching {filename} found in {source_folder}")
-        raise FileNotFoundError(
-            f"No files matching {filename} found in {source_folder}"
-        )
+        throw_error_file_not_found(source_folder, filename)
 
     logger.info(
         f"Found {len(files)} matching files. Select the most recent one: "
@@ -113,3 +93,6 @@ def prepareWorkFile(file: Path, work_folder: Path) -> Path | None:
     work_file = Path(shutil.copy2(files[0], work_folder))
 
     return work_file
+
+
+# TODO: Need to handle configuration of calibration folder, and multiple input/output folders

@@ -63,6 +63,26 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
 
         return f"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
+    def get_unversioned_pattern(self) -> re.Pattern:
+        """Get regex pattern for unversioned files."""
+
+        if not self.content_date or not self.descriptor or not self.extension:
+            logger.error(
+                "No 'content_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
+            )
+            raise ValueError(
+                "No 'content_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
+            )
+
+        descriptor = self.descriptor
+
+        if self.level is not None:
+            descriptor = f"{self.level}_{descriptor}"
+
+        return re.compile(
+            rf"{self.mission}_{self.instrument}_{descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+        )
+
     @classmethod
     def from_filename(
         cls, filename: str | Path
@@ -70,7 +90,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"imap_mag_(?P<level>l\d[a-zA-Z]?)?_?(?P<descr>[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_((?P<level>l\d[a-zA-Z]?)_)?(?P<descr>[^_]+)(?<!-layer)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(

@@ -19,12 +19,15 @@ class CONSTANTS:
         POLL_HK_CRON = "IMAP_CRON_POLL_HK"
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1B_NORM"
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1C_BURST"
+        POLL_L2_CRON = "IMAP_CRON_POLL_L2"
 
         WEBPODA_AUTH_CODE = "WEBPODA_AUTH_CODE"
         SDC_AUTH_CODE = "SDC_AUTH_CODE"
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
         PREFECT_LOGGING_EXTRA_LOGGERS = "PREFECT_LOGGING_EXTRA_LOGGERS"
+
+        MATLAB_LICENSE = "MLM_LICENSE_FILE"
 
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
@@ -34,8 +37,14 @@ class CONSTANTS:
     class FLOW_NAMES:
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
+        CALIBRATE = "calibrate"
+        APPLY_CALIBRATION = "apply-calibration"
+        CALIBRATE_AND_APPLY = "calibrate-and-apply"
+        PUBLISH = "publish"
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"
+        POLL_L2 = "poll_l2_science"
+        PUBLISH = "publish"

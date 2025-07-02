@@ -1,11 +1,12 @@
 """Main module."""
 
-import subprocess
+import logging
+from pathlib import Path
 from typing import Annotated
 
 import typer
 
-from imap_mag.api import apply, calibrate, process
+from imap_mag.api import calibrate, process, publish
 from imap_mag.api.apiUtils import globalState
 from imap_mag.api.fetch import fetch
 
@@ -17,16 +18,17 @@ def hello(name: str):
     print(f"Hello {name}")
 
 
-@app.command()
-def matlab():
-    subprocess.run(["matlab", "-batch", "helloworld"])
-
-
 app.command()(process.process)
 app.command()(calibrate.calibrate)
-app.command()(apply.apply)
+app.command()(publish.publish)
+
+
+def fetch_file_for_work(file, configFile) -> Path | None:
+    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
+
 
 app.add_typer(fetch.app, name="fetch", help="Fetch data from the SDC or WebPODA")
+app.add_typer(calibrate.app, name="calibration", help="Generate calibration parameters")
 
 
 @app.callback()

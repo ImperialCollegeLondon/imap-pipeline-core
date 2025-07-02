@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from imap_mag import appLogging
+from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider
 
 NOW = datetime(2025, 6, 2, 12, 37, 9)
@@ -16,9 +16,12 @@ BEGINNING_OF_IMAP = YESTERDAY
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
-@pytest.fixture(autouse=True)
+DATASTORE = Path("tests/data")
+
+
+@pytest.fixture(autouse=False)
 def enableLogging():
-    appLogging.set_up_logging(
+    AppLogging.set_up_logging(
         console_log_output="stdout",
         console_log_level="debug",
         console_log_color=True,
@@ -29,6 +32,7 @@ def enableLogging():
         console_log_line_template="%(color_on)s%(message)s%(color_off)s",
     )
     yield
+    AppLogging.reset_setup_flag()  # Reset logging setup after test
 
 
 @pytest.fixture(autouse=True)
