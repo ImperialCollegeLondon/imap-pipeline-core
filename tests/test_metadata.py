@@ -93,14 +93,14 @@ def test_metadata_recovers_correct_values_from_ancillary_file_without_level():
 
 
 def test_metadata_recovers_correct_values_from_ancillary_file_name_without_level_or_end_date():
-    filename = "imap_mag_l2-rotation_20251017_v001.cdf"
+    filename = "imap_mag_l2-calibration_20251017_v001.cdf"
     provider = AncillaryFileMetadataProvider.from_filename(filename)
 
     assert provider is not None
     assert provider.mission == "imap"
     assert provider.instrument == "mag"
     assert provider.level is None
-    assert provider.descriptor == "l2-rotation"
+    assert provider.descriptor == "l2-calibration"
     assert provider.content_date == datetime(2025, 10, 17)
     assert provider.end_date is None
     assert provider.version == 1
@@ -132,7 +132,7 @@ def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_d
         mission="imap",
         instrument="mag",
         level=None,
-        descriptor="l2-rotation",
+        descriptor="l2-calibration",
         content_date=datetime(2025, 10, 17),
         end_date=None,
         version=1,
@@ -140,7 +140,7 @@ def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_d
     )
 
     assert provider.get_unversioned_pattern().pattern == (
-        r"imap_mag_l2-rotation_20251017_v(?P<version>\d+)\.cdf"
+        r"imap_mag_l2-calibration_20251017_v(?P<version>\d+)\.cdf"
     )
 
 
@@ -183,7 +183,7 @@ def test_get_unversioned_pattern_of_ancillary_metadata_provider_without_content_
 
 
 def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():
-    filename = "imap_mag_notalevel_l2-rotation_20251017_v001.cdf"
+    filename = "imap_mag_l2-notcalibration_20251017_v001.cdf"
     ancillary_provider = AncillaryFileMetadataProvider.from_filename(filename)
     assert ancillary_provider is None, (
         "Should return None for invalid ancillary filenames."
