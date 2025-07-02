@@ -1,6 +1,11 @@
 from enum import Enum
 
 
+class HKLevel(str, Enum):
+    l0 = "l0"
+    l1 = "l1"
+
+
 class ScienceLevel(str, Enum):
     l1a = "l1a"
     l1b = "l1b"

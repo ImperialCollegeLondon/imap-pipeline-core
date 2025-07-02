@@ -9,6 +9,7 @@ import pandas as pd
 
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.util import HKLevel
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,8 @@ class FetchBinary:
                 )
 
                 downloaded[file] = WebPODAMetadataProvider(
-                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}-raw",
+                    level=HKLevel.l0.value,
+                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}",
                     content_date=(
                         min_time.replace(hour=0, minute=0, second=0)
                         if min_time

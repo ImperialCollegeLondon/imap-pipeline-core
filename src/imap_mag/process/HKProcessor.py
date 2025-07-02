@@ -12,7 +12,7 @@ from space_packet_parser import definitions
 
 from imap_mag.io import StandardSPDFMetadataProvider
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import HKPacket, TimeConversion
+from imap_mag.util import HKLevel, HKPacket, TimeConversion
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,7 @@ class HKProcessor(FileProcessor):
         for apid, data in combined_results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
             metadata_provider = StandardSPDFMetadataProvider(
+                level=HKLevel.l1.value,
                 descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
                 content_date=None,
                 extension="csv",

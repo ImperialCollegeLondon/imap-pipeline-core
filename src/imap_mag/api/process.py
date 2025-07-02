@@ -48,8 +48,8 @@ def process(
 
     for file in files:
         work_files.append(
-            fetch_file_for_work(file, work_folder, throw_if_not_found=True)
-        )  # type: ignore
+            fetch_file_for_work(file, work_folder, throw_if_not_found=True)  # type: ignore
+        )
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)
