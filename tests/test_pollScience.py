@@ -123,7 +123,7 @@ def verify_available_modes(
 def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: datetime):
     for mode in modes_to_check:
         data_folder = os.path.join(
-            "output/imap/mag/l1c", actual_timestamp.strftime("%Y/%m")
+            "output/science/mag/l1c", actual_timestamp.strftime("%Y/%m")
         )
         cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_v000.cdf"
 

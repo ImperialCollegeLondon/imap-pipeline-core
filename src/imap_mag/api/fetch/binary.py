@@ -7,7 +7,7 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchBinary import FetchBinary, WebPODAMetadataProvider
+from imap_mag.cli.fetchBinary import FetchBinary, HKMetadataProvider
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.util import HKPacket
@@ -52,7 +52,7 @@ def fetch_binary(
             help="WebPODA authentication code",
         ),
     ] = None,
-) -> dict[Path, WebPODAMetadataProvider]:
+) -> dict[Path, HKMetadataProvider]:
     """Download binary data from WebPODA."""
 
     # Must provide a apid or a packet.
@@ -86,7 +86,7 @@ def fetch_binary(
     poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.api.url_base)
 
     fetch_binary = FetchBinary(poda)
-    downloaded_binaries: dict[Path, WebPODAMetadataProvider] = (
+    downloaded_binaries: dict[Path, HKMetadataProvider] = (
         fetch_binary.download_binaries(
             packet=packet_name,
             start_date=start_date,
@@ -104,7 +104,7 @@ def fetch_binary(
             f"Downloaded {len(downloaded_binaries)} files:\n{', '.join(str(f) for f in downloaded_binaries.keys())}"
         )
 
-    output_binaries: dict[Path, WebPODAMetadataProvider] = dict()
+    output_binaries: dict[Path, HKMetadataProvider] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(

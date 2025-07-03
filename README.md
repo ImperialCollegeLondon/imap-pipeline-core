@@ -132,7 +132,7 @@ imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01
 ### Process Binary HK to CSV
 
 ```bash
-imap-mag process data/imap/mag/hsk-pw-raw/2025/01/imap_mag_hsk-pw-raw_20250102_v000.pkts
+imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.pkts
 ```
 
 ### Publish Calibration to SDC

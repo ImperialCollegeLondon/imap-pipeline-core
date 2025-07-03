@@ -14,7 +14,7 @@ from imap_mag.io import (
     OutputManager,
     StandardSPDFMetadataProvider,
 )
-from imap_mag.util import Level, ScienceMode
+from imap_mag.util import ScienceLevel, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationMethod,
     EmptyCalibrator,
@@ -66,7 +66,7 @@ def calibrate(
 
     # TODO: Input manager for getting data of a given level?
 
-    level = Level.level_1b if mode == ScienceMode.Burst else Level.level_1c
+    level = ScienceLevel.l1b if mode == ScienceMode.Burst else ScienceLevel.l1c
     metadata_provider = StandardSPDFMetadataProvider(
         level=level.value,
         content_date=date,

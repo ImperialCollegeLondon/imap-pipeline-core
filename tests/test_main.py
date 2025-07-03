@@ -29,11 +29,11 @@ def test_app_says_hello():
     [
         (
             "MAG_HSK_PW.pkts",
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "output/hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v000.csv",
         ),
         (
-            "imap_mag_hsk-pw_20250214_v000.pkts",
-            "output/imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "imap_mag_l0_hsk-pw_20250214_v000.pkts",
+            "output/hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v000.csv",
         ),
     ],
 )
@@ -147,12 +147,12 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v000.pkts",
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -208,12 +208,12 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v000.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v000.pkts",
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -290,12 +290,13 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "rb",
         ) as output,
         open(cdf_file, "rb") as input,
     ):
@@ -374,12 +375,13 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "rb",
         ) as output,
         open(cdf_file, "rb") as input,
     ):
