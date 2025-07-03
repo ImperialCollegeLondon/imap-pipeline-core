@@ -46,9 +46,10 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
 
-    def get_unversioned_pattern(self) -> re.Pattern:
-        """Get regex pattern for unversioned files."""
+    def get_folder_structure(self) -> str:
+        return "PLEASE-FIX-ME!"
 
+    def get_unversioned_pattern(self) -> re.Pattern:
         if not self.start_date or not self.descriptor or not self.extension:
             logger.error(
                 "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
@@ -73,7 +74,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -85,9 +86,9 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
         else:
             return cls(
                 descriptor=match["descr"],
-                start_date=datetime.strptime(match["date"], "%Y%m%d"),
-                end_date=datetime.strptime(match["enddate"], "%Y%m%d")
-                if match["enddate"]
+                start_date=datetime.strptime(match["start"], "%Y%m%d"),
+                end_date=datetime.strptime(match["end"], "%Y%m%d")
+                if match["end"]
                 else None,
                 version=int(match["version"]),
                 extension=match["ext"],

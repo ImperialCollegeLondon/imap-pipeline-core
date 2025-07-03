@@ -29,12 +29,12 @@ class FileMetadataProviderSelector:
     ) -> IFileMetadataProvider | None:
         """Find a suitable metadata provider for the given filepath."""
 
-        # Providers to try in order of precedence.
+        # Providers to try in alphabetical order.
         provider_to_try: list[type[IFileMetadataProvider]] = [
+            AncillaryFileMetadataProvider,
+            CalibrationLayerMetadataProvider,
             HKMetadataProvider,
             ScienceMetadataProvider,
-            CalibrationLayerMetadataProvider,
-            AncillaryFileMetadataProvider,
         ]
 
         for provider in provider_to_try:

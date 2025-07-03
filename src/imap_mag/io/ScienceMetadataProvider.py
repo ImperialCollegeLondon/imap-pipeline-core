@@ -37,7 +37,7 @@ class ScienceMetadataProvider(StandardSPDFMetadataProvider):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "ScienceMetadataProvider | None":
         match = re.match(
-            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
