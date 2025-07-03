@@ -33,11 +33,7 @@ class CalibrationLayerMetadataProvider(IFileMetadataProvider):
             )
 
         return (
-            Path(self.mission)
-            / self.instrument
-            / "calibration"
-            / "layer"
-            / self.content_date.strftime("%Y/%m")
+            Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self):

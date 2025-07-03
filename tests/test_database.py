@@ -15,8 +15,8 @@ from imap_mag import __version__
 from imap_mag.db import IDatabase, update_database_with_progress
 from imap_mag.io import (
     DatabaseFileOutputManager,
+    HKMetadataProvider,
     IOutputManager,
-    StandardSPDFMetadataProvider,
 )
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (  # noqa: F401
@@ -60,8 +60,9 @@ def test_database_output_manager_writes_to_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -100,8 +101,9 @@ def test_database_output_manager_same_file_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -155,14 +157,16 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    matched_metadata_provider = StandardSPDFMetadataProvider(
+    matched_metadata_provider = HKMetadataProvider(
         version=2,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -171,8 +175,8 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     mock_database.get_files.side_effect = [
         [
             File(
-                name="imap_mag_hsk-pw_20250502_v001.txt",
-                path="imap/mag/hsk-pw/2025/05",
+                name="imap_mag_l1_hsk-pw_20250502_v001.txt",
+                path="hk/mag/l1/hsk-pw/2025/05",
                 version=1,
                 hash="",
                 size=0,
@@ -180,8 +184,8 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
                 software_version=__version__,
             ),
             File(
-                name="imap_mag_hsk-pw_20250502_v002.txt",
-                path="imap/mag/hsk-pw/2025/05",
+                name="imap_mag_l1_hsk-pw_20250502_v002.txt",
+                path="hk/mag/l1/hsk-pw/2025/05",
                 version=2,
                 hash=hashlib.md5(b"some content").hexdigest(),
                 size=0,
@@ -231,14 +235,16 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_metadata_provider = StandardSPDFMetadataProvider(
+    unique_metadata_provider = HKMetadataProvider(
         version=3,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -253,8 +259,8 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     mock_database.get_files.side_effect = [
         [
             File(
-                name="imap_mag_hsk-pw_20250502_v001.txt",
-                path="imap/mag/hsk-pw/2025/05",
+                name="imap_mag_l1_hsk-pw_20250502_v001.txt",
+                path="hk/mag/l1/hsk-pw/2025/05",
                 version=1,
                 hash=0,
                 size=0,
@@ -262,8 +268,8 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
                 software_version=__version__,
             ),
             File(
-                name="imap_mag_hsk-pw_20250502_v002.txt",
-                path="imap/mag/hsk-pw/2025/05",
+                name="imap_mag_l1_hsk-pw_20250502_v002.txt",
+                path="hk/mag/l1/hsk-pw/2025/05",
                 version=2,
                 hash=0,
                 size=0,
@@ -287,11 +293,11 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     assert (
-        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
+        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
         in capture_cli_logs.text
     )
     assert (
-        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in capture_cli_logs.text
     )
     assert f"Inserting {test_file} into database." in capture_cli_logs.text
@@ -309,8 +315,9 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -338,8 +345,9 @@ def test_database_output_manager_errors_destination_file_different_hash(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -365,8 +373,9 @@ def test_database_output_manager_errors_database_error(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -488,14 +497,16 @@ def test_database_output_manager_real_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = HKMetadataProvider(
         version=1,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_metadata_provider = StandardSPDFMetadataProvider(
+    unique_metadata_provider = HKMetadataProvider(
         version=3,
+        level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -510,8 +521,8 @@ def test_database_output_manager_real_database(
     test_database.insert_files(
         [
             File(
-                name="imap_mag_hsk-pw_20250502_v001.txt",
-                path="imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt",
+                name="imap_mag_l1_hsk-pw_20250502_v001.txt",
+                path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt",
                 version=1,
                 hash=0,
                 size=123,
@@ -519,8 +530,8 @@ def test_database_output_manager_real_database(
                 software_version=__version__,
             ),
             File(
-                name="imap_mag_hsk-pw_20250502_v002.txt",
-                path="imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt",
+                name="imap_mag_l1_hsk-pw_20250502_v002.txt",
+                path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt",
                 version=2,
                 hash=0,
                 size=456,
@@ -541,11 +552,11 @@ def test_database_output_manager_real_database(
     )
 
     assert (
-        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
+        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
         in capture_cli_logs.text
     )
     assert (
-        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in capture_cli_logs.text
     )
     assert f"Inserting {test_file} into database." in capture_cli_logs.text

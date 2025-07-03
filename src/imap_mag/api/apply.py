@@ -12,10 +12,11 @@ from imap_mag.api.apiUtils import (
 )
 from imap_mag.config import AppSettings
 from imap_mag.io import (
+    AncillaryFileMetadataProvider,
     CalibrationLayerMetadataProvider,
     InputManager,
     OutputManager,
-    StandardSPDFMetadataProvider,
+    ScienceMetadataProvider,
 )
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationApplicator
@@ -57,7 +58,7 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     """
     if rotation:
         inputManager = InputManager(appSettings.data_store)
-        rotation_metadata = StandardSPDFMetadataProvider.from_filename(rotation)
+        rotation_metadata = AncillaryFileMetadataProvider.from_filename(rotation)
         if not rotation_metadata:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
@@ -99,7 +100,7 @@ def apply(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    original_input_metadata = StandardSPDFMetadataProvider.from_filename(input)  # type: ignore
+    original_input_metadata = ScienceMetadataProvider.from_filename(input)  # type: ignore
 
     if not original_input_metadata:
         logger.error(f"Could not parse metadata from input file: {input}")
@@ -117,7 +118,7 @@ def apply(
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
-    l2_metadata_provider = StandardSPDFMetadataProvider(
+    l2_metadata_provider = ScienceMetadataProvider(
         level="l2-pre",
         content_date=date,
         descriptor=original_input_metadata.descriptor,
@@ -130,9 +131,10 @@ def apply(
         and ScienceMode.Burst.short_name in original_input_metadata.descriptor
         else ScienceMode.Normal.short_name
     )
-    cal_metadata_provider = StandardSPDFMetadataProvider(
+    cal_metadata_provider = AncillaryFileMetadataProvider(
         descriptor=f"l2-{norm_or_burst}-offsets",
-        content_date=date,
+        start_date=date,
+        end_date=date,
         version=0,
         extension=calibration_output_type,
     )

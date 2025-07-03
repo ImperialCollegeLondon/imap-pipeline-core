@@ -1,24 +1,14 @@
 """Program to retrieve and process MAG CDF files."""
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.io import StandardSPDFMetadataProvider
-from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
+from imap_mag.io import ScienceMetadataProvider
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SDCMetadataProvider(StandardSPDFMetadataProvider):
-    """
-    Metadata for SDC files.
-    """
-
-    ingestion_date: datetime | None = None  # date data was ingested by SDC
 
 
 # TODO: why is this class in a folder named "cli" when it is not a command line app?
@@ -44,15 +34,15 @@ class FetchScience:
 
     def download_latest_science(
         self,
-        level: Level,
+        level: ScienceLevel,
         start_date: datetime,
         end_date: datetime,
         reference_frame: ReferenceFrame | None = None,
         use_ingestion_date: bool = False,
-    ) -> dict[Path, SDCMetadataProvider]:
+    ) -> dict[Path, ScienceMetadataProvider]:
         """Retrieve SDC data."""
 
-        downloaded: dict[Path, SDCMetadataProvider] = dict()
+        downloaded: dict[Path, ScienceMetadataProvider] = dict()
 
         dates: dict[str, datetime] = {
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
@@ -60,7 +50,7 @@ class FetchScience:
         }
         frame_suffix = ("-" + reference_frame.value) if reference_frame else ""
 
-        if (level == Level.level_2) and (self.__sensor != [MAGSensor.OBS]):
+        if (level == ScienceLevel.l2) and (self.__sensor != [MAGSensor.OBS]):
             logger.debug("Forcing download of only OBS (mago) sensor for L2 data.")
             sensors: list[MAGSensor] = [MAGSensor.OBS]
         else:
@@ -73,7 +63,7 @@ class FetchScience:
                 file_details = self.__data_access.get_filename(
                     level=level.value,
                     descriptor=mode.short_name
-                    + (frame_suffix if (level == Level.level_2) else sensor_suffix),
+                    + (frame_suffix if (level == ScienceLevel.l2) else sensor_suffix),
                     extension="cdf",
                     **dates,  # type: ignore
                 )
@@ -87,7 +77,7 @@ class FetchScience:
                                 f"Downloaded file from SDC Data Access: {downloaded_file}"
                             )
 
-                            downloaded[downloaded_file] = SDCMetadataProvider(
+                            downloaded[downloaded_file] = ScienceMetadataProvider(
                                 level=level.value,
                                 descriptor=file["descriptor"],
                                 content_date=datetime.strptime(
