@@ -10,7 +10,7 @@ from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import IFileMetadataProvider
+from imap_mag.io import IFilePathHandler
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def process(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
-) -> list[tuple[Path, IFileMetadataProvider]]:
+) -> list[tuple[Path, IFilePathHandler]]:
     """Process a single file."""
 
     app_settings = AppSettings()  # type: ignore
@@ -55,23 +55,21 @@ def process(
     file_processor: FileProcessor = dispatch(work_files, work_folder)
     file_processor.initialize(app_settings.packet_definition)
 
-    processed_files: dict[Path, IFileMetadataProvider] = file_processor.process(
-        work_files
-    )
+    processed_files: dict[Path, IFilePathHandler] = file_processor.process(work_files)
 
     # Copy files to the output directory
-    copied_files: list[tuple[Path, IFileMetadataProvider]] = []
+    copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     output_manager = appUtils.getOutputManagerByMode(
         app_settings.data_store,
         use_database=(save_mode == SaveMode.LocalAndDatabase),
     )
 
-    for processed_file, metadata_provider in processed_files.items():
-        (copied_file, metadata_provider) = output_manager.add_file(
-            processed_file, metadata_provider
+    for processed_file, path_handler in processed_files.items():
+        (copied_file, path_handler) = output_manager.add_file(
+            processed_file, path_handler
         )
 
-        copied_files.append((copied_file, metadata_provider))
+        copied_files.append((copied_file, path_handler))
 
     return copied_files

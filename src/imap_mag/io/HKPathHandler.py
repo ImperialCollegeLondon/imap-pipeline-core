@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
+from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class HKMetadataProvider(StandardSPDFMetadataProvider):
+class HKPathHandler(StandardSPDFPathHandler):
     """
     Metadata for HK files.
     """
@@ -36,7 +36,7 @@ class HKMetadataProvider(StandardSPDFMetadataProvider):
         ).as_posix()
 
     @classmethod
-    def from_filename(cls, filename: str | Path) -> "HKMetadataProvider | None":
+    def from_filename(cls, filename: str | Path) -> "HKPathHandler | None":
         match = re.match(
             r"imap_mag_(?P<level>l\d)_(?P<descr>hsk-[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,

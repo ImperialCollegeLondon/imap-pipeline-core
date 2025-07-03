@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io import (
-    HKMetadataProvider,
-    IFileMetadataProvider,
+    HKPathHandler,
+    IFilePathHandler,
     OutputManager,
 )
 from tests.util.miscellaneous import (  # noqa: F401
@@ -25,7 +25,7 @@ def test_copy_new_file(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKMetadataProvider(
+        HKPathHandler(
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
@@ -59,7 +59,7 @@ def test_copy_file_same_content(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKMetadataProvider(
+        HKPathHandler(
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
@@ -97,7 +97,7 @@ def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKMetadataProvider(
+        HKPathHandler(
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
@@ -137,7 +137,7 @@ def test_copy_file_existing_versions(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKMetadataProvider(
+        HKPathHandler(
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
@@ -166,7 +166,7 @@ def test_copy_file_forced_version():
     # Exercise.
     manager.add_file(
         original_file,
-        HKMetadataProvider(
+        HKPathHandler(
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
@@ -182,7 +182,7 @@ def test_copy_file_forced_version():
 
 
 @dataclass
-class TestMetadataProvider(IFileMetadataProvider):
+class TestPathHandler(IFilePathHandler):
     def supports_versioning(self) -> bool:
         return False
 
@@ -196,7 +196,7 @@ class TestMetadataProvider(IFileMetadataProvider):
         return "def"
 
     @classmethod
-    def from_filename(cls, filename: Path | str) -> "TestMetadataProvider | None":
+    def from_filename(cls, filename: Path | str) -> "TestPathHandler | None":
         return None
 
 
@@ -207,7 +207,7 @@ def test_copy_file_custom_providers(capture_cli_logs):
     original_file = create_test_file(Path(".work/some_test_file.txt"))
 
     # Exercise.
-    manager.add_file(original_file, TestMetadataProvider())
+    manager.add_file(original_file, TestPathHandler())
 
     # Verify.
     assert (

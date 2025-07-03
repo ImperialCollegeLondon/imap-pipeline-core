@@ -15,7 +15,7 @@ from imap_mag import __version__
 from imap_mag.db import IDatabase, update_database_with_progress
 from imap_mag.io import (
     DatabaseFileOutputManager,
-    HKMetadataProvider,
+    HKPathHandler,
     IOutputManager,
 )
 from tests.util.database import test_database  # noqa: F401
@@ -60,7 +60,7 @@ def test_database_output_manager_writes_to_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
@@ -71,7 +71,7 @@ def test_database_output_manager_writes_to_database(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        metadata_provider,
+        path_handler,
     )
 
     mock_database.insert_file.side_effect = lambda file: check_inserted_file(
@@ -79,17 +79,15 @@ def test_database_output_manager_writes_to_database(
     )
 
     # Exercise.
-    (actual_file, actual_metadata_provider) = database_manager.add_file(
-        original_file, metadata_provider
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
-        original_file, metadata_provider
-    )
+    mock_output_manager.add_file.assert_called_once_with(original_file, path_handler)
 
     assert actual_file == test_file
-    assert actual_metadata_provider == metadata_provider
+    assert actual_path_handler == path_handler
 
 
 def test_database_output_manager_same_file_already_exists_in_database(
@@ -101,7 +99,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
@@ -111,8 +109,8 @@ def test_database_output_manager_same_file_already_exists_in_database(
 
     mock_database.get_files.return_value = [
         File(
-            name=metadata_provider.get_filename(),
-            path=metadata_provider.get_folder_structure(),
+            name=path_handler.get_filename(),
+            path=path_handler.get_folder_structure(),
             version=1,
             hash=hashlib.md5(b"some content").hexdigest(),
             size=0,
@@ -124,18 +122,16 @@ def test_database_output_manager_same_file_already_exists_in_database(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        metadata_provider,
+        path_handler,
     )
 
     # Exercise.
-    (actual_file, actual_metadata_provider) = database_manager.add_file(
-        original_file, metadata_provider
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
-        original_file, metadata_provider
-    )
+    mock_output_manager.add_file.assert_called_once_with(original_file, path_handler)
 
     mock_database.insert_file.assert_not_called()
 
@@ -145,7 +141,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
     )
 
     assert actual_file == test_file
-    assert actual_metadata_provider == metadata_provider
+    assert actual_path_handler == path_handler
 
 
 def test_database_output_manager_same_file_already_exists_as_second_file_in_database(
@@ -157,14 +153,14 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    matched_metadata_provider = HKMetadataProvider(
+    matched_path_handler = HKPathHandler(
         version=2,
         level="l1",
         descriptor="hsk-pw",
@@ -198,17 +194,17 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        matched_metadata_provider,
+        matched_path_handler,
     )
 
     # Exercise.
-    (actual_file, actual_metadata_provider) = database_manager.add_file(
-        original_file, metadata_provider
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
     )
 
     # Verify.
     mock_output_manager.add_file.assert_called_once_with(
-        original_file, matched_metadata_provider
+        original_file, matched_path_handler
     )
 
     mock_database.insert_file.assert_not_called()
@@ -219,7 +215,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     )
 
     assert actual_file == test_file
-    assert actual_metadata_provider == matched_metadata_provider
+    assert actual_path_handler == matched_path_handler
 
 
 def test_database_output_manager_file_different_hash_already_exists_in_database(
@@ -231,14 +227,14 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_metadata_provider = HKMetadataProvider(
+    unique_path_handler = HKPathHandler(
         version=3,
         level="l1",
         descriptor="hsk-pw",
@@ -249,7 +245,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        unique_metadata_provider,
+        unique_path_handler,
     )
 
     mock_database.get_files.side_effect = [
@@ -279,13 +275,13 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     # Exercise.
-    (actual_file, actual_metadata_provider) = database_manager.add_file(
-        original_file, metadata_provider
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
     )
 
     # Verify.
     mock_output_manager.add_file.assert_called_once_with(
-        original_file, unique_metadata_provider
+        original_file, unique_path_handler
     )
 
     assert (
@@ -299,7 +295,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     assert f"Inserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
-    assert actual_metadata_provider == unique_metadata_provider
+    assert actual_path_handler == unique_path_handler
 
 
 def test_database_output_manager_errors_when_destination_file_is_not_found(
@@ -311,7 +307,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
@@ -324,12 +320,12 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
 
     mock_output_manager.add_file.side_effect = lambda *_: (
         test_file,
-        metadata_provider,
+        path_handler,
     )
 
     # Exercise and verify.
     with pytest.raises(FileNotFoundError):
-        database_manager.add_file(original_file, metadata_provider)
+        database_manager.add_file(original_file, path_handler)
 
 
 def test_database_output_manager_errors_destination_file_different_hash(
@@ -341,7 +337,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
@@ -352,12 +348,12 @@ def test_database_output_manager_errors_destination_file_different_hash(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some other content"),
-        metadata_provider,
+        path_handler,
     )
 
     # Exercise and verify.
     with pytest.raises(FileNotFoundError):
-        database_manager.add_file(original_file, metadata_provider)
+        database_manager.add_file(original_file, path_handler)
 
 
 def test_database_output_manager_errors_database_error(
@@ -369,7 +365,7 @@ def test_database_output_manager_errors_database_error(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
@@ -380,14 +376,14 @@ def test_database_output_manager_errors_database_error(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        metadata_provider,
+        path_handler,
     )
 
     mock_database.insert_file.side_effect = ArithmeticError("Database error")
 
     # Exercise and verify.
     with pytest.raises(ArithmeticError):
-        database_manager.add_file(original_file, metadata_provider)
+        database_manager.add_file(original_file, path_handler)
 
 
 def test_update_database_no_update_needed(
@@ -493,14 +489,14 @@ def test_database_output_manager_real_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    metadata_provider = HKMetadataProvider(
+    path_handler = HKPathHandler(
         version=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_metadata_provider = HKMetadataProvider(
+    unique_path_handler = HKPathHandler(
         version=3,
         level="l1",
         descriptor="hsk-pw",
@@ -511,7 +507,7 @@ def test_database_output_manager_real_database(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
-        unique_metadata_provider,
+        unique_path_handler,
     )
 
     test_database.insert_files(
@@ -538,13 +534,13 @@ def test_database_output_manager_real_database(
     )
 
     # Exercise.
-    (actual_file, actual_metadata_provider) = database_manager.add_file(
-        original_file, metadata_provider
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
     )
 
     # Verify.
     mock_output_manager.add_file.assert_called_once_with(
-        original_file, unique_metadata_provider
+        original_file, unique_path_handler
     )
 
     assert (
@@ -558,4 +554,4 @@ def test_database_output_manager_real_database(
     assert f"Inserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
-    assert actual_metadata_provider == unique_metadata_provider
+    assert actual_path_handler == unique_path_handler

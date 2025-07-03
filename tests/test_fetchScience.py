@@ -9,7 +9,7 @@ import pytest
 
 from imap_mag.cli.fetchScience import (
     FetchScience,
-    ScienceMetadataProvider,
+    SciencePathHandler,
 )
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
 from imap_mag.util import MAGSensor, ScienceLevel, ScienceMode
@@ -31,7 +31,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, ScienceMetadataProvider] = (
+    actual_downloaded: dict[Path, SciencePathHandler] = (
         fetchScience.download_latest_science(
             level=ScienceLevel.l1b,
             start_date=datetime(2025, 5, 2),
@@ -73,7 +73,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, ScienceMetadataProvider] = (
+    actual_downloaded: dict[Path, SciencePathHandler] = (
         fetchScience.download_latest_science(
             level=ScienceLevel.l1b,
             start_date=datetime(2025, 5, 2),
@@ -97,7 +97,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
 
     assert test_file in actual_downloaded.keys()
     assert (
-        ScienceMetadataProvider(
+        SciencePathHandler(
             level="l1b",
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),
@@ -161,7 +161,7 @@ def test_fetch_binary_different_start_end_dates(
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, ScienceMetadataProvider] = (
+    actual_downloaded: dict[Path, SciencePathHandler] = (
         fetchScience.download_latest_science(
             level=ScienceLevel.l1b,
             start_date=start_date,
@@ -203,7 +203,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, ScienceMetadataProvider] = (
+    actual_downloaded: dict[Path, SciencePathHandler] = (
         fetchScience.download_latest_science(
             level=ScienceLevel.l1b,
             start_date=datetime(2025, 5, 2),
@@ -228,7 +228,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
 
     assert test_file in actual_downloaded.keys()
     assert (
-        ScienceMetadataProvider(
+        SciencePathHandler(
             level="l1b",
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),

@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from imap_mag.io import HKMetadataProvider, IFileMetadataProvider
+from imap_mag.io import HKPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import HKPacket, TimeConversion
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
@@ -80,7 +80,7 @@ def test_decode_hk_packet(packet_type):
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
-    processed_files: dict[Path, IFileMetadataProvider] = processor.process(packet_path)
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
 
     # Verify.
     assert len(processed_files) == 1
@@ -100,9 +100,9 @@ def test_decode_hk_packet(packet_type):
         assert processed_lines[-1] == expected_lines[2]
         assert len(processed_lines) == int(expected_lines[3].strip())
 
-    processed_metadata: IFileMetadataProvider = processed_files[processed_path]
+    processed_metadata: IFilePathHandler = processed_files[processed_path]
 
-    assert isinstance(processed_metadata, HKMetadataProvider)
+    assert isinstance(processed_metadata, HKPathHandler)
 
     assert processed_metadata.level == "l1"
     assert processed_metadata.descriptor == (
@@ -122,7 +122,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
-    processed_files: dict[Path, IFileMetadataProvider] = processor.process(packet_path)
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
 
     # Verify.
     assert len(processed_files) == 2
@@ -173,7 +173,7 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
-    processed_files: dict[Path, IFileMetadataProvider] = processor.process(packet_path)
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
 
     # Verify.
     assert len(processed_files) == 2
@@ -207,7 +207,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
-    processed_files: dict[Path, IFileMetadataProvider] = processor.process(packet_path)
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
 
     # Verify.
     assert len(processed_files) == 1

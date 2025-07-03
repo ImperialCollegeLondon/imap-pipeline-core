@@ -9,10 +9,10 @@ from imap_mag.api import apply
 from imap_mag.api.apiUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.io import (
-    CalibrationLayerMetadataProvider,
+    CalibrationLayerPathHandler,
     InputManager,
     OutputManager,
-    ScienceMetadataProvider,
+    SciencePathHandler,
 )
 from imap_mag.util import ScienceLevel, ScienceMode
 from mag_toolkit.calibration import (
@@ -67,7 +67,7 @@ def calibrate(
     # TODO: Input manager for getting data of a given level?
 
     level = ScienceLevel.l1b if mode == ScienceMode.Burst else ScienceLevel.l1c
-    metadata_provider = ScienceMetadataProvider(
+    path_handler = SciencePathHandler(
         level=level.value,
         content_date=date,
         descriptor=f"{mode.short_name}-{sensor.value.lower()}",
@@ -75,15 +75,15 @@ def calibrate(
     )
 
     input_manager = InputManager(app_settings.data_store)
-    input_file = input_manager.get_versioned_file(metadata_provider)
+    input_file = input_manager.get_versioned_file(path_handler)
 
     if not input_file:
         logging.critical(
             "Unable to find a file to process matching %s",
-            metadata_provider.get_filename(),
+            path_handler.get_filename(),
         )
         raise FileNotFoundError(
-            f"Unable to find a file to process matching {metadata_provider.get_filename()}"
+            f"Unable to find a file to process matching {path_handler.get_filename()}"
         )
 
     workFile = fetch_file_for_work(
@@ -94,7 +94,7 @@ def calibrate(
         raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
 
     scienceLayer = ScienceLayer.from_file(workFile)
-    scienceLayerMetadata = CalibrationLayerMetadataProvider(
+    scienceLayerMetadata = CalibrationLayerPathHandler(
         calibration_descriptor="science", content_date=date
     )
     scienceLayerPath = app_settings.work_folder / scienceLayerMetadata.get_filename()
@@ -106,7 +106,7 @@ def calibrate(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrationLayerMetadata = CalibrationLayerMetadataProvider(
+    calibrationLayerMetadata = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
     result: Path = calibrator.runCalibration(
@@ -119,7 +119,7 @@ def calibrate(
 
     outputManager = OutputManager(app_settings.data_store)
     (output_calibration_path, _) = outputManager.add_file(
-        result, metadata_provider=calibrationLayerMetadata
+        result, path_handler=calibrationLayerMetadata
     )  # type: ignore
 
     return (output_calibration_path, input_file)
