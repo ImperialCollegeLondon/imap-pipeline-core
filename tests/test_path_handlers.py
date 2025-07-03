@@ -152,10 +152,7 @@ def test_find_provider_by_path(
     # Verify.
     assert actual_provider == expected_provider
 
-    assert (
-        f"Metadata provider {provider_type} matches file {path}."
-        in capture_cli_logs.text
-    )
+    assert f"Path handler {provider_type} matches file {path}." in capture_cli_logs.text
 
 
 @pytest.mark.parametrize(
