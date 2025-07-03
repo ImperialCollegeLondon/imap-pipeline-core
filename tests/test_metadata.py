@@ -307,6 +307,16 @@ def test_get_filename_error_on_no_required_parameter(provider):
             ),
         ),
         (
+            "imap_mag_l2_norm-dsrf_20261231_v010.cdf",
+            ScienceMetadataProvider(
+                level="l2",
+                descriptor="norm-dsrf",
+                content_date=datetime(2026, 12, 31),
+                version=10,
+                extension="cdf",
+            ),
+        ),
+        (
             "imap_mag_l2_burst_20261231_v010.cdf",
             ScienceMetadataProvider(
                 level="l2",
