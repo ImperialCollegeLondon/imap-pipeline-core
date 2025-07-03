@@ -100,12 +100,12 @@ def test_decode_hk_packet(packet_type):
         assert processed_lines[-1] == expected_lines[2]
         assert len(processed_lines) == int(expected_lines[3].strip())
 
-    processed_metadata: IFilePathHandler = processed_files[processed_path]
+    processed_handler: IFilePathHandler = processed_files[processed_path]
 
-    assert isinstance(processed_metadata, HKPathHandler)
+    assert isinstance(processed_handler, HKPathHandler)
 
-    assert processed_metadata.level == "l1"
-    assert processed_metadata.descriptor == (
+    assert processed_handler.level == "l1"
+    assert processed_handler.descriptor == (
         packet_type.packet.lower().strip("mag_").replace("_", "-")
     )
 

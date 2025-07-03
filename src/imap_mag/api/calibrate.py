@@ -94,10 +94,10 @@ def calibrate(
         raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
 
     scienceLayer = ScienceLayer.from_file(workFile)
-    scienceLayerMetadata = CalibrationLayerPathHandler(
+    scienceLayerHandler = CalibrationLayerPathHandler(
         calibration_descriptor="science", content_date=date
     )
-    scienceLayerPath = app_settings.work_folder / scienceLayerMetadata.get_filename()
+    scienceLayerPath = app_settings.work_folder / scienceLayerHandler.get_filename()
     scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
@@ -106,20 +106,20 @@ def calibrate(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrationLayerMetadata = CalibrationLayerPathHandler(
+    calibrationLayerHandler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
     result: Path = calibrator.runCalibration(
         date,
         scienceLayerPath,
-        Path(calibrationLayerMetadata.get_filename()),
+        Path(calibrationLayerHandler.get_filename()),
         app_settings.data_store,
         None,
     )
 
     outputManager = OutputManager(app_settings.data_store)
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibrationLayerMetadata
+        result, path_handler=calibrationLayerHandler
     )  # type: ignore
 
     return (output_calibration_path, input_file)

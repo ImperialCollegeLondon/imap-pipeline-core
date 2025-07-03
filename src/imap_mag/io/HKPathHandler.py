@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HKPathHandler(StandardSPDFPathHandler):
     """
-    Metadata for HK files.
+    Path handler for HK files.
     """
 
     root_folder: str = "hk"

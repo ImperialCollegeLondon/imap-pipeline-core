@@ -111,8 +111,8 @@ def fetch_binary(
         )
 
         for file, path_handler in downloaded_binaries.items():
-            (output_file, output_metadata) = output_manager.add_file(file, path_handler)
-            output_binaries[output_file] = output_metadata
+            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            output_binaries[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")
 

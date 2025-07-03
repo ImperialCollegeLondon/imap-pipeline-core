@@ -39,7 +39,7 @@ def test_standard_path_handler_fails_if_given_ancillary_file():
     assert provider is None, "SciencePathHandler should not handle ancillary files."
 
 
-def test_ancillary_file_metadata_gives_correct_unversioned_pattern():
+def test_ancillary_file_handler_gives_correct_unversioned_pattern():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -55,7 +55,7 @@ def test_ancillary_file_metadata_gives_correct_unversioned_pattern():
     )
 
 
-def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_date():
+def test_ancillary_file_handler_gives_correct_unversioned_pattern_without_end_date():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",

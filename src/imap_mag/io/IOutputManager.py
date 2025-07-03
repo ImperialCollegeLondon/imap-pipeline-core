@@ -13,7 +13,7 @@ class IOutputManager(abc.ABC):
 
     @staticmethod
     def assemble_full_path(location: Path, path_handler: IFilePathHandler) -> Path:
-        """Assemble full path from metadata."""
+        """Assemble full path from path handler."""
 
         return (
             location / path_handler.get_folder_structure() / path_handler.get_filename()

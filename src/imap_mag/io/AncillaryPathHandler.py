@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AncillaryPathHandler(IFilePathHandler):
     """
-    Metadata for ancillary files
+    Path handler for ancillary files
     """
 
     mission: str = "imap"

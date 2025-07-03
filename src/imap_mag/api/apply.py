@@ -37,14 +37,14 @@ def prepare_layers_for_application(layers, appSettings):
     inputManager = InputManager(appSettings.data_store)
     workLayers = []
     for layer in layers:
-        cal_layer_metadata = CalibrationLayerPathHandler.from_filename(layer)
-        if not cal_layer_metadata:
+        cal_layer_handler = CalibrationLayerPathHandler.from_filename(layer)
+        if not cal_layer_handler:
             logger.error(f"Could not parse metadata from calibration layer: {layer}")
             raise ValueError(
                 f"Could not parse metadata from calibration layer: {layer}"
             )
         versioned_cal_file = inputManager.get_versioned_file(
-            path_handler=cal_layer_metadata, latest_version=False
+            path_handler=cal_layer_handler, latest_version=False
         )
         workLayers.append(
             fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
@@ -58,12 +58,12 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     """
     if rotation:
         inputManager = InputManager(appSettings.data_store)
-        rotation_metadata = AncillaryPathHandler.from_filename(rotation)
-        if not rotation_metadata:
+        rotation_handler = AncillaryPathHandler.from_filename(rotation)
+        if not rotation_handler:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
         versioned_rotation_file = inputManager.get_versioned_file(
-            path_handler=rotation_metadata, latest_version=False
+            path_handler=rotation_handler, latest_version=False
         )
         return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
     return None
@@ -100,15 +100,15 @@ def apply(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    original_input_metadata = SciencePathHandler.from_filename(input)  # type: ignore
+    original_input_handler = SciencePathHandler.from_filename(input)  # type: ignore
 
-    if not original_input_metadata:
+    if not original_input_handler:
         logger.error(f"Could not parse metadata from input file: {input}")
         raise ValueError(f"Could not parse metadata from input file: {input}")
 
     input_manager = InputManager(app_settings.data_store)
     versioned_file = input_manager.get_versioned_file(
-        path_handler=original_input_metadata, latest_version=False
+        path_handler=original_input_handler, latest_version=False
     )
 
     workDataFile = fetch_file_for_work(
@@ -121,14 +121,14 @@ def apply(
     l2_path_handler = SciencePathHandler(
         level="l2-pre",
         content_date=date,
-        descriptor=original_input_metadata.descriptor,
+        descriptor=original_input_handler.descriptor,
         version=0,
         extension=l2_output_type,
     )
     norm_or_burst = (
         ScienceMode.Burst.short_name
-        if original_input_metadata.descriptor
-        and ScienceMode.Burst.short_name in original_input_metadata.descriptor
+        if original_input_handler.descriptor
+        and ScienceMode.Burst.short_name in original_input_handler.descriptor
         else ScienceMode.Normal.short_name
     )
     cal_path_handler = AncillaryPathHandler(

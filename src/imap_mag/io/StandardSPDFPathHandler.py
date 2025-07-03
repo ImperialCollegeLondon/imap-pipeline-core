@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class StandardSPDFPathHandler(IFilePathHandler):
     """
-    Metadata for standard SPDF files.
+    Path handler for standard SPDF files.
     See: https://imap-processing.readthedocs.io/en/latest/data-access/naming-conventions.html#data-product-science-file-naming-conventions
     """
 

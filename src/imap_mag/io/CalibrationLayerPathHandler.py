@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CalibrationLayerPathHandler(IFilePathHandler):
     """
-    Metadata for calibration layers.
-    Designed to handle the special internal case of calibration layers that do not obey exact SPDF metadata conventions.
+    Path handler for calibration layers.
+    Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
     """
 
     mission: str = "imap"

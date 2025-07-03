@@ -40,9 +40,7 @@ class FilePathHandlerSelector:
         for provider in provider_to_try:
             path_handler = provider.from_filename(file)
             if path_handler:
-                logger.debug(
-                    f"Metadata provider {provider.__name__} matches file {file}."
-                )
+                logger.debug(f"Path handler {provider.__name__} matches file {file}.")
                 return path_handler
 
         if throw_on_none_found:

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SciencePathHandler(StandardSPDFPathHandler):
     """
-    Metadata for science files.
+    Path handler for science files.
     """
 
     root_folder: str = "science"
