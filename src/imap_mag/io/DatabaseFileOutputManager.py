@@ -136,9 +136,6 @@ class DatabaseFileOutputManager(IOutputManager):
             metadata_provider.version = matching_files[0].version
             preliminary_file = self.assemble_full_path(Path(""), metadata_provider)
 
-            logger.debug(
-                f"File {preliminary_file} already exists in database and is the same. Skipping insertion."
-            )
             return (matching_files[0].version, True)
 
         # Find first available version (note that this might not be the sequential next version)

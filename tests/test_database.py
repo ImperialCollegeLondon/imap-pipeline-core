@@ -214,10 +214,6 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     mock_database.insert_file.assert_not_called()
 
     assert (
-        f"File {Path('imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v002.txt')} already exists in database and is the same. Skipping insertion."
-        in capture_cli_logs.text
-    )
-    assert (
         f"File {test_file} already exists in database and is the same. Skipping insertion."
         in capture_cli_logs.text
     )
