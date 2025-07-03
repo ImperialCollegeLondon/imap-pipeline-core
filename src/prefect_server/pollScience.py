@@ -7,7 +7,7 @@ from prefect.runtime import flow_run
 from pydantic import Field
 
 from imap_mag.api.fetch.science import (
-    SDCMetadataProvider,
+    ScienceMetadataProvider,
     fetch_science,
 )
 from imap_mag.config.FetchMode import FetchMode
@@ -158,7 +158,7 @@ async def poll_science_flow(
             (packet_start_date, packet_end_date) = packet_dates
 
         # Download binary from SDC
-        downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
+        downloaded_science: dict[Path, ScienceMetadataProvider] = fetch_science(
             auth_code=auth_code,
             level=level,
             reference_frame=reference_frame,
