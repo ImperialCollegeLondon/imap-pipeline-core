@@ -30,7 +30,7 @@ class StandardSPDFMetadataProvider(IFileMetadataProvider):
             not self.descriptor
             or not self.level
             or not self.content_date
-            or not self.version
+            or self.version is None  # "not 0" in Python is "True"
             or not self.extension
         ):
             logger.error(
