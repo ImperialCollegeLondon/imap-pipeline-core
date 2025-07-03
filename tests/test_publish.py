@@ -67,7 +67,7 @@ def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs):
     # Verify.
     assert f"Publishing 1 files: {upload_file}" in capture_cli_logs.text
     assert (
-        f"Found 1 files for publish: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
+        f"Found 1 files for publish: {DATASTORE / Path('science/mag/l1c/2025/10') / upload_file}"
         in capture_cli_logs.text
     )
 
@@ -108,7 +108,7 @@ def test_failed_sdc_file_publish(wiremock_manager, capture_cli_logs):
         publish([upload_file1, upload_file2], auth_code="12345")
 
     assert (
-        f"Failed to publish file {DATASTORE / Path('imap/mag/l1b/2025/10') / upload_file2}"
+        f"Failed to publish file {DATASTORE / Path('science/mag/l1b/2025/10') / upload_file2}"
         in capture_cli_logs.text
     )
     assert (
@@ -141,7 +141,7 @@ def test_publish_file_to_sdc_cli(wiremock_manager):
 
     assert f"Publishing 1 files: {upload_file}" in result.output
     assert (
-        f"Found 1 files for publish: {DATASTORE / Path('imap/mag/l1c/2025/10') / upload_file}"
+        f"Found 1 files for publish: {DATASTORE / Path('science/mag/l1c/2025/10') / upload_file}"
         in result.output
     )
 

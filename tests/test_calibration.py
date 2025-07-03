@@ -20,18 +20,23 @@ from .util.miscellaneous import (  # noqa: F401
 )
 
 
-def prepare_test_file(test_file, sub_folders, year, month, rename=None):
+def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None):
     """
     Prepare a calibration test file by copying the specified calibration layer
     to the output directory with the correct folder structure.
     """
     dest_filename = test_file if rename is None else rename
-    dest_filepath = (
-        Path("output") / sub_folders / str(year) / str(month) / dest_filename
-    )
+    if year and month:
+        dest_filepath = (
+            Path("output") / sub_folders / str(year) / str(month) / dest_filename
+        )
+        original_filepath = f"tests/data/{sub_folders}/{year}/{month}/{test_file}"
+    else:
+        dest_filepath = Path("output") / sub_folders / dest_filename
+        original_filepath = Path("tests/data/") / sub_folders / test_file
     os.makedirs(dest_filepath.parent, exist_ok=True)
     shutil.copy(
-        f"tests/data/{sub_folders}/{year}/{month}/{test_file}",
+        original_filepath,
         dest_filepath,
     )
 
@@ -39,7 +44,7 @@ def prepare_test_file(test_file, sub_folders, year, month, rename=None):
 def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
     )
@@ -58,7 +63,7 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
     )
 
     assert Path(
-        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert Path(
         "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
@@ -68,7 +73,7 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
 def test_apply_fails_when_timestamps_dont_align(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
     )
@@ -86,7 +91,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
         )
 
     assert not Path(
-        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
+        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
     ).exists()
     assert not Path(
         "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
@@ -98,7 +103,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
 def test_apply_fails_when_no_layers_provided(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
     )
@@ -111,7 +116,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         )
 
     assert not Path(
-        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert not Path(
         "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
@@ -123,7 +128,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
 def test_apply_performs_correct_rotation(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
         rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -131,8 +136,6 @@ def test_apply_performs_correct_rotation(tmp_path):
     prepare_test_file(
         "imap_mag_l2-calibration_20251017_v004.cdf",
         "science-ancillary/l2-rotation",
-        2025,
-        10,
     )
     apply(
         layers=[],
@@ -142,7 +145,7 @@ def test_apply_performs_correct_rotation(tmp_path):
     )
 
     output_file = (
-        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     )
 
     assert Path(output_file).exists()
@@ -165,7 +168,7 @@ def test_apply_performs_correct_rotation(tmp_path):
 def test_apply_adds_offsets_together_correctly(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
         rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -178,11 +181,13 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
     )
     apply(
         layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
-        input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = (
+        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+    )
 
     assert Path(output_file).exists()
 
@@ -219,7 +224,7 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
 ):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "mag/l1c",
+        "science/mag/l1c",
         2025,
         10,
         rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",

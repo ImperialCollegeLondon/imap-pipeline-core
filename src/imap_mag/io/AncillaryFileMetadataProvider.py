@@ -28,12 +28,12 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
     def get_sub_folder(self) -> Path:
         """Get the subfolder for ancillary files."""
 
-        if self.descriptor is None or self.content_date is None:
+        if self.descriptor is None or self.start_date is None:
             logger.error(
-                "No 'descriptor' or 'content_date' defined. Cannot determine subfolder."
+                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
             )
             raise ValueError(
-                "No 'descriptor' or 'content_date' defined. Cannot determine subfolder."
+                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
             )
 
         match self.descriptor:
@@ -47,7 +47,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
                 return Path("l1b")
             case _:
                 if self.descriptor.endswith("-offsets"):
-                    return Path("l2-offsets") / self.content_date.strftime("%Y/%m")
+                    return Path("l2-offsets") / self.start_date.strftime("%Y/%m")
                 else:
                     logger.error(
                         f"Unknown descriptor '{self.descriptor}' for ancillary files. Defaulting to 'ancillary'."
@@ -57,7 +57,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
                     )
 
     def get_folder_structure(self) -> str:
-        if self.content_date is None:
+        if self.start_date is None:
             logger.error("No 'content_date' defined. Cannot generate folder structure.")
             raise ValueError(
                 "No 'content_date' defined. Cannot generate folder structure."
@@ -85,9 +85,6 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
-
-    def get_folder_structure(self) -> str:
-        return "PLEASE-FIX-ME!"
 
     def get_unversioned_pattern(self) -> re.Pattern:
         if not self.start_date or not self.descriptor or not self.extension:
