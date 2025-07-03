@@ -12,6 +12,7 @@ class CalibrationMethod(str, Enum):
     KEPKO = "Kepko"
     LEINWEBER = "Leinweber"
     IMAPLO_PIVOT = "IMAP-Lo Pivot Platform Interference"
+    GRADIOMETRY = "Gradiometry"
     NOOP = "noop"
     SUM = "Sum of other calibrations"
 
