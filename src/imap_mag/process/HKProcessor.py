@@ -107,7 +107,7 @@ class HKProcessor(FileProcessor):
                 dataframe.index.values
             )
             logger.info(
-                f"Splitting data for ApID {apid} ({hk_packet.packet}) into separate files for each day:\n"
+                f"Splitting data for ApID {apid} ({hk_packet}) into separate files for each day:\n"
                 f"{', '.join(d.strftime('%Y%m%d') for d in sorted(set(dates)))}"
             )
 
