@@ -27,17 +27,11 @@ def prepare_test_file(test_file, sub_folders, year, month, rename=None):
     """
     dest_filename = test_file if rename is None else rename
     dest_filepath = (
-        Path("output")
-        / "imap"
-        / "mag"
-        / sub_folders
-        / str(year)
-        / str(month)
-        / dest_filename
+        Path("output") / sub_folders / str(year) / str(month) / dest_filename
     )
     os.makedirs(dest_filepath.parent, exist_ok=True)
     shutil.copy(
-        f"tests/data/imap/mag/{sub_folders}/{year}/{month}/{test_file}",
+        f"tests/data/{sub_folders}/{year}/{month}/{test_file}",
         dest_filepath,
     )
 
@@ -45,14 +39,14 @@ def prepare_test_file(test_file, sub_folders, year, month, rename=None):
 def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
     )
 
     prepare_test_file(
         "imap_mag_noop-layer_20251017_v001.json",
-        "calibration/layer",
+        "calibration/layers",
         2025,
         10,
     )
@@ -67,20 +61,20 @@ def test_apply_produces_output_science_file_and_offsets_file(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
+        "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
 
 def test_apply_fails_when_timestamps_dont_align(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
     )
     prepare_test_file(
         "imap_mag_misaligned-timestamps-layer_20251017_v001.json",
-        "calibration/layer",
+        "calibration/layers",
         2025,
         10,
     )
@@ -95,7 +89,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
     ).exists()
     assert not Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+        "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     ).exists()
 
     assert str(exc_info.value) == "Layer and data timestamps do not align"
@@ -104,7 +98,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
 def test_apply_fails_when_no_layers_provided(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
     )
@@ -120,7 +114,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
     assert not Path(
-        "output/imap/mag/l2-norm-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
+        "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
     assert str(exc_info.value) == "No calibration layers or rotation file provided"
@@ -129,24 +123,27 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
 def test_apply_performs_correct_rotation(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
+        rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",
     )
     prepare_test_file(
         "imap_mag_l2-calibration_20251017_v004.cdf",
-        "l2-calibration",
+        "science-ancillary/l2-rotation",
         2025,
         10,
     )
     apply(
         layers=[],
-        input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
         rotation=Path("imap_mag_l2-calibration_20251017_v004.cdf"),
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = (
+        "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+    )
 
     assert Path(output_file).exists()
 
@@ -168,13 +165,14 @@ def test_apply_performs_correct_rotation(tmp_path):
 def test_apply_adds_offsets_together_correctly(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
+        rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",
     )
     prepare_test_file(
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
-        "calibration/layer",
+        "calibration/layers",
         2025,
         10,
     )
@@ -221,7 +219,7 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
 ):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "l1c",
+        "mag/l1c",
         2025,
         10,
         rename="imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -234,10 +232,10 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/imap/mag/calibration/layer/2025/10/imap_mag_noop-layer_20251017_v000.json"
+        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v000.json"
     ).exists()
     with open(
-        "output/imap/mag/calibration/layer/2025/10/imap_mag_noop-layer_20251017_v000.json"
+        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v000.json"
     ) as f:
         noop_layer = json.load(f)
 

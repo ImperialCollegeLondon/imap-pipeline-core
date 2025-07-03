@@ -18,6 +18,46 @@ class AncillaryFileMetadataProvider(StandardSPDFMetadataProvider):
 
     end_date: datetime | None = None  # end date of validity for ancillary files
 
+    def get_sub_folder(self) -> Path:
+        """Get the subfolder for ancillary files."""
+
+        if self.descriptor is None or self.content_date is None:
+            logger.error(
+                "No 'descriptor' or 'content_date' defined. Cannot determine subfolder."
+            )
+            raise ValueError(
+                "No 'descriptor' or 'content_date' defined. Cannot determine subfolder."
+            )
+
+        match self.descriptor:
+            case "ialirt-calibration":
+                return Path("ialirt")
+            case "l1d-calibration":
+                return Path("l1d")
+            case "l2-calibration":
+                return Path("l2-rotation")
+            case "l1b-calibration":
+                return Path("l1b")
+            case _:
+                if self.descriptor.endswith("-offsets"):
+                    return Path("l2-offsets") / self.content_date.strftime("%Y/%m")
+                else:
+                    logger.error(
+                        f"Unknown descriptor '{self.descriptor}' for ancillary files. Defaulting to 'ancillary'."
+                    )
+                    raise ValueError(
+                        f"Unknown descriptor '{self.descriptor}' for ancillary files."
+                    )
+
+    def get_folder_structure(self) -> str:
+        if self.content_date is None:
+            logger.error("No 'content_date' defined. Cannot generate folder structure.")
+            raise ValueError(
+                "No 'content_date' defined. Cannot generate folder structure."
+            )
+
+        return (Path("science-ancillary") / self.get_sub_folder()).as_posix()
+
     def get_filename(self) -> str:
         if (
             self.descriptor is None
