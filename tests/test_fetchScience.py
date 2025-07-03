@@ -12,7 +12,7 @@ from imap_mag.cli.fetchScience import (
     SDCMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.util import Level, MAGSensor, ScienceMode
+from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
@@ -237,4 +237,68 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
             extension="cdf",
         )
         in actual_downloaded.values()
+    )
+
+
+def test_fetch_l2_science_with_both_sensors(
+    mock_soc: mock.Mock, capture_cli_logs
+) -> None:
+    # Set up.
+    fetchScience = FetchScience(
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS, MAGSensor.IBS]
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file"
+
+    mock_soc.get_filename.side_effect = lambda **_: [
+        {
+            "file_path": test_file.absolute(),
+            "descriptor": "norm-gse",
+            "start_date": "20250502",
+            "ingestion_date": "20250602 00:00:00",
+            "version": "v007",
+        }
+    ]
+    mock_soc.download.side_effect = lambda file_path: file_path
+
+    # Exercise.
+    actual_downloaded: dict[Path, SDCMetadataProvider] = (
+        fetchScience.download_latest_science(
+            level=Level.level_2,
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            reference_frame=ReferenceFrame.GSE,
+        )
+    )
+
+    # Verify.
+    mock_soc.get_filename.assert_called_once_with(
+        level="l2",
+        descriptor="norm-gse",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        extension="cdf",
+    )
+    mock_soc.download.assert_called_once_with(
+        test_file.absolute(),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    assert test_file in actual_downloaded.keys()
+    assert (
+        SDCMetadataProvider(
+            level="l2",
+            descriptor="norm-gse",
+            content_date=datetime(2025, 5, 2),
+            ingestion_date=datetime(2025, 6, 2),
+            version=7,
+            extension="cdf",
+        )
+        in actual_downloaded.values()
+    )
+
+    assert (
+        "Forcing download of only OBS (mago) sensor for L2 data."
+        in capture_cli_logs.text
     )

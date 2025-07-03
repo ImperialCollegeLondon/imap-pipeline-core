@@ -60,8 +60,14 @@ class FetchScience:
         }
         frame_suffix = ("-" + reference_frame.value) if reference_frame else ""
 
+        if (level == Level.level_2) and (self.__sensor != [MAGSensor.OBS]):
+            logger.debug("Forcing download of only OBS (mago) sensor for L2 data.")
+            sensors: list[MAGSensor] = [MAGSensor.OBS]
+        else:
+            sensors = self.__sensor
+
         for mode in self.__modes:
-            for sensor in self.__sensor:
+            for sensor in sensors:
                 sensor_suffix = "-" + sensor.value
 
                 file_details = self.__data_access.get_filename(
