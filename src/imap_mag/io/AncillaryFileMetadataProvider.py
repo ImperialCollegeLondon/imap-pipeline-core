@@ -50,7 +50,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
                     return Path("l2-offsets") / self.start_date.strftime("%Y/%m")
                 else:
                     logger.error(
-                        f"Unknown descriptor '{self.descriptor}' for ancillary files. Defaulting to 'ancillary'."
+                        f"Unknown descriptor '{self.descriptor}' for ancillary files."
                     )
                     raise ValueError(
                         f"Unknown descriptor '{self.descriptor}' for ancillary files."
