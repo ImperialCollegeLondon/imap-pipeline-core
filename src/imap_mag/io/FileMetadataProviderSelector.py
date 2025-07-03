@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
 
-from imap_mag.io import AncillaryFileMetadataProvider
+from imap_mag.io.AncillaryFileMetadataProvider import AncillaryFileMetadataProvider
 from imap_mag.io.CalibrationLayerMetadataProvider import (
     CalibrationLayerMetadataProvider,
 )
+from imap_mag.io.HKMetadataProvider import HKMetadataProvider
 from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
-from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
+from imap_mag.io.ScienceMetadataProvider import ScienceMetadataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class NoProviderFoundError(Exception):
         self.file = file
 
 
-class FileMetadataProviders:
+class FileMetadataProviderSelector:
     """Manager of file metadata providers."""
 
     @staticmethod
@@ -28,11 +29,12 @@ class FileMetadataProviders:
     ) -> IFileMetadataProvider | None:
         """Find a suitable metadata provider for the given filepath."""
 
-        # Providers to try in order of precedence.
+        # Providers to try in alphabetical order.
         provider_to_try: list[type[IFileMetadataProvider]] = [
-            StandardSPDFMetadataProvider,
-            CalibrationLayerMetadataProvider,
             AncillaryFileMetadataProvider,
+            CalibrationLayerMetadataProvider,
+            HKMetadataProvider,
+            ScienceMetadataProvider,
         ]
 
         for provider in provider_to_try:

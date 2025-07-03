@@ -1,25 +1,16 @@
 """Program to retrieve and process MAG binary files."""
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 
 from imap_mag.client.webPODA import WebPODA
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import HKMetadataProvider
+from imap_mag.util import HKLevel
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class WebPODAMetadataProvider(StandardSPDFMetadataProvider):
-    """
-    Metadata for WebPODA binaries.
-    """
-
-    ert: datetime | None = None  # date data was received by WebPODA
 
 
 class FetchBinary:
@@ -43,10 +34,10 @@ class FetchBinary:
         start_date: datetime,
         end_date: datetime,
         use_ert: bool = False,
-    ) -> dict[Path, WebPODAMetadataProvider]:
+    ) -> dict[Path, HKMetadataProvider]:
         """Retrieve WebPODA data."""
 
-        downloaded: dict[Path, WebPODAMetadataProvider] = dict()
+        downloaded: dict[Path, HKMetadataProvider] = dict()
 
         if start_date == end_date:
             # If the start and end dates are the same, download all the data from that day.
@@ -104,8 +95,9 @@ class FetchBinary:
                     ert=use_ert,
                 )
 
-                downloaded[file] = WebPODAMetadataProvider(
-                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}-raw",
+                downloaded[file] = HKMetadataProvider(
+                    level=HKLevel.l0.value,
+                    descriptor=f"{packet.lower().strip(self.__MAG_PREFIX).replace('_', '-')}",
                     content_date=(
                         min_time.replace(hour=0, minute=0, second=0)
                         if min_time

@@ -7,15 +7,15 @@ from prefect.runtime import flow_run
 from pydantic import Field
 
 from imap_mag.api.fetch.science import (
-    SDCMetadataProvider,
+    ScienceMetadataProvider,
     fetch_science,
 )
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.util import (
     DatetimeProvider,
-    Level,
     ReferenceFrame,
+    ScienceLevel,
     ScienceMode,
     get_dates_for_download,
 )
@@ -30,7 +30,7 @@ def convert_ints_to_string(apids: list[int]) -> str:
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
-    level: Level = parameters["level"]
+    level: ScienceLevel = parameters["level"]
     modes: list[ScienceMode] = parameters["modes"]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
@@ -49,14 +49,14 @@ def generate_flow_run_name() -> str:
 )
 async def poll_science_flow(
     level: Annotated[
-        Level,
+        ScienceLevel,
         Field(
             json_schema_extra={
                 "title": "Level to download",
                 "description": "Processing level to download. Default is L1c.",
             }
         ),
-    ] = Level.level_1c,
+    ] = ScienceLevel.l1c,
     reference_frame: Annotated[
         ReferenceFrame | None,
         Field(
@@ -158,7 +158,7 @@ async def poll_science_flow(
             (packet_start_date, packet_end_date) = packet_dates
 
         # Download binary from SDC
-        downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
+        downloaded_science: dict[Path, ScienceMetadataProvider] = fetch_science(
             auth_code=auth_code,
             level=level,
             reference_frame=reference_frame,

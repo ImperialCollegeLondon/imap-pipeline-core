@@ -10,9 +10,9 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
 
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import HKMetadataProvider, IFileMetadataProvider
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import HKPacket, TimeConversion
+from imap_mag.util import HKLevel, HKPacket, TimeConversion
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class HKProcessor(FileProcessor):
                 f"XTCE packet definition file not found: {packet_definition!s}"
             )
 
-    def process(self, files: Path | list[Path]) -> list[Path]:
+    def process(self, files: Path | list[Path]) -> dict[Path, IFileMetadataProvider]:
         """Process HK with XTCE tools and create CSV file."""
 
         if isinstance(files, Path):
@@ -89,11 +89,12 @@ class HKProcessor(FileProcessor):
                     combined_results[apid] = data
 
         # Split each ApID into a separate file per day.
-        processed_files: list[Path] = []
+        processed_files: dict[Path, IFileMetadataProvider] = {}
 
         for apid, data in combined_results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
-            metadata_provider = StandardSPDFMetadataProvider(
+            metadata_provider = HKMetadataProvider(
+                level=HKLevel.l1.value,
                 descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
                 content_date=None,
                 extension="csv",
@@ -121,7 +122,7 @@ class HKProcessor(FileProcessor):
                 file_path = self.__work_folder / metadata_provider.get_filename()
 
                 daily_data.sort_index(inplace=False).to_csv(file_path)
-                processed_files.append(file_path)
+                processed_files[file_path] = metadata_provider
 
         return processed_files
 

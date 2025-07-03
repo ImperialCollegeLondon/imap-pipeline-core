@@ -10,7 +10,7 @@ from imap_mag.api.apiUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import IFileMetadataProvider, StandardSPDFMetadataProvider
+from imap_mag.io import IFileMetadataProvider
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -48,14 +48,16 @@ def process(
 
     for file in files:
         work_files.append(
-            fetch_file_for_work(file, work_folder, throw_if_not_found=True)
-        )  # type: ignore
+            fetch_file_for_work(file, work_folder, throw_if_not_found=True)  # type: ignore
+        )
 
     # Process files
     file_processor: FileProcessor = dispatch(work_files, work_folder)
     file_processor.initialize(app_settings.packet_definition)
 
-    processed_files = file_processor.process(work_files)
+    processed_files: dict[Path, IFileMetadataProvider] = file_processor.process(
+        work_files
+    )
 
     # Copy files to the output directory
     copied_files: list[tuple[Path, IFileMetadataProvider]] = []
@@ -65,20 +67,11 @@ def process(
         use_database=(save_mode == SaveMode.LocalAndDatabase),
     )
 
-    for processed_file in processed_files:
-        spdf_metadata: IFileMetadataProvider | None = (
-            StandardSPDFMetadataProvider.from_filename(processed_file)
+    for processed_file, metadata_provider in processed_files.items():
+        (copied_file, metadata_provider) = output_manager.add_file(
+            processed_file, metadata_provider
         )
 
-        if spdf_metadata is None:
-            (copied_file, spdf_metadata) = appUtils.copyFileToDestination(
-                processed_file, app_settings.data_store
-            )
-        else:
-            (copied_file, spdf_metadata) = output_manager.add_file(
-                processed_file, spdf_metadata
-            )
-
-        copied_files.append((copied_file, spdf_metadata))
+        copied_files.append((copied_file, metadata_provider))
 
     return copied_files

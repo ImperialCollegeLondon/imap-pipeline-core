@@ -9,11 +9,11 @@ from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.cli.fetchScience import (
     FetchScience,
-    SDCMetadataProvider,
+    ScienceMetadataProvider,
 )
 from imap_mag.client.sdcDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.util import Level, MAGSensor, ReferenceFrame, ScienceMode
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,8 @@ def fetch_science(
         ),
     ] = False,
     level: Annotated[
-        Level, typer.Option(case_sensitive=False, help="Level to download")
-    ] = Level.level_2,
+        ScienceLevel, typer.Option(case_sensitive=False, help="Level to download")
+    ] = ScienceLevel.l2,
     reference_frame: Annotated[
         ReferenceFrame | None,
         typer.Option(
@@ -71,7 +71,7 @@ def fetch_science(
             help="IMAP Science Data Centre API Key",
         ),
     ] = None,
-) -> dict[Path, SDCMetadataProvider]:
+) -> dict[Path, ScienceMetadataProvider]:
     """Download science data from the SDC."""
 
     # "auth-code" is usually defined in the config file but the CLI allows for it to
@@ -87,7 +87,7 @@ def fetch_science(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    if reference_frame is not None and level != Level.level_2:
+    if reference_frame is not None and level != ScienceLevel.l2:
         logger.warning(
             f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
         )
@@ -99,7 +99,7 @@ def fetch_science(
     )
 
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
-    downloaded_science: dict[Path, SDCMetadataProvider] = (
+    downloaded_science: dict[Path, ScienceMetadataProvider] = (
         fetch_science.download_latest_science(
             level=level,
             reference_frame=reference_frame,
@@ -118,7 +118,7 @@ def fetch_science(
             f"Downloaded {len(downloaded_science)} files:\n{', '.join(str(f) for f in downloaded_science.keys())}"
         )
 
-    output_science: dict[Path, SDCMetadataProvider] = dict()
+    output_science: dict[Path, ScienceMetadataProvider] = dict()
 
     if app_settings.fetch_science.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
