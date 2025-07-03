@@ -98,14 +98,14 @@ def check_file_existence(
         descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
         bin_folder = os.path.join(
-            "output/imap/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
+            "output/hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
         )
         bin_file = (
             f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000.pkts"
         )
 
         csv_folder = os.path.join(
-            "output/imap/mag/l1", descriptor, actual_timestamp.strftime("%Y/%m")
+            "output/hk/mag/l1", descriptor, actual_timestamp.strftime("%Y/%m")
         )
         csv_file = (
             f"imap_mag_l1_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000.csv"
