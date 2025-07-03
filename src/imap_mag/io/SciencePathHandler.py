@@ -4,15 +4,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
+from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ScienceMetadataProvider(StandardSPDFMetadataProvider):
+class SciencePathHandler(StandardSPDFPathHandler):
     """
-    Metadata for science files.
+    Path handler for science files.
     """
 
     root_folder: str = "science"
@@ -35,7 +35,7 @@ class ScienceMetadataProvider(StandardSPDFMetadataProvider):
         ).as_posix()
 
     @classmethod
-    def from_filename(cls, filename: str | Path) -> "ScienceMetadataProvider | None":
+    def from_filename(cls, filename: str | Path) -> "SciencePathHandler | None":
         match = re.match(
             r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,

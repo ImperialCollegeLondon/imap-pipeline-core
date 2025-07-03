@@ -3,15 +3,15 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class StandardSPDFMetadataProvider(IFileMetadataProvider):
+class StandardSPDFPathHandler(IFilePathHandler):
     """
-    Metadata for standard SPDF files.
+    Path handler for standard SPDF files.
     See: https://imap-processing.readthedocs.io/en/latest/data-access/naming-conventions.html#data-product-science-file-naming-conventions
     """
 

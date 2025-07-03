@@ -7,7 +7,7 @@ import typer
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
 from imap_mag.client.sdcDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
-from imap_mag.io import FileMetadataProviderSelector, InputManager
+from imap_mag.io import FilePathHandlerSelector, InputManager
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +54,11 @@ def publish(
     input_manager = InputManager(app_settings.data_store)
 
     for file in files:
-        metadata_provider = FileMetadataProviderSelector.find_by_path(file)
-        assert metadata_provider is not None
+        path_handler = FilePathHandlerSelector.find_by_path(file)
+        assert path_handler is not None
 
         resolved_file = input_manager.get_versioned_file(
-            metadata_provider, latest_version=False
+            path_handler, latest_version=False
         )
         resolved_files.append(resolved_file)
 

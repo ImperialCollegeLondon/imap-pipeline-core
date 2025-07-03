@@ -4,18 +4,18 @@ from pathlib import Path
 import pytest
 
 from imap_mag.io import (
-    AncillaryFileMetadataProvider,
-    CalibrationLayerMetadataProvider,
-    FileMetadataProviderSelector,
-    HKMetadataProvider,
+    AncillaryPathHandler,
+    CalibrationLayerPathHandler,
+    FilePathHandlerSelector,
+    HKPathHandler,
     NoProviderFoundError,
-    ScienceMetadataProvider,
+    SciencePathHandler,
 )
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
-def test_metadata_provider_returns_correct_values_for_standard_l2_file():
-    provider = ScienceMetadataProvider(
+def test_path_handler_returns_correct_values_for_standard_l2_file():
+    provider = SciencePathHandler(
         mission="imap",
         instrument="mag",
         level="l2",
@@ -33,16 +33,14 @@ def test_metadata_provider_returns_correct_values_for_standard_l2_file():
     )
 
 
-def test_standard_metadata_provider_fails_if_given_ancillary_file():
+def test_standard_path_handler_fails_if_given_ancillary_file():
     filename = "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
-    provider = ScienceMetadataProvider.from_filename(filename)
-    assert provider is None, (
-        "ScienceMetadataProvider should not handle ancillary files."
-    )
+    provider = SciencePathHandler.from_filename(filename)
+    assert provider is None, "SciencePathHandler should not handle ancillary files."
 
 
-def test_ancillary_file_metadata_gives_correct_unversioned_pattern():
-    provider = AncillaryFileMetadataProvider(
+def test_ancillary_file_handler_gives_correct_unversioned_pattern():
+    provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-norm-offsets",
@@ -57,8 +55,8 @@ def test_ancillary_file_metadata_gives_correct_unversioned_pattern():
     )
 
 
-def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_date():
-    provider = AncillaryFileMetadataProvider(
+def test_ancillary_file_handler_gives_correct_unversioned_pattern_without_end_date():
+    provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-calibration",
@@ -73,8 +71,8 @@ def test_ancillary_file_metadata_gives_correct_unversioned_pattern_without_end_d
     )
 
 
-def test_get_filename_of_ancillary_metadata_provider_without_content_date__fails():
-    provider = AncillaryFileMetadataProvider(
+def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
+    provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-norm-offsets",
@@ -91,8 +89,8 @@ def test_get_filename_of_ancillary_metadata_provider_without_content_date__fails
     )
 
 
-def test_get_unversioned_pattern_of_ancillary_metadata_provider_without_content_date__fails():
-    provider = AncillaryFileMetadataProvider(
+def test_get_unversioned_pattern_of_ancillary_path_handler_without_content_date__fails():
+    provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-norm-offsets",
@@ -111,7 +109,7 @@ def test_get_unversioned_pattern_of_ancillary_metadata_provider_without_content_
 
 def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():
     filename = "imap_mag_l2-notcalibration_20251017_v001.cdf"
-    ancillary_provider = AncillaryFileMetadataProvider.from_filename(filename)
+    ancillary_provider = AncillaryPathHandler.from_filename(filename)
     assert ancillary_provider is None, (
         "Should return None for invalid ancillary filenames."
     )
@@ -122,26 +120,26 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
     [
         (
             Path("imap/mag/l1b/2025/10/imap_mag_l1b_norm-mago_20251004_v002.cdf"),
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 version=2,
                 level="l1b",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 4),
                 extension="cdf",
             ),
-            "ScienceMetadataProvider",
+            "SciencePathHandler",
         ),
         (
             Path(
                 "imap/mag/calibration/layer/2025/10/imap_mag_offsets-layer_20251004_v002.json"
             ),
-            CalibrationLayerMetadataProvider(
+            CalibrationLayerPathHandler(
                 version=2,
                 calibration_descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
                 extension="json",
             ),
-            "CalibrationLayerMetadataProvider",
+            "CalibrationLayerPathHandler",
         ),
     ],
 )
@@ -149,7 +147,7 @@ def test_find_provider_by_path(
     capture_cli_logs, path, expected_provider, provider_type
 ):
     # Exercise.
-    actual_provider = FileMetadataProviderSelector.find_by_path(path)
+    actual_provider = FilePathHandlerSelector.find_by_path(path)
 
     # Verify.
     assert actual_provider == expected_provider
@@ -164,7 +162,7 @@ def test_find_provider_by_path(
     "provider, expected_folder_structure",
     (
         (
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l1b",
                 descriptor="mago-normal",
                 content_date=datetime(2024, 12, 10),
@@ -172,7 +170,7 @@ def test_find_provider_by_path(
             "science/mag/l1b/2024/12",
         ),
         (
-            HKMetadataProvider(
+            HKPathHandler(
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2024, 12, 10),
@@ -180,7 +178,7 @@ def test_find_provider_by_path(
             "hk/mag/l0/hsk-pw/2024/12",
         ),
         (
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l2",
                 content_date=datetime(2024, 12, 10),
             ),
@@ -198,7 +196,7 @@ def test_get_folder_structure(provider, expected_folder_structure):
 
 def test_get_folder_structure_error_on_no_date():
     # Set up.
-    provider = ScienceMetadataProvider()
+    provider = SciencePathHandler()
 
     # Exercise.
     with pytest.raises(ValueError) as excinfo:
@@ -214,17 +212,17 @@ def test_get_folder_structure_error_on_no_date():
 @pytest.mark.parametrize(
     "provider",
     (
-        HKMetadataProvider(
+        HKPathHandler(
             content_date=datetime(2024, 12, 10),
             version=3,
             extension="pkts",
         ),
-        HKMetadataProvider(
+        HKPathHandler(
             descriptor="hsk-pw",
             version=3,
             extension="pkts",
         ),
-        HKMetadataProvider(
+        HKPathHandler(
             descriptor="hsk-pw",
             content_date=datetime(2024, 12, 10),
             version=3,
@@ -248,7 +246,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
     [
         (
             "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf",
-            AncillaryFileMetadataProvider(
+            AncillaryPathHandler(
                 descriptor="l2-norm-offsets",
                 start_date=datetime(2025, 10, 17),
                 end_date=datetime(2025, 10, 17),
@@ -258,7 +256,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l2-calibration_20251017_v001.cdf",
-            AncillaryFileMetadataProvider(
+            AncillaryPathHandler(
                 descriptor="l2-calibration",
                 start_date=datetime(2025, 10, 17),
                 end_date=None,
@@ -268,7 +266,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l0_hsk-pw_20241210_v003.pkts",
-            HKMetadataProvider(
+            HKPathHandler(
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2024, 12, 10),
@@ -278,7 +276,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l1b_norm-mago_20250502_v001.cdf",
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l1b",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 5, 2),
@@ -288,7 +286,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l2-pre_norm-mago_20251017_v001.cdf",
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l2-pre",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
@@ -298,7 +296,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l2_norm-mago_20251017_v001.cdf",
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l2",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
@@ -308,7 +306,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l2_norm-dsrf_20261231_v010.cdf",
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l2",
                 descriptor="norm-dsrf",
                 content_date=datetime(2026, 12, 31),
@@ -318,7 +316,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
         (
             "imap_mag_l2_burst_20261231_v010.cdf",
-            ScienceMetadataProvider(
+            SciencePathHandler(
                 level="l2",
                 descriptor="burst",
                 content_date=datetime(2026, 12, 31),
@@ -333,9 +331,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
     ],
 )
 def test_find_correct_provider_from_filename(filename, expected):
-    actual = FileMetadataProviderSelector.find_by_path(
-        filename, throw_on_none_found=False
-    )
+    actual = FilePathHandlerSelector.find_by_path(filename, throw_on_none_found=False)
     assert actual == expected
 
 
@@ -351,15 +347,13 @@ def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
     if throw_error:
         with pytest.raises(
             NoProviderFoundError,
-            match=f"No suitable metadata provider found for file {path}.",
+            match=f"No suitable path handler found for file {path}.",
         ):
-            FileMetadataProviderSelector.find_by_path(path, throw_on_none_found=True)
+            FilePathHandlerSelector.find_by_path(path, throw_on_none_found=True)
     else:
-        metadata_provider = FileMetadataProviderSelector.find_by_path(
+        path_handler = FilePathHandlerSelector.find_by_path(
             path, throw_on_none_found=False
         )
-        assert metadata_provider is None
+        assert path_handler is None
 
-    assert (
-        f"No suitable metadata provider found for file {path}." in capture_cli_logs.text
-    )
+    assert f"No suitable path handler found for file {path}." in capture_cli_logs.text

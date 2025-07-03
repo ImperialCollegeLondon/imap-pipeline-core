@@ -1,7 +1,7 @@
 import abc
 from pathlib import Path
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 
 
 class FileProcessor(abc.ABC):
@@ -17,6 +17,6 @@ class FileProcessor(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def process(self, files: Path | list[Path]) -> dict[Path, IFileMetadataProvider]:
+    def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
         """Process a file or a list of files."""
         pass

@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.io import ScienceMetadataProvider
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -39,10 +39,10 @@ class FetchScience:
         end_date: datetime,
         reference_frame: ReferenceFrame | None = None,
         use_ingestion_date: bool = False,
-    ) -> dict[Path, ScienceMetadataProvider]:
+    ) -> dict[Path, SciencePathHandler]:
         """Retrieve SDC data."""
 
-        downloaded: dict[Path, ScienceMetadataProvider] = dict()
+        downloaded: dict[Path, SciencePathHandler] = dict()
 
         dates: dict[str, datetime] = {
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
@@ -77,7 +77,7 @@ class FetchScience:
                                 f"Downloaded file from SDC Data Access: {downloaded_file}"
                             )
 
-                            downloaded[downloaded_file] = ScienceMetadataProvider(
+                            downloaded[downloaded_file] = SciencePathHandler(
                                 level=level.value,
                                 descriptor=file["descriptor"],
                                 content_date=datetime.strptime(

@@ -6,7 +6,7 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.fetch.binary import HKMetadataProvider, fetch_binary
+from imap_mag.api.fetch.binary import HKPathHandler, fetch_binary
 from imap_mag.api.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
@@ -134,7 +134,7 @@ async def poll_hk_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        downloaded_binaries: dict[Path, HKMetadataProvider] = fetch_binary(
+        downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary(
             auth_code=auth_code,
             packet=packet,
             start_date=packet_start_date,

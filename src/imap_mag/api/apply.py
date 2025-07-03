@@ -12,11 +12,11 @@ from imap_mag.api.apiUtils import (
 )
 from imap_mag.config import AppSettings
 from imap_mag.io import (
-    AncillaryFileMetadataProvider,
-    CalibrationLayerMetadataProvider,
+    AncillaryPathHandler,
+    CalibrationLayerPathHandler,
     InputManager,
     OutputManager,
-    ScienceMetadataProvider,
+    SciencePathHandler,
 )
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationApplicator
@@ -37,14 +37,14 @@ def prepare_layers_for_application(layers, appSettings):
     inputManager = InputManager(appSettings.data_store)
     workLayers = []
     for layer in layers:
-        cal_layer_metadata = CalibrationLayerMetadataProvider.from_filename(layer)
-        if not cal_layer_metadata:
+        cal_layer_handler = CalibrationLayerPathHandler.from_filename(layer)
+        if not cal_layer_handler:
             logger.error(f"Could not parse metadata from calibration layer: {layer}")
             raise ValueError(
                 f"Could not parse metadata from calibration layer: {layer}"
             )
         versioned_cal_file = inputManager.get_versioned_file(
-            metadata_provider=cal_layer_metadata, latest_version=False
+            path_handler=cal_layer_handler, latest_version=False
         )
         workLayers.append(
             fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
@@ -58,12 +58,12 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     """
     if rotation:
         inputManager = InputManager(appSettings.data_store)
-        rotation_metadata = AncillaryFileMetadataProvider.from_filename(rotation)
-        if not rotation_metadata:
+        rotation_handler = AncillaryPathHandler.from_filename(rotation)
+        if not rotation_handler:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
         versioned_rotation_file = inputManager.get_versioned_file(
-            metadata_provider=rotation_metadata, latest_version=False
+            path_handler=rotation_handler, latest_version=False
         )
         return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
     return None
@@ -100,15 +100,15 @@ def apply(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    original_input_metadata = ScienceMetadataProvider.from_filename(input)  # type: ignore
+    original_input_handler = SciencePathHandler.from_filename(input)  # type: ignore
 
-    if not original_input_metadata:
+    if not original_input_handler:
         logger.error(f"Could not parse metadata from input file: {input}")
         raise ValueError(f"Could not parse metadata from input file: {input}")
 
     input_manager = InputManager(app_settings.data_store)
     versioned_file = input_manager.get_versioned_file(
-        metadata_provider=original_input_metadata, latest_version=False
+        path_handler=original_input_handler, latest_version=False
     )
 
     workDataFile = fetch_file_for_work(
@@ -118,20 +118,20 @@ def apply(
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
-    l2_metadata_provider = ScienceMetadataProvider(
+    l2_path_handler = SciencePathHandler(
         level="l2-pre",
         content_date=date,
-        descriptor=original_input_metadata.descriptor,
+        descriptor=original_input_handler.descriptor,
         version=0,
         extension=l2_output_type,
     )
     norm_or_burst = (
         ScienceMode.Burst.short_name
-        if original_input_metadata.descriptor
-        and ScienceMode.Burst.short_name in original_input_metadata.descriptor
+        if original_input_handler.descriptor
+        and ScienceMode.Burst.short_name in original_input_handler.descriptor
         else ScienceMode.Normal.short_name
     )
-    cal_metadata_provider = AncillaryFileMetadataProvider(
+    cal_path_handler = AncillaryPathHandler(
         descriptor=f"l2-{norm_or_burst}-offsets",
         start_date=date,
         end_date=date,
@@ -139,8 +139,8 @@ def apply(
         extension=calibration_output_type,
     )
 
-    workCalFile = app_settings.work_folder / cal_metadata_provider.get_filename()
-    workL2File = app_settings.work_folder / l2_metadata_provider.get_filename()
+    workCalFile = app_settings.work_folder / cal_path_handler.get_filename()
+    workL2File = app_settings.work_folder / l2_path_handler.get_filename()
 
     applier = CalibrationApplicator()
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
@@ -152,8 +152,8 @@ def apply(
 
     outputManager = OutputManager(app_settings.data_store)
 
-    outputManager.add_file(L2_file, l2_metadata_provider)
-    outputManager.add_file(cal_file, cal_metadata_provider)
+    outputManager.add_file(L2_file, l2_path_handler)
+    outputManager.add_file(cal_file, cal_path_handler)
 
 
 def publish():

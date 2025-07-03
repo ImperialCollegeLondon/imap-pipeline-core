@@ -4,15 +4,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AncillaryFileMetadataProvider(IFileMetadataProvider):
+class AncillaryPathHandler(IFilePathHandler):
     """
-    Metadata for ancillary files
+    Path handler for ancillary files
     """
 
     mission: str = "imap"
@@ -50,7 +50,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
                     return Path("l2-offsets") / self.start_date.strftime("%Y/%m")
                 else:
                     logger.error(
-                        f"Unknown descriptor '{self.descriptor}' for ancillary files. Defaulting to 'ancillary'."
+                        f"Unknown descriptor '{self.descriptor}' for ancillary files."
                     )
                     raise ValueError(
                         f"Unknown descriptor '{self.descriptor}' for ancillary files."
@@ -105,10 +105,8 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
         )
 
     @classmethod
-    def from_filename(
-        cls, filename: str | Path
-    ) -> "AncillaryFileMetadataProvider | None":
-        """Create metadata provider from filename."""
+    def from_filename(cls, filename: str | Path) -> "AncillaryPathHandler | None":
+        """Create path handler from filename."""
 
         match = re.match(
             r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",

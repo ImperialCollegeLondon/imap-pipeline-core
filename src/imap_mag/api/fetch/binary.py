@@ -7,7 +7,7 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchBinary import FetchBinary, HKMetadataProvider
+from imap_mag.cli.fetchBinary import FetchBinary, HKPathHandler
 from imap_mag.client.webPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.util import HKPacket
@@ -52,7 +52,7 @@ def fetch_binary(
             help="WebPODA authentication code",
         ),
     ] = None,
-) -> dict[Path, HKMetadataProvider]:
+) -> dict[Path, HKPathHandler]:
     """Download binary data from WebPODA."""
 
     # Must provide a apid or a packet.
@@ -89,13 +89,11 @@ def fetch_binary(
     )
 
     fetch_binary = FetchBinary(poda)
-    downloaded_binaries: dict[Path, HKMetadataProvider] = (
-        fetch_binary.download_binaries(
-            packet=packet_name,
-            start_date=start_date,
-            end_date=end_date,
-            use_ert=use_ert,
-        )
+    downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary.download_binaries(
+        packet=packet_name,
+        start_date=start_date,
+        end_date=end_date,
+        use_ert=use_ert,
     )
 
     if not downloaded_binaries:
@@ -107,7 +105,7 @@ def fetch_binary(
             f"Downloaded {len(downloaded_binaries)} files:\n{', '.join(str(f) for f in downloaded_binaries.keys())}"
         )
 
-    output_binaries: dict[Path, HKMetadataProvider] = dict()
+    output_binaries: dict[Path, HKPathHandler] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
@@ -115,11 +113,9 @@ def fetch_binary(
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
-        for file, metadata_provider in downloaded_binaries.items():
-            (output_file, output_metadata) = output_manager.add_file(
-                file, metadata_provider
-            )
-            output_binaries[output_file] = output_metadata
+        for file, path_handler in downloaded_binaries.items():
+            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            output_binaries[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")
 

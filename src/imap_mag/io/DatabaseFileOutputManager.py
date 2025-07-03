@@ -5,7 +5,7 @@ from pathlib import Path
 from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.db import Database, IDatabase
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -30,20 +30,20 @@ class DatabaseFileOutputManager(IOutputManager):
         else:
             self.__database = database
 
-    def add_file(self, original_file: Path, metadata_provider: T) -> tuple[Path, T]:
+    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
         # Check if the version needs to be increased
         original_hash: str = generate_hash(original_file)
 
-        (metadata_provider.version, skip_database_insertion) = (
+        (path_handler.version, skip_database_insertion) = (
             self.__get_next_available_version(
-                metadata_provider,
+                path_handler,
                 original_hash=original_hash,
             )
         )
 
         # Add file locally
-        (destination_file, metadata_provider) = self.__output_manager.add_file(
-            original_file, metadata_provider
+        (destination_file, path_handler) = self.__output_manager.add_file(
+            original_file, path_handler
         )
 
         if not (
@@ -70,10 +70,10 @@ class DatabaseFileOutputManager(IOutputManager):
                     File(
                         name=destination_file.name,
                         path=destination_file.absolute().as_posix(),
-                        version=metadata_provider.version,
+                        version=path_handler.version,
                         hash=original_hash,
                         size=destination_file.stat().st_size,
-                        date=metadata_provider.content_date,
+                        date=path_handler.content_date,
                         software_version=__version__,
                     )
                 )
@@ -82,14 +82,14 @@ class DatabaseFileOutputManager(IOutputManager):
                 destination_file.unlink()
                 raise e
 
-        return (destination_file, metadata_provider)
+        return (destination_file, path_handler)
 
     def __get_matching_database_files(
-        self, metadata_provider: IFileMetadataProvider
+        self, path_handler: IFilePathHandler
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
-        matching_filename: str = metadata_provider.get_filename()
+        matching_filename: str = path_handler.get_filename()
         matching_filename = re.sub(r"v\d{3}", "v%", matching_filename)
 
         logger.debug(
@@ -102,27 +102,25 @@ class DatabaseFileOutputManager(IOutputManager):
         database_files = [
             file
             for file in database_files
-            if metadata_provider.get_folder_structure() in file.path
+            if path_handler.get_folder_structure() in file.path
         ]
 
         return database_files
 
     def __get_next_available_version(
         self,
-        metadata_provider: IFileMetadataProvider,
+        path_handler: IFilePathHandler,
         original_hash: str,
     ) -> tuple[int, bool]:
         """Find a viable version for a file."""
 
-        if not metadata_provider.supports_versioning():
+        if not path_handler.supports_versioning():
             logger.warning(
                 "Versioning not supported. File may be overwritten if it already exists."
             )
-            return (metadata_provider.version, False)
+            return (path_handler.version, False)
 
-        database_files: list[File] = self.__get_matching_database_files(
-            metadata_provider
-        )
+        database_files: list[File] = self.__get_matching_database_files(path_handler)
 
         # Find the file whose hash matches the original file
         matching_files: list[File] = [
@@ -133,22 +131,22 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         if matching_files:
-            metadata_provider.version = matching_files[0].version
-            preliminary_file = self.assemble_full_path(Path(""), metadata_provider)
+            path_handler.version = matching_files[0].version
+            preliminary_file = self.assemble_full_path(Path(""), path_handler)
 
             return (matching_files[0].version, True)
 
         # Find first available version (note that this might not be the sequential next version)
         existing_versions: set[int] = set(file.version for file in database_files)
 
-        while metadata_provider.version in existing_versions:
-            preliminary_file = self.assemble_full_path(Path(""), metadata_provider)
+        while path_handler.version in existing_versions:
+            preliminary_file = self.assemble_full_path(Path(""), path_handler)
             logger.debug(
-                f"File {preliminary_file} already exists in database and is different. Increasing version to {metadata_provider.version + 1}."
+                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.version + 1}."
             )
-            metadata_provider.version += 1
+            path_handler.version += 1
 
-            updated_file: Path = self.assemble_full_path(Path(""), metadata_provider)
+            updated_file: Path = self.assemble_full_path(Path(""), path_handler)
             preliminary_file = updated_file
 
-        return (metadata_provider.version, False)
+        return (path_handler.version, False)
