@@ -5,8 +5,9 @@ from imap_mag.io.AncillaryFileMetadataProvider import AncillaryFileMetadataProvi
 from imap_mag.io.CalibrationLayerMetadataProvider import (
     CalibrationLayerMetadataProvider,
 )
+from imap_mag.io.HKMetadataProvider import HKMetadataProvider
 from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
-from imap_mag.io.StandardSPDFMetadataProvider import StandardSPDFMetadataProvider
+from imap_mag.io.ScienceMetadataProvider import ScienceMetadataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class NoProviderFoundError(Exception):
         self.file = file
 
 
-class FileMetadataProviders:
+class FileMetadataProviderSelector:
     """Manager of file metadata providers."""
 
     @staticmethod
@@ -30,7 +31,8 @@ class FileMetadataProviders:
 
         # Providers to try in order of precedence.
         provider_to_try: list[type[IFileMetadataProvider]] = [
-            StandardSPDFMetadataProvider,
+            HKMetadataProvider,
+            ScienceMetadataProvider,
             CalibrationLayerMetadataProvider,
             AncillaryFileMetadataProvider,
         ]

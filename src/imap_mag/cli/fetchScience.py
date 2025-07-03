@@ -1,24 +1,14 @@
 """Program to retrieve and process MAG CDF files."""
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import ScienceMetadataProvider
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SDCMetadataProvider(StandardSPDFMetadataProvider):
-    """
-    Metadata for SDC files.
-    """
-
-    ingestion_date: datetime | None = None  # date data was ingested by SDC
 
 
 # TODO: why is this class in a folder named "cli" when it is not a command line app?
@@ -49,10 +39,10 @@ class FetchScience:
         end_date: datetime,
         reference_frame: ReferenceFrame | None = None,
         use_ingestion_date: bool = False,
-    ) -> dict[Path, SDCMetadataProvider]:
+    ) -> dict[Path, ScienceMetadataProvider]:
         """Retrieve SDC data."""
 
-        downloaded: dict[Path, SDCMetadataProvider] = dict()
+        downloaded: dict[Path, ScienceMetadataProvider] = dict()
 
         dates: dict[str, datetime] = {
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
@@ -81,7 +71,7 @@ class FetchScience:
                                 f"Downloaded file from SDC Data Access: {downloaded_file}"
                             )
 
-                            downloaded[downloaded_file] = SDCMetadataProvider(
+                            downloaded[downloaded_file] = ScienceMetadataProvider(
                                 level=level.value,
                                 descriptor=file["descriptor"],
                                 content_date=datetime.strptime(
