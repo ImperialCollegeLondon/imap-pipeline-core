@@ -16,7 +16,7 @@ def test_sdc_data_access_constructor_sets_config() -> None:
     data_access_url = "https://some_test_url"
 
     # Exercise.
-    _ = SDCDataAccess(data_dir, data_access_url)
+    _ = SDCDataAccess(Path(data_dir), data_access_url)
 
     # Verify.
     assert imap_data_access.config["DATA_DIR"] == data_dir
@@ -25,7 +25,7 @@ def test_sdc_data_access_constructor_sets_config() -> None:
 
 def test_get_file_path_builds_file_path() -> None:
     # Set up.
-    data_access = SDCDataAccess("some_test_folder")
+    data_access = SDCDataAccess(Path("some_test_folder"), "some_auth_code")
 
     # Exercise.
     (filename, file_path) = data_access.get_file_path(

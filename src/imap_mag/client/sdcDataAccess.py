@@ -8,8 +8,6 @@ from pathlib import Path
 import imap_data_access
 import imap_data_access.io
 
-from imap_mag.util.constants import CONSTANTS
-
 logger = logging.getLogger(__name__)
 
 
@@ -81,7 +79,7 @@ class SDCDataAccess(ISDCDataAccess):
         """Initialize SDC API client."""
 
         imap_data_access.config["DATA_DIR"] = data_dir
-        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url or CONSTANTS.SDC_URL
+        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url
 
     @staticmethod
     def get_file_path(

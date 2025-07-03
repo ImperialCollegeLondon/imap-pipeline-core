@@ -9,8 +9,6 @@ from pathlib import Path
 
 import requests
 
-from imap_mag.util.constants import CONSTANTS
-
 logger = logging.getLogger(__name__)
 
 
@@ -61,14 +59,12 @@ class WebPODA(IWebPODA):
     __auth_code: str
     __output_dir: Path
 
-    def __init__(
-        self, auth_code: str, output_dir: Path, webpoda_url: str | None = None
-    ) -> None:
+    def __init__(self, auth_code: str, output_dir: Path, webpoda_url: str) -> None:
         """Initialize WebPODA interface."""
 
         self.__auth_code = auth_code
         self.__output_dir = output_dir
-        self.__webpoda_url = webpoda_url or CONSTANTS.WEBPODA_URL
+        self.__webpoda_url = webpoda_url
 
     def download(
         self,

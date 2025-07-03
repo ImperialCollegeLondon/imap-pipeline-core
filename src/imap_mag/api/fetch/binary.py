@@ -82,7 +82,11 @@ def fetch_binary(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
     )
 
-    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.api.url_base)
+    poda = WebPODA(
+        app_settings.fetch_binary.api.auth_code,
+        work_folder,
+        app_settings.fetch_binary.api.url_base,
+    )
 
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, WebPODAMetadataProvider] = (
