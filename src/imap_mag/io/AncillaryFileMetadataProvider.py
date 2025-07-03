@@ -73,7 +73,7 @@ class AncillaryFileMetadataProvider(IFileMetadataProvider):
         """Create metadata provider from filename."""
 
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<date>\d{8})_((?P<enddate>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
