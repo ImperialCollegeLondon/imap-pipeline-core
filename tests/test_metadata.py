@@ -332,7 +332,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
         ),
     ],
 )
-def test_suitable_provider_from_filename(filename, expected):
+def test_find_correct_provider_from_filename(filename, expected):
     actual = FileMetadataProviderSelector.find_by_path(
         filename, throw_on_none_found=False
     )
@@ -343,7 +343,7 @@ def test_suitable_provider_from_filename(filename, expected):
     "throw_error",
     [True, False],
 )
-def test_no_suitable_provider_from_filename(capture_cli_logs, throw_error):
+def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
     # Setup.
     path = Path("this-is_not_a_supported_file_v002.cdf")
 
