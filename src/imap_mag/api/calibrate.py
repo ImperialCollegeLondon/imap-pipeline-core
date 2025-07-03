@@ -12,7 +12,7 @@ from imap_mag.io import (
     CalibrationLayerMetadataProvider,
     InputManager,
     OutputManager,
-    StandardSPDFMetadataProvider,
+    ScienceMetadataProvider,
 )
 from imap_mag.util import ScienceLevel, ScienceMode
 from mag_toolkit.calibration import (
@@ -67,7 +67,7 @@ def calibrate(
     # TODO: Input manager for getting data of a given level?
 
     level = ScienceLevel.l1b if mode == ScienceMode.Burst else ScienceLevel.l1c
-    metadata_provider = StandardSPDFMetadataProvider(
+    metadata_provider = ScienceMetadataProvider(
         level=level.value,
         content_date=date,
         descriptor=f"{mode.short_name}-{sensor.value.lower()}",
@@ -89,6 +89,9 @@ def calibrate(
     workFile = fetch_file_for_work(
         input_file, app_settings.work_folder, throw_if_not_found=True
     )
+    if not workFile:
+        logging.error("Unable to fetch file for work: %s", input_file)
+        raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerMetadata = CalibrationLayerMetadataProvider(
