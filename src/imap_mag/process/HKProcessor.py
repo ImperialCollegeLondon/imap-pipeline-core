@@ -2,6 +2,7 @@ import collections
 import logging
 import os
 import re
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 
@@ -122,7 +123,9 @@ class HKProcessor(FileProcessor):
                 file_path = self.__work_folder / path_handler.get_filename()
 
                 daily_data.sort_index(inplace=False).to_csv(file_path)
-                processed_files[file_path] = path_handler
+
+                # Use a deep-copy, otherwise the same handle will be used for all files.
+                processed_files[file_path] = deepcopy(path_handler)
 
         return processed_files
 
