@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 
 from imap_mag import appUtils
-from imap_mag.api.apiUtils import initialiseLoggingForCommand
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchScience import FetchScience
