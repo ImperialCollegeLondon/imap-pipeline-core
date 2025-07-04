@@ -435,3 +435,69 @@ async def test_poll_hk_specify_ert_start_end_dates(
         ert_timestamp,
         actual_timestamp,
     )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_database_progress_table_not_modified_if_poll_hk_fails(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+):
+    # Set up.
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
+    }
+
+    yesterday = YESTERDAY.strftime("%Y-%m-%dT%H:%M:%S")
+    end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
+
+    ert_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+    actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
+
+    available_hk: list[HKPacket] = [
+        HKPacket.SID3_PW,
+    ]
+    not_available_hk: list[HKPacket] = list(
+        {p for p in HKPacket}.difference(available_hk)
+    )
+
+    wiremock_manager.reset()
+
+    # Some data is available only for specific packets.
+    for hk in available_hk:
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=yesterday,
+            end_date=end_of_today,
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
+        )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_webpoda_mappings(wiremock_manager)
+
+    # Exercise.
+    with (
+        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("WEBPODA_AUTH_CODE", "12345"),
+    ):
+        await poll_hk_flow(
+            hk_packets=available_hk,
+        )
+
+    # Verify.
+    verify_not_available_hk(test_database, not_available_hk)
+    verify_available_hk(
+        test_database,
+        available_hk,
+        ert_timestamp,
+        actual_timestamp,
+    )
