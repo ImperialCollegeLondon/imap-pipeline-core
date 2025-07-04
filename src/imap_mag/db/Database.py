@@ -108,7 +108,8 @@ class Database(IDatabase):
 def update_database_with_progress(
     packet_name: str,
     database: Database,
-    latest_timestamp: datetime,
+    checked_timestamp: datetime,
+    latest_timestamp: datetime | None,
     logger: logging.Logger | logging.LoggerAdapter,
 ) -> None:
     download_progress = database.get_download_progress(packet_name)
@@ -117,10 +118,14 @@ def update_database_with_progress(
         f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
     )
 
-    if (download_progress.progress_timestamp is None) or (
-        latest_timestamp > download_progress.progress_timestamp
+    download_progress.record_checked_download(checked_timestamp)
+
+    if latest_timestamp and (
+        (download_progress.progress_timestamp is None)
+        or (latest_timestamp > download_progress.progress_timestamp)
     ):
         download_progress.record_successful_download(latest_timestamp)
-        database.save(download_progress)
     else:
         logger.info(f"Database not updated for {packet_name} as no new data available.")
+
+    database.save(download_progress)

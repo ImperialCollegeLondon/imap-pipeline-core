@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from imap_mag.download.FetchScience import FetchScience
 from imap_mag.util import ScienceMode
 from prefect_server.pollScience import poll_science_flow
 from tests.util.database import test_database  # noqa: F401
@@ -21,6 +22,10 @@ from tests.util.miscellaneous import (
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
+
+
+def get_database_id_from_mode(mode: ScienceMode) -> str:
+    return mode.packet + "_L1C"
 
 
 def define_available_data_sdc_mappings(
@@ -89,7 +94,9 @@ def define_unavailable_data_sdc_mappings(wiremock_manager):
 
 def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode]):
     for mode in not_requested_modes:
-        download_progress = database.get_download_progress(mode.packet + "_L1C")
+        download_progress = database.get_download_progress(
+            get_database_id_from_mode(mode)
+        )
 
         assert download_progress.get_last_checked_date() is None
         assert download_progress.get_progress_timestamp() is None
@@ -97,7 +104,9 @@ def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode])
 
 def verify_not_available_modes(database, not_available_modes: list[ScienceMode]):
     for mode in not_available_modes:
-        download_progress = database.get_download_progress(mode.packet + "_L1C")
+        download_progress = database.get_download_progress(
+            get_database_id_from_mode(mode)
+        )
 
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() is None
@@ -111,7 +120,9 @@ def verify_available_modes(
 ):
     for mode in available_modes:
         # Database.
-        download_progress = database.get_download_progress(mode.packet + "_L1C")
+        download_progress = database.get_download_progress(
+            get_database_id_from_mode(mode)
+        )
 
         assert download_progress.get_last_checked_date() == NOW
         assert download_progress.get_progress_timestamp() == ingestion_timestamp
@@ -193,7 +204,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
 
     # Some data is available for "today" for Normal mode.
     download_progress = test_database.get_download_progress(
-        ScienceMode.Normal.packet + "_L1C"
+        get_database_id_from_mode(ScienceMode.Normal)
     )
     download_progress.record_successful_download(progress_timestamp)
     test_database.save(download_progress)
@@ -338,3 +349,56 @@ async def test_poll_science_specify_ingestion_start_end_dates(
         ingestion_timestamp,
         start_date,
     )
+
+
+@pytest.fixture(scope="function")
+def mock_fetch_science_to_fail_on_call(monkeypatch):
+    def throw_error_on_call(*args, **kwargs):
+        raise RuntimeError("FetchScience download failed for testing purposes.")
+
+    monkeypatch.setattr(FetchScience, "download_science", throw_error_on_call)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_database_progress_table_not_modified_if_poll_science_fails(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+    mock_fetch_science_to_fail_on_call,
+):
+    # Set up.
+    ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+
+    wiremock_manager.reset()
+
+    # Some data is available for the requested dates for Normal mode.
+    define_available_data_sdc_mappings(
+        wiremock_manager,
+        ScienceMode.Normal,
+        YESTERDAY,
+        END_OF_TODAY,
+        ingestion_timestamp,
+        is_ingestion_date=True,
+    )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with (
+        pytest.raises(
+            RuntimeError, match="FetchScience download failed for testing purposes."
+        ),
+        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("SDC_AUTH_CODE", "12345"),
+    ):
+        await poll_science_flow(
+            modes=[ScienceMode.Normal],
+        )
+
+    # Verify.
+    verify_not_requested_modes(test_database, [m for m in ScienceMode])
