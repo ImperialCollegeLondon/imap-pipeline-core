@@ -19,6 +19,32 @@ from tests.util.miscellaneous import (
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
 
 
+def define_available_data_webpoda_mappings(
+    wiremock_manager,
+    packet: str,
+    start_date: str,
+    end_date: str,
+    binary_file: str,
+    ert_timestamp: datetime,
+    actual_timestamp: datetime,
+):
+    wiremock_manager.add_file_mapping(
+        f"/packets/SID2/{packet}.bin?ert%3E={start_date}&ert%3C{end_date}&project(packet)",
+        binary_file,
+        priority=1,
+    )
+    wiremock_manager.add_string_mapping(
+        f"/packets/SID2/{packet}.csv?ert%3E={start_date}&ert%3C{end_date}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
+        priority=1,
+    )
+    wiremock_manager.add_string_mapping(
+        f"/packets/SID2/{packet}.csv?ert%3E={start_date}&ert%3C{end_date}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
+        priority=1,
+    )
+
+
 def define_unavailable_data_webpoda_mappings(wiremock_manager):
     empty_file = os.path.abspath("tests/data/2025/EMPTY_HK.pkts")
 
@@ -152,20 +178,14 @@ async def test_poll_hk_autoflow_first_ever_run(
 
     # Some data is available only for specific packets.
     for hk in available_hk:
-        wiremock_manager.add_file_mapping(
-            f"/packets/SID2/{hk.packet}.bin?ert%3E={yesterday}&ert%3C{end_of_today}&project(packet)",
-            binary_files[hk.packet],
-            priority=1,
-        )
-        wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={yesterday}&ert%3C{end_of_today}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-            f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-            priority=1,
-        )
-        wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={yesterday}&ert%3C{end_of_today}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-            f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-            priority=1,
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=yesterday,
+            end_date=end_of_today,
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
         )
 
     # No data is available for any other date/packet.
@@ -228,20 +248,14 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
         download_progress.record_successful_download(progress_timestamp)
         test_database.save(download_progress)
 
-        wiremock_manager.add_file_mapping(
-            f"/packets/SID2/{hk.packet}.bin?ert%3E={progress_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}&ert%3C{end_of_today}&project(packet)",
-            binary_files[hk.packet],
-            priority=1,
-        )
-        wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={progress_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}&ert%3C{end_of_today}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-            f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-            priority=1,
-        )
-        wiremock_manager.add_string_mapping(
-            f"/packets/SID2/{hk.packet}.csv?ert%3E={progress_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}&ert%3C{end_of_today}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-            f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-            priority=1,
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=progress_timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+            end_date=end_of_today,
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
         )
 
     # No data is available for any other date/packet.
@@ -314,20 +328,14 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
                 actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
             ),
         ]:
-            wiremock_manager.add_file_mapping(
-                f"/packets/SID2/{hk.packet}.bin?time%3E={date_pair[0]}&time%3C{date_pair[1]}&project(packet)",
-                binary_files[hk.packet],
-                priority=1,
-            )
-            wiremock_manager.add_string_mapping(
-                f"/packets/SID2/{hk.packet}.csv?time%3E={date_pair[0]}&time%3C{date_pair[1]}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-                f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-                priority=1,
-            )
-            wiremock_manager.add_string_mapping(
-                f"/packets/SID2/{hk.packet}.csv?time%3E={date_pair[0]}&time%3C{date_pair[1]}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-                f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-                priority=1,
+            define_available_data_webpoda_mappings(
+                wiremock_manager,
+                packet=hk.packet,
+                start_date=date_pair[0],
+                end_date=date_pair[1],
+                binary_file=binary_files[hk.packet],
+                ert_timestamp=ert_timestamp,
+                actual_timestamp=actual_timestamp,
             )
 
     # No data is available for any other date/packet.
@@ -408,20 +416,14 @@ async def test_poll_hk_specify_ert_start_end_dates(
                 actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
             ),
         ]:
-            wiremock_manager.add_file_mapping(
-                f"/packets/SID2/{hk.packet}.bin?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(packet)",
-                binary_files[hk.packet],
-                priority=1,
-            )
-            wiremock_manager.add_string_mapping(
-                f"/packets/SID2/{hk.packet}.csv?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-                f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-                priority=1,
-            )
-            wiremock_manager.add_string_mapping(
-                f"/packets/SID2/{hk.packet}.csv?ert%3E={date_pair[0]}&ert%3C{date_pair[1]}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
-                f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
-                priority=1,
+            define_available_data_webpoda_mappings(
+                wiremock_manager,
+                packet=hk.packet,
+                start_date=date_pair[0],
+                end_date=date_pair[1],
+                binary_file=binary_files[hk.packet],
+                ert_timestamp=ert_timestamp,
+                actual_timestamp=actual_timestamp,
             )
 
     # No data is available for any other date/packet.
