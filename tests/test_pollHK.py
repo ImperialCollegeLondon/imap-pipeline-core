@@ -27,19 +27,22 @@ def define_available_data_webpoda_mappings(
     binary_file: str,
     ert_timestamp: datetime,
     actual_timestamp: datetime,
+    use_ert: bool = True,
 ):
+    time_var = "ert" if use_ert else "time"
+
     wiremock_manager.add_file_mapping(
-        f"/packets/SID2/{packet}.bin?ert%3E={start_date}&ert%3C{end_date}&project(packet)",
+        f"/packets/SID2/{packet}.bin?{time_var}%3E={start_date}&{time_var}%3C{end_date}&project(packet)",
         binary_file,
         priority=1,
     )
     wiremock_manager.add_string_mapping(
-        f"/packets/SID2/{packet}.csv?ert%3E={start_date}&ert%3C{end_date}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        f"/packets/SID2/{packet}.csv?{time_var}%3E={start_date}&{time_var}%3C{end_date}&project(ert)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
         f"ert\n{ert_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
         priority=1,
     )
     wiremock_manager.add_string_mapping(
-        f"/packets/SID2/{packet}.csv?ert%3E={start_date}&ert%3C{end_date}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
+        f"/packets/SID2/{packet}.csv?{time_var}%3E={start_date}&{time_var}%3C{end_date}&project(time)&formatTime(%22yyyy-MM-dd'T'HH:mm:ss%22)",
         f"time\n{actual_timestamp.strftime('%Y-%m-%dT%H:%M:%S')}\n",
         priority=1,
     )
@@ -318,25 +321,16 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 
     # Some data is available for the requested dates, only for specific packets.
     for hk in available_hk:
-        for date_pair in [
-            (
-                start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
-            ),
-            (
-                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
-            ),
-        ]:
-            define_available_data_webpoda_mappings(
-                wiremock_manager,
-                packet=hk.packet,
-                start_date=date_pair[0],
-                end_date=date_pair[1],
-                binary_file=binary_files[hk.packet],
-                ert_timestamp=ert_timestamp,
-                actual_timestamp=actual_timestamp,
-            )
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            end_date=actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
+            use_ert=False,
+        )
 
     # No data is available for any other date/packet.
     define_unavailable_data_webpoda_mappings(wiremock_manager)
@@ -406,25 +400,15 @@ async def test_poll_hk_specify_ert_start_end_dates(
 
     # Some data is available for the requested dates, only for specific packets.
     for hk in available_hk:
-        for date_pair in [
-            (
-                start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
-            ),
-            (
-                end_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
-            ),
-        ]:
-            define_available_data_webpoda_mappings(
-                wiremock_manager,
-                packet=hk.packet,
-                start_date=date_pair[0],
-                end_date=date_pair[1],
-                binary_file=binary_files[hk.packet],
-                ert_timestamp=ert_timestamp,
-                actual_timestamp=actual_timestamp,
-            )
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            end_date=actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
+        )
 
     # No data is available for any other date/packet.
     define_unavailable_data_webpoda_mappings(wiremock_manager)

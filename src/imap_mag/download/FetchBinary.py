@@ -40,6 +40,10 @@ class FetchBinary:
             start_date = datetime.combine(start_date, datetime.min.time())
             end_date = start_date + timedelta(days=1)
 
+        # If the end date is midnight, include the whole day.
+        elif end_date.time() == datetime.min.time():
+            end_date = end_date + timedelta(days=1)
+
         # Download data as a whole.
         file = self.__web_poda.download(
             packet=packet,
