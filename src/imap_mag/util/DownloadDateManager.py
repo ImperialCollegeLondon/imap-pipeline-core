@@ -96,7 +96,7 @@ def get_dates_for_download(
     database: Database,
     original_start_date: datetime | None,
     original_end_date: datetime | None,
-    check_and_update_database: bool,
+    validate_with_database: bool,
     logger: logging.Logger | logging.LoggerAdapter,
 ) -> tuple[datetime, datetime] | None:
     download_progress = database.get_download_progress(packet_name)
@@ -111,7 +111,7 @@ def get_dates_for_download(
     start_date = manager.get_start_date(original_start_date)
     end_date = manager.get_end_date(original_end_date)
 
-    if check_and_update_database:
+    if validate_with_database:
         return manager.validate_download_dates(start_date, end_date)
     else:
         logger.info(

@@ -147,7 +147,7 @@ async def poll_science_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=use_database,
+            validate_with_database=use_database,
             logger=logger,
         )
 
