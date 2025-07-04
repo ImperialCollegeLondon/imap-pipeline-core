@@ -6,8 +6,8 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.fetch.binary import fetch_binary
-from imap_mag.api.process import process
+from imap_mag.cli.fetch.binary import fetch_binary
+from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import HKPathHandler
