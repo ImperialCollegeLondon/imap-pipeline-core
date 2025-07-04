@@ -11,10 +11,10 @@ from imap_mag.util import ScienceMode
 from prefect_server.pollScience import poll_science_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
+    BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
     TODAY,
-    YESTERDAY,
     create_test_file,
     mock_datetime_provider,  # noqa: F401
     set_env,
@@ -149,7 +149,7 @@ async def test_poll_science_autoflow_first_ever_run(
     define_available_data_sdc_mappings(
         wiremock_manager,
         ScienceMode.Normal,
-        YESTERDAY,
+        BEGINNING_OF_IMAP,
         END_OF_TODAY,
         ingestion_timestamp,
         is_ingestion_date=True,
@@ -171,7 +171,7 @@ async def test_poll_science_autoflow_first_ever_run(
         test_database,
         [ScienceMode.Normal],
         ingestion_timestamp,
-        YESTERDAY,
+        BEGINNING_OF_IMAP,
     )
 
 

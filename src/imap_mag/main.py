@@ -1,7 +1,5 @@
 """Main module."""
 
-import logging
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -21,11 +19,6 @@ def hello(name: str):
 app.command()(process.process)
 app.command()(calibrate.calibrate)
 app.command()(publish.publish)
-
-
-def fetch_file_for_work(file, configFile) -> Path | None:
-    logging.debug(f"Grabbing file matching {file} in {configFile.source.folder}")
-
 
 app.add_typer(fetch.app, name="fetch", help="Fetch data from the SDC or WebPODA")
 app.add_typer(calibrate.app, name="calibration", help="Generate calibration parameters")

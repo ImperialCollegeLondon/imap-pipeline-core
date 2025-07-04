@@ -73,17 +73,20 @@ def fetch_binary(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     if apid is not None:
-        packet_name: str = HKPacket.from_apid(apid).name
-    elif packet is not None and isinstance(packet, str):
-        packet_name: str = packet
+        packet_name: str = HKPacket.from_apid(apid).packet
     else:
-        packet_name: str = packet.packet  # type: ignore
+        assert packet is not None
+        packet_name = packet.packet
 
     logger.info(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
     )
 
-    poda = WebPODA(auth_code, work_folder, app_settings.fetch_binary.api.url_base)
+    poda = WebPODA(
+        app_settings.fetch_binary.api.auth_code,
+        work_folder,
+        app_settings.fetch_binary.api.url_base,
+    )
 
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary.download_binaries(
