@@ -4,9 +4,9 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api import calibrate, process, publish
-from imap_mag.api.apiUtils import globalState
-from imap_mag.api.fetch import fetch
+from imap_mag.cli import calibrate, process, publish
+from imap_mag.cli.cliUtils import globalState
+from imap_mag.cli.fetch import fetch
 
 app = typer.Typer()
 

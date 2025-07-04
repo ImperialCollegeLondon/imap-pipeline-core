@@ -8,8 +8,8 @@ from shutil import which
 import pytest
 from spacepy import pycdf
 
-from imap_mag.api.apply import apply
-from imap_mag.api.calibrate import calibrate
+from imap_mag.cli.apply import apply
+from imap_mag.cli.calibrate import calibrate
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path

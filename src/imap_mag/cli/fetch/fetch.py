@@ -1,7 +1,7 @@
 import typer
 
-from imap_mag.api.fetch.binary import fetch_binary
-from imap_mag.api.fetch.science import fetch_science
+from imap_mag.cli.fetch.binary import fetch_binary
+from imap_mag.cli.fetch.science import fetch_science
 
 app = typer.Typer()
 

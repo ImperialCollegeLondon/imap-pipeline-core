@@ -7,8 +7,9 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchBinary import FetchBinary, HKPathHandler
-from imap_mag.client.webPODA import IWebPODA
+from imap_mag.client.WebPODA import WebPODA
+from imap_mag.download.FetchBinary import FetchBinary
+from imap_mag.io import HKPathHandler
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
     tidyDataFolders,
@@ -17,8 +18,8 @@ from tests.util.miscellaneous import (  # noqa: F401
 
 @pytest.fixture
 def mock_poda() -> mock.Mock:
-    """Fixture for a mock IWebPODA instance."""
-    return mock.create_autospec(IWebPODA, spec_set=True)
+    """Fixture for a mock WebPODA instance."""
+    return mock.create_autospec(WebPODA, spec_set=True)
 
 
 def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -> None:

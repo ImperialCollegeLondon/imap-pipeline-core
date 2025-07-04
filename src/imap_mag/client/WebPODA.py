@@ -1,6 +1,5 @@
 """Download raw packets from WebPODA."""
 
-import abc
 import logging
 import os
 import urllib.parse
@@ -12,47 +11,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-class IWebPODA(abc.ABC):
-    """Interface for downloading raw packets from WebPODA."""
-
-    @abc.abstractmethod
-    def download(
-        self,
-        *,
-        packet: str,
-        start_date: datetime,
-        end_date: datetime,
-        ert: bool = False,
-    ) -> Path:
-        """Download packet data from WebPODA."""
-        pass
-
-    @abc.abstractmethod
-    def get_max_ert(
-        self,
-        *,
-        packet: str,
-        start_date: datetime,
-        end_date: datetime,
-        ert: bool = False,
-    ) -> datetime | None:
-        """Get max ERT from WebPODA."""
-        pass
-
-    @abc.abstractmethod
-    def get_min_sctime(
-        self,
-        *,
-        packet: str,
-        start_date: datetime,
-        end_date: datetime,
-        ert: bool = False,
-    ) -> datetime | None:
-        """Get min S/C time from WebPODA."""
-        pass
-
-
-class WebPODA(IWebPODA):
+class WebPODA:
     """Class for downloading raw packets from WebPODA."""
 
     __webpoda_url: str

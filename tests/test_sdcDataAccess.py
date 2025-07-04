@@ -6,7 +6,7 @@ from pathlib import Path
 
 import imap_data_access
 
-from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.client.SDCDataAccess import SDCDataAccess
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 

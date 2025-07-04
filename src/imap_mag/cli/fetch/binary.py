@@ -6,10 +6,11 @@ from typing import Annotated, Optional
 import typer
 
 from imap_mag import appUtils
-from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchBinary import FetchBinary, HKPathHandler
-from imap_mag.client.webPODA import WebPODA
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
+from imap_mag.client.WebPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
+from imap_mag.download.FetchBinary import FetchBinary
+from imap_mag.io import HKPathHandler
 from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)

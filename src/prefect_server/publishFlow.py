@@ -5,7 +5,7 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.publish import publish
+from imap_mag.cli.publish import publish
 from prefect_server.constants import CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 

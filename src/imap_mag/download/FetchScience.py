@@ -4,25 +4,24 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.client.sdcDataAccess import ISDCDataAccess
+from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.io import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: why is this class in a folder named "cli" when it is not a command line app?
 class FetchScience:
     """Manage SOC data."""
 
-    __data_access: ISDCDataAccess
+    __data_access: SDCDataAccess
 
     __modes: list[ScienceMode]
     __sensor: list[MAGSensor]
 
     def __init__(
         self,
-        data_access: ISDCDataAccess,
+        data_access: SDCDataAccess,
         modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
         sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:

@@ -5,8 +5,8 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api import apply
-from imap_mag.api.apiUtils import fetch_file_for_work, initialiseLoggingForCommand
+from imap_mag.cli import apply
+from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.io import (
     CalibrationLayerPathHandler,
