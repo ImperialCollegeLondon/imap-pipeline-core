@@ -98,13 +98,13 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
             datetime(2025, 5, 2),
             datetime(2025, 5, 3),
             datetime(2025, 5, 2),
-            datetime(2025, 5, 3),
+            datetime(2025, 5, 4),
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3),
             datetime(2025, 5, 2, 12, 45, 29),
-            datetime(2025, 5, 3),
+            datetime(2025, 5, 4),
         ),
         (
             datetime(2025, 5, 2),
