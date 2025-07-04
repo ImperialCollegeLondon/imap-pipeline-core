@@ -6,12 +6,10 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.fetch.science import (
-    SciencePathHandler,
-    fetch_science,
-)
+from imap_mag.api.fetch.science import fetch_science
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import (
     DatetimeProvider,
     ReferenceFrame,

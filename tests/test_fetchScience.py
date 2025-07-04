@@ -7,19 +7,17 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchScience import (
-    FetchScience,
-    SciencePathHandler,
-)
-from imap_mag.client.sdcDataAccess import ISDCDataAccess
+from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.download.FetchScience import FetchScience
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 @pytest.fixture
 def mock_soc() -> mock.Mock:
-    """Fixture for a mock ISDCDataAccess instance."""
-    return mock.create_autospec(ISDCDataAccess, spec_set=True)
+    """Fixture for a mock SDCDataAccess instance."""
+    return mock.create_autospec(SDCDataAccess, spec_set=True)
 
 
 def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:

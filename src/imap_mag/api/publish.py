@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.client.sdcDataAccess import SDCDataAccess, SDCUploadError
+from imap_mag.client.SDCDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
 from imap_mag.io import FilePathHandlerSelector, InputManager
 

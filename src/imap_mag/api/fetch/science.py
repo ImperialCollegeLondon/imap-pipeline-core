@@ -7,12 +7,10 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchScience import (
-    FetchScience,
-    SciencePathHandler,
-)
-from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
+from imap_mag.download.FetchScience import FetchScience
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
