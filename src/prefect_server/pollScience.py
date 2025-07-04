@@ -137,6 +137,7 @@ async def poll_science_flow(
 
     for mode in modes:
         packet_name = mode.packet
+        packet_start_timestamp = DatetimeProvider.now()
         database_name = f"{packet_name}_{level.value.upper()}"
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
@@ -169,18 +170,25 @@ async def poll_science_flow(
 
         if not downloaded_science:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}. Database not updated."
+                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
             )
-            continue
 
         # Update database with latest ingestion date as progress (for science)
         if use_database:
+            ingestion_dates: list[datetime] = [
+                metadata.ingestion_date
+                for metadata in downloaded_science.values()
+                if metadata.ingestion_date
+            ]
+            latest_ingestion_date: datetime | None = (
+                max(ingestion_dates) if ingestion_dates else None
+            )
+
             update_database_with_progress(
                 packet_name=database_name,
                 database=database,
-                latest_timestamp=max(
-                    metadata.ingestion_date for metadata in downloaded_science.values()
-                ),
+                checked_timestamp=packet_start_timestamp,
+                latest_timestamp=latest_ingestion_date,
                 logger=logger,
             )
         else:

@@ -101,15 +101,11 @@ def get_dates_for_download(
 ) -> tuple[datetime, datetime] | None:
     download_progress = database.get_download_progress(packet_name)
 
-    last_checked_date = download_progress.get_last_checked_date()
-    progress_timestamp = download_progress.get_progress_timestamp()
-
-    if check_and_update_database:
-        download_progress.record_checked_download(DatetimeProvider.now())
-        database.save(download_progress)
-
     manager = DownloadDateManager(
-        packet_name, last_checked_date, progress_timestamp, logger
+        packet_name,
+        download_progress.get_last_checked_date(),
+        download_progress.get_progress_timestamp(),
+        logger,
     )
 
     start_date = manager.get_start_date(original_start_date)
