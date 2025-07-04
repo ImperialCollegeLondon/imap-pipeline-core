@@ -31,7 +31,7 @@ class FetchScience:
         self.__modes = modes
         self.__sensor = sensors
 
-    def download_latest_science(
+    def download_science(
         self,
         level: ScienceLevel,
         start_date: datetime,

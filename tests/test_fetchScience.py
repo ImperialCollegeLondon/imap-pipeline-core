@@ -29,12 +29,10 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, SciencePathHandler] = (
-        fetchScience.download_latest_science(
-            level=ScienceLevel.l1b,
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 2),
     )
 
     # Verify.
@@ -71,12 +69,10 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, SciencePathHandler] = (
-        fetchScience.download_latest_science(
-            level=ScienceLevel.l1b,
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
     )
 
     # Verify.
@@ -159,12 +155,10 @@ def test_fetch_binary_different_start_end_dates(
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, SciencePathHandler] = (
-        fetchScience.download_latest_science(
-            level=ScienceLevel.l1b,
-            start_date=start_date,
-            end_date=end_date,
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=start_date,
+        end_date=end_date,
     )
 
     # Verify.
@@ -201,13 +195,11 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, SciencePathHandler] = (
-        fetchScience.download_latest_science(
-            level=ScienceLevel.l1b,
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
-            use_ingestion_date=True,
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        use_ingestion_date=True,
     )
 
     # Verify.
@@ -260,13 +252,11 @@ def test_fetch_l2_science_with_both_sensors(
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, SciencePathHandler] = (
-        fetchScience.download_latest_science(
-            level=ScienceLevel.l2,
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
-            reference_frame=ReferenceFrame.GSE,
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l2,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        reference_frame=ReferenceFrame.GSE,
     )
 
     # Verify.
