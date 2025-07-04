@@ -8,10 +8,10 @@ from imap_mag.util import HKPacket
 from prefect_server.pollHK import poll_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
+    BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
     TODAY,
-    YESTERDAY,
     mock_datetime_provider,  # noqa: F401
     set_env,
     tidyDataFolders,  # noqa: F401
@@ -162,7 +162,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
     }
 
-    yesterday = YESTERDAY.strftime("%Y-%m-%dT%H:%M:%S")
+    beginning_of_imap = BEGINNING_OF_IMAP.strftime("%Y-%m-%dT%H:%M:%S")
     end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
 
     ert_timestamp = datetime(2025, 4, 2, 13, 37, 9)
@@ -184,7 +184,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         define_available_data_webpoda_mappings(
             wiremock_manager,
             packet=hk.packet,
-            start_date=yesterday,
+            start_date=beginning_of_imap,
             end_date=end_of_today,
             binary_file=binary_files[hk.packet],
             ert_timestamp=ert_timestamp,
