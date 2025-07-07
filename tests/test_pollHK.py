@@ -14,6 +14,7 @@ from tests.util.miscellaneous import (
     END_OF_TODAY,
     NOW,
     TODAY,
+    YESTERDAY,
     mock_datetime_provider,  # noqa: F401
     set_env,
     tidyDataFolders,  # noqa: F401
@@ -332,7 +333,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
             use_ert=False,
-            )
+        )
 
     # No data is available for any other date/packet.
     define_unavailable_data_webpoda_mappings(wiremock_manager)
@@ -410,7 +411,7 @@ async def test_poll_hk_specify_ert_start_end_dates(
             binary_file=binary_files[hk.packet],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
-            )
+        )
 
     # No data is available for any other date/packet.
     define_unavailable_data_webpoda_mappings(wiremock_manager)

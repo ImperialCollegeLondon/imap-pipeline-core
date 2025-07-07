@@ -31,10 +31,10 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
-            packet="MAG_HSK_PW",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
-        )
+        packet="MAG_HSK_PW",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 2),
+    )
 
     # Verify.
     mock_poda.download.assert_called_once_with(
@@ -58,10 +58,10 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
-            packet="MAG_HSK_PW",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
-        )
+        packet="MAG_HSK_PW",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 2),
+    )
 
     # Verify.
     mock_poda.download.assert_called_once_with(
@@ -138,18 +138,18 @@ def test_fetch_binary_different_start_end_dates(
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
-            packet="MAG_HSK_PW",
-            start_date=start_date,
-            end_date=end_date,
-        )
+        packet="MAG_HSK_PW",
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     # Verify.
     mock_poda.download.assert_called_once_with(
-                packet="MAG_HSK_PW",
+        packet="MAG_HSK_PW",
         start_date=expected_start_date,
         end_date=expected_end_date,
-                ert=False,
-            )
+        ert=False,
+    )
 
     assert actual_downloaded == dict()
 
@@ -165,11 +165,11 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
-            packet="MAG_HSK_PW",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
-            use_ert=True,
-        )
+        packet="MAG_HSK_PW",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 2),
+        use_ert=True,
+    )
 
     # Verify.
     mock_poda.download.assert_called_once_with(

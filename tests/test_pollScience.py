@@ -16,6 +16,7 @@ from tests.util.miscellaneous import (
     END_OF_TODAY,
     NOW,
     TODAY,
+    YESTERDAY,
     create_test_file,
     mock_datetime_provider,  # noqa: F401
     set_env,
