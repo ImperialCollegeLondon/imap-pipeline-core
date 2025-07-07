@@ -204,7 +204,7 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
             assert vec == pytest.approx(correct_vec, rel=1e-6)
 
 
-def test_apply_computes_magnitudes_correctly(tmp_path):
+def test_apply_writes_magnitudes_correctly(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "l1c",
