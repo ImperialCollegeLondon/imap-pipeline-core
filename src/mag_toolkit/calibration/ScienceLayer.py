@@ -25,14 +25,14 @@ class ScienceLayer(Layer):
         L2_SKELETON_CDF = "resource/l2_dsrf_skeleton.cdf"
         epoch = [science.time for science in self.values]
         vecs = [science.value for science in self.values]
-        range = [science.range for science in self.values]
+        magnitude = [science.magnitude for science in self.values]
         quality_flags = [science.quality_flag for science in self.values]
         quality_bitmask = [science.quality_bitmask for science in self.values]
 
         with pycdf.CDF(str(filepath), L2_SKELETON_CDF) as cdf:
             cdf["epoch"] = epoch
             cdf["vectors"][...] = vecs
-            cdf["range"] = range
+            cdf["magnitude"] = magnitude
             cdf["quality_flags"] = quality_flags
             cdf["quality_bitmask"] = quality_bitmask
         return filepath

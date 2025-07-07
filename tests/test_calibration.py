@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from shutil import which
 
+import numpy as np
 import pytest
 from spacepy import pycdf
 
@@ -204,6 +205,45 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         for correct_vec, vec in zip(correct_vecs, vectors):  # type: ignore
             # Convert to list for comparison
             assert vec == pytest.approx(correct_vec, rel=1e-6)
+
+
+def test_apply_writes_magnitudes_correctly(tmp_path):
+    prepare_test_file(
+        "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        "l1c",
+        2025,
+        10,
+    )
+    prepare_test_file(
+        "imap_mag_four-vector-offsets-layer_20251017_v001.json",
+        "calibration/layer",
+        2025,
+        10,
+    )
+    apply(
+        layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
+        input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        date=datetime(2025, 10, 17),
+    )
+
+    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+
+    assert Path(output_file).exists()
+
+    # Correct vectors calculated manually using MATLAB
+    correct_vecs = [
+        [-9783.16736, -23613.88873, -35999.27727],
+        [-9792.60397, -23604.93445, -35985.69583],
+        [-9785.58375, -23603.11448, -36006.90274],
+        [-9784.77406, -23584.60784, -36042.23171],
+    ]
+
+    with pycdf.CDF(output_file) as cdf:
+        magnitudes = cdf["magnitude"][...]
+        for correct_vec, mag in zip(correct_vecs, magnitudes):  # type: ignore
+            # Convert to list for comparison
+            computed_magnitude = np.linalg.norm(correct_vec)
+            assert mag == pytest.approx(computed_magnitude, rel=1e-6)
 
 
 @pytest.fixture()
