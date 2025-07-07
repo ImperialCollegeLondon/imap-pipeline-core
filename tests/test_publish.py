@@ -11,7 +11,7 @@ from wiremock.client import (
     MappingResponse,
 )
 
-from imap_mag.api.publish import publish
+from imap_mag.cli.publish import publish
 from imap_mag.main import app
 from prefect_server.publishFlow import publish_flow
 from tests.util.miscellaneous import (

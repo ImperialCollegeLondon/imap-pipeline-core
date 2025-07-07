@@ -132,8 +132,8 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     assert processed_path1.exists()
     assert processed_path2.exists()
 
-    assert processed_path2.name == "imap_mag_l1_hsk-pw_20250503_v000.csv"
-    assert processed_path1.name == "imap_mag_l1_hsk-pw_20250502_v000.csv"
+    assert processed_path2.name == "imap_mag_l1_hsk-pw_20250503_v001.csv"
+    assert processed_path1.name == "imap_mag_l1_hsk-pw_20250502_v001.csv"
 
     df_day1 = pd.read_csv(processed_path1, index_col=0)
     epoch_day1 = TimeConversion.convert_j2000ns_to_date(df_day1.index.values)
@@ -183,8 +183,8 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     assert processed_path1.exists()
     assert processed_path2.exists()
 
-    assert processed_path1.name == "imap_mag_l1_hsk-pw_20250502_v000.csv"
-    assert processed_path2.name == "imap_mag_l1_hsk-status_20250502_v000.csv"
+    assert processed_path1.name == "imap_mag_l1_hsk-pw_20250502_v001.csv"
+    assert processed_path2.name == "imap_mag_l1_hsk-status_20250502_v001.csv"
 
     assert f"Found 2 ApIDs (1063, 1064) in {packet_path}." in capture_cli_logs.text
     assert (
@@ -215,4 +215,4 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     processed_path = next(iter(processed_files))
     assert processed_path.exists()
 
-    assert processed_path.name == "imap_mag_l1_hsk-status_20250331_v000.csv"
+    assert processed_path.name == "imap_mag_l1_hsk-status_20250331_v001.csv"

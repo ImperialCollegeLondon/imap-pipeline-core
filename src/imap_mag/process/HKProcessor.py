@@ -96,7 +96,7 @@ class HKProcessor(FileProcessor):
             hk_packet: str = HKPacket.from_apid(apid).packet
             path_handler = HKPathHandler(
                 level=HKLevel.l1.value,
-                descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
+                descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
                 content_date=None,
                 extension="csv",
             )

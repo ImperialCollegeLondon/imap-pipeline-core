@@ -20,6 +20,7 @@ from imap_mag.io import (
 )
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (  # noqa: F401
+    NOW,
     TODAY,
     YESTERDAY,
     create_test_file,
@@ -386,7 +387,7 @@ def test_database_output_manager_errors_database_error(
         database_manager.add_file(original_file, path_handler)
 
 
-def test_update_database_no_update_needed(
+def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_progress_timestamp(
     capture_cli_logs,
     mock_database,
 ) -> None:
@@ -394,6 +395,7 @@ def test_update_database_no_update_needed(
     download_progress = DownloadProgress()
     download_progress.item_name = "MAG_SCI_NORM"
 
+    assert download_progress.last_checked_date is None
     download_progress.progress_timestamp = TODAY
 
     mock_database.get_download_progress.return_value = download_progress
@@ -402,6 +404,7 @@ def test_update_database_no_update_needed(
     update_database_with_progress(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
+        checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
         logger=LOGGER,
     )
@@ -412,8 +415,9 @@ def test_update_database_no_update_needed(
         in capture_cli_logs.text
     )
 
+    assert download_progress.last_checked_date is NOW
     assert download_progress.progress_timestamp is TODAY
-    assert not mock_database.save.called
+    assert mock_database.save.called
 
 
 def test_update_database_update_needed_no_data(
@@ -424,12 +428,16 @@ def test_update_database_update_needed_no_data(
     download_progress = DownloadProgress()
     download_progress.item_name = "MAG_SCI_NORM"
 
+    assert download_progress.last_checked_date is None
+    assert download_progress.progress_timestamp is None
+
     mock_database.get_download_progress.return_value = download_progress
 
     # Exercise
     update_database_with_progress(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
+        checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
         logger=LOGGER,
     )
@@ -440,6 +448,7 @@ def test_update_database_update_needed_no_data(
         in capture_cli_logs.text
     )
 
+    assert download_progress.last_checked_date is NOW
     assert download_progress.progress_timestamp is YESTERDAY
     assert mock_database.save.called
 
@@ -452,6 +461,7 @@ def test_update_database_update_needed_old_data(
     download_progress = DownloadProgress()
     download_progress.item_name = "MAG_SCI_NORM"
 
+    assert download_progress.last_checked_date is None
     download_progress.progress_timestamp = YESTERDAY
 
     mock_database.get_download_progress.return_value = download_progress
@@ -460,6 +470,7 @@ def test_update_database_update_needed_old_data(
     update_database_with_progress(
         packet_name="MAG_SCI_NORM",
         database=mock_database,
+        checked_timestamp=NOW,
         latest_timestamp=TODAY,
         logger=LOGGER,
     )
@@ -470,6 +481,7 @@ def test_update_database_update_needed_old_data(
         in capture_cli_logs.text
     )
 
+    assert download_progress.last_checked_date is NOW
     assert download_progress.progress_timestamp is TODAY
     assert mock_database.save.called
 

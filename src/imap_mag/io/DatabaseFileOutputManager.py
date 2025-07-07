@@ -120,33 +120,34 @@ class DatabaseFileOutputManager(IOutputManager):
             )
             return (path_handler.version, False)
 
-        preliminary_destination_file: Path = self.assemble_full_path(
             Path(""), path_handler
-        )
-
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
         # Find the file whose hash matches the original file
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
+        assert len(matching_files) <= 1, (
+            "There should be at most one file with the same hash in the database."
+        )
 
         if matching_files:
-            logger.debug(
-                f"File {preliminary_destination_file} already exists in database and is the same. Skipping insertion."
-            )
+            path_handler.version = matching_files[0].version
+            preliminary_file = self.assemble_full_path(Path(""), path_handler)
+
             return (matching_files[0].version, True)
 
         # Find first available version (note that this might not be the sequential next version)
         existing_versions: set[int] = set(file.version for file in database_files)
 
         while path_handler.version in existing_versions:
+            preliminary_file = self.assemble_full_path(Path(""), path_handler)
             logger.debug(
-                f"File {preliminary_destination_file} already exists in database and is different. Increasing version to {path_handler.version + 1}."
+                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.version + 1}."
             )
             path_handler.version += 1
 
             updated_file: Path = self.assemble_full_path(Path(""), path_handler)
-            preliminary_destination_file = updated_file
+            preliminary_file = updated_file
 
         return (path_handler.version, False)

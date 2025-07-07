@@ -7,8 +7,9 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchBinary import FetchBinary, HKPathHandler
-from imap_mag.client.webPODA import IWebPODA
+from imap_mag.client.WebPODA import WebPODA
+from imap_mag.download.FetchBinary import FetchBinary
+from imap_mag.io import HKPathHandler
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
     tidyDataFolders,
@@ -17,8 +18,8 @@ from tests.util.miscellaneous import (  # noqa: F401
 
 @pytest.fixture
 def mock_poda() -> mock.Mock:
-    """Fixture for a mock IWebPODA instance."""
-    return mock.create_autospec(IWebPODA, spec_set=True)
+    """Fixture for a mock WebPODA instance."""
+    return mock.create_autospec(WebPODA, spec_set=True)
 
 
 def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -> None:
@@ -86,48 +87,48 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
 
 
 @pytest.mark.parametrize(
-    "start_date, end_date, expected_start_dates, expected_end_dates",
+    "start_date, end_date, expected_start_date, expected_end_date",
     [
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 2),
-            [datetime(2025, 5, 2)],
-            [datetime(2025, 5, 3)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3),
         ),
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 4),
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3),
-            [datetime(2025, 5, 2, 12, 45, 29), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 4)],
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 4),
         ),
         (
             datetime(2025, 5, 2),
             datetime(2025, 5, 3, 12, 45, 29),
-            [datetime(2025, 5, 2), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 3, 12, 45, 29)],
+            datetime(2025, 5, 2),
+            datetime(2025, 5, 3, 12, 45, 29),
         ),
         (
             datetime(2025, 5, 2, 12, 45, 29),
             datetime(2025, 5, 3, 12, 45, 29),
-            [datetime(2025, 5, 2, 12, 45, 29), datetime(2025, 5, 3)],
-            [datetime(2025, 5, 3), datetime(2025, 5, 3, 12, 45, 29)],
+            datetime(2025, 5, 2, 12, 45, 29),
+            datetime(2025, 5, 3, 12, 45, 29),
         ),
         (
             datetime(2025, 6, 2, 5, 30, 0),
             datetime(2025, 6, 2, 23, 59, 59, 999999),
-            [datetime(2025, 6, 2, 5, 30, 0)],
-            [datetime(2025, 6, 2, 23, 59, 59, 999999)],
+            datetime(2025, 6, 2, 5, 30, 0),
+            datetime(2025, 6, 2, 23, 59, 59, 999999),
         ),
     ],
 )
 def test_fetch_binary_different_start_end_dates(
-    mock_poda: mock.Mock, start_date, end_date, expected_start_dates, expected_end_dates
+    mock_poda: mock.Mock, start_date, end_date, expected_start_date, expected_end_date
 ) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
@@ -143,21 +144,12 @@ def test_fetch_binary_different_start_end_dates(
     )
 
     # Verify.
-    assert mock_poda.download.call_count == len(expected_start_dates)
-
-    calls = []
-
-    for i in range(len(expected_start_dates)):
-        calls.append(
-            mock.call(
-                packet="MAG_HSK_PW",
-                start_date=expected_start_dates[i],
-                end_date=expected_end_dates[i],
-                ert=False,
-            )
-        )
-
-    mock_poda.download.assert_has_calls(calls)
+    mock_poda.download.assert_called_once_with(
+        packet="MAG_HSK_PW",
+        start_date=expected_start_date,
+        end_date=expected_end_date,
+        ert=False,
+    )
 
     assert actual_downloaded == dict()
 

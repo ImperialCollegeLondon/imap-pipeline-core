@@ -12,7 +12,7 @@ NOW = datetime(2025, 6, 2, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
 TOMORROW = TODAY + timedelta(days=1)
 YESTERDAY = TODAY - timedelta(days=1)
-BEGINNING_OF_IMAP = YESTERDAY
+BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 

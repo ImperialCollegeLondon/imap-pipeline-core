@@ -20,7 +20,7 @@ class IFilePathHandler(abc.ABC):
     including versioning, folder structure and file naming conventions.
     """
 
-    version: int = 0
+    version: int = 1
 
     @abc.abstractmethod
     def supports_versioning(self) -> bool:

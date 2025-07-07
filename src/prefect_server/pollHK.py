@@ -6,10 +6,11 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.fetch.binary import HKPathHandler, fetch_binary
-from imap_mag.api.process import process
+from imap_mag.cli.fetch.binary import fetch_binary
+from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
+from imap_mag.io import HKPathHandler
 from imap_mag.util import DatetimeProvider, HKPacket, get_dates_for_download
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
@@ -117,6 +118,7 @@ async def poll_hk_flow(
 
     for packet in hk_packets:
         packet_name = packet.packet
+        packet_start_timestamp = DatetimeProvider.now()
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
@@ -125,7 +127,7 @@ async def poll_hk_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=use_database,
+            validate_with_database=use_database,
             logger=logger,
         )
 
@@ -143,24 +145,31 @@ async def poll_hk_flow(
             fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
-        if not downloaded_binaries:
+        if downloaded_binaries:
+            # Process binary data into CSV
+            files = [file for file in downloaded_binaries.keys()]
+            process(files, save_mode=SaveMode.LocalAndDatabase)
+        else:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}. Database not updated."
+                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
             )
-            continue
-
-        # Process binary data into CSV
-        files = [file for file in downloaded_binaries.keys()]
-        process(files, save_mode=SaveMode.LocalAndDatabase)
 
         # Update database with latest content date as progress (for HK)
         if use_database:
+            ert_timestamps: list[datetime] = [
+                metadata.ert
+                for metadata in downloaded_binaries.values()
+                if metadata.ert
+            ]
+            latest_ert_timestamp: datetime | None = (
+                max(ert_timestamps) if ert_timestamps else None
+            )
+
             update_database_with_progress(
                 packet_name=packet_name,
                 database=database,
-                latest_timestamp=max(
-                    metadata.ert for metadata in downloaded_binaries.values()
-                ),
+                checked_timestamp=packet_start_timestamp,
+                latest_timestamp=latest_ert_timestamp,
                 logger=logger,
             )
         else:

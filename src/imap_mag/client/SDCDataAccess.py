@@ -1,6 +1,5 @@
 """Interact with SDC APIs to get MAG data via imap-data-access."""
 
-import abc
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -15,73 +14,14 @@ class SDCUploadError(Exception):
     """Custom exception for upload errors."""
 
 
-class ISDCDataAccess(abc.ABC):
-    """Interface for interacting with imap-data-access."""
-
-    @staticmethod
-    @abc.abstractmethod
-    def get_file_path(
-        level: str,
-        descriptor: str,
-        start_date: datetime,
-        version: str,
-    ) -> tuple[Path, Path]:
-        """Get file path for data from imap-data-access."""
-        pass
-
-    @abc.abstractmethod
-    def upload(self, filename: str) -> None:
-        """Upload data to imap-data-access."""
-        pass
-
-    @abc.abstractmethod
-    def query(
-        self,
-        *,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
-    ) -> list[dict[str, str]]:
-        """Download data from imap-data-access."""
-        pass
-
-    @abc.abstractmethod
-    def get_filename(
-        self,
-        *,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
-    ) -> list[dict[str, str]] | None:
-        """Wait for file to be available in imap-data-access."""
-        pass
-
-    @abc.abstractmethod
-    def download(self, filename: str) -> Path:
-        """Download data from imap-data-access."""
-        pass
-
-
-class SDCDataAccess(ISDCDataAccess):
+class SDCDataAccess:
     """Class for uploading and downloading MAG data via imap-data-access."""
 
     def __init__(self, data_dir: Path, sdc_url: str | None = None) -> None:
         """Initialize SDC API client."""
 
         imap_data_access.config["DATA_DIR"] = data_dir
-        imap_data_access.config["DATA_ACCESS_URL"] = (
-            sdc_url or "https://api.dev.imap-mission.com"
-        )
+        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url
 
     @staticmethod
     def get_file_path(

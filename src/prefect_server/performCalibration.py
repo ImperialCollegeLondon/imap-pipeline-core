@@ -4,8 +4,8 @@ from pathlib import Path
 from prefect import flow
 from prefect.runtime import flow_run
 
-from imap_mag.api.apply import FileType, apply
-from imap_mag.api.calibrate import Sensor, calibrate
+from imap_mag.cli.apply import FileType, apply
+from imap_mag.cli.calibrate import Sensor, calibrate
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS

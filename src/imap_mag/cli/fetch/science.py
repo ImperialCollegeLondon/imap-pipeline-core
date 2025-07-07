@@ -6,13 +6,11 @@ from typing import Annotated
 import typer
 
 from imap_mag import appUtils
-from imap_mag.api.apiUtils import initialiseLoggingForCommand
-from imap_mag.cli.fetchScience import (
-    FetchScience,
-    SciencePathHandler,
-)
-from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
+from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
+from imap_mag.download.FetchScience import FetchScience
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -99,14 +97,12 @@ def fetch_science(
     )
 
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
-    downloaded_science: dict[Path, SciencePathHandler] = (
-        fetch_science.download_latest_science(
-            level=level,
-            reference_frame=reference_frame,
-            start_date=start_date,
-            end_date=end_date,
-            use_ingestion_date=use_ingestion_date,
-        )
+    downloaded_science: dict[Path, SciencePathHandler] = fetch_science.download_science(
+        level=level,
+        reference_frame=reference_frame,
+        start_date=start_date,
+        end_date=end_date,
+        use_ingestion_date=use_ingestion_date,
     )
 
     if not downloaded_science:
