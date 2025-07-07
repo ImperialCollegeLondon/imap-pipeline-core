@@ -6,7 +6,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.api.apiUtils import (
+from imap_mag.cli.cliUtils import (
     fetch_file_for_work,
     initialiseLoggingForCommand,
 )

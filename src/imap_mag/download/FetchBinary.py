@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from imap_mag.client.webPODA import WebPODA
+from imap_mag.client.WebPODA import WebPODA
 from imap_mag.io import HKPathHandler
 from imap_mag.util import HKLevel
 
