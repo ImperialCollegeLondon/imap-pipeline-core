@@ -210,13 +210,13 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
 def test_apply_writes_magnitudes_correctly(tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        "l1c",
+        "science/mag/l1c",
         2025,
         10,
     )
     prepare_test_file(
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
-        "calibration/layer",
+        "calibration/layers",
         2025,
         10,
     )
@@ -226,7 +226,7 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/imap/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
