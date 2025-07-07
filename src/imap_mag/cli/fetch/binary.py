@@ -91,11 +91,11 @@ def fetch_binary(
 
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary.download_binaries(
-        packet=packet_name,
-        start_date=start_date,
-        end_date=end_date,
-        use_ert=use_ert,
-    )
+            packet=packet_name,
+            start_date=start_date,
+            end_date=end_date,
+            use_ert=use_ert,
+        )
 
     if not downloaded_binaries:
         logger.info(

@@ -27,9 +27,9 @@ def test_copy_new_file(capture_cli_logs):
         original_file,
         HKPathHandler(
             level="l1",
-            descriptor="pwr",
-            content_date=datetime(2025, 5, 2),
-            extension="txt",
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
         ),
     )
 
@@ -61,9 +61,9 @@ def test_copy_file_same_content(capture_cli_logs):
         original_file,
         HKPathHandler(
             level="l1",
-            descriptor="pwr",
-            content_date=datetime(2025, 5, 2),
-            extension="txt",
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
         ),
     )
 
@@ -90,7 +90,6 @@ def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
     )
     create_test_file(
         Path("output/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt")
-    )
 
     existing_modification_time = existing_file.stat().st_mtime
 
@@ -99,9 +98,9 @@ def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
         original_file,
         HKPathHandler(
             level="l1",
-            descriptor="pwr",
-            content_date=datetime(2025, 5, 2),
-            extension="txt",
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
         ),
     )
 
@@ -139,9 +138,9 @@ def test_copy_file_existing_versions(capture_cli_logs):
         original_file,
         HKPathHandler(
             level="l1",
-            descriptor="pwr",
-            content_date=datetime(2025, 5, 2),
-            extension="txt",
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
         ),
     )
 
@@ -168,11 +167,11 @@ def test_copy_file_forced_version():
         original_file,
         HKPathHandler(
             level="l1",
-            descriptor="pwr",
-            content_date=datetime(2025, 5, 2),
-            version=3,
-            extension="txt",
-        ),
+        descriptor="pwr",
+        content_date=datetime(2025, 5, 2),
+        version=3,
+        extension="txt",
+            ),
     )
 
     # Verify.

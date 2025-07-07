@@ -31,9 +31,9 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 2),
-    )
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 2),
+        )
 
     # Verify.
     mock_soc.get_filename.assert_called_once_with(
@@ -71,9 +71,9 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
-    )
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
 
     # Verify.
     mock_soc.get_filename.assert_called_once_with(
@@ -157,9 +157,9 @@ def test_fetch_binary_different_start_end_dates(
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
-        start_date=start_date,
-        end_date=end_date,
-    )
+            start_date=start_date,
+            end_date=end_date,
+        )
 
     # Verify.
     mock_soc.get_filename.assert_called_once_with(
@@ -197,10 +197,10 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
-        use_ingestion_date=True,
-    )
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            use_ingestion_date=True,
+        )
 
     # Verify.
     mock_soc.get_filename.assert_called_once_with(

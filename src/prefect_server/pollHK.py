@@ -146,9 +146,9 @@ async def poll_hk_flow(
         )
 
         if downloaded_binaries:
-            # Process binary data into CSV
-            files = [file for file in downloaded_binaries.keys()]
-            process(files, save_mode=SaveMode.LocalAndDatabase)
+        # Process binary data into CSV
+        files = [file for file in downloaded_binaries.keys()]
+        process(files, save_mode=SaveMode.LocalAndDatabase)
         else:
             logger.info(
                 f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."

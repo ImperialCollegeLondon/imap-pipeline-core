@@ -120,6 +120,7 @@ class DatabaseFileOutputManager(IOutputManager):
             )
             return (path_handler.version, False)
 
+            Path(""), path_handler
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
         # Find the file whose hash matches the original file

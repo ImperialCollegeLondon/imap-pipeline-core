@@ -55,13 +55,3 @@ class HKPathHandler(StandardSPDFPathHandler):
                 version=int(match["version"]),
                 extension=match["ext"],
             )
-
-    @staticmethod
-    def convert_packet_to_descriptor(packet: str) -> str:
-        """Convert HK packet name to metadata descriptor, used, e.g., in folder structures."""
-
-        # Steps:
-        # 1. Convert to lowercase (MAG_HSK_PW -> mag_hsk_pw)
-        # 2. Replace underscores with hyphens (mag_hsk_pw -> mag-hsk-pw)
-        # 3. Remove the prefix (mag-hsk-pw -> hsk-pw)
-        return packet.lower().replace("_", "-").partition("-")[2]

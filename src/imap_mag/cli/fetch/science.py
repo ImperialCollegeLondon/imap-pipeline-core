@@ -98,12 +98,12 @@ def fetch_science(
 
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
     downloaded_science: dict[Path, SciencePathHandler] = fetch_science.download_science(
-        level=level,
-        reference_frame=reference_frame,
-        start_date=start_date,
-        end_date=end_date,
-        use_ingestion_date=use_ingestion_date,
-    )
+            level=level,
+            reference_frame=reference_frame,
+            start_date=start_date,
+            end_date=end_date,
+            use_ingestion_date=use_ingestion_date,
+        )
 
     if not downloaded_science:
         logger.info(
