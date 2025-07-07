@@ -7,16 +7,16 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-T = typing.TypeVar("T", bound="IFileMetadataProvider")
+T = typing.TypeVar("T", bound="IFilePathHandler")
 
 
 @dataclass
-class IFileMetadataProvider(abc.ABC):
+class IFilePathHandler(abc.ABC):
     """
-    Interface for metadata providers.
+    Interface for path handlers.
 
-    This class defines the interface for all file metadata providers.
-    The metadata providers can be used to manage file I/O operations,
+    This class defines the interface for all file path handlers.
+    The path handlers can be used to manage file I/O operations,
     including versioning, folder structure and file naming conventions.
     """
 
@@ -24,7 +24,7 @@ class IFileMetadataProvider(abc.ABC):
 
     @abc.abstractmethod
     def supports_versioning(self) -> bool:
-        """Denotes whether this metadata provider supports versioning."""
+        """Denotes whether this path handler supports versioning."""
 
     @abc.abstractmethod
     def get_folder_structure(self) -> str:
@@ -41,4 +41,4 @@ class IFileMetadataProvider(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
-        """Instantiate a metadata provider from a file name."""
+        """Instantiate a path handler from a file name."""

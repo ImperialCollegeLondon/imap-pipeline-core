@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class CalibrationLayerMetadataProvider(IFileMetadataProvider):
+class CalibrationLayerPathHandler(IFilePathHandler):
     """
-    Metadata for calibration layers.
-    Designed to handle the special internal case of calibration layers that do not obey exact SPDF metadata conventions.
+    Path handler for calibration layers.
+    Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
     """
 
     mission: str = "imap"
@@ -33,11 +33,7 @@ class CalibrationLayerMetadataProvider(IFileMetadataProvider):
             )
 
         return (
-            Path(self.mission)
-            / self.instrument
-            / "calibration"
-            / "layer"
-            / self.content_date.strftime("%Y/%m")
+            Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self):
@@ -76,8 +72,8 @@ class CalibrationLayerMetadataProvider(IFileMetadataProvider):
     @classmethod
     def from_filename(
         cls, filename: str | Path
-    ) -> "CalibrationLayerMetadataProvider | None":
-        """Create metadata provider from filename."""
+    ) -> "CalibrationLayerPathHandler | None":
+        """Create path handler from filename."""
 
         match = re.match(
             r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
