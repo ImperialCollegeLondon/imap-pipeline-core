@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class FetchBinary:
-    """Manage WebPODA data."""
+    """Fetch binary data from WebPODA."""
 
     __web_poda: WebPODA
 

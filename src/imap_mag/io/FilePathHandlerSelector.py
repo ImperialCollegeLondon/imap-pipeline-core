@@ -8,6 +8,7 @@ from imap_mag.io.CalibrationLayerPathHandler import (
 from imap_mag.io.HKPathHandler import HKPathHandler
 from imap_mag.io.IFilePathHandler import IFilePathHandler
 from imap_mag.io.SciencePathHandler import SciencePathHandler
+from imap_mag.io.SPICEPathHandler import SPICEPathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class FilePathHandlerSelector:
             CalibrationLayerPathHandler,
             HKPathHandler,
             SciencePathHandler,
+            SPICEPathHandler,
         ]
 
         for provider in provider_to_try:

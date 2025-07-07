@@ -17,6 +17,7 @@ from imap_mag.io.InputManager import InputManager
 from imap_mag.io.IOutputManager import IOutputManager
 from imap_mag.io.OutputManager import OutputManager, generate_hash
 from imap_mag.io.SciencePathHandler import SciencePathHandler
+from imap_mag.io.SPICEPathHandler import SPICEPathHandler
 from imap_mag.io.StandardSPDFPathHandler import (
     StandardSPDFPathHandler,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "InputManager",
     "NoProviderFoundError",
     "OutputManager",
+    "SPICEPathHandler",
     "SciencePathHandler",
     "StandardSPDFPathHandler",
     "T",

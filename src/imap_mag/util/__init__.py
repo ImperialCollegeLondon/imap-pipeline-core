@@ -10,6 +10,7 @@ from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from imap_mag.util.ScienceMode import ScienceMode
+from imap_mag.util.SPICEType import SPICEType
 from imap_mag.util.TimeConversion import TimeConversion
 
 __all__ = [
@@ -20,6 +21,7 @@ __all__ = [
     "HKPacket",
     "MAGSensor",
     "ReferenceFrame",
+    "SPICEType",
     "ScienceLevel",
     "ScienceMode",
     "TimeConversion",
