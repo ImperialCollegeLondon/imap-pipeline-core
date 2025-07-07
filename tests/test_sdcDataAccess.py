@@ -1,7 +1,5 @@
 """Tests for `SDCDataAccess` class."""
 
-import os
-from datetime import datetime
 from pathlib import Path
 
 import imap_data_access

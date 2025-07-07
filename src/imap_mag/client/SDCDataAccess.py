@@ -29,23 +29,6 @@ class SDCDataAccess:
         imap_data_access.config["DATA_DIR"] = data_dir
         imap_data_access.config["DATA_ACCESS_URL"] = sdc_url
 
-    @staticmethod
-    def get_file_path(
-        level: str,
-        descriptor: str,
-        start_date: datetime,
-        version: str,
-    ) -> tuple[Path, Path]:
-        science_file = imap_data_access.ScienceFilePath.generate_from_inputs(
-            instrument="mag",
-            data_level=level,
-            descriptor=descriptor,
-            start_time=start_date.strftime("%Y%m%d"),
-            version=version,
-        )
-
-        return (science_file.filename, science_file.construct_path())
-
     def upload(self, filename: str) -> None:
         logger.debug(f"Uploading {filename} to imap-data-access.")
 
@@ -58,6 +41,7 @@ class SDCDataAccess:
     def query(
         self,
         *,
+        table: str | None = None,
         level: str | None = None,
         descriptor: str | None = None,
         start_date: datetime | None = None,
@@ -68,6 +52,7 @@ class SDCDataAccess:
         extension: str | None = None,
     ) -> list[dict[str, str]]:
         return imap_data_access.query(
+            table=table,
             instrument="mag",
             data_level=level,
             descriptor=descriptor,
@@ -88,6 +73,7 @@ class SDCDataAccess:
     def get_filename(
         self,
         *,
+        table: str | None = None,
         level: str | None = None,
         descriptor: str | None = None,
         start_date: datetime | None = None,
@@ -98,6 +84,7 @@ class SDCDataAccess:
         extension: str | None = None,
     ) -> list[dict[str, str]] | None:
         file_details: list[dict[str, str]] = self.query(
+            table=table,
             level=level,
             descriptor=descriptor,
             start_date=start_date,

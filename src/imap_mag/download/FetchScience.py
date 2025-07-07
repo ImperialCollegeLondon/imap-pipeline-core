@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class FetchScience:
-    """Manage SOC data."""
+    """Fetch science data from SDC."""
 
     __data_access: SDCDataAccess
 
@@ -73,7 +73,7 @@ class FetchScience:
 
                         if downloaded_file.stat().st_size > 0:
                             logger.info(
-                                f"Downloaded file from SDC Data Access: {downloaded_file}"
+                                f"Downloaded science file from SDC: {downloaded_file}"
                             )
 
                             downloaded[downloaded_file] = SciencePathHandler(

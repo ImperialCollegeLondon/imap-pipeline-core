@@ -40,6 +40,7 @@ class AppSettings(BaseSettings):
     # Command settings
     fetch_binary: FetchBinaryConfig
     fetch_science: FetchScienceConfig
+    fetch_spice: FetchScienceConfig
     process: CommandConfig
     publish: PublishConfig
 
