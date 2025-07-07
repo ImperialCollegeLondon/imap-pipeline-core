@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from imap_mag.download.FetchBinary import FetchBinary
+from imap_mag.process.HKProcessor import HKProcessor
 from imap_mag.util import HKPacket
 from prefect_server.pollHK import poll_hk_flow
 from tests.util.database import test_database  # noqa: F401
@@ -131,14 +133,14 @@ def check_file_existence(
             "output/hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
         )
         bin_file = (
-            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000.pkts"
+            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v001.pkts"
         )
 
         csv_folder = os.path.join(
             "output/hk/mag/l1", descriptor, actual_timestamp.strftime("%Y/%m")
         )
         csv_file = (
-            f"imap_mag_l1_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v000.csv"
+            f"imap_mag_l1_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v001.csv"
         )
 
         assert os.path.exists(os.path.join(bin_folder, bin_file))
@@ -435,3 +437,81 @@ async def test_poll_hk_specify_ert_start_end_dates(
         ert_timestamp,
         actual_timestamp,
     )
+
+
+@pytest.fixture(scope="function")
+def mock_functionality_to_fail_on_call(monkeypatch, function_to_mock):
+    def throw_error_on_call(*args, **kwargs):
+        raise RuntimeError("FetchBinary download failed for testing purposes.")
+
+    match function_to_mock:
+        case "FetchBinary":
+            monkeypatch.setattr(FetchBinary, "download_binaries", throw_error_on_call)
+        case "HKProcessor":
+            monkeypatch.setattr(HKProcessor, "process", throw_error_on_call)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+@pytest.mark.parametrize("function_to_mock", ["FetchBinary", "HKProcessor"])
+async def test_database_progress_table_not_modified_if_poll_hk_fails(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+    mock_functionality_to_fail_on_call,
+):
+    # Set up.
+    binary_files: dict[str, str] = {
+        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
+    }
+
+    yesterday = YESTERDAY.strftime("%Y-%m-%dT%H:%M:%S")
+    end_of_today = END_OF_TODAY.strftime("%Y-%m-%dT%H:%M:%S")
+
+    ert_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+    actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
+
+    hk_to_poll: list[HKPacket] = [
+        HKPacket.SID3_PW,
+    ]
+
+    wiremock_manager.reset()
+
+    # Some data is available only for specific packets.
+    for hk in hk_to_poll:
+        define_available_data_webpoda_mappings(
+            wiremock_manager,
+            packet=hk.packet,
+            start_date=yesterday,
+            end_date=end_of_today,
+            binary_file=binary_files[hk.packet],
+            ert_timestamp=ert_timestamp,
+            actual_timestamp=actual_timestamp,
+        )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_webpoda_mappings(wiremock_manager)
+
+    # Exercise.
+    with (
+        pytest.raises(
+            RuntimeError, match="FetchBinary download failed for testing purposes."
+        ),
+        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
+        set_env("WEBPODA_AUTH_CODE", "12345"),
+    ):
+        await poll_hk_flow(
+            hk_packets=hk_to_poll,
+        )
+
+    # Verify.
+    for hk in [p for p in HKPacket]:
+        download_progress = test_database.get_download_progress(hk.packet)
+
+        assert download_progress.get_last_checked_date() is None
+        assert download_progress.get_progress_timestamp() is None
