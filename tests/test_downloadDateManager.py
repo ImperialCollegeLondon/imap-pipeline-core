@@ -25,11 +25,11 @@ def mock_database() -> mock.Mock:
     return mock.create_autospec(IDatabase, spec_set=True)
 
 
-@pytest.mark.parametrize("check_and_update_database", [True, False])
+@pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_empty_database(
     capture_cli_logs,
     mock_database,
-    check_and_update_database,
+    validate_with_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -44,7 +44,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         database=mock_database,
         original_start_date=None,
         original_end_date=None,
-        check_and_update_database=check_and_update_database,
+        validate_with_database=validate_with_database,
         logger=LOGGER,
     )
 
@@ -65,19 +65,15 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         in capture_cli_logs.text
     )
 
-    if check_and_update_database:
-        assert download_progress.last_checked_date == NOW
-        assert mock_database.save.called
-    else:
-        assert download_progress.last_checked_date is None
-        assert not mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called
 
 
-@pytest.mark.parametrize("check_and_update_database", [True, False])
+@pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_end_date_defined_empty_database(
     capture_cli_logs,
     mock_database,
-    check_and_update_database,
+    validate_with_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -94,7 +90,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         database=mock_database,
         original_start_date=None,
         original_end_date=original_end_date,
-        check_and_update_database=check_and_update_database,
+        validate_with_database=validate_with_database,
         logger=LOGGER,
     )
 
@@ -112,12 +108,8 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         in capture_cli_logs.text
     )
 
-    if check_and_update_database:
-        assert download_progress.last_checked_date == NOW
-        assert mock_database.save.called
-    else:
-        assert download_progress.last_checked_date is None
-        assert not mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called
 
 
 def test_get_start_end_dates_both_dates_defined_empty_database(
@@ -140,7 +132,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
         database=mock_database,
         original_start_date=original_start_date,
         original_end_date=original_end_date,
-        check_and_update_database=False,
+        validate_with_database=False,
         logger=LOGGER,
     )
 
@@ -163,11 +155,11 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
     assert not mock_database.save.called
 
 
-@pytest.mark.parametrize("check_and_update_database", [True, False])
+@pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     capture_cli_logs,
     mock_database,
-    check_and_update_database,
+    validate_with_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -183,7 +175,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         database=mock_database,
         original_start_date=None,
         original_end_date=None,
-        check_and_update_database=check_and_update_database,
+        validate_with_database=validate_with_database,
         logger=LOGGER,
     )
 
@@ -204,19 +196,15 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         in capture_cli_logs.text
     )
 
-    if check_and_update_database:
-        assert download_progress.last_checked_date == NOW
-        assert mock_database.save.called
-    else:
-        assert download_progress.last_checked_date is None
-        assert not mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called
 
 
-@pytest.mark.parametrize("check_and_update_database", [True, False])
+@pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
     capture_cli_logs,
     mock_database,
-    check_and_update_database,
+    validate_with_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -234,7 +222,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
         database=mock_database,
         original_start_date=None,
         original_end_date=None,
-        check_and_update_database=check_and_update_database,
+        validate_with_database=validate_with_database,
         logger=LOGGER,
     )
 
@@ -255,19 +243,15 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
         in capture_cli_logs.text
     )
 
-    if check_and_update_database:
-        assert download_progress.last_checked_date == NOW
-        assert mock_database.save.called
-    else:
-        assert download_progress.last_checked_date is original_last_checked_date
-        assert not mock_database.save.called
+    assert download_progress.last_checked_date is original_last_checked_date
+    assert not mock_database.save.called
 
 
-@pytest.mark.parametrize("check_and_update_database", [True, False])
+@pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_yesterday(
     capture_cli_logs,
     mock_database,
-    check_and_update_database,
+    validate_with_database,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -286,7 +270,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
         database=mock_database,
         original_start_date=None,
         original_end_date=None,
-        check_and_update_database=check_and_update_database,
+        validate_with_database=validate_with_database,
         logger=LOGGER,
     )
 
@@ -307,12 +291,8 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
         in capture_cli_logs.text
     )
 
-    if check_and_update_database:
-        assert download_progress.last_checked_date == NOW
-        assert mock_database.save.called
-    else:
-        assert download_progress.last_checked_date is older_than_yesterday
-        assert not mock_database.save.called
+    assert download_progress.last_checked_date is older_than_yesterday
+    assert not mock_database.save.called
 
 
 def test_get_start_end_dates_not_up_to_date(
@@ -334,7 +314,7 @@ def test_get_start_end_dates_not_up_to_date(
         database=mock_database,
         original_start_date=original_start_date,
         original_end_date=None,
-        check_and_update_database=True,
+        validate_with_database=True,
         logger=LOGGER,
     )
 
@@ -356,8 +336,8 @@ def test_get_start_end_dates_not_up_to_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date == NOW
-    assert mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called
 
 
 def test_get_start_end_dates_fully_up_to_date(
@@ -381,7 +361,7 @@ def test_get_start_end_dates_fully_up_to_date(
         database=mock_database,
         original_start_date=original_start_date,
         original_end_date=original_end_date,
-        check_and_update_database=True,
+        validate_with_database=True,
         logger=LOGGER,
     )
 
@@ -395,8 +375,8 @@ def test_get_start_end_dates_fully_up_to_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date == NOW
-    assert mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called
 
 
 def test_get_start_end_dates_partially_up_to_date(
@@ -420,7 +400,7 @@ def test_get_start_end_dates_partially_up_to_date(
         database=mock_database,
         original_start_date=original_start_date,
         original_end_date=original_end_date,
-        check_and_update_database=True,
+        validate_with_database=True,
         logger=LOGGER,
     )
 
@@ -439,5 +419,5 @@ def test_get_start_end_dates_partially_up_to_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date == NOW
-    assert mock_database.save.called
+    assert download_progress.last_checked_date is None
+    assert not mock_database.save.called

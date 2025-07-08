@@ -29,11 +29,11 @@ def test_app_says_hello():
     [
         (
             "tests/data/2025/MAG_HSK_PW.pkts",
-            DATASTORE / "imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
         (
-            "imap_mag_hsk-pw-raw_20250214_v000.pkts",
-            DATASTORE / "imap/mag/hsk-pw/2025/05/imap_mag_hsk-pw_20250502_v000.csv",
+            "imap_mag_l0_hsk-pw_20250214_v001.pkts",
+            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
     ],
 )
@@ -70,6 +70,32 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         assert expectedNumRows == len(lines)
 
     output_file.unlink()
+
+
+def test_process_error_with_unsupported_file_type():
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "process",
+            str(Path("tests/data/2025/imap_mag_l1a_norm-mago_20250502_v001.cdf")),
+        ],
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 1
+
+    assert result.exception is not None
+    assert (
+        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v001.cdf')} is not supported and cannot be processed."
+        in result.exception.args[0]
+    )
+
+    assert not Path(
+        "output/imap/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v001.cdf"
+    ).exists()
 
 
 @pytest.mark.skipif(
@@ -126,12 +152,12 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v001.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v001.pkts",
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -187,12 +213,12 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts"
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v001.pkts"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/hsk-pw-raw/2025/05/imap_mag_hsk-pw-raw_20250502_v000.pkts",
+            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_v001.pkts",
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -208,19 +234,19 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Set up.
     query_response: list[dict[str, str]] = [
         {
-            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
             "instrument": "mag",
             "data_level": "l1b",
             "descriptor": "norm-magi",
             "start_date": "20250502",
             "repointing": None,
-            "version": "v000",
+            "version": "v001",
             "extension": "cdf",
             "ingestion_date": "20240716 10:29:02",
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v000.cdf"
+        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v001.cdf"
     )
 
     wiremock_manager.add_string_mapping(
@@ -229,7 +255,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         priority=1,
     )
     wiremock_manager.add_file_mapping(
-        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
@@ -269,12 +295,13 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            "rb",
         ) as output,
         open(cdf_file, "rb") as input,
     ):
@@ -289,19 +316,19 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     # Set up.
     query_response: list[dict[str, str]] = [
         {
-            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+            "file_path": "imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
             "instrument": "mag",
             "data_level": "l1b",
             "descriptor": "norm-magi",
             "start_date": "20250502",
             "repointing": None,
-            "version": "v000",
+            "version": "v001",
             "extension": "cdf",
             "ingestion_date": "20240716 10:29:02",
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v000.cdf"
+        "tests/data/2025/imap_mag_l1b_norm-mago_20250502_v001.cdf"
     )
 
     wiremock_manager.add_string_mapping(
@@ -310,7 +337,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         priority=1,
     )
     wiremock_manager.add_file_mapping(
-        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf",
+        "/download/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
@@ -353,12 +380,13 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     # Verify.
     assert result.exit_code == 0
     assert Path(
-        "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf"
+        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
     ).exists()
 
     with (
         open(
-            "output/imap/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v000.cdf", "rb"
+            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            "rb",
         ) as output,
         open(cdf_file, "rb") as input,
     ):

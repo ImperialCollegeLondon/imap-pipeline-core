@@ -6,13 +6,13 @@ from pathlib import Path
 
 import imap_data_access
 
-from imap_mag.client.sdcDataAccess import SDCDataAccess
+from imap_mag.client.SDCDataAccess import SDCDataAccess
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_sdc_data_access_constructor_sets_config() -> None:
     # Set up.
-    data_dir = "some_test_folder"
+    data_dir = Path("some_test_folder")
     data_access_url = "https://some_test_url"
 
     # Exercise.
@@ -25,7 +25,7 @@ def test_sdc_data_access_constructor_sets_config() -> None:
 
 def test_get_file_path_builds_file_path() -> None:
     # Set up.
-    data_access = SDCDataAccess("some_test_folder")
+    data_access = SDCDataAccess(Path("some_test_folder"), "some_auth_code")
 
     # Exercise.
     (filename, file_path) = data_access.get_file_path(

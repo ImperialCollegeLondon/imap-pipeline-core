@@ -2,7 +2,7 @@ import glob
 import logging
 from pathlib import Path
 
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider
+from imap_mag.io.IFilePathHandler import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,14 @@ class InputManager:
 
     def get_versioned_file(
         self,
-        metadata_provider: IFileMetadataProvider,
+        path_handler: IFilePathHandler,
         latest_version: bool = True,
     ) -> Path:
         """Get file from data store."""
 
-        pattern = metadata_provider.get_unversioned_pattern()
+        pattern = path_handler.get_unversioned_pattern()
 
-        folder = self.location / metadata_provider.get_folder_structure()
+        folder = self.location / path_handler.get_folder_structure()
 
         all_matching_files = [
             (filename, int(pattern.search(filename).group("version")))  # type: ignore
@@ -48,6 +48,6 @@ class InputManager:
             versioned_filename = next(
                 filename
                 for filename, v in all_matching_files
-                if v == metadata_provider.version
+                if v == path_handler.version
             )
             return Path(versioned_filename)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from imap_mag.io import (
     DatabaseFileOutputManager,
-    IFileMetadataProvider,
+    IFilePathHandler,
     IOutputManager,
     OutputManager,
 )
@@ -29,11 +29,11 @@ def copyFileToDestination(
     file_path: Path,
     destination: Path,
     output_manager: OutputManager | None = None,
-) -> tuple[Path, IFileMetadataProvider]:
+) -> tuple[Path, IFilePathHandler]:
     """Copy file to destination folder."""
 
-    class SimpleMetadataProvider(IFileMetadataProvider):
-        """Simple metadata provider for compatibility."""
+    class SimplePathHandler(IFilePathHandler):
+        """Simple path handler for compatibility."""
 
         def __init__(self, filename: str) -> None:
             self.filename = filename
@@ -51,10 +51,10 @@ def copyFileToDestination(
             return re.compile(r"")
 
         @classmethod
-        def from_filename(cls, filename: Path | str) -> "SimpleMetadataProvider | None":
+        def from_filename(cls, filename: Path | str) -> "SimplePathHandler | None":
             return cls(str(filename))
 
     if output_manager is None:
         output_manager = OutputManager(destination.parent)
 
-    return output_manager.add_file(file_path, SimpleMetadataProvider(destination.name))
+    return output_manager.add_file(file_path, SimplePathHandler(destination.name))

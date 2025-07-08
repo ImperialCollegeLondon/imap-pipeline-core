@@ -6,16 +6,14 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.api.fetch.science import (
-    SDCMetadataProvider,
-    fetch_science,
-)
+from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import (
     DatetimeProvider,
-    Level,
     ReferenceFrame,
+    ScienceLevel,
     ScienceMode,
     get_dates_for_download,
 )
@@ -30,7 +28,7 @@ def convert_ints_to_string(apids: list[int]) -> str:
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
-    level: Level = parameters["level"]
+    level: ScienceLevel = parameters["level"]
     modes: list[ScienceMode] = parameters["modes"]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
@@ -49,14 +47,14 @@ def generate_flow_run_name() -> str:
 )
 async def poll_science_flow(
     level: Annotated[
-        Level,
+        ScienceLevel,
         Field(
             json_schema_extra={
                 "title": "Level to download",
                 "description": "Processing level to download. Default is L1c.",
             }
         ),
-    ] = Level.level_1c,
+    ] = ScienceLevel.l1c,
     reference_frame: Annotated[
         ReferenceFrame | None,
         Field(
@@ -139,6 +137,7 @@ async def poll_science_flow(
 
     for mode in modes:
         packet_name = mode.packet
+        packet_start_timestamp = DatetimeProvider.now()
         database_name = f"{packet_name}_{level.value.upper()}"
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
@@ -148,7 +147,7 @@ async def poll_science_flow(
             database=database,
             original_start_date=start_date,
             original_end_date=end_date,
-            check_and_update_database=use_database,
+            validate_with_database=use_database,
             logger=logger,
         )
 
@@ -158,7 +157,7 @@ async def poll_science_flow(
             (packet_start_date, packet_end_date) = packet_dates
 
         # Download binary from SDC
-        downloaded_science: dict[Path, SDCMetadataProvider] = fetch_science(
+        downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
             auth_code=auth_code,
             level=level,
             reference_frame=reference_frame,
@@ -171,18 +170,25 @@ async def poll_science_flow(
 
         if not downloaded_science:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}. Database not updated."
+                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
             )
-            continue
 
         # Update database with latest ingestion date as progress (for science)
         if use_database:
+            ingestion_dates: list[datetime] = [
+                metadata.ingestion_date
+                for metadata in downloaded_science.values()
+                if metadata.ingestion_date
+            ]
+            latest_ingestion_date: datetime | None = (
+                max(ingestion_dates) if ingestion_dates else None
+            )
+
             update_database_with_progress(
                 packet_name=database_name,
                 database=database,
-                latest_timestamp=max(
-                    metadata.ingestion_date for metadata in downloaded_science.values()
-                ),
+                checked_timestamp=packet_start_timestamp,
+                latest_timestamp=latest_ingestion_date,
                 logger=logger,
             )
         else:

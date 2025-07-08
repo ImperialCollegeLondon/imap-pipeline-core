@@ -1,31 +1,39 @@
-from imap_mag.io.CalibrationLayerMetadataProvider import (
-    CalibrationLayerMetadataProvider,
+from imap_mag.io.AncillaryPathHandler import (
+    AncillaryPathHandler,
+)
+from imap_mag.io.CalibrationLayerPathHandler import (
+    CalibrationLayerPathHandler,
 )
 from imap_mag.io.DatabaseFileOutputManager import (
     DatabaseFileOutputManager,
 )
-from imap_mag.io.FileMetadataProviders import (
-    FileMetadataProviders,
+from imap_mag.io.FilePathHandlerSelector import (
+    FilePathHandlerSelector,
     NoProviderFoundError,
 )
-from imap_mag.io.IFileMetadataProvider import IFileMetadataProvider, T
+from imap_mag.io.HKPathHandler import HKPathHandler
+from imap_mag.io.IFilePathHandler import IFilePathHandler, T
 from imap_mag.io.InputManager import InputManager
 from imap_mag.io.IOutputManager import IOutputManager
 from imap_mag.io.OutputManager import OutputManager, generate_hash
-from imap_mag.io.StandardSPDFMetadataProvider import (
-    StandardSPDFMetadataProvider,
+from imap_mag.io.SciencePathHandler import SciencePathHandler
+from imap_mag.io.StandardSPDFPathHandler import (
+    StandardSPDFPathHandler,
 )
 
 __all__ = [
-    "CalibrationLayerMetadataProvider",
+    "AncillaryPathHandler",
+    "CalibrationLayerPathHandler",
     "DatabaseFileOutputManager",
-    "FileMetadataProviders",
-    "IFileMetadataProvider",
+    "FilePathHandlerSelector",
+    "HKPathHandler",
+    "IFilePathHandler",
     "IOutputManager",
     "InputManager",
     "NoProviderFoundError",
     "OutputManager",
-    "StandardSPDFMetadataProvider",
+    "SciencePathHandler",
+    "StandardSPDFPathHandler",
     "T",
     "generate_hash",
 ]
