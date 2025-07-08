@@ -5,7 +5,6 @@ from pathlib import Path
 
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import Sensor
-from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +12,51 @@ logger = logging.getLogger(__name__)
 class Calibrator(ABC):
     data_store: Path | None = None
 
+    date: datetime
+    mode: ScienceMode = ScienceMode.Normal  # Default mode
+    sensor: Sensor = Sensor.MAGO  # Default sensor
+
+    def __init__(self):
+        self.required_files: dict = {}
+
+    def set_file(self, file_key, filepath):
+        """
+        Add a file to the calibrator.
+        :param file: The path to the file to be added.
+        """
+        if not self.required_files[file_key]:
+            self.required_files[file_key] = filepath
+        else:
+            logger.warning(f"File {file_key} already exists in required files.")
+
     @abstractmethod
-    def get_handlers_of_files_needed_for_calibration(
-        self, date: datetime, mode: ScienceMode, sensor: Sensor
-    ) -> tuple[list, list]:
-        """Get the path handlers of all files needed for calibration."""
+    def _get_path_handlers(self, date, mode, sensor) -> dict:
+        """
+        Get the path handlers for the files needed for calibration.
+        :param date: The date for which to get the handlers.
+        :param mode: The science mode.
+        :param sensor: The sensor type.
+        :return: A dictionary of path handlers."""
+
+    def _check_for_required_files(self):
+        """
+        Check if all required files are present.
+        :return: True if all required files are present, False otherwise."""
+        for file_key in self.required_files:
+            if self.required_files[file_key] is None:
+                logger.error(f"Required file {file_key} is missing.")
+                return False
+        return True
+
+    def get_handlers_of_files_needed_for_calibration(self):
+        """
+        Get the handlers of files needed for gradiometry calibration.
+        :param date: The date for which to get the handlers.
+        :param mode: The science mode.
+        :param sensor: The sensor type.
+        :return: A tuple containing lists of science and other path handlers."""
+
+        return self._get_path_handlers(self.date, self.mode, self.sensor)
 
     def needs_data_store(self):
         """
@@ -33,15 +72,5 @@ class Calibrator(ABC):
         self.data_store = datastore
 
     @abstractmethod
-    def runCalibration(
-        self, date: datetime, sciencefile: Path, calfile, datastore, config=None
-    ) -> Path:
+    def run_calibration(self, calfile, config=None) -> Path:
         """Calibration that generates a calibration layer."""
-
-
-class IMAPLoCalibrator(Calibrator):
-    def __init__(self):
-        self.name = CalibrationMethod.IMAPLO_PIVOT
-
-    def runCalibration(self, date, sciencefile, calfile, datastore, config=None):
-        return Path()

@@ -1,9 +1,8 @@
 import logging
-from pathlib import Path
 
 import pytz
 
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import SciencePathHandler
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
@@ -14,34 +13,43 @@ logger = logging.getLogger(__name__)
 
 
 class EmptyCalibrator(Calibrator):
-    science_file: str
-    data_store: str
+    science_file_key = "science_file"
 
-    def __init__(self):
+    def __init__(self, date, mode, sensor):
         self.name = CalibrationMethod.NOOP
+        self.date = date
+        self.mode = mode
+        self.sensor = sensor
+        self.required_files[self.science_file_key] = None
 
-    def get_handlers_of_files_needed_for_calibration(self, date, mode, sensor):
-        """
-        Return path handler for every file this calibrator needs to calibrate"""
-        level = Level.level_1b if mode == ScienceMode.Burst else Level.level_1c
+    def _get_path_handlers(self, date, mode, sensor):
+        path_handlers = {}
+        level = (
+            Level.ScienceLevel.l1b
+            if mode == ScienceMode.Burst
+            else Level.ScienceLevel.l1c
+        )
 
-        science_path_handler = StandardSPDFMetadataProvider(
+        science_file = SciencePathHandler(
             level=level.value,
             content_date=date,
-            descriptor=f"{mode.short_name}-{sensor.value.lower()}",
+            descriptor=f"{mode.short_name}-mago",
             extension="cdf",
         )
 
-        return [science_path_handler], []  # No other files needed for this calibrator
+        path_handlers[self.science_file_key] = science_file
 
-    def runCalibration(self, date, sciencefile: Path, calfile, datastore, config=None):
+        return path_handlers
+
+    def run_calibration(self, calfile, config=None):
         # produce an epmpty calibration through matlab
 
-        dt_as_str = date.astimezone(pytz.utc).replace(tzinfo=None).isoformat()
+        dt_as_str = self.date.astimezone(pytz.utc).replace(tzinfo=None).isoformat()
 
         logger.info(f"Using datetime {dt_as_str}")
 
         call_matlab(
-            f'emptyCalibrator("{dt_as_str}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
+            f'calibration.wrappers.run_empty_calibrator("{dt_as_str}", "{self.required_files[self.science_file_key]}", "{calfile}", "{self.data_store}", "{config}")'
         )
+
         return calfile
