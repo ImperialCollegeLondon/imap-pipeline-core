@@ -32,7 +32,7 @@ def generate_flow_run_name() -> str:
     packet_names = [hk.name for hk in hk_packets]
     packet_text = (
         f"{','.join(packet_names)}-Packets"
-        if packet_names != HKPacket.list()
+        if packet_names != HKPacket.names()
         else "all-HK"
     )
 
