@@ -8,7 +8,7 @@ from .CalibrationDefinitions import (
     Sensor,
 )
 from .CalibrationLayer import CalibrationLayer
-from .calibrators import Calibrator, EmptyCalibrator
+from .calibrators import Calibrator, EmptyCalibrator, GradiometerCalibrator
 from .ScienceLayer import ScienceLayer
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "CalibrationValue",
     "Calibrator",
     "EmptyCalibrator",
+    "GradiometerCalibrator",
     "Mission",
     "ScienceLayer",
     "ScienceValue",

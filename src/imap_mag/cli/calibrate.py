@@ -12,13 +12,12 @@ from imap_mag.io import (
     CalibrationLayerPathHandler,
     InputManager,
     OutputManager,
-    SciencePathHandler,
 )
-from imap_mag.util import ScienceLevel, ScienceMode
+from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationMethod,
     EmptyCalibrator,
-    ScienceLayer,
+    GradiometerCalibrator,
     Sensor,
 )
 
@@ -64,57 +63,45 @@ def calibrate(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    # TODO: Input manager for getting data of a given level?
-
-    level = ScienceLevel.l1b if mode == ScienceMode.Burst else ScienceLevel.l1c
-    path_handler = SciencePathHandler(
-        level=level.value,
-        content_date=date,
-        descriptor=f"{mode.short_name}-{sensor.value.lower()}",
-        extension="cdf",
-    )
-
     input_manager = InputManager(app_settings.data_store)
-    input_file = input_manager.get_versioned_file(path_handler)
-
-    if not input_file:
-        logging.critical(
-            "Unable to find a file to process matching %s",
-            path_handler.get_filename(),
-        )
-        raise FileNotFoundError(
-            f"Unable to find a file to process matching {path_handler.get_filename()}"
-        )
-
-    workFile = fetch_file_for_work(
-        input_file, app_settings.work_folder, throw_if_not_found=True
-    )
-    if not workFile:
-        logging.error("Unable to fetch file for work: %s", input_file)
-        raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
-
-    scienceLayer = ScienceLayer.from_file(workFile)
-    scienceLayerHandler = CalibrationLayerPathHandler(
-        calibration_descriptor="science", content_date=date
-    )
-    scienceLayerPath = app_settings.work_folder / scienceLayerHandler.get_filename()
-    scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
         case CalibrationMethod.NOOP:
             calibrator = EmptyCalibrator()
+        case CalibrationMethod.GRADIOMETRY:
+            calibrator = GradiometerCalibrator()
         case _:
             raise ValueError("Calibration method is not implemented")
+
+    (science_path_handlers, other_path_handlers) = (
+        calibrator.get_handlers_of_files_needed_for_calibration(date, mode, sensor)
+    )
+
+    # TODO: Handle other_path_handlers if needed
+    for path_handler in science_path_handlers:
+        input_file = input_manager.get_versioned_file(path_handler)
+        if not input_file:
+            logger.critical(
+                "Unable to find a science file to process matching %s",
+                path_handler.get_filename(),
+                " required for calibration",
+            )
+            raise FileNotFoundError(
+                f"Unable to find a file to process matching {path_handler.get_filename()}"
+            )
+        workFile = fetch_file_for_work(
+            input_file, app_settings.work_folder, throw_if_not_found=True
+        )
+        print(workFile)
+
+    if calibrator.needs_data_store():
+        calibrator.setup_datastore(app_settings.data_store)
 
     calibrationLayerHandler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
     result: Path = calibrator.runCalibration(
-        date,
-        scienceLayerPath,
-        Path(calibrationLayerHandler.get_filename()),
-        app_settings.data_store,
-        None,
+        date, Path(), Path(calibrationLayerHandler.get_filename()), ""
     )
 
     outputManager = OutputManager(app_settings.data_store)
@@ -122,4 +109,4 @@ def calibrate(
         result, path_handler=calibrationLayerHandler
     )  # type: ignore
 
-    return (output_calibration_path, input_file)
+    return output_calibration_path
