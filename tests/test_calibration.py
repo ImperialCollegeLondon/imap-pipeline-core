@@ -10,9 +10,9 @@ import pytest
 from spacepy import pycdf
 
 from imap_mag.cli.apply import apply
-from imap_mag.cli.calibrate import calibrate
+from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, Sensor
+from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 
 from .util.miscellaneous import (  # noqa: F401
@@ -29,9 +29,9 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     dest_filename = test_file if rename is None else rename
     if year and month:
         dest_filepath = (
-            Path("output") / sub_folders / str(year) / str(month) / dest_filename
+            Path("output") / sub_folders / str(year) / f"{month:02d}" / dest_filename
         )
-        original_filepath = f"tests/data/{sub_folders}/{year}/{month}/{test_file}"
+        original_filepath = f"tests/data/{sub_folders}/{year}/{month:02d}/{test_file}"
     else:
         dest_filepath = Path("output") / sub_folders / dest_filename
         original_filepath = Path("tests/data/") / sub_folders / test_file
@@ -259,7 +259,7 @@ def matlab_test_setup():
     or which("matlab") is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
-def test_calibration_layer_is_created_with_offsets_for_every_vector(
+def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     matlab_test_setup, tmp_path
 ):
     prepare_test_file(
@@ -277,10 +277,10 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v000.json"
+        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
     ).exists()
     with open(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v000.json"
+        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -303,3 +303,60 @@ def test_calibration_layer_is_created_with_offsets_for_every_vector(
         assert offset[0] == 0
         assert offset[1] == 0
         assert offset[2] == 0
+
+
+@pytest.mark.skipif(
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
+    or which("matlab") is None,
+    reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
+)
+def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
+    matlab_test_setup, tmp_path
+):
+    prepare_test_file(
+        "imap_mag_l1c_norm-mago_20260930_v001.cdf",
+        "science/mag/l1c",
+        2026,
+        9,
+    )
+
+    prepare_test_file(
+        "imap_mag_l1c_norm-magi_20260930_v001.cdf",
+        "science/mag/l1c",
+        2026,
+        9,
+    )
+
+    gradiometry(
+        date=datetime(2026, 9, 30),
+        mode=ScienceMode.Normal,
+        kappa=0.25,
+        sc_interference_threshold=10.0,
+    )
+    output_file = "output/calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+    assert Path(output_file).exists()
+    with open(output_file) as f:
+        grad_layer = json.load(f)
+
+    format = "%Y-%m-%dT%H:%M:%S.%f"
+
+    assert grad_layer["method"] == "gradiometer"
+    assert len(grad_layer["values"]) == 99
+    assert datetime.strptime(
+        grad_layer["values"][0]["time"], format
+    ) == datetime.strptime("2026-09-30T00:00:08.285840", format), (
+        "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
+    )
+
+    try:
+        cal_layer = CalibrationLayer.from_file(Path(output_file))
+    except Exception as e:
+        pytest.fail(f"Calibration layer created did not conform to standards: {e}")
+
+    assert cal_layer.values[1].value == [
+        -20.948437287498678,
+        287.80371538145209,
+        350.14540002089052,
+    ]
+    assert cal_layer.values[1].quality_bitmask == 2
+    assert cal_layer.metadata.comment == "Gradiometer layer with kappa value: 0.25"
