@@ -134,5 +134,6 @@ site/
 
 .work
 /output
+src/matlab/calibration
 dev.env
 debug
