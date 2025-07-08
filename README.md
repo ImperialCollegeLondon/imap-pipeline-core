@@ -38,9 +38,9 @@ To use WebPODA APIs, an access token needs to be defined in the environment as `
 ```bash
 # in WSL on your HOST
 mkdir -p /mnt/imap-data
-sudo adduser -u 5678 --disabled-password --gecos "" appuser
+sudo adduser -u $IMAP_USERID --disabled-password --gecos "" $IMAP_USERNAME
 # you have created the user with the same UID as in the container. now grant the folder to the user
-chown -R appuser:appuser /mnt/imap-data
+chown -R $IMAP_USERNAME:$IMAP_USERNAME /mnt/imap-data
 ```
 
 ## Build, pack and test
@@ -111,9 +111,33 @@ This is a the same as the above but instead of calling prefect_server.workflow.d
 
 All core functionality and logic should be available as simnple CLI commands as well as the usual prefect based flows.
 
+### Fetch Binary HK from WebPODA
+
 ```bash
-# Download HK from WebPODA
 export WEBPODA_AUTH_CODE=[YOUR_SECRET_HERE!]
 imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
-imap-mag fetch binary --packet MAG_HSK_PW --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03 --ert
+```
+
+### Fetch Science CDFs from SDC
+
+```bash
+export SDC_AUTH_CODE=[YOUR_SECRET_HERE!]
+imap-mag fetch science --level l1b --modes burst --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03 --ingestion-date
+```
+
+### Process Binary HK to CSV
+
+```bash
+imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.pkts
+```
+
+### Publish Calibration to SDC
+
+```bash
+export SDC_AUTH_CODE=[YOUR_SECRET_HERE!]
+imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
 ```

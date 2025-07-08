@@ -2,6 +2,7 @@ import collections
 import logging
 import os
 import re
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 
@@ -10,9 +11,9 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
 
-from imap_mag.io import StandardSPDFMetadataProvider
+from imap_mag.io import HKPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import HKPacket, TimeConversion
+from imap_mag.util import HKLevel, HKPacket, TimeConversion
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class HKProcessor(FileProcessor):
                 f"XTCE packet definition file not found: {packet_definition!s}"
             )
 
-    def process(self, files: Path | list[Path]) -> list[Path]:
+    def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
         """Process HK with XTCE tools and create CSV file."""
 
         if isinstance(files, Path):
@@ -89,13 +90,13 @@ class HKProcessor(FileProcessor):
                     combined_results[apid] = data
 
         # Split each ApID into a separate file per day.
-        processed_files: list[Path] = []
+        processed_files: dict[Path, IFilePathHandler] = {}
 
         for apid, data in combined_results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
-            metadata_provider = StandardSPDFMetadataProvider(
-                instrument=HKPacket.from_apid(apid).instrument,
-                descriptor=hk_packet.lower().strip("mag_").replace("_", "-"),
+            path_handler = HKPathHandler(
+                level=HKLevel.l1.value,
+                descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
                 content_date=None,
                 extension="csv",
             )
@@ -115,14 +116,16 @@ class HKProcessor(FileProcessor):
                 day = day[0] if isinstance(day, tuple) else day
                 logger.debug(f"Generating file for {day.strftime('%Y-%m-%d')}.")  # type: ignore
 
-                metadata_provider.content_date = datetime.combine(
+                path_handler.content_date = datetime.combine(
                     day,  # type: ignore
                     datetime.min.time(),
                 )
-                file_path = self.__work_folder / metadata_provider.get_filename()
+                file_path = self.__work_folder / path_handler.get_filename()
 
                 daily_data.sort_index(inplace=False).to_csv(file_path)
-                processed_files.append(file_path)
+
+                # Use a deep-copy, otherwise the same handle will be used for all files.
+                processed_files[file_path] = deepcopy(path_handler)
 
         return processed_files
 

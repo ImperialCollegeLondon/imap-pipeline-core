@@ -22,6 +22,10 @@
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
 
         },
+        "ghcr.io/mathworks/devcontainer-features/matlab:0": {
+            "release": "r2024a",
+            "products": "MATLAB Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox"
+        }
 
         // poetry also available as a dev container feature but we install it using dev-env-first-time.sh so PATH is setup
         //"ghcr.io/devcontainers-contrib/features/poetry:2": {},

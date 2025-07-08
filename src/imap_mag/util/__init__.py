@@ -6,8 +6,9 @@ from imap_mag.util.DownloadDateManager import (
     get_dates_for_download,
 )
 from imap_mag.util.HKPacket import HKPacket
-from imap_mag.util.Level import Level
+from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
+from imap_mag.util.ReferenceFrame import ReferenceFrame
 from imap_mag.util.ScienceMode import ScienceMode
 from imap_mag.util.TimeConversion import TimeConversion
 
@@ -15,9 +16,11 @@ __all__ = [
     "CONSTANTS",
     "DatetimeProvider",
     "DownloadDateManager",
+    "HKLevel",
     "HKPacket",
-    "Level",
     "MAGSensor",
+    "ReferenceFrame",
+    "ScienceLevel",
     "ScienceMode",
     "TimeConversion",
     "force_utc_timezone",

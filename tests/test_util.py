@@ -8,7 +8,7 @@ from imap_mag.util import (
     HKPacket,
     force_utc_timezone,
 )
-from tests.util.miscellaneous import enableLogging, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_get_all_mag_packets() -> None:

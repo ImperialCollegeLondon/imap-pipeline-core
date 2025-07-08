@@ -7,19 +7,17 @@ from unittest import mock
 
 import pytest
 
-from imap_mag.cli.fetchScience import (
-    FetchScience,
-    SDCMetadataProvider,
-)
-from imap_mag.client.sdcDataAccess import ISDCDataAccess
-from imap_mag.util import MAGSensor, ScienceMode
-from tests.util.miscellaneous import enableLogging, tidyDataFolders  # noqa: F401
+from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.download.FetchScience import FetchScience
+from imap_mag.io import SciencePathHandler
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
+from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 @pytest.fixture
 def mock_soc() -> mock.Mock:
-    """Fixture for a mock ISDCDataAccess instance."""
-    return mock.create_autospec(ISDCDataAccess, spec_set=True)
+    """Fixture for a mock SDCDataAccess instance."""
+    return mock.create_autospec(SDCDataAccess, spec_set=True)
 
 
 def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
@@ -31,12 +29,10 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, SDCMetadataProvider] = (
-        fetchScience.download_latest_science(
-            level="l1b",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 2),
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 2),
     )
 
     # Verify.
@@ -73,12 +69,10 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, SDCMetadataProvider] = (
-        fetchScience.download_latest_science(
-            level="l1b",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
     )
 
     # Verify.
@@ -97,7 +91,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
 
     assert test_file in actual_downloaded.keys()
     assert (
-        SDCMetadataProvider(
+        SciencePathHandler(
             level="l1b",
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),
@@ -161,12 +155,10 @@ def test_fetch_binary_different_start_end_dates(
     mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
-    actual_downloaded: dict[Path, SDCMetadataProvider] = (
-        fetchScience.download_latest_science(
-            level="l1b",
-            start_date=start_date,
-            end_date=end_date,
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=start_date,
+        end_date=end_date,
     )
 
     # Verify.
@@ -203,13 +195,11 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     mock_soc.download.side_effect = lambda file_path: file_path
 
     # Exercise.
-    actual_downloaded: dict[Path, SDCMetadataProvider] = (
-        fetchScience.download_latest_science(
-            level="l1b",
-            start_date=datetime(2025, 5, 2),
-            end_date=datetime(2025, 5, 3),
-            use_ingestion_date=True,
-        )
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l1b,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        use_ingestion_date=True,
     )
 
     # Verify.
@@ -228,7 +218,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
 
     assert test_file in actual_downloaded.keys()
     assert (
-        SDCMetadataProvider(
+        SciencePathHandler(
             level="l1b",
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),
@@ -237,4 +227,66 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
             extension="cdf",
         )
         in actual_downloaded.values()
+    )
+
+
+def test_fetch_l2_science_with_both_sensors(
+    mock_soc: mock.Mock, capture_cli_logs
+) -> None:
+    # Set up.
+    fetchScience = FetchScience(
+        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS, MAGSensor.IBS]
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file"
+
+    mock_soc.get_filename.side_effect = lambda **_: [
+        {
+            "file_path": test_file.absolute(),
+            "descriptor": "norm-gse",
+            "start_date": "20250502",
+            "ingestion_date": "20250602 00:00:00",
+            "version": "v007",
+        }
+    ]
+    mock_soc.download.side_effect = lambda file_path: file_path
+
+    # Exercise.
+    actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
+        level=ScienceLevel.l2,
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        reference_frame=ReferenceFrame.GSE,
+    )
+
+    # Verify.
+    mock_soc.get_filename.assert_called_once_with(
+        level="l2",
+        descriptor="norm-gse",
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+        extension="cdf",
+    )
+    mock_soc.download.assert_called_once_with(
+        test_file.absolute(),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    assert test_file in actual_downloaded.keys()
+    assert (
+        SciencePathHandler(
+            level="l2",
+            descriptor="norm-gse",
+            content_date=datetime(2025, 5, 2),
+            ingestion_date=datetime(2025, 6, 2),
+            version=7,
+            extension="cdf",
+        )
+        in actual_downloaded.values()
+    )
+
+    assert (
+        "Forcing download of only OBS (mago) sensor for L2 data."
+        in capture_cli_logs.text
     )
