@@ -46,3 +46,12 @@ class TimeConversion:
                 + CONSTANTS.J2000_EPOCH_POSIX
             )
         ]
+
+    @staticmethod
+    def convert_met_to_date(
+        met: npt.ArrayLike,
+        reference_epoch: np.datetime64 = CONSTANTS.IMAP_EPOCH,
+    ) -> list[date]:
+        """Convert mission elapsed time (MET) to Python date."""
+        j2000ns = TimeConversion.convert_met_to_j2000ns(met, reference_epoch)
+        return TimeConversion.convert_j2000ns_to_date(j2000ns)
