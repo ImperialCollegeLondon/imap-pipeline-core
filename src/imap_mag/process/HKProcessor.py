@@ -201,7 +201,7 @@ class HKProcessor(FileProcessor):
         if not existing_files:
             return None
 
-        logging.info(
+        logger.info(
             f"Found {len(existing_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')}."
         )
 
