@@ -133,7 +133,7 @@ def check_file_existence(
             "output/hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
         )
         bin_file = (
-            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v001.pkts"
+            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_001.pkts"
         )
 
         csv_folder = os.path.join(

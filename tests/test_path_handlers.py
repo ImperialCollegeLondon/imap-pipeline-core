@@ -247,15 +247,11 @@ def test_get_folder_structure_error_on_no_date():
     ),
 )
 def test_get_filename_error_on_no_required_parameter(provider):
-    # Exercise.
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError,
+        match="No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name.",
+    ):
         provider.get_filename()
-
-    # Verify.
-    assert (
-        excinfo.value.args[0]
-        == "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
-    )
 
 
 @pytest.mark.parametrize(
@@ -282,12 +278,22 @@ def test_get_filename_error_on_no_required_parameter(provider):
             ),
         ),
         (
-            "imap_mag_l0_hsk-pw_20241210_v003.pkts",
+            "imap_mag_l0_hsk-pw_20241210_003.pkts",
             HKPathHandler(
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2024, 12, 10),
                 version=3,
+                extension="pkts",
+            ),
+        ),
+        (
+            "imap_mag_l1_hsk-pw_20251111_v002.pkts",
+            HKPathHandler(
+                level="l1",
+                descriptor="hsk-pw",
+                content_date=datetime(2025, 11, 11),
+                version=2,
                 extension="pkts",
             ),
         ),
