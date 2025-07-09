@@ -41,7 +41,7 @@ class SciencePathHandler(StandardSPDFPathHandler):
             Path(filename).name,
         )
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with science regex."
         )
 
         if match is None:
