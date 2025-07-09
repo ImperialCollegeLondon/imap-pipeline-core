@@ -10,7 +10,11 @@ from imap_mag.cli.cliUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import IFilePathHandler
+from imap_mag.io import (
+    FilePathHandlerSelector,
+    IFilePathHandler,
+    InputManager,
+)
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -44,20 +48,35 @@ def process(
 
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
+    input_manager = InputManager(app_settings.data_store)
     work_files: list[Path] = []
 
     for file in files:
-        work_files.append(
-            fetch_file_for_work(file, work_folder, throw_if_not_found=True)  # type: ignore
+        metadata_provider: IFilePathHandler | None = (
+            FilePathHandlerSelector.find_by_path(file, throw_if_none_found=False)
         )
 
-    # Process files
-    file_processor: FileProcessor = dispatch(work_files, work_folder)
+        # If the file matches a path handler format, find it in the data store.
+        if metadata_provider is not None:
+            file = input_manager.get_versioned_file(
+                metadata_provider, latest_version=False, throw_if_none_found=True
+            )
+            assert file is not None
+
+        matching_file: Path | None = fetch_file_for_work(
+            file, work_folder, throw_if_not_found=True
+        )
+        assert matching_file is not None
+
+        work_files.append(matching_file)
+
+    # Process files.
+    file_processor: FileProcessor = dispatch(work_files, work_folder, input_manager)
     file_processor.initialize(app_settings.packet_definition)
 
     processed_files: dict[Path, IFilePathHandler] = file_processor.process(work_files)
 
-    # Copy files to the output directory
+    # Copy files to the output directory.
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     output_manager = appUtils.getOutputManagerByMode(
