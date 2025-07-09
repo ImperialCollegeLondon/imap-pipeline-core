@@ -12,7 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from imap_mag.main import app
-from tests.util.miscellaneous import set_env, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import DATASTORE, set_env, tidyDataFolders  # noqa: F401
 
 runner = CliRunner()
 
@@ -28,12 +28,12 @@ def test_app_says_hello():
     "binary_file, output_file",
     [
         (
-            "MAG_HSK_PW.pkts",
-            "output/hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
+            "tests/data/2025/MAG_HSK_PW.pkts",
+            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
         (
             "imap_mag_l0_hsk-pw_20250214_v001.pkts",
-            "output/hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
+            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
     ],
 )
@@ -49,8 +49,11 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         app,
         [
             "process",
-            str(Path("tests/data/2025") / binary_file),
+            binary_file,
         ],
+        env={
+            "MAG_DATA_STORE": str(DATASTORE),
+        },
     )
 
     print("\n" + str(result.stdout))
@@ -65,6 +68,8 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
         assert expectedFirstLine == lines[1]
         assert expectedLastLine == lines[-1]
         assert expectedNumRows == len(lines)
+
+    output_file.unlink()
 
 
 def test_process_error_with_unsupported_file_type():

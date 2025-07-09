@@ -328,7 +328,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
     ],
 )
 def test_find_correct_provider_from_filename(filename, expected):
-    actual = FilePathHandlerSelector.find_by_path(filename, throw_on_none_found=False)
+    actual = FilePathHandlerSelector.find_by_path(filename, throw_if_none_found=False)
     assert actual == expected
 
 
@@ -346,10 +346,10 @@ def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
             NoProviderFoundError,
             match=f"No suitable path handler found for file {path}.",
         ):
-            FilePathHandlerSelector.find_by_path(path, throw_on_none_found=True)
+            FilePathHandlerSelector.find_by_path(path, throw_if_none_found=True)
     else:
         path_handler = FilePathHandlerSelector.find_by_path(
-            path, throw_on_none_found=False
+            path, throw_if_none_found=False
         )
         assert path_handler is None
 

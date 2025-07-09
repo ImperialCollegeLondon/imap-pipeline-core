@@ -54,7 +54,6 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     test_file = Path(tempfile.gettempdir()) / "test_file"
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 3, 8, 58, 39)
-    mock_poda.get_min_sctime.side_effect = lambda **_: datetime(2025, 5, 2, 12, 45, 29)
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
@@ -161,7 +160,6 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     test_file = Path(tempfile.gettempdir()) / "test_file"
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 5, 2, 12, 45, 29)
-    mock_poda.get_min_sctime.side_effect = lambda **_: datetime(2025, 4, 3, 8, 58, 39)
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
