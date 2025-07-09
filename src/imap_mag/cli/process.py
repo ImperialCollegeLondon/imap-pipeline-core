@@ -52,16 +52,17 @@ def process(
     work_files: list[Path] = []
 
     for file in files:
-        metadata_provider: IFilePathHandler | None = (
-            FilePathHandlerSelector.find_by_path(file, throw_if_none_found=False)
-        )
-
-        # If the file matches a path handler format, find it in the data store.
-        if metadata_provider is not None:
-            file = input_manager.get_versioned_file(
-                metadata_provider, latest_version=False, throw_if_none_found=True
+        # If the file is not a relative/absolute path, try to find it in the datastore.
+        if not file.exists():
+            metadata_provider: IFilePathHandler | None = (
+                FilePathHandlerSelector.find_by_path(file, throw_if_none_found=False)
             )
-            assert file is not None
+
+            if metadata_provider is not None:
+                file = input_manager.get_versioned_file(
+                    metadata_provider, latest_version=False, throw_if_none_found=True
+                )
+                assert file is not None
 
         matching_file: Path | None = fetch_file_for_work(
             file, work_folder, throw_if_not_found=True
