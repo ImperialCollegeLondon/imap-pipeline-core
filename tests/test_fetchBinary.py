@@ -51,8 +51,10 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
 
-    test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
+    test_file = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    expected_file = Path("tests/data/2025/MAG_HSK_PW_20250502_sclk.bin")
+
+    mock_poda.download.side_effect = lambda **_: test_file
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 3, 8, 58, 39)
 
     # Exercise.
@@ -63,26 +65,29 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     )
 
     # Verify.
-    mock_poda.download.assert_called_once_with(
-        packet="MAG_HSK_PW",
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
-        ert=False,
-    )
-
-    assert len(actual_downloaded) == 1
-
-    assert test_file in actual_downloaded.keys()
-    assert (
-        HKPathHandler(
-            level="l0",
-            descriptor="hsk-pw",
-            content_date=datetime(2025, 5, 2),
-            extension="pkts",
-            ert=datetime(2025, 6, 3, 8, 58, 39),
+    try:
+        mock_poda.download.assert_called_once_with(
+            packet="MAG_HSK_PW",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            ert=False,
         )
-        in actual_downloaded.values()
-    )
+
+        assert len(actual_downloaded) == 1
+
+        assert expected_file in actual_downloaded.keys()
+        assert (
+            HKPathHandler(
+                level="l0",
+                descriptor="hsk-pw",
+                content_date=datetime(2025, 5, 2),
+                extension="pkts",
+                ert=datetime(2025, 6, 3, 8, 58, 39),
+            )
+            in actual_downloaded.values()
+        )
+    finally:
+        expected_file.unlink(missing_ok=True)
 
 
 @pytest.mark.parametrize(
@@ -157,9 +162,11 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
 
-    test_file = Path(tempfile.gettempdir()) / "test_file"
-    mock_poda.download.side_effect = lambda **_: create_test_file(test_file, "content")
-    mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 5, 2, 12, 45, 29)
+    test_file = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    expected_file = Path("tests/data/2025/MAG_HSK_PW_20250502_sclk.bin")
+
+    mock_poda.download.side_effect = lambda **_: test_file
+    mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 2, 12, 45, 29)
 
     # Exercise.
     actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
@@ -170,23 +177,26 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     )
 
     # Verify.
-    mock_poda.download.assert_called_once_with(
-        packet="MAG_HSK_PW",
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
-        ert=True,
-    )
-
-    assert len(actual_downloaded) == 1
-
-    assert test_file in actual_downloaded.keys()
-    assert (
-        HKPathHandler(
-            level="l0",
-            descriptor="hsk-pw",
-            content_date=datetime(2025, 4, 3),
-            extension="pkts",
-            ert=datetime(2025, 5, 2, 12, 45, 29),
+    try:
+        mock_poda.download.assert_called_once_with(
+            packet="MAG_HSK_PW",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+            ert=True,
         )
-        in actual_downloaded.values()
-    )
+
+        assert len(actual_downloaded) == 1
+
+        assert expected_file in actual_downloaded.keys()
+        assert (
+            HKPathHandler(
+                level="l0",
+                descriptor="hsk-pw",
+                content_date=datetime(2025, 5, 2),
+                extension="pkts",
+                ert=datetime(2025, 6, 2, 12, 45, 29),
+            )
+            in actual_downloaded.values()
+        )
+    finally:
+        expected_file.unlink(missing_ok=True)
