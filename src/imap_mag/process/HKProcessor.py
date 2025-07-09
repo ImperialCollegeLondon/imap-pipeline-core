@@ -74,14 +74,12 @@ class HKProcessor(FileProcessor):
 
         # Process each file individually, and combine the results
         # into a single dict.
-        combined_results: dict[int, xr.DataArray] = self.__load_and_decommutate_files(
-            files
-        )
+        results: dict[int, xr.DataArray] = self.__load_and_decommutate_files(files)
 
         # Split each ApID into a separate file per day.
         processed_files: dict[Path, IFilePathHandler] = {}
 
-        for apid, data in combined_results.items():
+        for apid, data in results.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
             path_handler = HKPathHandler(
                 level=HKLevel.l1.value,
@@ -102,7 +100,7 @@ class HKProcessor(FileProcessor):
             )
 
             for day_info, daily_data in dataframe.groupby(dates):
-                day: date = day_info[0] if isinstance(day_info, tuple) else day_info
+                day: date = day_info[0] if isinstance(day_info, tuple) else day_info  # type: ignore
 
                 existing_data: pd.DataFrame | None = self.__load_existing_data(
                     apid, hk_packet, day
@@ -118,33 +116,29 @@ class HKProcessor(FileProcessor):
                         f"No existing data found for {day.strftime('%Y-%m-%d')}, creating new file."
                     )
 
-                file_path, path_handler = self.__save_daily_data(
-                    day, daily_data, path_handler
-                )
-                processed_files[file_path] = path_handler
+                path, handler = self.__save_daily_data(day, daily_data, path_handler)
+                processed_files[path] = handler
 
         return processed_files
 
     def __load_and_decommutate_files(
         self, files: list[Path]
     ) -> dict[int, xr.DataArray]:
-        combined_results: dict[int, xr.DataArray] = dict()
+        combined: dict[int, xr.DataArray] = dict()
 
         for file in track(files, description="Processing HK files..."):
-            file_results: dict[int, xr.DataArray] = self.__decommutate_packets(file)
+            results: dict[int, xr.DataArray] = self.__decommutate_packets(file)
             logger.info(
-                f"Found {len(file_results.keys())} ApIDs ({', '.join(str(key) for key in file_results.keys())}) in {file}."
+                f"Found {len(results.keys())} ApIDs ({', '.join(str(key) for key in results.keys())}) in {file}."
             )
 
-            for apid, data in file_results.items():
-                if apid in combined_results:
-                    combined_results[apid] = xr.concat(
-                        [combined_results[apid], data], dim="epoch"
-                    )
+            for apid, data in results.items():
+                if apid in combined:
+                    combined[apid] = xr.concat([combined[apid], data], dim="epoch")
                 else:
-                    combined_results[apid] = data
+                    combined[apid] = data
 
-        return combined_results
+        return combined
 
     def __decommutate_packets(self, file: Path) -> dict[int, xr.DataArray]:
         # Extract data from binary file.
@@ -181,13 +175,7 @@ class HKProcessor(FileProcessor):
             time_data = TimeConversion.convert_met_to_j2000ns(data[time_key])
 
             ds = xr.Dataset(
-                {
-                    key: (
-                        "epoch",
-                        value,
-                    )
-                    for key, value in data.items()
-                },
+                {key: ("epoch", value) for key, value in data.items()},
                 coords={"epoch": time_data},
             )
             ds = ds.sortby("epoch")
@@ -206,24 +194,21 @@ class HKProcessor(FileProcessor):
             extension="pkts",
         )
 
-        latest_files: list[Path] = self.__input_manager.get_all_file_versions(
+        existing_files: list[Path] = self.__input_manager.get_all_file_versions(
             l0_path_handler, throw_if_none_found=False
         )
 
-        if not latest_files:
+        if not existing_files:
             return None
 
         logging.info(
-            f"Found {len(latest_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')}."
+            f"Found {len(existing_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')}."
         )
 
         existing_data: dict[int, xr.DataArray] = self.__load_and_decommutate_files(
-            latest_files
+            existing_files
         )
-
-        # Only data from this ApID should have been loaded.
-        assert apid in existing_data
-        assert len(existing_data) == 1
+        assert (apid in existing_data) and (len(existing_data) == 1)
 
         return existing_data[apid].to_dataframe()
 
