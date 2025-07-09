@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
+from imap_mag.util import HKLevel
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,37 @@ class HKPathHandler(StandardSPDFPathHandler):
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
+    def get_filename(self) -> str:
+        filename = super().get_filename()
+
+        # For L0 files, the "version" is just a number.
+        if self.level == HKLevel.l0.value:
+            return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_{self.version:03}.{self.extension}"  # type: ignore
+        else:
+            return filename
+
+    def get_unversioned_pattern(self) -> re.Pattern:
+        if (
+            not self.content_date
+            or not self.level
+            or not self.descriptor
+            or not self.extension
+        ):
+            logger.error(
+                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
+            )
+            raise ValueError(
+                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
+            )
+
+        return re.compile(
+            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v?(?P<version>\d+)\.{self.extension}"
+        )
+
     @classmethod
     def from_filename(cls, filename: str | Path) -> "HKPathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<level>l\d)_(?P<descr>(?:ehs|els|hsk|mem|prog|tca|tcc)-[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d)_(?P<descr>(?:ehs|els|hsk|mem|prog|tca|tcc)-[^_]+)_(?P<date>\d{8})_v?(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
