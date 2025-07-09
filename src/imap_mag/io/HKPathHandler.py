@@ -38,11 +38,11 @@ class HKPathHandler(StandardSPDFPathHandler):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "HKPathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<level>l\d)_(?P<descr>hsk-[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d)_(?P<descr>(?:ehs|els|hsk|mem|prog|tca|tcc)-[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with HK regex."
         )
 
         if match is None:
