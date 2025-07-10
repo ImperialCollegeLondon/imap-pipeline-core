@@ -103,7 +103,7 @@ def gradiometry(
         calibration_descriptor=method.value, content_date=date
     )
     result: Path = calibrator.run_calibration(
-        Path(app_settings.work_folder) / calibrationLayerHandler.get_filename()
+        Path(app_settings.work_folder) / Path(calibrationLayerHandler.get_filename())
     )
 
     outputManager = OutputManager(app_settings.data_store)
@@ -153,8 +153,9 @@ def calibrate(
     calibrationLayerHandler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
+    #
     result: Path = calibrator.run_calibration(
-        Path(app_settings.work_folder) / calibrationLayerHandler.get_filename()
+        Path(app_settings.work_folder) / Path(calibrationLayerHandler.get_filename())
     )
 
     outputManager = OutputManager(app_settings.data_store)
