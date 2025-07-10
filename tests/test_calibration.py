@@ -123,7 +123,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
         "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
-    assert str(exc_info.value) == "No calibration layers or rotation file provided"
+    assert str(exc_info.value) == "No calibration layers or rotation file provided."
 
 
 def test_apply_performs_correct_rotation(tmp_path):
