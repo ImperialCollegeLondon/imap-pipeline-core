@@ -33,6 +33,7 @@ class Sensor(str, Enum):
 
 class ValueType(str, Enum):
     VECTOR = "vector"
+    INTERPOLATION_POINTS = "interpolation_points"
 
 
 class Mission(str, Enum):

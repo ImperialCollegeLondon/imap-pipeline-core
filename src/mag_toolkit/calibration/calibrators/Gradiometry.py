@@ -20,6 +20,7 @@ class GradiometerCalibrator(Calibrator):
     sc_interference_threshold = 10.0
 
     def __init__(self, date, mode, sensor):
+        super().__init__()
         self.date = date
         self.mode = mode
         self.sensor = sensor

@@ -16,6 +16,7 @@ class EmptyCalibrator(Calibrator):
     science_file_key = "science_file"
 
     def __init__(self, date, mode, sensor):
+        super().__init__()
         self.name = CalibrationMethod.NOOP
         self.date = date
         self.mode = mode

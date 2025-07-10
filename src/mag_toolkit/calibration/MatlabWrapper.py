@@ -26,7 +26,7 @@ def call_matlab(command, first_call=True):
             f"Added {local_matlab_path} and {default_matlab_path} files to path"
         )
 
-    cmd = [MATLAB_COMMAND, "-nojvm", "-nodesktop", "-batch"]
+    cmd = [MATLAB_COMMAND, "-nodesktop", "-batch"]
     cmd.append(command)
 
     logger.debug(f"Calling MATLAB with command: {cmd}")
