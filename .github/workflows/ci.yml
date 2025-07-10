@@ -248,6 +248,7 @@ jobs:
           sparse-checkout: |
             +calibration
             +general
+            external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
 
