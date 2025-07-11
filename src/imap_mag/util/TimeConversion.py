@@ -3,7 +3,7 @@ from datetime import date, datetime
 import numpy as np
 import numpy.typing as npt
 
-from imap_mag.util import CONSTANTS
+from imap_mag.util.constants import CONSTANTS
 
 
 class TimeConversion:
