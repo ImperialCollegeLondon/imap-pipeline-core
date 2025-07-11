@@ -41,7 +41,7 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
 )
 def test_dispatch_hk_binary(extension):
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_SOME" + extension)
+    packet_path = Path("tests/test_data/MAG_HSK_SOME" + extension)
 
     # Exercise.
     processor = dispatch(
@@ -56,7 +56,7 @@ def test_dispatch_hk_binary(extension):
 
 def test_dispatch_unsupported_file(capture_cli_logs):
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_SOME.txt")
+    packet_path = Path("tests/test_data/MAG_HSK_SOME.txt")
 
     # Exercise and verify.
     with pytest.raises(
@@ -87,8 +87,8 @@ def test_dispatch_unsupported_file(capture_cli_logs):
 )
 def test_decode_hk_packet(packet_type):
     # Set up.
-    packet_path = Path("tests/data/2025") / (packet_type.packet + ".pkts")
-    expected_path = Path("tests/data/truth") / (packet_type.packet + ".csv")
+    packet_path = Path("tests/test_data") / (packet_type.packet + ".pkts")
+    expected_path = Path("tests/test_truth") / (packet_type.packet + ".csv")
 
     processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
@@ -130,7 +130,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     """Test that HKProcessor splits data into separate files for each day, for each ApID."""
 
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    packet_path = Path("tests/test_data/MAG_HSK_PW.pkts")
 
     processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
@@ -171,8 +171,8 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_COMBINED.pkts"
 
-    power_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
-    status_path = Path("tests/data/2025/MAG_HSK_STATUS.pkts")
+    power_path = Path("tests/test_data/MAG_HSK_PW.pkts")
+    status_path = Path("tests/test_data/MAG_HSK_STATUS.pkts")
 
     with open(power_path, "rb") as power_file, open(status_path, "rb") as status_file:
         power_data = power_file.read()
@@ -215,7 +215,7 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     """Test that HKProcessor loads existing data and includes it in the output file (without duplicates)."""
 
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_PW_20251017_sclk.pkts")
+    packet_path = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
 
     processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
@@ -248,7 +248,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     """Very specific test to check that we support the `groupby` method returning a tuple for the `day` parameter."""
 
     # Set up.
-    packet_path = Path("tests/data/2025/groupby_day_as_tuple.bin")
+    packet_path = Path("tests/test_data/groupby_day_as_tuple.bin")
 
     processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
