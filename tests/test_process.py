@@ -28,7 +28,8 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
     monkeypatch.setattr(
         TimeConversion,
         "convert_met_to_j2000ns",
-        lambda x: original_method(x) + (timedelta(hours=20).seconds * 1e9),
+        lambda x, *args: original_method(x, *args)
+        + (timedelta(hours=20).seconds * 1e9),
     )
 
 
@@ -235,7 +236,12 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
         "Found 1 existing files for MAG_HSK_PW on 2025-10-17." in capture_cli_logs.text
     )
     assert (
-        "Merging new data with existing data for 2025-10-17." in capture_cli_logs.text
+        f"Found 1 ApIDs (1063) in {Path('tests/datastore/hk/mag/l0/hsk-pw/2025/10/imap_mag_l0_hsk-pw_20251017_001.pkts')}."
+        in capture_cli_logs.text
+    )
+    assert (
+        f"Loading 1 new files that are not in the datastore: {Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
+        in capture_cli_logs.text
     )
 
     df = pd.read_csv(processed_path, index_col=0)

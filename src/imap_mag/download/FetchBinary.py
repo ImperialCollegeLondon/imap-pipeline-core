@@ -1,47 +1,14 @@
 """Program to retrieve and process MAG binary files."""
 
-import io
 import logging
-import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import ccsdspy
-from ccsdspy.utils import iter_packet_bytes
-from rich.progress import Progress
-
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.io import HKPathHandler
-from imap_mag.util import HKLevel, TimeConversion
+from imap_mag.util import BinaryHelper, HKLevel
 
 logger = logging.getLogger(__name__)
-
-
-def split_packets_by_day(binary_file: Path) -> dict[date, bytearray]:
-    packets_by_day: dict[date, bytearray] = dict()
-
-    packet_definition = ccsdspy.FixedLength(
-        [
-            ccsdspy.PacketField(name="SHCOARSE", data_type="uint", bit_length=32),
-        ]
-    )
-
-    size = os.path.getsize(binary_file)
-
-    with Progress(refresh_per_second=1) as progress:
-        task = progress.add_task(f"Splitting {binary_file} by S/C day...", total=size)
-
-        for packet_bytes in iter_packet_bytes(binary_file, include_primary_header=True):
-            progress.update(task, advance=len(packet_bytes))
-
-            packet = packet_definition.load(
-                io.BytesIO(packet_bytes), include_primary_header=True
-            )
-
-            day: list[date] = TimeConversion.convert_met_to_date(packet["SHCOARSE"])
-            packets_by_day.setdefault(day[0], bytearray()).extend(packet_bytes)
-
-    return packets_by_day
 
 
 class FetchBinary:
@@ -99,7 +66,7 @@ class FetchBinary:
         )
 
         # Split the binary file by S/C day.
-        packets_by_day: dict[date, bytearray] = split_packets_by_day(file)
+        packets_by_day: dict[date, bytearray] = BinaryHelper.split_packets_by_day(file)
 
         for day, packet_bytes in packets_by_day.items():
             logger.debug(
