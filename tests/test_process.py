@@ -5,10 +5,16 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from imap_mag.io import HKPathHandler, IFilePathHandler
+from imap_mag.io import HKPathHandler, IFilePathHandler, InputManager
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import HKPacket, TimeConversion
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
+
+
+def instantiate_hk_processor():
+    """Instantiate HKProcessor with a temporary work folder."""
+    work_folder = Path(tempfile.gettempdir())
+    return HKProcessor(work_folder, InputManager(DATASTORE))
 
 
 @pytest.fixture(autouse=False)
@@ -22,7 +28,8 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
     monkeypatch.setattr(
         TimeConversion,
         "convert_met_to_j2000ns",
-        lambda x: original_method(x) + (timedelta(hours=20).seconds * 1e9),
+        lambda x, *args: original_method(x, *args)
+        + (timedelta(hours=20).seconds * 1e9),
     )
 
 
@@ -35,10 +42,14 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
 )
 def test_dispatch_hk_binary(extension):
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_SOME" + extension)
+    packet_path = Path("tests/test_data/MAG_HSK_SOME" + extension)
 
     # Exercise.
-    processor = dispatch(packet_path, Path(tempfile.gettempdir()))
+    processor = dispatch(
+        packet_path,
+        Path(tempfile.gettempdir()),
+        InputManager(DATASTORE),
+    )
 
     # Verify.
     assert isinstance(processor, HKProcessor)
@@ -46,18 +57,22 @@ def test_dispatch_hk_binary(extension):
 
 def test_dispatch_unsupported_file(capture_cli_logs):
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_SOME.txt")
+    packet_path = Path("tests/test_data/MAG_HSK_SOME.txt")
 
     # Exercise and verify.
-    with pytest.raises(NotImplementedError) as excinfo:
-        dispatch(packet_path, Path(tempfile.gettempdir()))
+    with pytest.raises(
+        NotImplementedError,
+        match=f"File {packet_path} is not supported and cannot be processed.",
+    ):
+        dispatch(
+            packet_path,
+            Path(tempfile.gettempdir()),
+            InputManager(DATASTORE),
+        )
 
     assert (
         f"File {packet_path} is not supported and cannot be processed."
         in capture_cli_logs.text
-    )
-    assert f"File {packet_path} is not supported and cannot be processed." in str(
-        excinfo.value
     )
 
 
@@ -73,10 +88,10 @@ def test_dispatch_unsupported_file(capture_cli_logs):
 )
 def test_decode_hk_packet(packet_type):
     # Set up.
-    packet_path = Path("tests/data/2025") / (packet_type.packet + ".pkts")
-    expected_path = Path("tests/data/truth") / (packet_type.packet + ".csv")
+    packet_path = Path("tests/test_data") / (packet_type.packet + ".pkts")
+    expected_path = Path("tests/test_truth") / (packet_type.packet + ".csv")
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
@@ -116,9 +131,9 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     """Test that HKProcessor splits data into separate files for each day, for each ApID."""
 
     # Set up.
-    packet_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    packet_path = Path("tests/test_data/MAG_HSK_PW.pkts")
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
@@ -157,8 +172,8 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_COMBINED.pkts"
 
-    power_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
-    status_path = Path("tests/data/2025/MAG_HSK_STATUS.pkts")
+    power_path = Path("tests/test_data/MAG_HSK_PW.pkts")
+    status_path = Path("tests/test_data/MAG_HSK_STATUS.pkts")
 
     with open(power_path, "rb") as power_file, open(status_path, "rb") as status_file:
         power_data = power_file.read()
@@ -169,7 +184,7 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     with open(packet_path, "wb") as combined_file:
         combined_file.write(combined_data)
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
@@ -197,13 +212,51 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     )
 
 
+def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
+    """Test that HKProcessor loads existing data and includes it in the output file (without duplicates)."""
+
+    # Set up.
+    packet_path = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
+
+    processor = instantiate_hk_processor()
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    # Exercise.
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
+
+    # Verify.
+    assert len(processed_files) == 1
+
+    processed_path: Path = next(iter(processed_files))
+
+    assert processed_path.exists()
+    assert processed_path.name == "imap_mag_l1_hsk-pw_20251017_v001.csv"
+
+    assert (
+        "Found 1 existing files for MAG_HSK_PW on 2025-10-17." in capture_cli_logs.text
+    )
+    assert (
+        f"Found 1 ApIDs (1063) in {Path('tests/datastore/hk/mag/l0/hsk-pw/2025/10/imap_mag_l0_hsk-pw_20251017_001.pkts')}."
+        in capture_cli_logs.text
+    )
+    assert (
+        f"Loading 1 new files that are not in the datastore: {Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
+        in capture_cli_logs.text
+    )
+
+    df = pd.read_csv(processed_path, index_col=0)
+
+    assert df.shape[0] == 918
+    assert all(df.index == df.index.unique())
+
+
 def test_decode_hk_packet_groupby_returns_tuple_for_day():
     """Very specific test to check that we support the `groupby` method returning a tuple for the `day` parameter."""
 
     # Set up.
-    packet_path = Path("tests/data/2025/groupby_day_as_tuple.bin")
+    packet_path = Path("tests/test_data/groupby_day_as_tuple.bin")
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor = instantiate_hk_processor()
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.

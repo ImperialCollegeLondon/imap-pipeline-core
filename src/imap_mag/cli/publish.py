@@ -60,6 +60,8 @@ def publish(
         resolved_file = input_manager.get_versioned_file(
             path_handler, latest_version=False
         )
+        assert resolved_file is not None
+
         resolved_files.append(resolved_file)
 
     logger.info(
