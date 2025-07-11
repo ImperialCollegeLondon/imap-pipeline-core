@@ -38,41 +38,21 @@ class HKProcessor(FileProcessor):
         return file.suffix in [".pkts", ".bin"]
 
     def initialize(self, packet_definition: Path) -> None:
-        pythonModuleRelativePath = (
-            Path(os.path.dirname(__file__)).parent / packet_definition
-        )
-        defaultFallbackPath = Path("tlm.xml")
-
-        logger.debug(
-            "Trying XTCE packet definition file from these paths in turn: \n  %s\n  %s\n  %s\n",
-            packet_definition,
-            pythonModuleRelativePath,
-            defaultFallbackPath,
-        )
-
-        # First try the file path as is, then in the same directory as the module, then fallback to a default.
-        if packet_definition is not None and packet_definition.exists():
-            logger.debug(
-                f"Using XTCE packet definition file from relative path: {packet_definition!s}",
-            )
-            self.xtcePacketDefinition = packet_definition
-
-        # Otherwise try path relative to the module.
-        elif pythonModuleRelativePath.exists():
-            logger.debug(
-                f"Using XTCE packet definition file from module path: {pythonModuleRelativePath!s}",
-            )
-            self.xtcePacketDefinition = pythonModuleRelativePath
-
+        paths_to_try: dict[str, Path] = {
+            "relative": packet_definition,
+            "module": Path(os.path.dirname(__file__)).parent / packet_definition,
+            "default": Path("tlm.xml"),
+        }
+        for source, path in paths_to_try.items():
+            if path and path.exists():
+                logger.debug(
+                    f"Using XTCE packet definition file from {source} path: {path}"
+                )
+                self.xtcePacketDefinition = path
+                break
         else:
-            logger.debug(
-                f"Using XTCE packet definition file from default path: {defaultFallbackPath!s}",
-            )
-            self.xtcePacketDefinition = defaultFallbackPath
-
-        if not self.xtcePacketDefinition.exists():
             raise FileNotFoundError(
-                f"XTCE packet definition file not found: {packet_definition!s}"
+                f"XTCE packet definition file not found: {packet_definition}"
             )
 
     def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
@@ -85,8 +65,7 @@ class HKProcessor(FileProcessor):
         apids_by_day: dict[int, set[date]] = dict()
 
         for file in files:
-            file_apids: dict[int, set[date]] = BinaryHelper.get_apids_and_days(file)
-            apids_by_day.update(file_apids)
+            apids_by_day.update(BinaryHelper.get_apids_and_days(file))
 
         logger.info(
             f"Found {len(apids_by_day)} ApIDs in {len(files)} files:\n{', '.join(str(apid) for apid in apids_by_day.keys())}"
