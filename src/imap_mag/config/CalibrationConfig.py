@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import yaml
 from pydantic import BaseModel
 
 
@@ -7,4 +10,11 @@ class GradiometryConfig(BaseModel):
 
 
 class CalibrationConfig(BaseModel):
-    gradiometer: GradiometryConfig
+    gradiometer: GradiometryConfig = GradiometryConfig()
+
+    @classmethod
+    def from_file(cls, path: Path):
+        with open(path) as fid:
+            as_dict = yaml.safe_load(fid)
+        model = cls(**as_dict)
+        return model

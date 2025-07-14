@@ -8,6 +8,7 @@ import typer
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
+from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
 from imap_mag.io import (
     CalibrationLayerPathHandler,
     InputManager,
@@ -86,8 +87,9 @@ def gradiometry(
 
     calibrator = generic_calibration_setup(app_settings, calibrator)
 
-    calibrator.kappa = kappa
-    calibrator.sc_interference_threshold = sc_interference_threshold
+    calibrator.configuration = GradiometryConfig(
+        kappa=kappa, sc_interference_threshold=sc_interference_threshold
+    )
 
     calibrationLayerHandler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
@@ -116,6 +118,12 @@ def calibrate(
     sensor: Annotated[
         Sensor, typer.Option(help="Sensor to calibrate, e.g., mago")
     ] = Sensor.MAGO,
+    configuration: Annotated[
+        str | None,
+        typer.Option(
+            help="Configuration for the calibration - should be a YAML file or a JSON string",
+        ),
+    ] = None,
 ):
     """
     Generate calibration parameters for a given input file.
@@ -130,11 +138,21 @@ def calibrate(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
+    if configuration is None:
+        calibration_configuration = CalibrationConfig()
+    elif Path(configuration).is_file():
+        logger.info(f"Loading calibration configuration from {configuration}")
+        calibration_configuration = CalibrationConfig.from_file(Path(configuration))
+    else:
+        calibration_configuration = CalibrationConfig.model_validate_json(configuration)
+
     match method:
         case CalibrationMethod.NOOP:
             calibrator = EmptyCalibrator(date, mode, sensor)
         case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrator(date, mode, sensor)
+            calibrator = GradiometerCalibrator(
+                date, mode, sensor, calibration_configuration.gradiometer
+            )
         case _:
             raise ValueError("Calibration method is not implemented")
 

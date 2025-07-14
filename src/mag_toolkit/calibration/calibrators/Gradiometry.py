@@ -2,6 +2,7 @@ import logging
 
 import pytz
 
+from imap_mag.config.CalibrationConfig import GradiometryConfig
 from imap_mag.io import SciencePathHandler
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
@@ -16,10 +17,11 @@ class GradiometerCalibrator(Calibrator):
     mago_key = "mago_science_file"
     magi_key = "magi_science_file"
 
-    kappa = 0.0
-    sc_interference_threshold = 10.0
+    configuration = GradiometryConfig()
 
-    def __init__(self, date, mode, sensor):
+    def __init__(
+        self, date, mode, sensor, configuration: GradiometryConfig | None = None
+    ):
         super().__init__()
         self.date = date
         self.mode = mode
@@ -28,6 +30,9 @@ class GradiometerCalibrator(Calibrator):
 
         self.required_files[self.mago_key] = None
         self.required_files[self.magi_key] = None
+
+        if configuration:
+            self.configuration = configuration
 
     def _get_path_handlers(self, date, mode, sensor):
         path_handlers = {}
@@ -76,6 +81,6 @@ class GradiometerCalibrator(Calibrator):
             )
 
         call_matlab(
-            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{self.kappa!s}", "{self.sc_interference_threshold!s}")'
+            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{self.configuration.kappa!s}", "{self.configuration.sc_interference_threshold!s}")'
         )
         return calfile

@@ -77,12 +77,18 @@ def gradiometry_flow(
 )
 def calibrate_flow(
     date: datetime,
-    method: CalibrationMethod,
     mode: ScienceMode,
+    method: CalibrationMethod,
+    configuration: CalibrationConfig | None,
     sensor: Sensor = Sensor.MAGO,
-    configuration: CalibrationConfig | None = None,
 ):
-    return calibrate(date=date, method=method, mode=mode, sensor=sensor)
+    return calibrate(
+        date=date,
+        method=method,
+        mode=mode,
+        sensor=sensor,
+        configuration=configuration.model_dump_json() if configuration else None,
+    )
 
 
 @flow(
