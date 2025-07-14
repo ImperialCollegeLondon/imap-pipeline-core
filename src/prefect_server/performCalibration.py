@@ -6,15 +6,22 @@ from prefect.runtime import flow_run
 
 from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
+from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 
 
 def generate_calibration_flow_run_name() -> str:
+    match flow_run.flow_name:
+        case PREFECT_CONSTANTS.FLOW_NAMES.GRADIOMETRY:
+            method_name = CalibrationMethod.GRADIOMETER
+        case _:
+            method_name = flow_run.parameters["method"]
+
     parameters = flow_run.parameters
     date: datetime = parameters["date"]
-    method: CalibrationMethod = parameters["method"]
+    method: CalibrationMethod = method_name
     mode: ScienceMode = parameters["mode"]
     sensor: Sensor = parameters.get("sensor", Sensor.MAGO)
 
@@ -73,6 +80,7 @@ def calibrate_flow(
     method: CalibrationMethod,
     mode: ScienceMode,
     sensor: Sensor = Sensor.MAGO,
+    configuration: CalibrationConfig | None = None,
 ):
     return calibrate(date=date, method=method, mode=mode, sensor=sensor)
 

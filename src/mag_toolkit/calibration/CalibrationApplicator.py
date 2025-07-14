@@ -284,15 +284,13 @@ class CalibrationApplicator:
                 )
             )
 
-        return (values, layer_values)
+        return (values, list(layer_values))
 
     def _sum_layers(
         self,
         data_values: Iterable[CalibrationValue],
         layer_values: Iterable[CalibrationValue],
     ) -> list[CalibrationValue]:
-        # Assume that the time stamps are exactly the same
-
         values = []
 
         for data_point, layer_point in zip(data_values, layer_values):
@@ -320,7 +318,7 @@ class CalibrationApplicator:
 
         return values
 
-    def checkValidity(self, data, calibrationCollection):
+    def check_validity(self, data, calibrationCollection):
         # check for time validity
         if data.epoch[0] < np.datetime64(
             calibrationCollection.valid_start
