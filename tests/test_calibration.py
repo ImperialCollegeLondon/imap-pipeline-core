@@ -9,10 +9,16 @@ import numpy as np
 import pytest
 from spacepy import pycdf
 
-from imap_mag.cli.apply import apply
+from imap_mag.cli.apply import CalibrationApplicator, apply
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
+from mag_toolkit.calibration import (
+    CalibrationLayer,
+    CalibrationMethod,
+    CalibrationValue,
+    ScienceValue,
+    Sensor,
+)
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 
 from .util.miscellaneous import (  # noqa: F401
@@ -205,6 +211,29 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         for correct_vec, vec in zip(correct_vecs, vectors):  # type: ignore
             # Convert to list for comparison
             assert vec == pytest.approx(correct_vec, rel=1e-6)
+
+
+def test_simple_interpolation_calibration_values_apply_correctly():
+    calibration_values = [
+        CalibrationValue(time=datetime(2025, 1, 1, 12, 30, 0), value=[0, 0, 0]),
+        CalibrationValue(time=datetime(2025, 1, 1, 12, 30, 2), value=[2, 0, 0]),
+    ]
+    science_values = [
+        ScienceValue(time=datetime(2025, 1, 1, 12, 30, 1), value=[0, 0, 0], range=3)
+    ]
+
+    applier = CalibrationApplicator()
+
+    resulting_science, resulting_calibration = (
+        applier._apply_interpolation_points_to_science_values(
+            science_values, calibration_values
+        )
+    )
+
+    assert resulting_science[0].time == resulting_calibration[0].time
+    assert len(resulting_science) == len(resulting_calibration)
+    assert resulting_calibration[0].value == [1, 0, 0]
+    assert resulting_science[0].value == [1, 0, 0]
 
 
 def test_apply_writes_magnitudes_correctly(tmp_path):

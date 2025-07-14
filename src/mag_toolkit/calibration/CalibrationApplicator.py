@@ -217,10 +217,20 @@ class CalibrationApplicator:
         layer_values: Iterable[CalibrationValue],
     ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
         science_times = [data_point.time.timestamp() for data_point in data_values]
-        interpolated_values = np.interp(
+        x_vals = np.interp(
             science_times,
             [layer_point.time.timestamp() for layer_point in layer_values],
-            [layer_point.value for layer_point in layer_values],
+            [layer_point.value[0] for layer_point in layer_values],
+        )
+        y_vals = np.interp(
+            science_times,
+            [layer_point.time.timestamp() for layer_point in layer_values],
+            [layer_point.value[1] for layer_point in layer_values],
+        )
+        z_vals = np.interp(
+            science_times,
+            [layer_point.time.timestamp() for layer_point in layer_values],
+            [layer_point.value[2] for layer_point in layer_values],
         )
         interpolated_quality_flags = np.interp(
             science_times,
@@ -235,14 +245,16 @@ class CalibrationApplicator:
         interpolated_calibration_values = [
             CalibrationValue(
                 time=datetime.fromtimestamp(science_time),
-                value=interpolated_value,
+                value=[x_val, y_val, z_val],
                 timedelta=0,
                 quality_flag=int(interpolated_quality_flag),
                 quality_bitmask=int(interpolated_quality_bitmask),
             )
-            for science_time, interpolated_value, interpolated_quality_flag, interpolated_quality_bitmask in zip(
+            for science_time, x_val, y_val, z_val, interpolated_quality_flag, interpolated_quality_bitmask in zip(
                 science_times,
-                interpolated_values,
+                x_vals,
+                y_vals,
+                z_vals,
                 interpolated_quality_flags,
                 interpolated_quality_bitmasks,
             )
