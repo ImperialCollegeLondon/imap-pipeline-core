@@ -55,11 +55,11 @@ def publish(
 
     for file in files:
         path_handler = FilePathHandlerSelector.find_by_path(
-            file, throw_if_none_found=True
+            file, throw_if_not_found=True
         )
 
         resolved_file = input_manager.get_versioned_file(
-            path_handler, latest_version=False, throw_if_none_found=True
+            path_handler, latest_version=False, throw_if_not_found=True
         )
         resolved_files.append(resolved_file)
 

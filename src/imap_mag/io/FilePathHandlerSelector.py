@@ -27,20 +27,20 @@ class FilePathHandlerSelector:
     @overload
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_if_none_found: Literal[True]
+        file: Path, *, throw_if_not_found: Literal[True]
     ) -> IFilePathHandler:
         pass
 
     @overload
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_if_none_found: Literal[False]
+        file: Path, *, throw_if_not_found: Literal[False]
     ) -> IFilePathHandler | None:
         pass
 
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_if_none_found: bool = True
+        file: Path, *, throw_if_not_found: bool = True
     ) -> IFilePathHandler | None:
         """Find a suitable path handler for the given filepath."""
 
@@ -58,7 +58,7 @@ class FilePathHandlerSelector:
                 logger.debug(f"Path handler {provider.__name__} matches file {file}.")
                 return path_handler
 
-        if throw_if_none_found:
+        if throw_if_not_found:
             logger.error(f"No suitable path handler found for file {file}.")
             raise NoProviderFoundError(file)
         else:

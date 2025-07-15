@@ -46,7 +46,7 @@ def prepare_layers_for_application(layers, appSettings):
         versioned_cal_file = inputManager.get_versioned_file(
             path_handler=cal_layer_handler,
             latest_version=False,
-            throw_if_none_found=True,
+            throw_if_not_found=True,
         )
 
         workLayers.append(
@@ -70,7 +70,7 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
         versioned_rotation_file = inputManager.get_versioned_file(
             path_handler=rotation_handler,
             latest_version=False,
-            throw_if_none_found=True,
+            throw_if_not_found=True,
         )
         return fetch_file_for_work(
             versioned_rotation_file, appSettings.work_folder, throw_if_not_found=True
@@ -119,7 +119,7 @@ def apply(
     versioned_file = input_manager.get_versioned_file(
         path_handler=original_input_handler,
         latest_version=False,
-        throw_if_none_found=True,
+        throw_if_not_found=True,
     )
 
     workDataFile: Path = fetch_file_for_work(

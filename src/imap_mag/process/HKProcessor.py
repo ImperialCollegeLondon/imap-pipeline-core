@@ -146,7 +146,7 @@ class HKProcessor(FileProcessor):
         )
 
         existing_files: list[Path] = self.__input_manager.get_all_file_versions(
-            l0_path_handler, throw_if_none_found=False
+            l0_path_handler, throw_if_not_found=False
         )
 
         if not existing_files:

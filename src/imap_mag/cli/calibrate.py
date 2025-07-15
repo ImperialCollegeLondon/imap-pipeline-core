@@ -76,7 +76,7 @@ def calibrate(
 
     input_manager = InputManager(app_settings.data_store)
     input_file: Path = input_manager.get_versioned_file(
-        path_handler, throw_if_none_found=True
+        path_handler, throw_if_not_found=True
     )
 
     workFile: Path = fetch_file_for_work(

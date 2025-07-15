@@ -55,12 +55,12 @@ def process(
         # If the file is not a relative/absolute path, try to find it in the datastore.
         if not file.exists():
             metadata_provider: IFilePathHandler | None = (
-                FilePathHandlerSelector.find_by_path(file, throw_if_none_found=False)
+                FilePathHandlerSelector.find_by_path(file, throw_if_not_found=False)
             )
 
             if metadata_provider is not None:
                 file = input_manager.get_versioned_file(
-                    metadata_provider, latest_version=False, throw_if_none_found=True
+                    metadata_provider, latest_version=False, throw_if_not_found=True
                 )
 
         matching_file: Path = fetch_file_for_work(
