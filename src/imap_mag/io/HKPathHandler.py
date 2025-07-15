@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
-from imap_mag.util import HKLevel
+from imap_mag.util import HKLevel, HKPacket
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +37,11 @@ class HKPathHandler(StandardSPDFPathHandler):
         ).as_posix()
 
     def get_filename(self) -> str:
-        filename = super().get_filename()
-
         # For L0 files, the "version" is just a number.
         if self.level == HKLevel.l0.value:
             return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_{self.version:03}.{self.extension}"  # type: ignore
         else:
-            return filename
+            return super().get_filename()
 
     def get_unversioned_pattern(self) -> re.Pattern:
         if (
@@ -65,8 +63,14 @@ class HKPathHandler(StandardSPDFPathHandler):
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "HKPathHandler | None":
+        allowed_hk_descriptors: set[str] = {
+            cls.convert_packet_to_descriptor(hk.packet).partition("-")[0]
+            for hk in HKPacket
+        }
+        logger.debug(f"Allowed HK descriptors: {', '.join(allowed_hk_descriptors)}")
+
         match = re.match(
-            r"imap_mag_(?P<level>l\d)_(?P<descr>(?:ehs|els|hsk|mem|prog|tca|tcc)-[^_]+)_(?P<date>\d{8})_v?(?P<version>\d+)\.(?P<ext>\w+)",
+            rf"imap_mag_(?P<level>l\d)_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_v?(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
