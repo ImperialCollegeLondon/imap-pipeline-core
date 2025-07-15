@@ -5,10 +5,7 @@ from typing import Annotated
 import typer
 
 from imap_mag import appUtils
-from imap_mag.cli.cliUtils import (
-    fetch_file_for_work,
-    initialiseLoggingForCommand,
-)
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import (
     FilePathHandlerSelector,
@@ -63,10 +60,7 @@ def process(
                     metadata_provider, latest_version=False, throw_if_not_found=True
                 )
 
-        matching_file: Path = fetch_file_for_work(
-            file, work_folder, throw_if_not_found=True
-        )
-        work_files.append(matching_file)
+        work_files.append(file)
 
     # Process files.
     file_processor: FileProcessor = dispatch(work_files, work_folder, input_manager)
