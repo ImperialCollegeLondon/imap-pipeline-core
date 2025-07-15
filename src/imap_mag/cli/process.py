@@ -62,13 +62,10 @@ def process(
                 file = input_manager.get_versioned_file(
                     metadata_provider, latest_version=False, throw_if_none_found=True
                 )
-                assert file is not None
 
-        matching_file: Path | None = fetch_file_for_work(
+        matching_file: Path = fetch_file_for_work(
             file, work_folder, throw_if_not_found=True
         )
-        assert matching_file is not None
-
         work_files.append(matching_file)
 
     # Process files.

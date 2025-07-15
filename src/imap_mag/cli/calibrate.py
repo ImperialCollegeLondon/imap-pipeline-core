@@ -78,10 +78,9 @@ def calibrate(
     input_file: Path | None = input_manager.get_versioned_file(path_handler)
     assert input_file is not None
 
-    workFile = fetch_file_for_work(
+    workFile: Path = fetch_file_for_work(
         input_file, app_settings.work_folder, throw_if_not_found=True
     )
-    assert workFile is not None
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerHandler = CalibrationLayerPathHandler(

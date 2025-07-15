@@ -43,6 +43,7 @@ class HKProcessor(FileProcessor):
             "module": Path(os.path.dirname(__file__)).parent / packet_definition,
             "default": Path("tlm.xml"),
         }
+
         for source, path in paths_to_try.items():
             if path and path.exists():
                 logger.debug(

@@ -115,10 +115,9 @@ def apply(
     )
     assert versioned_file is not None
 
-    workDataFile = fetch_file_for_work(
+    workDataFile: Path = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
-    assert workDataFile is not None
 
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)

@@ -1,6 +1,7 @@
 import glob
 import logging
 from pathlib import Path
+from typing import Literal, overload
 
 from imap_mag.io.IFilePathHandler import IFilePathHandler
 
@@ -27,6 +28,24 @@ class InputManager:
         )
 
         return [Path(file) for file, _ in all_matching_files]
+
+    @overload
+    def get_versioned_file(
+        self,
+        path_handler: IFilePathHandler,
+        latest_version: bool = True,
+        throw_if_none_found: Literal[True] = True,
+    ) -> Path:
+        pass
+
+    @overload
+    def get_versioned_file(
+        self,
+        path_handler: IFilePathHandler,
+        latest_version: bool = True,
+        throw_if_none_found: Literal[False] = False,
+    ) -> Path | None:
+        pass
 
     def get_versioned_file(
         self,

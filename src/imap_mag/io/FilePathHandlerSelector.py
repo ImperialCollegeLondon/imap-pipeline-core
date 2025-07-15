@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Literal, overload
 
 from imap_mag.io.AncillaryPathHandler import AncillaryPathHandler
 from imap_mag.io.CalibrationLayerPathHandler import (
@@ -22,6 +23,20 @@ class NoProviderFoundError(Exception):
 
 class FilePathHandlerSelector:
     """Manager of file path handlers."""
+
+    @overload
+    @staticmethod
+    def find_by_path(
+        file: Path, *, throw_if_none_found: Literal[True]
+    ) -> IFilePathHandler:
+        pass
+
+    @overload
+    @staticmethod
+    def find_by_path(
+        file: Path, *, throw_if_none_found: Literal[False]
+    ) -> IFilePathHandler | None:
+        pass
 
     @staticmethod
     def find_by_path(
