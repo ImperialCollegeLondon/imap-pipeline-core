@@ -128,7 +128,10 @@ def test_decode_hk_packet(packet_type):
 def test_decode_hk_packet_with_data_spanning_two_days(
     mock_met_to_j2000_conversion_for_hk_power_to_span_two_days, capture_cli_logs
 ):
-    """Test that HKProcessor splits data into separate files for each day, for each ApID."""
+    """
+    Test that HKProcessor splits data into separate files for each day, for each ApID,
+    when data is provided in the same file.
+    """
 
     # Set up.
     packet_path = Path("tests/test_data/MAG_HSK_PW.pkts")
@@ -164,6 +167,56 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     )
     assert "Generating file for 2025-05-02." in capture_cli_logs.text
     assert "Generating file for 2025-05-03." in capture_cli_logs.text
+
+
+def test_decode_hk_packet_with_two_files_for_two_days(capture_cli_logs):
+    """
+    Test that HKProcessor splits data into separate files for each day, for each ApID, when
+    data is provided in two separate files.
+    """
+
+    # Set up.
+    packet_path1 = Path("tests/test_data/MAG_HSK_PW_20250421_sclk.bin")
+    packet_path2 = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
+
+    processor = instantiate_hk_processor()
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    # Exercise.
+    processed_files: dict[Path, IFilePathHandler] = processor.process(
+        [packet_path1, packet_path2]
+    )
+
+    # Verify.
+    assert len(processed_files) == 2
+
+    processed_path1, processed_path2 = processed_files.keys()
+
+    assert processed_path1.exists()
+    assert processed_path2.exists()
+
+    assert processed_path1.name == "imap_mag_l1_hsk-pw_20250421_v001.csv"
+    assert processed_path2.name == "imap_mag_l1_hsk-pw_20251017_v001.csv"
+
+    df_day1 = pd.read_csv(processed_path1, index_col=0)
+    epoch_day1 = TimeConversion.convert_j2000ns_to_date(df_day1.index.values)
+    assert all([d == date(2025, 4, 21) for d in epoch_day1])
+
+    df_day2 = pd.read_csv(processed_path2, index_col=0)
+    epoch_day2 = TimeConversion.convert_j2000ns_to_date(df_day2.index.values)
+    assert all([d == date(2025, 10, 17) for d in epoch_day2])
+
+    assert (
+        "Processing ApID 1063 (MAG_HSK_PW) for days:\n2025-04-21, 2025-10-17"
+        in capture_cli_logs.text
+    )
+
+    assert (
+        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:\n20250421, 20251017"
+        in capture_cli_logs.text
+    )
+    assert "Generating file for 2025-04-21." in capture_cli_logs.text
+    assert "Generating file for 2025-10-17." in capture_cli_logs.text
 
 
 def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
@@ -240,7 +293,7 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
         in capture_cli_logs.text
     )
     assert (
-        f"Loading 1 new files that are not in the datastore: {Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
+        f"Loading 1 new files that are not in the datastore:\n{Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
         in capture_cli_logs.text
     )
 

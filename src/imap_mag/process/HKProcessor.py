@@ -73,7 +73,10 @@ class HKProcessor(FileProcessor):
         apids_by_day: dict[int, set[date]] = dict()
 
         for file in files:
-            apids_by_day.update(BinaryHelper.get_apids_and_days(file))
+            file_apids: dict[int, set[date]] = BinaryHelper.get_apids_and_days(file)
+
+            for apid, days in file_apids.items():
+                apids_by_day.setdefault(apid, set()).update(days)
 
         logger.info(
             f"Found {len(apids_by_day)} ApIDs in {len(files)} files:\n{', '.join(str(apid) for apid in apids_by_day.keys())}"
@@ -105,7 +108,7 @@ class HKProcessor(FileProcessor):
             file for file in files if datastore_path not in file.absolute().as_posix()
         ]
         logger.info(
-            f"Loading {len(new_files)} new files that are not in the datastore: {', '.join(str(file) for file in new_files)}"
+            f"Loading {len(new_files)} new files that are not in the datastore:\n{', '.join(str(file) for file in new_files)}"
         )
 
         new_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(new_files)
