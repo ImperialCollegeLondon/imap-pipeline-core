@@ -44,6 +44,13 @@ class HKProcessor(FileProcessor):
             "default": Path("tlm.xml"),
         }
 
+        paths_to_try_string: str = "\n".join(
+            [f"{source}: {path}" for source, path in paths_to_try.items()]
+        )
+        logger.debug(
+            f"Trying XTCE packet definition file from these paths in turn:\n{paths_to_try_string}"
+        )
+
         for source, path in paths_to_try.items():
             if path and path.exists():
                 logger.debug(
