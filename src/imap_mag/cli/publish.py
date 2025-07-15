@@ -54,14 +54,13 @@ def publish(
     input_manager = InputManager(app_settings.data_store)
 
     for file in files:
-        path_handler = FilePathHandlerSelector.find_by_path(file)
-        assert path_handler is not None
+        path_handler = FilePathHandlerSelector.find_by_path(
+            file, throw_if_none_found=True
+        )
 
         resolved_file = input_manager.get_versioned_file(
-            path_handler, latest_version=False
+            path_handler, latest_version=False, throw_if_none_found=True
         )
-        assert resolved_file is not None
-
         resolved_files.append(resolved_file)
 
     logger.info(

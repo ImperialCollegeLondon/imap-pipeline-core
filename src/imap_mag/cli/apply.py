@@ -44,12 +44,15 @@ def prepare_layers_for_application(layers, appSettings):
                 f"Could not parse metadata from calibration layer: {layer}"
             )
         versioned_cal_file = inputManager.get_versioned_file(
-            path_handler=cal_layer_handler, latest_version=False
+            path_handler=cal_layer_handler,
+            latest_version=False,
+            throw_if_none_found=True,
         )
-        assert versioned_cal_file is not None
 
         workLayers.append(
-            fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
+            fetch_file_for_work(
+                versioned_cal_file, appSettings.work_folder, throw_if_not_found=True
+            )
         )
     return workLayers
 
@@ -65,10 +68,13 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
         versioned_rotation_file = inputManager.get_versioned_file(
-            path_handler=rotation_handler, latest_version=False
+            path_handler=rotation_handler,
+            latest_version=False,
+            throw_if_none_found=True,
         )
-        assert versioned_rotation_file is not None
-        return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
+        return fetch_file_for_work(
+            versioned_rotation_file, appSettings.work_folder, throw_if_not_found=True
+        )
     return None
 
 
@@ -111,9 +117,10 @@ def apply(
 
     input_manager = InputManager(app_settings.data_store)
     versioned_file = input_manager.get_versioned_file(
-        path_handler=original_input_handler, latest_version=False
+        path_handler=original_input_handler,
+        latest_version=False,
+        throw_if_none_found=True,
     )
-    assert versioned_file is not None
 
     workDataFile: Path = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
