@@ -32,7 +32,7 @@ def test_app_says_hello():
             DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
         (
-            "imap_mag_l0_hsk-pw_20250214_001.pkts",
+            "imap_mag_l0_hsk-pw_20250502_001.pkts",
             DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
     ],
@@ -61,7 +61,7 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
     # Verify.
     try:
         assert result.exit_code == 0
-        assert Path(output_file).exists()
+        assert output_file.exists()
 
         with open(output_file) as f:
             lines = f.readlines()
@@ -88,12 +88,12 @@ def test_process_error_with_unsupported_file_type():
 
     assert result.exception is not None
     assert (
-        f"File {Path('.work/imap_mag_l1a_norm-mago_20250502_v001.cdf')} is not supported and cannot be processed."
+        f"File {DATASTORE / 'science/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v001.cdf'} is not supported and cannot be processed."
         in result.exception.args[0]
     )
 
     assert not Path(
-        "output/imap/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v001.cdf"
+        "output/science/mag/l1a/2025/05/imap_mag_l1a_norm-mago_20250502_v001.cdf"
     ).exists()
 
 
