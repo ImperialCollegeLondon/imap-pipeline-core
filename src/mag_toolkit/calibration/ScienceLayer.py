@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from spacepy import pycdf
 
@@ -114,6 +115,12 @@ class ScienceLayer(Layer):
             science_file=str(path),
             values=values,
         )
+
+    def calculate_magnitudes(self):
+        for i, datapoint in enumerate(self.values):
+            magnitude = np.linalg.norm(datapoint.value)
+            self.values[i].magnitude = float(magnitude)
+        return self
 
     @classmethod
     def _from_cdf(cls, path: Path):

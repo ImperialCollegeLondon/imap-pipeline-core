@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Iterable
 from datetime import datetime, timedelta
-from functools import reduce
 from pathlib import Path
 
 import numpy as np
@@ -141,19 +140,6 @@ class CalibrationApplicator:
 
         return offsets_layer
 
-    def _add_layers(self, layer_files: list[Path]):
-        # Could be memory intensive
-        # TODO: Load and sum one set at a time to reduce mem usage (?)
-        layers = [CalibrationLayer.from_file(layer_file) for layer_file in layer_files]
-        sum_layer_values = reduce(self._sum_layers, [layer.values for layer in layers])
-        return sum_layer_values
-
-    def _calculate_magnitudes(self, science_layer: ScienceLayer):
-        for i, datapoint in enumerate(science_layer.values):
-            magnitude = np.linalg.norm(datapoint.value)
-            science_layer.values[i].magnitude = float(magnitude)
-        return science_layer
-
     def _rotate(self, rotation_filepath: Path, science_layer: ScienceLayer):
         with pycdf.CDF(str(rotation_filepath)) as cdf:
             rotation_matrices_mago = np.array(cdf["URFTOORFO"][...])
@@ -190,7 +176,7 @@ class CalibrationApplicator:
             value_type=ValueType.VECTOR,
             values=values,
         )
-        science_layer = self._calculate_magnitudes(science_layer)
+        science_layer = science_layer.calculate_magnitudes()
         return science_layer
 
     def _apply_layer_to_science_values(
@@ -330,10 +316,10 @@ class CalibrationApplicator:
 
         return values
 
-    def check_validity(self, data, calibrationCollection):
+    def check_validity(self, data: ScienceLayer, calibration_layer: CalibrationLayer):
         # check for time validity
-        if data.epoch[0] < np.datetime64(
-            calibrationCollection.valid_start
-        ) or data.epoch[1] > np.datetime64(calibrationCollection.valid_end):
+        if data.values[0].time < np.datetime64(
+            calibration_layer.validity.start
+        ) or data.values[-1].time > np.datetime64(calibration_layer.validity.end):
             logger.debug("Data outside of calibration validity range")
             raise CalibrationValidityError("Data outside of calibration validity range")
