@@ -1,4 +1,4 @@
 epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,hk_strucid,magmode,prisensor,fobclksrc,fibclksrc,fobstat,fibstat,icufobar,icufibar,edacstat,fobar,fibar,spare1,cpuidle,fill,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len
 799421471184000000,483845407,0,1,0,3,25,4,Standby,OBSensor,External,External,Inactive,Inactive,Disabled,Disabled,Enabled,Disabled,Disabled,0,91,0,0,0,1,1064,3,0,11
 799437851184000000,483861787,0,1,0,3,25,4,Normal,OBSensor,ICU,External,Active,Active,Enabled,Enabled,Enabled,Enabled,Enabled,0,67,0,0,0,1,1064,3,489,11
-2882
+761

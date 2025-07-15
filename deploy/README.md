@@ -6,6 +6,6 @@ Example matlab with docker can be built with:
 
 and run with
 
-`docker run -v $(pwd)/tests/data/2025:/data -e MLM_LICENSE_FILE={MLM_LICENSE_FILE} testing`
+`docker run -v $(pwd)/tests/test_data:/data -e MLM_LICENSE_FILE={MLM_LICENSE_FILE} testing`
 
-to create a CDF in tests/data/2025
+to create a CDF in `tests/test_data`

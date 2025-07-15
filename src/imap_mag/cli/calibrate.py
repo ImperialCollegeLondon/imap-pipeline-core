@@ -75,23 +75,13 @@ def calibrate(
     )
 
     input_manager = InputManager(app_settings.data_store)
-    input_file = input_manager.get_versioned_file(path_handler)
+    input_file: Path = input_manager.get_versioned_file(
+        path_handler, throw_if_not_found=True
+    )
 
-    if not input_file:
-        logging.critical(
-            "Unable to find a file to process matching %s",
-            path_handler.get_filename(),
-        )
-        raise FileNotFoundError(
-            f"Unable to find a file to process matching {path_handler.get_filename()}"
-        )
-
-    workFile = fetch_file_for_work(
+    workFile: Path = fetch_file_for_work(
         input_file, app_settings.work_folder, throw_if_not_found=True
     )
-    if not workFile:
-        logging.error("Unable to fetch file for work: %s", input_file)
-        raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerHandler = CalibrationLayerPathHandler(

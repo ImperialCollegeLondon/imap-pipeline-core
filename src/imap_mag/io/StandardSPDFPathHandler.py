@@ -30,14 +30,13 @@ class StandardSPDFPathHandler(IFilePathHandler):
             not self.descriptor
             or not self.level
             or not self.content_date
-            or self.version is None  # "not 0" in Python is "True"
             or not self.extension
         ):
             logger.error(
-                "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
             )
             raise ValueError(
-                "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
             )
 
         return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"

@@ -16,7 +16,7 @@ BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
-DATASTORE = Path("tests/data")
+DATASTORE = Path("tests/datastore")
 
 
 @pytest.fixture(autouse=False)

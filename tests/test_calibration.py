@@ -16,6 +16,7 @@ from mag_toolkit.calibration import CalibrationMethod, Sensor
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 
 from .util.miscellaneous import (  # noqa: F401
+    DATASTORE,
     create_test_file,
     tidyDataFolders,
 )
@@ -31,10 +32,10 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
         dest_filepath = (
             Path("output") / sub_folders / str(year) / str(month) / dest_filename
         )
-        original_filepath = f"tests/data/{sub_folders}/{year}/{month}/{test_file}"
+        original_filepath = DATASTORE / f"{sub_folders}/{year}/{month}/{test_file}"
     else:
         dest_filepath = Path("output") / sub_folders / dest_filename
-        original_filepath = Path("tests/data/") / sub_folders / test_file
+        original_filepath = DATASTORE / sub_folders / test_file
     os.makedirs(dest_filepath.parent, exist_ok=True)
     shutil.copy(
         original_filepath,
