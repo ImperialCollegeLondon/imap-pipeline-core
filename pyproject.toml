@@ -13,6 +13,7 @@ packages = [
     { include = "imap_mag", from = "src" },
     { include = "imap_db", from = "src" },
     { include = "mag_toolkit", from = "src" },
+    { include = "calibration_generation", from = "utils" }
 ]
 
 [tool.poetry.dependencies]
@@ -36,6 +37,7 @@ prefect = {extras = ["shell"], version = "^3.1.7"}
 prefect-docker = "^0.6.1"
 spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
+sammi-cdf = "^1.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.1"

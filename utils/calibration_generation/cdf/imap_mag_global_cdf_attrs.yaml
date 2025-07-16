@@ -1,0 +1,56 @@
+default: &default
+  Descriptor:
+    MAG>Magnetometer
+  TEXT: >
+    The IMAP magnetometer MAG consists of two vector magnetic field sensors
+    which measure the magnetic field in the vicinity of the
+    spacecraft. MAG will contribute to our understanding of the acceleration and transport
+    of charged particles in the heliosphere, the dynamics of interplanetary shocks, and provide
+    real time space weather measurements via the I-AliRT service.
+    MAG design, assembly, operations, and calibration are led by Imperial
+    College London. See
+    https://imap.princeton.edu/spacecraft/instruments/magnetometer-mag for more details.
+  Instrument_type: Magnetic Fields (space)
+
+imap_mag_l1d-calibration:
+    <<: *default
+    Data_type: L1d-Calibration>L1d Calibration Data
+    Logical_source: imap_mag_l1d-calibration
+    Logical_source_description: IMAP Mission MAG L1d Calibration Data
+    TEXT: >
+      The IMAP magnetometer requires dynamic calibration to remove the magnetic
+      field of the spacecraft. The calibration matrices should be applied based
+      on sensor and range and the offsets added based on sensor and range.
+      The gradiometer factor should be used to calculate time varying offsets via gradiometry
+      during the calibration process, and the spin averaging factors should be used
+      to calculate time varying offsets.
+
+imap_mag_ialirt-calibration:
+    <<: *default
+    Data_type: IALiRT-Calibration>IALiRT Calibration Data
+    Logical_source: imap_mag_ialirt-calibration
+    Logical_source_description: IMAP Mission MAG I-ALiRT Calibration Data
+    TEXT: >
+      The IMAP magnetometer sends an I-ALiRT vector every four seconds.
+      The IMAP magnetometer requires dynamic calibration to remove the magnetic
+      field of the spacecraft. The calibration matrices should be applied based
+      on sensor and range and the offsets added based on sensor and range.
+      The gradiometer factor should be used to calculate dynamic offsets via gradiometry
+      during the calibration process.
+
+imap_mag_l2-calibration:
+    <<: *default
+    Data_type: L2-Calibration>L2 Calibration Data
+    Logical_source: imap_mag_l2-calibration
+    Logical_source_description: IMAP Mission MAG L2 Calibration Data
+
+imap_mag_norm-offsets:
+    <<: *default
+    Data_type: norm-offsets>normal rate offsets
+    Logical_source: imap_mag_norm-offsets
+    Logical_source_description: IMAP Mission MAG Normal Rate Offsets.
+
+imap_mag_burst-offsets:
+    <<: *default
+    Data_type: burst-offsets>Burst rate offsets
+    Logical_source: imap_mag_burst-offsets Burst Rate Offsets.

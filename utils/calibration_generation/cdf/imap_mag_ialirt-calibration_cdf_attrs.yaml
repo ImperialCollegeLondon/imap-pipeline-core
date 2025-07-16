@@ -1,0 +1,44 @@
+axis:
+    UNITS: ""
+    VAR_TYPE: support_data
+
+sensor:
+    UNITS: ""
+    VAR_TYPE: support_data
+
+range:
+    UNITS: ""
+    VAR_TYPE: support_data
+
+valid_start_datetime:
+    CATDESC: The start time of the validity of this calibration File_naming_convention
+    VALIDMIN: -9223372036854775808
+    VALIDMAX: 9223372036854775807
+    UNITS: ns
+    VAR_TYPE: metadata
+
+gradiometer_factor:
+    CATDESC: The gradiometer factor to be used for calibration
+    VALIDMIN: -1
+    VALIDMAX: 1
+    VAR_TYPE: metadata
+
+offsets:
+    CATDESC: Offsets to be added to each sensor at each range. The offsets are in the orthogonal reference frame (ORF)
+    UNITS: nT
+    VAR_TYPE: data
+    DEPEND_0: sensor
+    DEPEND_1: range
+    DEPEND_2: axis
+
+URFTOORFO:
+    CATDESC: Frame transform from the unit reference frame (URF) to the orthogonal reference frame (ORF) for MAGo
+    UNITS: ""
+    DEPEND_0: range
+
+URFTOORFI:
+    CATDESC: Frame transform from the unit reference frame (URF) to the orthogonal reference frame (ORF) for MAGi
+    UNITS: ""
+    DEPEND_0: range
+
+
