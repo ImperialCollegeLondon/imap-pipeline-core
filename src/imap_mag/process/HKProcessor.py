@@ -152,9 +152,9 @@ class HKProcessor(FileProcessor):
                         value = value.raw_value
                     elif hasattr(value, "decode"):
                         value = int.from_bytes(value, byteorder="big")
-                    data_dict[apid][
-                        re.sub(r"^mag_hsk_[a-zA-Z0-9]+\.", "", key.lower())
-                    ].append(value)
+
+                    updated_key = re.sub(r"^mag_\w+?\.", "", key.lower())
+                    data_dict[apid][updated_key].append(value)
 
         # Convert data to xarray datasets.
         dataset_dict: dict[int, xr.Dataset] = {}
