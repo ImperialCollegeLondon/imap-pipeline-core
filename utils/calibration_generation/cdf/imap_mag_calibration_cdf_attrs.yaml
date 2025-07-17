@@ -1,12 +1,16 @@
 axis:
+    CATDESC: The axis of the magnetometer sensor
     UNITS: ""
     VAR_TYPE: support_data
 
 sensor:
+    CATDESC: The magnetometer sensor
+    VAR_NOTES: MAGo is the outboard sensor furthest along the boom, MAGi is the inboard sensor closest to the spacecraft
     UNITS: ""
     VAR_TYPE: support_data
 
 range:
+    CATDESC: The operating ranges of the magnetometer
     UNITS: ""
     VAR_TYPE: support_data
 
@@ -21,7 +25,27 @@ gradiometer_factor:
     CATDESC: The gradiometer factor to be used for calibration
     VALIDMIN: -1
     VALIDMAX: 1
-    VAR_TYPE: metadata
+    VAR_TYPE: data
+
+spin_average_application_factor:
+    CATDESC: The factor to be applied to the spin average of the magnetometer data
+    VALIDMIN: -1
+    VALIDMAX: 1
+    VAR_TYPE: data
+
+number_of_spins:
+    CATDESC: The number of spins used in the spin average
+    VALIDMIN: 1
+    VALIDMAX: 65535
+    UNITS: ""
+    VAR_TYPE: data
+
+quality_flag_threshold:
+    CATDESC: The gradiometer threshold for indicating through the quality flag that low quality data is present
+    VALIDMIN: 0
+    VALIDMAX: 65535
+    UNITS: nT
+    VAR_TYPE: data
 
 offsets:
     CATDESC: Offsets to be added to each sensor at each range. The offsets are in the orthogonal reference frame (ORF)

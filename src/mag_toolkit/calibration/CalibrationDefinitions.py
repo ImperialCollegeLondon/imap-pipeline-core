@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+import numpy as np
 from pydantic import BaseModel
 
 CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
@@ -37,7 +38,7 @@ class CalibrationMetadata(BaseModel):
 
 
 class Value(BaseModel, ABC):
-    time: datetime
+    time: np.datetime64
     value: list[float]
     magnitude: Optional[float] = None
 

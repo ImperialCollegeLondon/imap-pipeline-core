@@ -55,6 +55,7 @@ wiremock = {git = "https://github.com/ImperialCollegeLondon/python-wiremock.git"
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
 imap-mag = 'imap_mag.main:app'
 imap-db = 'imap_db.main:app'
+imap-calgen = 'calibration_generation.main:app'
 
 [tool.pytest.ini_options]
 pythonpath = [
