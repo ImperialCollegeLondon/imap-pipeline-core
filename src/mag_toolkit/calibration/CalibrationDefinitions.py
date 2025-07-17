@@ -1,11 +1,16 @@
 from abc import ABC
-from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+import numpy as np
 from pydantic import BaseModel
 
 CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
+
+
+class ArbitraryTypesAllowedBaseModel(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class CalibrationMethod(str, Enum):
@@ -29,15 +34,16 @@ class Mission(str, Enum):
     IMAP = "IMAP"
 
 
-class CalibrationMetadata(BaseModel):
+class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     dependencies: list[str]
     science: list[str]
-    creation_timestamp: datetime
+    creation_timestamp: np.datetime64
     comment: Optional[str] = None
 
 
-class Value(BaseModel, ABC):
-    time: datetime
+class Value(ArbitraryTypesAllowedBaseModel, ABC):
+    raw_time: int
+    time: np.datetime64
     value: list[float]
     magnitude: Optional[float] = None
 
@@ -54,6 +60,6 @@ class ScienceValue(Value):
     quality_bitmask: Optional[int] = 0
 
 
-class Validity(BaseModel):
-    start: datetime
-    end: datetime
+class Validity(ArbitraryTypesAllowedBaseModel):
+    start: np.datetime64
+    end: np.datetime64

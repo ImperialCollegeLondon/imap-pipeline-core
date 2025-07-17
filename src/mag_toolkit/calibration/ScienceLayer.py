@@ -1,7 +1,9 @@
-from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from cdflib import cdfepoch
+from cdflib.xarray import cdf_to_xarray
 from spacepy import pycdf
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -87,7 +89,7 @@ class ScienceLayer(Layer):
         if df.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
 
-        epoch = df["t"].to_numpy()
+        epoch = df["t"].to_numpy(dtype=np.datetime64)
         x = df["x"].to_numpy()
         y = df["y"].to_numpy()
         z = df["z"].to_numpy()
@@ -95,7 +97,12 @@ class ScienceLayer(Layer):
         validity = Validity(start=epoch[0], end=epoch[-1])
 
         values = [
-            ScienceValue(time=epoch_val, value=[x_val, y_val, z_val], range=range_val)
+            ScienceValue(
+                raw_time=cdfepoch.compute_tt2000(epoch_val),  # type: ignore
+                time=epoch_val,
+                value=[x_val, y_val, z_val],
+                range=range_val,
+            )
             for epoch_val, x_val, y_val, z_val, range_val in zip(epoch, x, y, z, range)
         ]
 
@@ -108,7 +115,7 @@ class ScienceLayer(Layer):
             metadata=CalibrationMetadata(
                 dependencies=[],
                 science=[],
-                creation_timestamp=datetime.now(),
+                creation_timestamp=np.datetime64("now"),
             ),
             value_type=ValueType.VECTOR,
             science_file=str(path),
@@ -117,34 +124,42 @@ class ScienceLayer(Layer):
 
     @classmethod
     def _from_cdf(cls, path: Path):
-        cdf_loaded = pycdf.CDF(str(path))
+        dataset = cdf_to_xarray(str(path), to_datetime=False)
 
-        data = cdf_loaded["vectors"][...]
-        epoch = cdf_loaded["epoch"][...]
+        # cdf_loaded = pycdf.CDF(str(path))
+
+        data = dataset["vectors"].values
+        raw_epoch = dataset["epoch"].values
+        epoch = cdfepoch.to_datetime(raw_epoch)
 
         if data is None or epoch is None:
             raise ValueError("CDF does not contain valid data")
 
         validity = Validity(start=epoch[0], end=epoch[-1])
 
-        sensor = Sensor.MAGO if cdf_loaded.attrs["is_mago"] else Sensor.MAGI
+        sensor = Sensor.MAGO if dataset.attrs["is_mago"][0] == "True" else Sensor.MAGI
 
-        version = int(cdf_loaded.attrs["Data_version"][0][1:])
+        version = int(dataset.attrs["Data_version"][0][1:])
 
         metadata = CalibrationMetadata(
             dependencies=[],
             science=[],
-            creation_timestamp=datetime.now(),
+            creation_timestamp=np.datetime64("now"),
         )
 
         values = [
-            ScienceValue(time=epoch_val, value=datapoint[0:3], range=datapoint[3])
-            for epoch_val, datapoint in zip(epoch, data)
+            ScienceValue(
+                raw_time=raw_epoch_val,
+                time=epoch_val,
+                value=datapoint[0:3],
+                range=datapoint[3],
+            )
+            for raw_epoch_val, epoch_val, datapoint in zip(raw_epoch, epoch, data)
         ]
 
         return ScienceLayer(
-            id=cdf_loaded.attrs["Logical_file_id"][0],
-            mission=cdf_loaded.attrs["Mission_group"][0],
+            id=dataset.attrs["Logical_file_id"][0],
+            mission=dataset.attrs["Mission_group"][0],
             validity=validity,
             sensor=sensor,
             version=version,
