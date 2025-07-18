@@ -91,7 +91,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
-      - name: build
+      - name: build --skip-tests
         run: ./build.sh
 
       - name: Build wheels and source tarball
@@ -152,30 +152,6 @@ jobs:
           name: ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
           path: dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
           if-no-files-found: error
-
-      - name: Upload Coverage report
-        uses: actions/upload-artifact@v4
-        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
-        with:
-          name: CoverageReport_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
-          path: htmlcov
-          if-no-files-found: error
-
-      - name: Test Report
-        uses: dorny/test-reporter@v2
-        if: success() || failure()
-        with:
-          name: Test Results (${{ matrix.python-versions }})
-          path: "test-results.xml"
-          reporter: java-junit
-
-      - name: Coverage Report
-        uses: 5monkeys/cobertura-action@v14
-        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
-        with:
-          report_name: Coverage Report (${{ matrix.python-versions }})
-          path: "coverage.xml"
-          minimum_coverage: 80
 
       - name: Create Release ${{github.ref_name}} & upload artifacts
         uses: softprops/action-gh-release@v2
@@ -253,15 +229,6 @@ jobs:
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2
 
-      - name: Checking for matlab again
-        run: which matlab
-
-      - name: Checking for matlab-batch
-        run: which matlab-batch
-
-      - name: Checking for matlab bits in python
-        run: python check_for_matlab_bits.py
-
       - name: build
         run: ./build.sh
 
@@ -312,6 +279,30 @@ jobs:
             ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
           cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
+
+      - name: Upload Coverage report
+        uses: actions/upload-artifact@v4
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          name: CoverageReport_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
+          path: htmlcov
+          if-no-files-found: error
+
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if: success() || failure()
+        with:
+          name: Test Results (${{ matrix.python-versions }})
+          path: "test-results.xml"
+          reporter: java-junit
+
+      - name: Coverage Report
+        uses: 5monkeys/cobertura-action@v14
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          report_name: Coverage Report (${{ matrix.python-versions }})
+          path: "coverage.xml"
+          minimum_coverage: 80
 
   test_on_windows:
     strategy:
