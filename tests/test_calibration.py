@@ -278,19 +278,26 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
 @pytest.fixture()
 def matlab_test_setup():
     # Code that will run before your test, for example:
-    setup_matlab_path("src/matlab", "matlab")
+    setup_matlab_path("src/matlab", "matlab-batch")
     # A test function will be run at this point
     yield
 
 
+def test_matlab_command():
+    return "matlab-batch"
+
+
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab") is None,
+    or which("matlab-batch") is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path
+    matlab_test_setup, tmp_path, monkeypatch
 ):
+    monkeypatch.setattr(
+        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command", test_matlab_command
+    )
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -336,12 +343,15 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab") is None,
+    or which("matlab-batch") is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup, tmp_path
+    matlab_test_setup, tmp_path, monkeypatch
 ):
+    monkeypatch.setattr(
+        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command", test_matlab_command
+    )
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20260930_v001.cdf",
         "science/mag/l1c",

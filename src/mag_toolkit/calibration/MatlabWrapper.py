@@ -15,8 +15,12 @@ def setup_matlab_path(path, matlab_command):
         logger.info(line)
 
 
+def get_matlab_command():
+    return "matlab"
+
+
 def call_matlab(command, first_call=True):
-    MATLAB_COMMAND = "matlab"
+    MATLAB_COMMAND = get_matlab_command()
     if first_call:
         default_matlab_path = "/home/matlab/Documents/MATLAB"
         local_matlab_path = "src/matlab"
