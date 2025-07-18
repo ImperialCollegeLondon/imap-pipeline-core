@@ -262,7 +262,7 @@ jobs:
         run: python check_for_matlab_bits.py
 
       - name: build
-        run: ./build.sh --skip-tests
+        run: ./build.sh
 
       - name: Build wheels and source tarball
         run: ./pack.sh
