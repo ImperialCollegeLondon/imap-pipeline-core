@@ -1,12 +1,12 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, TypeVar
+from typing import Annotated
 
 import typer
 
 from imap_mag.cli import apply
-from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
 from imap_mag.io import (
@@ -16,10 +16,10 @@ from imap_mag.io import (
 )
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
+    CalibrationJobParameters,
     CalibrationMethod,
-    Calibrator,
-    EmptyCalibrator,
-    GradiometerCalibrator,
+    EmptyCalibrationJob,
+    GradiometerCalibrationJob,
     Sensor,
 )
 
@@ -28,41 +28,6 @@ app = typer.Typer()
 logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
-
-C = TypeVar("C", bound=Calibrator)
-
-
-def generic_calibration_setup(app_settings: AppSettings, calibrator: C) -> C:
-    """
-    Generic calibration setup function.
-    This is a placeholder for any common setup logic needed for calibration commands.
-    """
-
-    input_manager = InputManager(app_settings.data_store)
-
-    path_handlers = calibrator.get_handlers_of_files_needed_for_calibration()
-
-    for key in path_handlers:
-        path_handler = path_handlers[key]
-        input_file = input_manager.get_versioned_file(path_handler)
-        if not input_file:
-            logger.critical(
-                "Unable to find a science file to process matching %s",
-                path_handler.get_filename(),
-                " required for calibration",
-            )
-            raise FileNotFoundError(
-                f"Unable to find a file to process matching {path_handler.get_filename()}"
-            )
-        work_file = fetch_file_for_work(
-            input_file, app_settings.work_folder, throw_if_not_found=True
-        )
-        calibrator.set_file(key, work_file)
-
-    if calibrator.needs_data_store():
-        calibrator.setup_datastore(app_settings.data_store)
-
-    return calibrator
 
 
 def gradiometry(
@@ -82,25 +47,33 @@ def gradiometry(
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
     initialiseLoggingForCommand(work_folder)
+
+    input_manager = InputManager(app_settings.data_store)
+
     method = CalibrationMethod.GRADIOMETER
-    calibrator = GradiometerCalibrator(date, mode, Sensor.MAGO)
-
-    calibrator = generic_calibration_setup(app_settings, calibrator)
-
-    calibrator.configuration = GradiometryConfig(
-        kappa=kappa, sc_interference_threshold=sc_interference_threshold
+    calibration_job_parameters = CalibrationJobParameters(
+        date=date, mode=mode, sensor=Sensor.MAGO
     )
+    calibration_configuration = CalibrationConfig(
+        gradiometer=GradiometryConfig(
+            kappa=kappa, sc_interference_threshold=sc_interference_threshold
+        )
+    )
+    calibrator = GradiometerCalibrationJob(calibration_job_parameters)
+    calibrator.setup_calibration_files(input_manager, work_folder)
+    calibrator.setup_datastore(app_settings.data_store)
 
-    calibrationLayerHandler = CalibrationLayerPathHandler(
-        calibration_descriptor=method.value, content_date=date
+    calibration_layer_handler = CalibrationLayerPathHandler(
+        calibration_descriptor=method.short_name, content_date=date
     )
     result: Path = calibrator.run_calibration(
-        work_folder / Path(calibrationLayerHandler.get_filename())
+        work_folder / Path(calibration_layer_handler.get_filename()),
+        calibration_configuration,
     )
 
     outputManager = OutputManager(app_settings.data_store)
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibrationLayerHandler
+        result, path_handler=calibration_layer_handler
     )  # type: ignore
 
     return output_calibration_path
@@ -146,29 +119,35 @@ def calibrate(
     else:
         calibration_configuration = CalibrationConfig.model_validate_json(configuration)
 
+    calibration_job_parameters = CalibrationJobParameters(
+        date=date, mode=mode, sensor=sensor
+    )
+
     match method:
         case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrator(date, mode, sensor)
+            calibrator = EmptyCalibrationJob(calibration_job_parameters)
         case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrator(
-                date, mode, sensor, calibration_configuration.gradiometer
-            )
+            calibrator = GradiometerCalibrationJob(calibration_job_parameters)
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator = generic_calibration_setup(app_settings, calibrator)
+    calibrator.setup_calibration_files(
+        InputManager(app_settings.data_store), work_folder
+    )
+    calibrator.setup_datastore(app_settings.data_store)
 
-    calibrationLayerHandler = CalibrationLayerPathHandler(
+    calibration_layer_handler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
     #
     result: Path = calibrator.run_calibration(
-        work_folder / Path(calibrationLayerHandler.get_filename())
+        work_folder / Path(calibration_layer_handler.get_filename()),
+        calibration_configuration,
     )
 
     outputManager = OutputManager(app_settings.data_store)
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibrationLayerHandler
+        result, path_handler=calibration_layer_handler
     )  # type: ignore
 
     return output_calibration_path

@@ -2,39 +2,33 @@ import logging
 
 import pytz
 
-from imap_mag.config.CalibrationConfig import GradiometryConfig
+from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io import SciencePathHandler
 from imap_mag.util import Level, ScienceMode
+from mag_toolkit.calibration import CalibrationJobParameters
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
-from .Calibrator import Calibrator
+from .CalibrationJob import CalibrationJob
 
 logger = logging.getLogger(__name__)
 
 
-class GradiometerCalibrator(Calibrator):
+class GradiometerCalibrationJob(CalibrationJob):
     mago_key = "mago_science_file"
     magi_key = "magi_science_file"
 
-    configuration = GradiometryConfig()
-
-    def __init__(
-        self, date, mode, sensor, configuration: GradiometryConfig | None = None
-    ):
-        super().__init__()
-        self.date = date
-        self.mode = mode
-        self.sensor = sensor
+    def __init__(self, calibration_job_parameters: CalibrationJobParameters):
+        super().__init__(calibration_job_parameters)
         self.name = CalibrationMethod.GRADIOMETER
 
         self.required_files[self.mago_key] = None
         self.required_files[self.magi_key] = None
 
-        if configuration:
-            self.configuration = configuration
+    def _get_path_handlers(self, calibration_job_parameters: CalibrationJobParameters):
+        mode = calibration_job_parameters.mode
+        date = calibration_job_parameters.date
 
-    def _get_path_handlers(self, date, mode, sensor):
         path_handlers = {}
         level = (
             Level.ScienceLevel.l1b
@@ -61,7 +55,7 @@ class GradiometerCalibrator(Calibrator):
 
         return path_handlers
 
-    def run_calibration(self, calfile, config=None):
+    def run_calibration(self, calfile, configuration: CalibrationConfig):
         """
         Run the gradiometry calibration.
         :param date: The date for which to run the calibration.
@@ -71,16 +65,20 @@ class GradiometerCalibrator(Calibrator):
         :param config: Optional configuration for the calibration.
         :return: The path to the created calibration file."""
 
-        dt_as_str = self.date.astimezone(pytz.utc).replace(tzinfo=None).isoformat()
+        dt_as_str = (
+            self.calibration_job_parameters.date.astimezone(pytz.utc)
+            .replace(tzinfo=None)
+            .isoformat()
+        )
 
         logger.info(f"Using datetime {dt_as_str}")
 
-        if not self._check_for_required_files():
+        if not self._check_environment_is_setup():
             raise FileNotFoundError(
-                "Required files for gradiometry calibration are missing."
+                "Environment has not been correctly set up for calibration."
             )
 
         call_matlab(
-            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{self.configuration.kappa!s}", "{self.configuration.sc_interference_threshold!s}")'
+            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{configuration.gradiometer.kappa!s}", "{configuration.gradiometer.sc_interference_threshold!s}")'
         )
         return calfile

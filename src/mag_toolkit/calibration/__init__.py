@@ -7,19 +7,21 @@ from .CalibrationDefinitions import (
     ScienceValue,
     Sensor,
 )
+from .CalibrationJobParameters import CalibrationJobParameters
 from .CalibrationLayer import CalibrationLayer
-from .calibrators import Calibrator, EmptyCalibrator, GradiometerCalibrator
+from .calibrators import CalibrationJob, EmptyCalibrationJob, GradiometerCalibrationJob
 from .ScienceLayer import ScienceLayer
 
 __all__ = [
     "CalibrationApplicator",
+    "CalibrationJob",
+    "CalibrationJobParameters",
     "CalibrationLayer",
     "CalibrationMetadata",
     "CalibrationMethod",
     "CalibrationValue",
-    "Calibrator",
-    "EmptyCalibrator",
-    "GradiometerCalibrator",
+    "EmptyCalibrationJob",
+    "GradiometerCalibrationJob",
     "Mission",
     "ScienceLayer",
     "ScienceValue",
