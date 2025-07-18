@@ -2,9 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from cdflib import cdfepoch
-from cdflib.xarray import cdf_to_xarray
-from spacepy import pycdf
+from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CDF_FLOAT_FILLVAL,
@@ -25,18 +25,45 @@ class ScienceLayer(Layer):
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
         L2_SKELETON_CDF = "resource/l2_dsrf_skeleton.cdf"
-        epoch = [science.time for science in self.values]
-        vecs = [science.value for science in self.values]
-        magnitude = [science.magnitude for science in self.values]
-        quality_flags = [science.quality_flag for science in self.values]
-        quality_bitmask = [science.quality_bitmask for science in self.values]
+        l2_skeleton = cdf_to_xarray(str(L2_SKELETON_CDF), to_datetime=False)
+        vectors_var = xr.Variable(
+            dims=["epoch", "axis"],
+            data=[science.value for science in self.values],
+            attrs=l2_skeleton["vectors"].attrs,
+        )
+        epoch_var = xr.Variable(
+            dims=["epoch"],
+            data=[science.time for science in self.values],
+            attrs=l2_skeleton["epoch"].attrs,
+        )
+        magnitude_var = xr.Variable(
+            dims=["epoch"],
+            data=[science.magnitude for science in self.values],
+            attrs=l2_skeleton["magnitude"].attrs,
+        )
+        qf_var = xr.Variable(  # noqa: F841
+            dims=["epoch"],
+            data=[science.quality_flag for science in self.values],
+            attrs=l2_skeleton["quality_flags"].attrs,
+        )
+        qb_var = xr.Variable(  # noqa: F841
+            dims=["epoch"],
+            data=[science.quality_bitmask for science in self.values],
+            attrs=l2_skeleton["quality_bitmask"].attrs,
+        )
+        direction_var = l2_skeleton["direction"]  # noqa: F841
+        direction_label = l2_skeleton["direction_label"]  # noqa: F841
+        l2_dataset = xr.Dataset(
+            data_vars={
+                "epoch": epoch_var,
+                "vectors": vectors_var,
+                "magnitude": magnitude_var,
+            },
+            attrs=l2_skeleton.attrs,
+        )
+        print(l2_dataset)
 
-        with pycdf.CDF(str(filepath), L2_SKELETON_CDF) as cdf:
-            cdf["epoch"] = epoch
-            cdf["vectors"][...] = vecs
-            cdf["magnitude"] = magnitude
-            cdf["quality_flags"] = quality_flags
-            cdf["quality_bitmask"] = quality_bitmask
+        xarray_to_cdf(l2_dataset, str(filepath))
         return filepath
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
@@ -98,7 +125,6 @@ class ScienceLayer(Layer):
 
         values = [
             ScienceValue(
-                raw_time=cdfepoch.compute_tt2000(epoch_val),  # type: ignore
                 time=epoch_val,
                 value=[x_val, y_val, z_val],
                 range=range_val,
@@ -149,7 +175,6 @@ class ScienceLayer(Layer):
 
         values = [
             ScienceValue(
-                raw_time=raw_epoch_val,
                 time=epoch_val,
                 value=datapoint[0:3],
                 range=datapoint[3],

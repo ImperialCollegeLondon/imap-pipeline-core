@@ -1,16 +1,16 @@
 from abc import ABC
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Optional
 
 import numpy as np
-from pydantic import BaseModel
+import pandas as pd
+from pydantic import BaseModel, BeforeValidator, ConfigDict
 
 CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
 
 
 class ArbitraryTypesAllowedBaseModel(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CalibrationMethod(str, Enum):
@@ -34,22 +34,31 @@ class Mission(str, Enum):
     IMAP = "IMAP"
 
 
+def convert_time(value: str) -> np.datetime64:
+    return np.datetime64(value)
+
+
+def convert_timedelta(value) -> np.timedelta64:
+    return pd.to_timedelta(str(value) + "s").to_numpy()
+
+
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     dependencies: list[str]
     science: list[str]
-    creation_timestamp: np.datetime64
+    creation_timestamp: Annotated[np.datetime64, BeforeValidator(convert_time)]
     comment: Optional[str] = None
 
 
 class Value(ArbitraryTypesAllowedBaseModel, ABC):
-    raw_time: int
-    time: np.datetime64
+    time: Annotated[np.datetime64, BeforeValidator(convert_time)]
     value: list[float]
     magnitude: Optional[float] = None
 
 
 class CalibrationValue(Value):
-    timedelta: float = 0
+    timedelta: Annotated[np.timedelta64, BeforeValidator(convert_timedelta)] = (
+        np.timedelta64(0)
+    )
     quality_flag: int = 0
     quality_bitmask: int = 0
 
@@ -61,5 +70,5 @@ class ScienceValue(Value):
 
 
 class Validity(ArbitraryTypesAllowedBaseModel):
-    start: np.datetime64
-    end: np.datetime64
+    start: Annotated[np.datetime64, BeforeValidator(convert_time)]
+    end: Annotated[np.datetime64, BeforeValidator(convert_time)]
