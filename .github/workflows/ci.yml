@@ -258,6 +258,9 @@ jobs:
       - name: Checking for matlab-batch
         run: which matlab-batch
 
+      - name: Checking for matlab bits in python
+        run: python check_for_matlab_bits.py
+
       - name: build
         run: ./build.sh --skip-tests
 
