@@ -253,7 +253,7 @@ jobs:
         uses: matlab-actions/setup-matlab@v2
 
       - name: Check for MATLAB existence
-        run: |
+        run: >-
             if ! command -v matlab >/dev/null 2>&1
             then
                 echo "matlab could not be found"
@@ -262,6 +262,9 @@ jobs:
             then
                 echo "matlab-batch could not be found"
             fi
+
+      - name: Checking for matlab again
+        run: which matlab
 
       - name: build
         run: ./build.sh --skip-tests
