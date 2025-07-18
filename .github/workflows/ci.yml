@@ -255,6 +255,9 @@ jobs:
       - name: Checking for matlab again
         run: which matlab
 
+      - name: Checking for matlab-batch
+        run: which matlab-batch
+
       - name: build
         run: ./build.sh --skip-tests
 
