@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -30,11 +30,11 @@ def fetch_binary(
         ),
     ] = False,
     apid: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--apid", help="ApID to download"),
     ] = None,
     packet: Annotated[
-        Optional[HKPacket],  # type: ignore
+        HKPacket | None,  # type: ignore
         typer.Option(
             "--packet", case_sensitive=False, help="Packet to download, e.g., SID1"
         ),

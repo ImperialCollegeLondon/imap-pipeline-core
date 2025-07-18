@@ -115,6 +115,10 @@ def apply(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
 
+    if not workDataFile:
+        logger.error(f"Could not fetch work file for input: {input}")
+        raise ValueError(f"Could not fetch work file for input: {input}")
+
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
@@ -146,15 +150,18 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    (L2_file, cal_file) = applier.apply(
-        workLayers, workRotationFile, workDataFile, workCalFile, workL2File
-    )
-
     outputManager = OutputManager(app_settings.data_store)
 
-    outputManager.add_file(L2_file, l2_path_handler)
-    outputManager.add_file(cal_file, cal_path_handler)
+    if layers:
+        (L2_file, cal_file) = applier.apply(
+            workLayers, workRotationFile, workDataFile, workCalFile, workL2File
+        )
 
-
-def publish():
-    pass
+        outputManager.add_file(L2_file, l2_path_handler)
+        outputManager.add_file(cal_file, cal_path_handler)
+    elif workRotationFile:
+        L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
+        outputManager.add_file(L2_file, l2_path_handler)
+    else:
+        logger.error("No calibration layers or rotation file provided.")
+        raise ValueError("No calibration layers or rotation file provided.")

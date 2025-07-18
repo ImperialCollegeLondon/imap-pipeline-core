@@ -14,6 +14,7 @@ from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
     calibrate_flow,
+    gradiometry_flow,
 )
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollScience import poll_science_flow
@@ -151,6 +152,15 @@ def deploy_flows(local_debug: bool = False):
         tags=[CONSTANTS.PREFECT_TAG],
     )
 
+    gradiometer_deployable = gradiometry_flow.to_deployment(
+        name="gradiometer",
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[CONSTANTS.PREFECT_TAG],
+    )
+
     apply_deployable = apply_flow.to_deployment(
         name="apply",
         job_variables=shared_job_variables,
@@ -171,6 +181,7 @@ def deploy_flows(local_debug: bool = False):
 
     matlab_deployables = (
         calibration_deployable,
+        gradiometer_deployable,
         apply_deployable,
         calibrate_and_apply_deployable,
     )
