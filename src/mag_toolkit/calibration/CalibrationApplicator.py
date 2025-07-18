@@ -316,7 +316,9 @@ class CalibrationApplicator:
 
         return values
 
-    def check_validity(self, data: ScienceLayer, calibration_layer: CalibrationLayer):
+    def check_science_in_valid_calibration_window(
+        self, data: ScienceLayer, calibration_layer: CalibrationLayer
+    ):
         # check for time validity
         if data.values[0].time < np.datetime64(
             calibration_layer.validity.start
