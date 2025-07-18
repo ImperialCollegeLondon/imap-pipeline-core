@@ -91,9 +91,6 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v2
-
       - name: build
         run: ./build.sh
 
@@ -251,6 +248,20 @@ jobs:
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
           ref: v0.1.0
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
+      - name: Check for MATLAB existence
+        run: |
+            if ! command -v matlab >/dev/null 2>&1
+            then
+                echo "matlab could not be found"
+            fi
+            if ! command -v matlab-batch >/dev/null 2>&1
+            then
+                echo "matlab-batch could not be found"
+            fi
 
       - name: build
         run: ./build.sh --skip-tests
