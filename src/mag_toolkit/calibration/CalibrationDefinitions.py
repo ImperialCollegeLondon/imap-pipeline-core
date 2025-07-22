@@ -1,7 +1,6 @@
 from abc import ABC
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -33,13 +32,13 @@ class CalibrationMetadata(BaseModel):
     dependencies: list[str]
     science: list[str]
     creation_timestamp: datetime
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class Value(BaseModel, ABC):
     time: datetime
     value: list[float]
-    magnitude: Optional[float] = None
+    magnitude: float | None = None
 
 
 class CalibrationValue(Value):
@@ -50,8 +49,8 @@ class CalibrationValue(Value):
 
 class ScienceValue(Value):
     range: int
-    quality_flag: Optional[int] = 0
-    quality_bitmask: Optional[int] = 0
+    quality_flag: int | None = 0
+    quality_bitmask: int | None = 0
 
 
 class Validity(BaseModel):
