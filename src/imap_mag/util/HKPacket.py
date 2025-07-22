@@ -1,6 +1,8 @@
 import logging
 from enum import Enum
 
+from imap_mag.util import CONSTANTS
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,5 +84,13 @@ class HKPacket(Enum):
             if e.apid == apid:
                 return e
 
-        logger.critical(f"ApID {apid} does not match any known packet.")
-        raise ValueError(f"ApID {apid} does not match any known packet.")
+        if apid < CONSTANTS.MAG_APID_RANGE[0] or apid > CONSTANTS.MAG_APID_RANGE[1]:
+            logger.critical(
+                f"APID {apid} is out of range for MAG HK packets (992-1119)."
+            )
+            raise ValueError(
+                f"APID {apid} is out of range for MAG HK packets (992-1119)."
+            )
+        else:
+            logger.critical(f"ApID {apid} does not match any known MAG HK packet.")
+            raise ValueError(f"ApID {apid} does not match any known MAG HK packet.")
