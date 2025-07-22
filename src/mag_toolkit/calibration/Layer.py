@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic import BaseModel
@@ -20,7 +19,7 @@ class Layer(BaseModel, ABC):
     sensor: Sensor
     version: int
     metadata: CalibrationMetadata
-    rotation: Optional[list[list[list[float]]]] = None
+    rotation: list[list[list[float]]] | None = None
 
     @classmethod
     def from_file(cls, path: Path):
