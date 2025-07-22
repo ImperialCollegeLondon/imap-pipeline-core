@@ -51,14 +51,19 @@ def process(
     for file in files:
         # If the file is not a relative/absolute path, try to find it in the datastore.
         if not file.exists():
-            metadata_provider: IFilePathHandler | None = (
+            path_handler: IFilePathHandler | None = (
                 FilePathHandlerSelector.find_by_path(file, throw_if_not_found=False)
             )
 
-            if metadata_provider is not None:
-                file = input_manager.get_versioned_file(
-                    metadata_provider, latest_version=False, throw_if_not_found=True
+            if path_handler is None:
+                logger.error(
+                    f"File {file} not found in the datastore or by relative/absolute path."
                 )
+                continue
+
+            file = input_manager.get_versioned_file(
+                path_handler, latest_version=False, throw_if_not_found=True
+            )
 
         work_files.append(file)
 

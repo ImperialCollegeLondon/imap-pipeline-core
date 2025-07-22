@@ -13,7 +13,13 @@ from space_packet_parser import definitions
 
 from imap_mag.io import HKPathHandler, IFilePathHandler, InputManager
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.util import BinaryHelper, HKLevel, HKPacket, TimeConversion
+from imap_mag.util import (
+    CONSTANTS,
+    CCSDSBinaryPacketFile,
+    HKLevel,
+    HKPacket,
+    TimeConversion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +51,7 @@ class HKProcessor(FileProcessor):
         }
 
         paths_to_try_string: str = "\n".join(
-            [f"{source}: {path}" for source, path in paths_to_try.items()]
+            [f"    {source}: {path}" for source, path in paths_to_try.items()]
         )
         logger.debug(
             f"Trying XTCE packet definition file from these paths in turn:\n{paths_to_try_string}"
@@ -70,56 +76,27 @@ class HKProcessor(FileProcessor):
             files = [files]
 
         # Load binary files and extract dates.
-        apids_by_day: dict[int, set[date]] = dict()
-
-        for file in files:
-            file_apids: dict[int, set[date]] = BinaryHelper.get_apids_and_days(file)
-
-            for apid, days in file_apids.items():
-                apids_by_day.setdefault(apid, set()).update(days)
-
+        days_by_apid: dict[int, set[date]] = CCSDSBinaryPacketFile.combine_days_by_apid(
+            files
+        )
         logger.info(
-            f"Found {len(apids_by_day)} ApIDs in {len(files)} files:\n{', '.join(str(apid) for apid in apids_by_day.keys())}"
+            f"Found {len(days_by_apid)} ApIDs in {len(files)} files:\n{', '.join(str(apid) for apid in days_by_apid.keys())}"
         )
 
         # Load data for each ApID.
-        results: dict[int, pd.DataFrame] = dict()
-
-        for apid, days in apids_by_day.items():
-            hk_packet: str = HKPacket.from_apid(apid).packet
-            logger.info(
-                f"Processing ApID {apid} ({hk_packet}) for days:\n{', '.join(d.strftime('%Y-%m-%d') for d in sorted(days))}"
-            )
-            results.setdefault(apid, pd.DataFrame())
-
-            for day in days:
-                existing_data: pd.DataFrame | None = self.__load_datastore_data(
-                    apid, hk_packet, day
-                )
-                if existing_data is not None:
-                    results[apid] = add_or_concat_dataframe(
-                        results, apid, existing_data
-                    )
+        datastore_data, datastore_files = self.__load_datastore_data(days_by_apid)
 
         # If original files are not in the datastore, load them.
-        # This data is loaded last, such that it overrides existing data with same SHCOARSE.
-        datastore_path = self.__input_manager.location.absolute().as_posix()
-        new_files: list[Path] = [
-            file for file in files if datastore_path not in file.absolute().as_posix()
-        ]
-        logger.info(
-            f"Loading {len(new_files)} new files that are not in the datastore:\n{', '.join(str(file) for file in new_files)}"
+        # This data is loaded last, such that it overrides existing data with same APID-SHCOARSE-SEQCNT
+        # triplet, in case any new data is received.
+        datastore_data: dict[int, pd.DataFrame] = self.__load_input_files(
+            files, datastore_files, datastore_data
         )
-
-        new_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(new_files)
-
-        for apid, df in new_data.items():
-            results[apid] = add_or_concat_dataframe(results, apid, df)
 
         # Split each ApID into a separate file per day.
         processed_files: dict[Path, IFilePathHandler] = {}
 
-        for apid, data in results.items():
+        for apid, data in datastore_data.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
             path_handler = HKPathHandler(
                 level=HKLevel.l1.value,
@@ -146,37 +123,82 @@ class HKProcessor(FileProcessor):
         return processed_files
 
     def __load_datastore_data(
-        self, apid: int, hk_packet: str, day: date
-    ) -> pd.DataFrame | None:
-        l0_path_handler = HKPathHandler(
-            level=HKLevel.l0.value,
-            descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
-            content_date=datetime.combine(day, datetime.min.time()),
-            extension="pkts",
-        )
+        self, days_by_apid: dict[int, set[date]]
+    ) -> tuple[dict[int, pd.DataFrame], set[Path]]:
+        """Load existing data from the datastore for each ApID and day."""
 
-        existing_files: list[Path] = self.__input_manager.get_all_file_versions(
-            l0_path_handler, throw_if_not_found=False
-        )
+        datastore_data: dict[int, pd.DataFrame] = dict()
+        datastore_files: set[Path] = set()
 
-        if not existing_files:
-            return None
-        else:
+        for apid, days in days_by_apid.items():
+            hk_packet: str = HKPacket.from_apid(apid).packet
             logger.info(
-                f"Found {len(existing_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')}."
+                f"Processing ApID {apid} ({hk_packet}) for days:\n{', '.join(d.strftime('%Y-%m-%d') for d in sorted(days))}"
             )
+            datastore_data.setdefault(apid, pd.DataFrame())
 
-            existing_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(
-                existing_files
-            )
-            assert (apid in existing_data) and (len(existing_data) == 1)
+            for day in days:
+                l0_path_handler = HKPathHandler(
+                    level=HKLevel.l0.value,
+                    descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
+                    content_date=datetime.combine(day, datetime.min.time()),
+                    extension="pkts",
+                )
 
-            return existing_data[apid]
+                day_files: list[Path] = self.__input_manager.get_all_file_versions(
+                    l0_path_handler, throw_if_not_found=False
+                )
+
+                if not day_files:
+                    logger.debug(
+                        f"No existing files found for {hk_packet} on {day.strftime('%Y-%m-%d')} in datastore."
+                    )
+                    continue
+                else:
+                    logger.info(
+                        f"Found {len(day_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')} in datastore."
+                    )
+
+                day_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(
+                    day_files
+                )
+                assert (apid in day_data) and (len(day_data) == 1)
+
+                datastore_data[apid] = add_or_concat_dataframe(
+                    datastore_data, apid, day_data[apid]
+                )
+                datastore_files.update(day_files)
+
+        return datastore_data, datastore_files
+
+    def __load_input_files(
+        self,
+        files: list[Path],
+        datastore_files: set[Path],
+        datastore_data: dict[int, pd.DataFrame],
+    ) -> dict[int, pd.DataFrame]:
+        """Load files that are not in the datastore"""
+
+        new_files: list[Path] = [
+            file for file in files if file.absolute().as_posix() not in datastore_files
+        ]
+        logger.info(
+            f"Loading {len(new_files)} new files that are not in the datastore:\n{', '.join(str(file) for file in new_files)}"
+        )
+
+        new_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(new_files)
+
+        for apid, df in new_data.items():
+            datastore_data[apid] = add_or_concat_dataframe(datastore_data, apid, df)
+
+        return datastore_data
 
     def __load_and_decommutate_files(
         self, files: list[Path]
     ) -> dict[int, pd.DataFrame]:
-        combined: dict[int, pd.DataFrame] = dict()
+        """Load and decommutate packets from binary files."""
+
+        dataframe_by_apid: dict[int, pd.DataFrame] = dict()
 
         for file in track(files, description="Processing HK files..."):
             results: dict[int, xr.DataArray] = self.__decommutate_packets(file)
@@ -185,13 +207,15 @@ class HKProcessor(FileProcessor):
             )
 
             for apid, data in results.items():
-                combined[apid] = add_or_concat_dataframe(
-                    combined, apid, data.to_dataframe()
+                dataframe_by_apid[apid] = add_or_concat_dataframe(
+                    dataframe_by_apid, apid, data.to_dataframe()
                 )
 
-        return combined
+        return dataframe_by_apid
 
     def __decommutate_packets(self, file: Path) -> dict[int, xr.DataArray]:
+        """Decommutate packets from a binary file by using the XTCE definitions."""
+
         # Extract data from binary file.
         data_dict: dict[int, dict] = dict()
 
@@ -238,14 +262,27 @@ class HKProcessor(FileProcessor):
     def __save_daily_data(
         self, day: date, daily_data: pd.DataFrame, path_handler: HKPathHandler
     ) -> tuple[Path, HKPathHandler]:
+        """Save data by day to a CSV file in the work folder."""
+
         logger.debug(f"Generating file for {day.strftime('%Y-%m-%d')}.")
 
         path_handler.content_date = datetime.combine(day, datetime.min.time())
         file_path = self.__work_folder / path_handler.get_filename()
 
         # Save to CSV.
-        daily_data.drop_duplicates(subset="shcoarse", keep="last", inplace=True)
-        daily_data.sort_index(inplace=True)
+        daily_data.drop_duplicates(
+            subset=[
+                CONSTANTS.CCSDS_FIELD.APID,
+                CONSTANTS.CCSDS_FIELD.SHCOARSE,
+                CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
+            ],
+            keep="last",
+            inplace=True,
+        )
+        daily_data.sort_values(
+            by=[CONSTANTS.CCSDS_FIELD.SHCOARSE, CONSTANTS.CCSDS_FIELD.SEQ_COUNTER],
+            inplace=True,
+        )
         daily_data.to_csv(file_path)
 
         # Use a deep-copy, otherwise the same handle will be used for all files.

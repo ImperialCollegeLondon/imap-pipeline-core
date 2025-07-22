@@ -7,7 +7,7 @@ import pytest
 
 from imap_mag.io import HKPathHandler, IFilePathHandler, InputManager
 from imap_mag.process import HKProcessor, dispatch
-from imap_mag.util import HKPacket, TimeConversion
+from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
 from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
 
 
@@ -286,7 +286,8 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     assert processed_path.name == "imap_mag_l1_hsk-pw_20251017_v001.csv"
 
     assert (
-        "Found 1 existing files for MAG_HSK_PW on 2025-10-17." in capture_cli_logs.text
+        "Found 1 existing files for MAG_HSK_PW on 2025-10-17 in datastore."
+        in capture_cli_logs.text
     )
     assert (
         f"Found 1 ApIDs (1063) in {Path('tests/datastore/hk/mag/l0/hsk-pw/2025/10/imap_mag_l0_hsk-pw_20251017_001.pkts')}."
@@ -298,9 +299,25 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     )
 
     df = pd.read_csv(processed_path, index_col=0)
+    df_reduced = df[
+        [
+            CONSTANTS.CCSDS_FIELD.APID,
+            CONSTANTS.CCSDS_FIELD.SHCOARSE,
+            CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
+        ]
+    ]
 
-    assert df.shape[0] == 918
-    assert all(df.index == df.index.unique())
+    assert df.shape[0] == 920
+    assert all(
+        df_reduced
+        == df_reduced.drop_duplicates(
+            subset=[
+                CONSTANTS.CCSDS_FIELD.APID,
+                CONSTANTS.CCSDS_FIELD.SHCOARSE,
+                CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
+            ]
+        )
+    )
 
 
 def test_decode_hk_packet_groupby_returns_tuple_for_day():

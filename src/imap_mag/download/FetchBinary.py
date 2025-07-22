@@ -6,7 +6,7 @@ from pathlib import Path
 
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.io import HKPathHandler
-from imap_mag.util import BinaryHelper, HKLevel
+from imap_mag.util import CCSDSBinaryPacketFile, HKLevel
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,9 @@ class FetchBinary:
         )
 
         # Split the binary file by S/C day.
-        packets_by_day: dict[date, bytearray] = BinaryHelper.split_packets_by_day(file)
+        packets_by_day: dict[date, bytearray] = CCSDSBinaryPacketFile(
+            file
+        ).split_packets_by_day()
 
         for day, packet_bytes in packets_by_day.items():
             logger.debug(
