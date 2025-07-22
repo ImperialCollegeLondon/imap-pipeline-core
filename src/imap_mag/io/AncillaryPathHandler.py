@@ -22,7 +22,7 @@ class AncillaryPathHandler(IFilePathHandler):
     end_date: datetime | None = None  # end date of validity
     extension: str | None = None
 
-    def supports_versioning(self) -> bool:
+    def supports_sequencing(self) -> bool:
         return True
 
     def get_sub_folder(self) -> Path:
@@ -66,17 +66,12 @@ class AncillaryPathHandler(IFilePathHandler):
         return (Path("science-ancillary") / self.get_sub_folder()).as_posix()
 
     def get_filename(self) -> str:
-        if (
-            self.descriptor is None
-            or self.start_date is None
-            or self.version is None
-            or self.extension is None
-        ):
+        if self.descriptor is None or self.start_date is None or self.extension is None:
             logger.error(
-                "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name."
             )
             raise ValueError(
-                "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
+                "No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name."
             )
 
         if self.end_date is None:
@@ -84,9 +79,9 @@ class AncillaryPathHandler(IFilePathHandler):
         else:
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
-        return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.sequence:03}.{self.extension}"
 
-    def get_unversioned_pattern(self) -> re.Pattern:
+    def get_unsequenced_pattern(self) -> re.Pattern:
         if not self.start_date or not self.descriptor or not self.extension:
             logger.error(
                 "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
@@ -101,7 +96,7 @@ class AncillaryPathHandler(IFilePathHandler):
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v(?P<sequence>\d+)\.{self.extension}"
         )
 
     @classmethod
@@ -109,7 +104,7 @@ class AncillaryPathHandler(IFilePathHandler):
         """Create path handler from filename."""
 
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<sequence>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -125,6 +120,6 @@ class AncillaryPathHandler(IFilePathHandler):
                 end_date=datetime.strptime(match["end"], "%Y%m%d")
                 if match["end"]
                 else None,
-                version=int(match["version"]),
+                sequence=int(match["sequence"]),
                 extension=match["ext"],
             )

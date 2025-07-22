@@ -22,7 +22,7 @@ class CalibrationLayerPathHandler(IFilePathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = "json"
 
-    def supports_versioning(self) -> bool:
+    def supports_sequencing(self) -> bool:
         return True
 
     def get_folder_structure(self) -> str:
@@ -40,21 +40,18 @@ class CalibrationLayerPathHandler(IFilePathHandler):
         if (
             self.calibration_descriptor is None
             or self.content_date is None
-            or self.version is None
             or self.extension is None
         ):
             logger.error(
-                "No 'calibration_descriptor', 'content_date', or 'version' defined. Cannot generate file name."
+                "No 'calibration_descriptor', or 'content_date' defined. Cannot generate file name."
             )
             raise ValueError(
-                "No 'calibration_descriptor', 'content_date', or 'version' defined. Cannot generate file name."
+                "No 'calibration_descriptor', or 'content_date' defined. Cannot generate file name."
             )
         date_str = self.content_date.strftime("%Y%m%d")
-        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{date_str}_v{self.version:03d}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{date_str}_v{self.sequence:03d}.{self.extension}"
 
-    def get_unversioned_pattern(self) -> re.Pattern:
-        """Get regex pattern for unversioned files."""
-
+    def get_unsequenced_pattern(self) -> re.Pattern:
         if (
             not self.content_date
             or not self.calibration_descriptor
@@ -66,17 +63,15 @@ class CalibrationLayerPathHandler(IFilePathHandler):
             raise ValueError("No 'content_date' defined. Cannot generate pattern.")
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<sequence>\d+)\.{self.extension}"
         )
 
     @classmethod
     def from_filename(
         cls, filename: str | Path
     ) -> "CalibrationLayerPathHandler | None":
-        """Create path handler from filename."""
-
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<sequence>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -91,6 +86,6 @@ class CalibrationLayerPathHandler(IFilePathHandler):
                 instrument="mag",
                 calibration_descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                version=int(match["version"]),
+                sequence=int(match["sequence"]),
                 extension=match["ext"],
             )

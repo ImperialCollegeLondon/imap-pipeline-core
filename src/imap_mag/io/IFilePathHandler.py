@@ -20,19 +20,20 @@ class IFilePathHandler(abc.ABC):
     including versioning, folder structure and file naming conventions.
     """
 
-    version: int = 1
+    sequence: int = 1
 
     @abc.abstractmethod
-    def supports_versioning(self) -> bool:
-        """Denotes whether this path handler supports versioning."""
+    def supports_sequencing(self) -> bool:
+        """Denotes whether this path handler supports sequence indexes."""
+        pass
 
     @abc.abstractmethod
     def get_folder_structure(self) -> str:
         pass
 
     @abc.abstractmethod
-    def get_unversioned_pattern(self) -> re.Pattern:
-        """Get regex pattern for unversioned files."""
+    def get_unsequenced_pattern(self) -> re.Pattern:
+        """Get regex pattern for unsequenced files."""
 
     @abc.abstractmethod
     def get_filename(self) -> str:
@@ -42,3 +43,4 @@ class IFilePathHandler(abc.ABC):
     @abc.abstractmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
         """Instantiate a path handler from a file name."""
+        pass

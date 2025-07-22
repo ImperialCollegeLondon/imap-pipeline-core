@@ -62,7 +62,7 @@ def test_database_output_manager_writes_to_database(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -101,7 +101,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -155,14 +155,14 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
     matched_path_handler = HKPathHandler(
-        version=2,
+        sequence=2,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -229,14 +229,14 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
     unique_path_handler = HKPathHandler(
-        version=3,
+        sequence=3,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -309,7 +309,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -339,7 +339,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -367,7 +367,7 @@ def test_database_output_manager_errors_database_error(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
@@ -502,14 +502,14 @@ def test_database_output_manager_real_database(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
     path_handler = HKPathHandler(
-        version=1,
+        sequence=1,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
     unique_path_handler = HKPathHandler(
-        version=3,
+        sequence=3,
         level="l1",
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),

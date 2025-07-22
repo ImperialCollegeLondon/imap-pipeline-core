@@ -37,13 +37,13 @@ class HKPathHandler(StandardSPDFPathHandler):
         ).as_posix()
 
     def get_filename(self) -> str:
-        # For L0 files, the "version" is just a number.
+        # For L0 files, the "sequence" is just a number. For L1 files, it's a version.
         if self.level == HKLevel.l0.value:
-            return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_{self.version:03}.{self.extension}"  # type: ignore
+            return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_{self.sequence:03}.{self.extension}"  # type: ignore
         else:
             return super().get_filename()
 
-    def get_unversioned_pattern(self) -> re.Pattern:
+    def get_unsequenced_pattern(self) -> re.Pattern:
         if (
             not self.content_date
             or not self.level
@@ -58,7 +58,7 @@ class HKPathHandler(StandardSPDFPathHandler):
             )
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v?(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v?(?P<sequence>\d+)\.{self.extension}"
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class HKPathHandler(StandardSPDFPathHandler):
         logger.debug(f"Allowed HK descriptors: {', '.join(allowed_hk_descriptors)}")
 
         match = re.match(
-            rf"imap_mag_(?P<level>l\d)_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_v?(?P<version>\d+)\.(?P<ext>\w+)",
+            rf"imap_mag_(?P<level>l\d)_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_v?(?P<sequence>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -84,7 +84,7 @@ class HKPathHandler(StandardSPDFPathHandler):
                 level=match["level"],
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                version=int(match["version"]),
+                sequence=int(match["sequence"]),
                 extension=match["ext"],
             )
 

@@ -22,15 +22,15 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
         level="l2",
         descriptor="norm-mago",
         content_date=datetime(2025, 10, 17),
-        version=1,
+        sequence=1,
         extension="cdf",
     )
 
     assert provider.get_folder_structure() == "science/mag/l2/2025/10"
     assert provider.get_filename() == "imap_mag_l2_norm-mago_20251017_v001.cdf"
-    assert provider.supports_versioning() is True
-    assert provider.get_unversioned_pattern().pattern == (
-        r"imap_mag_l2_norm-mago_20251017_v(?P<version>\d+)\.cdf"
+    assert provider.supports_sequencing() is True
+    assert provider.get_unsequenced_pattern().pattern == (
+        r"imap_mag_l2_norm-mago_20251017_v(?P<sequence>\d+)\.cdf"
     )
 
 
@@ -40,35 +40,35 @@ def test_standard_path_handler_fails_if_given_ancillary_file():
     assert provider is None, "SciencePathHandler should not handle ancillary files."
 
 
-def test_ancillary_file_handler_gives_correct_unversioned_pattern():
+def test_ancillary_file_handler_gives_correct_unsequenced_pattern():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-norm-offsets",
         start_date=datetime(2025, 10, 17),
         end_date=datetime(2025, 10, 17),
-        version=1,
+        sequence=1,
         extension="cdf",
     )
 
-    assert provider.get_unversioned_pattern().pattern == (
-        r"imap_mag_l2-norm-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
+    assert provider.get_unsequenced_pattern().pattern == (
+        r"imap_mag_l2-norm-offsets_20251017_20251017_v(?P<sequence>\d+)\.cdf"
     )
 
 
-def test_ancillary_file_handler_gives_correct_unversioned_pattern_without_end_date():
+def test_ancillary_file_handler_gives_correct_unsequenced_pattern_without_end_date():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
         descriptor="l2-calibration",
         start_date=datetime(2025, 10, 17),
         end_date=None,
-        version=1,
+        sequence=1,
         extension="cdf",
     )
 
-    assert provider.get_unversioned_pattern().pattern == (
-        r"imap_mag_l2-calibration_20251017_v(?P<version>\d+)\.cdf"
+    assert provider.get_unsequenced_pattern().pattern == (
+        r"imap_mag_l2-calibration_20251017_v(?P<sequence>\d+)\.cdf"
     )
 
 
@@ -81,16 +81,14 @@ def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
         extension="cdf",
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match="No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name.",
+    ):
         provider.get_filename()
 
-    assert (
-        str(exc_info.value)
-        == "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
-    )
 
-
-def test_get_unversioned_pattern_of_ancillary_path_handler_without_content_date__fails():
+def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date__fails():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -100,7 +98,7 @@ def test_get_unversioned_pattern_of_ancillary_path_handler_without_content_date_
     )
 
     with pytest.raises(ValueError) as exc_info:
-        provider.get_unversioned_pattern()
+        provider.get_unsequenced_pattern()
 
     assert (
         str(exc_info.value)
@@ -124,7 +122,7 @@ def test_hk_path_handler_supports_all_hk_packets(packet: HKPacket):
         level="l1",
         descriptor=HKPathHandler.convert_packet_to_descriptor(packet.packet),
         content_date=datetime(2024, 12, 10),
-        version=3,
+        sequence=3,
         extension="pkts",
     )
 
@@ -141,7 +139,7 @@ def test_hk_path_handler_supports_all_hk_packets(packet: HKPacket):
         (
             Path("imap/mag/l1b/2025/10/imap_mag_l1b_norm-mago_20251004_v002.cdf"),
             SciencePathHandler(
-                version=2,
+                sequence=2,
                 level="l1b",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 4),
@@ -154,7 +152,7 @@ def test_hk_path_handler_supports_all_hk_packets(packet: HKPacket):
                 "imap/mag/calibration/layer/2025/10/imap_mag_offsets-layer_20251004_v002.json"
             ),
             CalibrationLayerPathHandler(
-                version=2,
+                sequence=2,
                 calibration_descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
                 extension="json",
@@ -231,18 +229,18 @@ def test_get_folder_structure_error_on_no_date():
     (
         HKPathHandler(
             content_date=datetime(2024, 12, 10),
-            version=3,
+            sequence=3,
             extension="pkts",
         ),
         HKPathHandler(
             descriptor="hsk-pw",
-            version=3,
+            sequence=3,
             extension="pkts",
         ),
         HKPathHandler(
             descriptor="hsk-pw",
             content_date=datetime(2024, 12, 10),
-            version=3,
+            sequence=3,
         ),
     ),
 )
@@ -263,7 +261,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="l2-norm-offsets",
                 start_date=datetime(2025, 10, 17),
                 end_date=datetime(2025, 10, 17),
-                version=1,
+                sequence=1,
                 extension="cdf",
             ),
         ),
@@ -273,7 +271,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="l2-calibration",
                 start_date=datetime(2025, 10, 17),
                 end_date=None,
-                version=1,
+                sequence=1,
                 extension="cdf",
             ),
         ),
@@ -283,7 +281,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2024, 12, 10),
-                version=3,
+                sequence=3,
                 extension="pkts",
             ),
         ),
@@ -293,7 +291,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l1",
                 descriptor="hsk-pw",
                 content_date=datetime(2025, 11, 11),
-                version=2,
+                sequence=2,
                 extension="pkts",
             ),
         ),
@@ -303,7 +301,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l1b",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 5, 2),
-                version=1,
+                sequence=1,
                 extension="cdf",
             ),
         ),
@@ -313,7 +311,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l2-pre",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
-                version=1,
+                sequence=1,
                 extension="cdf",
             ),
         ),
@@ -323,7 +321,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l2",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
-                version=1,
+                sequence=1,
                 extension="cdf",
             ),
         ),
@@ -333,7 +331,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l2",
                 descriptor="norm-dsrf",
                 content_date=datetime(2026, 12, 31),
-                version=10,
+                sequence=10,
                 extension="cdf",
             ),
         ),
@@ -343,7 +341,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 level="l2",
                 descriptor="burst",
                 content_date=datetime(2026, 12, 31),
-                version=10,
+                sequence=10,
                 extension="cdf",
             ),
         ),

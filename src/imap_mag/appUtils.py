@@ -38,7 +38,7 @@ def copyFileToDestination(
         def __init__(self, filename: str) -> None:
             self.filename = filename
 
-        def supports_versioning(self) -> bool:
+        def supports_sequencing(self) -> bool:
             return False
 
         def get_folder_structure(self) -> str:
@@ -47,7 +47,7 @@ def copyFileToDestination(
         def get_filename(self) -> str:
             return self.filename
 
-        def get_unversioned_pattern(self) -> re.Pattern:
+        def get_unsequenced_pattern(self) -> re.Pattern:
             return re.compile(r"")
 
         @classmethod

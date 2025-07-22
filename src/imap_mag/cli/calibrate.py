@@ -75,7 +75,7 @@ def calibrate(
     )
 
     input_manager = InputManager(app_settings.data_store)
-    input_file: Path = input_manager.get_versioned_file(
+    input_file: Path = input_manager.find_file_with_sequence(
         path_handler, throw_if_not_found=True
     )
 

@@ -85,7 +85,7 @@ class FetchScience:
                                 ingestion_date=datetime.strptime(
                                     file["ingestion_date"], "%Y%m%d %H:%M:%S"
                                 ),
-                                version=int(file["version"].lstrip("v")),
+                                sequence=int(file["version"].lstrip("v")),
                                 extension="cdf",
                             )
                         else:

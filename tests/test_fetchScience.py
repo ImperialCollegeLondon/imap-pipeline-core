@@ -97,7 +97,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
-            version=7,
+            sequence=7,
             extension="cdf",
         )
         in actual_downloaded.values()
@@ -225,7 +225,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
             descriptor="norm-mago",
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
-            version=7,
+            sequence=7,
             extension="cdf",
         )
         in actual_downloaded.values()
@@ -283,7 +283,7 @@ def test_fetch_l2_science_with_both_sensors(
             descriptor="norm-gse",
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
-            version=7,
+            sequence=7,
             extension="cdf",
         )
         in actual_downloaded.values()

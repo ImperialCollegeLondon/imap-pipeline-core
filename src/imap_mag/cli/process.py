@@ -61,8 +61,8 @@ def process(
                 )
                 continue
 
-            file = input_manager.get_versioned_file(
-                path_handler, latest_version=False, throw_if_not_found=True
+            file = input_manager.find_file_with_sequence(
+                path_handler, latest_sequence=False, throw_if_not_found=True
             )
 
         work_files.append(file)

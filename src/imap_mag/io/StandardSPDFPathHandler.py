@@ -22,7 +22,7 @@ class StandardSPDFPathHandler(IFilePathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = None
 
-    def supports_versioning(self) -> bool:
+    def supports_sequencing(self) -> bool:
         return True
 
     def get_filename(self) -> str:
@@ -39,9 +39,9 @@ class StandardSPDFPathHandler(IFilePathHandler):
                 "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
             )
 
-        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.sequence:03}.{self.extension}"
 
-    def get_unversioned_pattern(self) -> re.Pattern:
+    def get_unsequenced_pattern(self) -> re.Pattern:
         if (
             not self.content_date
             or not self.level
@@ -56,5 +56,5 @@ class StandardSPDFPathHandler(IFilePathHandler):
             )
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<sequence>\d+)\.{self.extension}"
         )

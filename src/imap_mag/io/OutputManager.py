@@ -28,7 +28,7 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        (path_handler.version, skip_file_copy) = self.__get_next_available_version(
+        (path_handler.sequence, skip_file_copy) = self.__get_next_available_version(
             path_handler,
             original_hash=generate_hash(original_file),
         )
@@ -59,22 +59,22 @@ class OutputManager(IOutputManager):
     ) -> tuple[int, bool]:
         """Find a viable version for a file."""
 
-        if not path_handler.supports_versioning():
+        if not path_handler.supports_sequencing():
             logger.warning(
                 "Versioning not supported. File may be overwritten if it already exists."
             )
-            return (path_handler.version, False)
+            return (path_handler.sequence, False)
 
         destination_file: Path = self.assemble_full_path(self.location, path_handler)
 
         while destination_file.exists():
             if generate_hash(destination_file) == original_hash:
-                return (path_handler.version, True)
+                return (path_handler.sequence, True)
 
             logger.debug(
-                f"File {destination_file} already exists and is different. Increasing version to {path_handler.version + 1}."
+                f"File {destination_file} already exists and is different. Increasing version to {path_handler.sequence + 1}."
             )
-            path_handler.version += 1
+            path_handler.sequence += 1
             updated_file = self.assemble_full_path(self.location, path_handler)
 
             # Make sure file has changed, otherwise this in an infinite loop
@@ -88,4 +88,4 @@ class OutputManager(IOutputManager):
 
             destination_file = updated_file
 
-        return (path_handler.version, False)
+        return (path_handler.sequence, False)

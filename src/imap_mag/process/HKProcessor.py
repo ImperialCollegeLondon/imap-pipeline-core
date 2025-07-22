@@ -145,7 +145,7 @@ class HKProcessor(FileProcessor):
                     extension="pkts",
                 )
 
-                day_files: list[Path] = self.__input_manager.get_all_file_versions(
+                day_files: list[Path] = self.__input_manager.find_all_file_sequences(
                     l0_path_handler, throw_if_not_found=False
                 )
 

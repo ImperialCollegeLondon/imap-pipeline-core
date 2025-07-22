@@ -43,9 +43,9 @@ def prepare_layers_for_application(layers, appSettings):
             raise ValueError(
                 f"Could not parse metadata from calibration layer: {layer}"
             )
-        versioned_cal_file = inputManager.get_versioned_file(
+        versioned_cal_file = inputManager.find_file_with_sequence(
             path_handler=cal_layer_handler,
-            latest_version=False,
+            latest_sequence=False,
             throw_if_not_found=True,
         )
 
@@ -67,9 +67,9 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
         if not rotation_handler:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
-        versioned_rotation_file = inputManager.get_versioned_file(
+        versioned_rotation_file = inputManager.find_file_with_sequence(
             path_handler=rotation_handler,
-            latest_version=False,
+            latest_sequence=False,
             throw_if_not_found=True,
         )
         return fetch_file_for_work(
@@ -116,9 +116,9 @@ def apply(
         raise ValueError(f"Could not parse metadata from input file: {input}")
 
     input_manager = InputManager(app_settings.data_store)
-    versioned_file = input_manager.get_versioned_file(
+    versioned_file = input_manager.find_file_with_sequence(
         path_handler=original_input_handler,
-        latest_version=False,
+        latest_sequence=False,
         throw_if_not_found=True,
     )
 
@@ -133,7 +133,7 @@ def apply(
         level="l2-pre",
         content_date=date,
         descriptor=original_input_handler.descriptor,
-        version=0,
+        sequence=0,
         extension=l2_output_type,
     )
     norm_or_burst = (
@@ -146,7 +146,7 @@ def apply(
         descriptor=f"l2-{norm_or_burst}-offsets",
         start_date=date,
         end_date=date,
-        version=0,
+        sequence=0,
         extension=calibration_output_type,
     )
 

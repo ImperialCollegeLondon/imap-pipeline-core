@@ -37,7 +37,7 @@ class SciencePathHandler(StandardSPDFPathHandler):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "SciencePathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<sequence>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -51,6 +51,6 @@ class SciencePathHandler(StandardSPDFPathHandler):
                 level=match["level"],
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                version=int(match["version"]),
+                sequence=int(match["sequence"]),
                 extension=match["ext"],
             )

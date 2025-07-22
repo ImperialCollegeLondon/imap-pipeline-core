@@ -170,7 +170,7 @@ def test_copy_file_forced_version():
             level="l1",
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
-            version=3,
+            sequence=3,
             extension="txt",
         ),
     )
@@ -183,17 +183,17 @@ def test_copy_file_forced_version():
 
 @dataclass
 class TestPathHandler(IFilePathHandler):
-    def supports_versioning(self) -> bool:
+    def supports_sequencing(self) -> bool:
         return False
-
-    def get_unversioned_pattern(self):
-        return re.compile("")
 
     def get_folder_structure(self) -> str:
         return "abc"
 
     def get_filename(self) -> str:
         return "def"
+
+    def get_unsequenced_pattern(self):
+        return re.compile("")
 
     @classmethod
     def from_filename(cls, filename: Path | str) -> "TestPathHandler | None":
