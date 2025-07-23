@@ -216,3 +216,82 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     assert processed_path.exists()
 
     assert processed_path.name == "imap_mag_l1_hsk-status_20250331_v001.csv"
+
+
+@pytest.mark.parametrize(
+    "start_idx, end_idx, replace_bytes",
+    [
+        (0, 9, b"CORRUPTED"),
+        (10, 19, b""),
+        (10, 20, b"CORRUPTED"),
+    ],
+)
+def test_hk_processor_throws_error_on_corrupt_hk_packet(
+    start_idx, end_idx, replace_bytes
+):
+    """Test that HKProcessor throws an error on corrupt HK packet."""
+
+    # Set up.
+    packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
+    original_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
+
+    with open(original_path, "rb") as original_file:
+        original_data = original_file.read()
+
+        # Change a few bytes to corrupt the data.
+        corrupt_data = bytearray(original_data)
+        corrupt_data[start_idx:end_idx] = replace_bytes
+
+    with open(packet_path, "wb") as corrupt_file:
+        corrupt_file.write(corrupt_data)
+
+    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    # Exercise.
+    with pytest.raises(ValueError, match="negative shift count"):
+        processor.process(packet_path)
+
+
+def test_hk_processor_decodes_correctly_on_corrupt_header():
+    """Test that HKProcessor decodes correctly on corrupt header, and skips the corrupted packet."""
+
+    # Set up.
+    packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
+
+    original_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    expected_path = Path("tests/data/truth/MAG_HSK_PW.csv")
+
+    with open(original_path, "rb") as original_file:
+        original_data = original_file.read()
+
+        # Change a few bytes to corrupt the data.
+        corrupt_data = bytearray(original_data)
+        corrupt_data[0:9] = b""  # skips the first corrupted packet
+
+    with open(packet_path, "wb") as corrupt_file:
+        corrupt_file.write(corrupt_data)
+
+    processor = HKProcessor(Path(tempfile.gettempdir()))
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    # Exercise.
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
+
+    # Verify.
+    assert len(processed_files) == 1
+
+    processed_path: Path = next(iter(processed_files))
+    assert processed_path.exists()
+
+    with (
+        open(expected_path) as expected_file,
+        open(processed_path) as processed_file,
+    ):
+        expected_lines = expected_file.readlines()
+        processed_lines = processed_file.readlines()
+
+        assert processed_lines[0] == expected_lines[0]
+        assert processed_lines[1] != expected_lines[1]
+        assert processed_lines[-1] == expected_lines[2]
+        assert len(processed_lines) == 720

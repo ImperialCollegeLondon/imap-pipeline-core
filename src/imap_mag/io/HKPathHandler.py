@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
+from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +38,18 @@ class HKPathHandler(StandardSPDFPathHandler):
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "HKPathHandler | None":
+        allowed_hk_descriptors: set[str] = {
+            cls.convert_packet_to_descriptor(hk.packet).partition("-")[0]
+            for hk in HKPacket
+        }
+        logger.debug(f"Allowed HK descriptors: {', '.join(allowed_hk_descriptors)}")
+
         match = re.match(
-            r"imap_mag_(?P<level>l\d)_(?P<descr>hsk-[^_]+)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            rf"imap_mag_(?P<level>l\d)_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with HK regex."
         )
 
         if match is None:
