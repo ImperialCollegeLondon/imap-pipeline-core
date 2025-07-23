@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 from datetime import date
 from pathlib import Path
@@ -8,6 +9,8 @@ from ccsdspy.utils import iter_packet_bytes
 from rich.progress import Progress
 
 from imap_mag.util.TimeConversion import TimeConversion
+
+logger = logging.getLogger(__name__)
 
 
 class CCSDSBinaryPacketFile:
@@ -40,9 +43,10 @@ class CCSDSBinaryPacketFile:
                 self.file, include_primary_header=True
             ):
                 progress.update(task, advance=len(packet_bytes))
-                packet = self.packet_definition.load(
-                    io.BytesIO(packet_bytes), include_primary_header=True
-                )
+                packet: dict | None = self.__load_bytes_with_definition(packet_bytes)
+
+                if packet is None:
+                    continue
 
                 for apid in packet["CCSDS_APID"]:
                     days_by_apid.setdefault(int(apid), set()).update(
@@ -65,14 +69,30 @@ class CCSDSBinaryPacketFile:
                 self.file, include_primary_header=True
             ):
                 progress.update(task, advance=len(packet_bytes))
-                packet = self.packet_definition.load(
-                    io.BytesIO(packet_bytes), include_primary_header=True
-                )
+                packet: dict | None = self.__load_bytes_with_definition(packet_bytes)
+
+                if packet is None:
+                    continue
 
                 day: list[date] = TimeConversion.convert_met_to_date(packet["SHCOARSE"])
                 packets_by_day.setdefault(day[0], bytearray()).extend(packet_bytes)
 
         return packets_by_day
+
+    def __load_bytes_with_definition(self, packet_bytes: bytes) -> dict | None:
+        """Load bytes with the packet definition, handling potential errors."""
+
+        try:
+            packet = self.packet_definition.load(
+                io.BytesIO(packet_bytes), include_primary_header=True
+            )
+        except (IndexError, RuntimeError) as e:
+            logger.error(
+                f"Error decoding {len(packet_bytes)} bytes in {self.file}: {e}"
+            )
+            packet = None
+
+        return packet
 
     @staticmethod
     def combine_days_by_apid(
@@ -83,8 +103,7 @@ class CCSDSBinaryPacketFile:
         days_by_apid: dict[int, set[date]] = dict()
 
         for file in binary_files:
-            ccsds_file = CCSDSBinaryPacketFile(file)
-            file_apids: dict[int, set[date]] = ccsds_file.get_days_by_apid()
+            file_apids = CCSDSBinaryPacketFile(file).get_days_by_apid()
 
             for apid, days in file_apids.items():
                 days_by_apid.setdefault(apid, set()).update(days)

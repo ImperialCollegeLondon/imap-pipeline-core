@@ -1,3 +1,4 @@
+import re
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,10 +12,15 @@ from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
 from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
 
 
-def instantiate_hk_processor():
+def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
     """Instantiate HKProcessor with a temporary work folder."""
+
     work_folder = Path(tempfile.gettempdir())
-    return HKProcessor(work_folder, InputManager(DATASTORE))
+
+    processor = HKProcessor(work_folder, InputManager(test_datastore))
+    processor.initialize(Path("xtce/tlm_20241024.xml"))
+
+    return processor
 
 
 @pytest.fixture(autouse=False)
@@ -92,7 +98,6 @@ def test_decode_hk_packet(packet_type):
     expected_path = Path("tests/test_truth") / (packet_type.packet + ".csv")
 
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -135,9 +140,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
 
     # Set up.
     packet_path = Path("tests/test_data/MAG_HSK_PW.pkts")
-
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -180,7 +183,6 @@ def test_decode_hk_packet_with_two_files_for_two_days(capture_cli_logs):
     packet_path2 = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
 
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(
@@ -238,7 +240,6 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
         combined_file.write(combined_data)
 
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -270,9 +271,7 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
 
     # Set up.
     packet_path = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
-
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -325,9 +324,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
 
     # Set up.
     packet_path = Path("tests/test_data/groupby_day_as_tuple.bin")
-
     processor = instantiate_hk_processor()
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -350,13 +347,13 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     ],
 )
 def test_hk_processor_throws_error_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes
+    start_idx, end_idx, replace_bytes, capture_cli_logs
 ):
     """Test that HKProcessor throws an error on corrupt HK packet."""
 
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
-    original_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
+    original_path = Path("tests/test_data/MAG_HSK_PW.pkts")
 
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
@@ -368,22 +365,26 @@ def test_hk_processor_throws_error_on_corrupt_hk_packet(
     with open(packet_path, "wb") as corrupt_file:
         corrupt_file.write(corrupt_data)
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor = instantiate_hk_processor()
 
     # Exercise.
     with pytest.raises(ValueError, match="negative shift count"):
         processor.process(packet_path)
 
+    assert re.search(
+        rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
+    )
+    assert "Filtering out non-MAG ApIDs:" in capture_cli_logs.text
 
-def test_hk_processor_decodes_correctly_on_corrupt_header():
+
+def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
     """Test that HKProcessor decodes correctly on corrupt header, and skips the corrupted packet."""
 
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
 
-    original_path = Path("tests/data/2025/MAG_HSK_PW.pkts")
-    expected_path = Path("tests/data/truth/MAG_HSK_PW.csv")
+    original_path = Path("tests/test_data/MAG_HSK_PW.pkts")
+    expected_path = Path("tests/test_truth/MAG_HSK_PW.csv")
 
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
@@ -395,8 +396,10 @@ def test_hk_processor_decodes_correctly_on_corrupt_header():
     with open(packet_path, "wb") as corrupt_file:
         corrupt_file.write(corrupt_data)
 
-    processor = HKProcessor(Path(tempfile.gettempdir()))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor = instantiate_hk_processor(
+        Path(tempfile.gettempdir())
+        / "not_a_real_datastore"  # avoid loading existing data in the test datastore
+    )
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -417,4 +420,6 @@ def test_hk_processor_decodes_correctly_on_corrupt_header():
         assert processed_lines[0] == expected_lines[0]
         assert processed_lines[1] != expected_lines[1]
         assert processed_lines[-1] == expected_lines[2]
-        assert len(processed_lines) == 720
+        assert len(processed_lines) == 361
+
+    assert "Filtering out non-MAG ApIDs: 16, 1290" in capture_cli_logs.text

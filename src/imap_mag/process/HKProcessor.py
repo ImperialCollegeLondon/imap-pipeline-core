@@ -80,8 +80,11 @@ class HKProcessor(FileProcessor):
             files
         )
         logger.info(
-            f"Found {len(days_by_apid)} ApIDs in {len(files)} files:\n{', '.join(str(apid) for apid in days_by_apid.keys())}"
+            f"Found {len(days_by_apid)} ApIDs in {len(files)} files: {', '.join(str(apid) for apid in sorted(days_by_apid.keys()))}"
         )
+
+        # Filter out non-MAG ApIDs.
+        days_by_apid = self.__filter_mag_apids(days_by_apid)
 
         # Load data for each ApID.
         datastore_data, datastore_files = self.__load_datastore_data(days_by_apid)
@@ -121,6 +124,31 @@ class HKProcessor(FileProcessor):
                 processed_files[path] = handler
 
         return processed_files
+
+    def __filter_mag_apids(
+        self, days_by_apid: dict[int, set[date]]
+    ) -> dict[int, set[date]]:
+        """Filter out non-MAG ApIDs."""
+
+        non_mag_apids: list[int] = [
+            apid
+            for apid in days_by_apid.keys()
+            if apid
+            not in range(CONSTANTS.MAG_APID_RANGE[0], CONSTANTS.MAG_APID_RANGE[1] + 1)
+        ]
+
+        if non_mag_apids:
+            logger.warning(
+                f"Filtering out non-MAG ApIDs: {', '.join(str(apid) for apid in sorted(non_mag_apids))}"
+            )
+
+        days_by_mag_apids: dict[int, set[date]] = {
+            apid: days
+            for apid, days in days_by_apid.items()
+            if apid not in non_mag_apids
+        }
+
+        return days_by_mag_apids
 
     def __load_datastore_data(
         self, days_by_apid: dict[int, set[date]]
