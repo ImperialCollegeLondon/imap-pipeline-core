@@ -129,7 +129,7 @@ class DatastoreFileFinder:
                     f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
             else:
-                logger.info(
+                logger.debug(
                     f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
                 return []
