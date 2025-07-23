@@ -142,13 +142,13 @@ class HKProcessor(FileProcessor):
                 f"Filtering out non-MAG ApIDs: {', '.join(str(apid) for apid in sorted(non_mag_apids))}"
             )
 
-        days_by_mag_apids: dict[int, set[date]] = {
-            apid: days
-            for apid, days in days_by_apid.items()
-            if apid not in non_mag_apids
-        }
+            days_by_apid = {
+                apid: days
+                for apid, days in days_by_apid.items()
+                if apid not in non_mag_apids
+            }
 
-        return days_by_mag_apids
+        return days_by_apid
 
     def __load_datastore_data(
         self, days_by_apid: dict[int, set[date]]
