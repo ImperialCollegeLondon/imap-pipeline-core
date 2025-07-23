@@ -209,9 +209,13 @@ class HKProcessor(FileProcessor):
     ) -> dict[int, pd.DataFrame]:
         """Load files that are not in the datastore"""
 
-        new_files: list[Path] = [
-            file for file in files if file.absolute().as_posix() not in datastore_files
-        ]
+        # Filter out files that are already in the datastore.
+        new_files: list[Path] = []
+
+        for file in files:
+            if not any(os.path.samefile(file, dsf) for dsf in datastore_files):
+                new_files.append(file)
+
         logger.info(
             f"Loading {len(new_files)} new files that are not in the datastore:\n{', '.join(str(file) for file in new_files)}"
         )
