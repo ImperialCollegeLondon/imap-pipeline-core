@@ -57,7 +57,7 @@ def process(
 
             if path_handler is None:
                 logger.error(
-                    f"File {file} not found in the datastore or by relative/absolute path."
+                    f"File {file} does not exist and unable to locate a copy of it in the datastore based on it's name"
                 )
                 continue
 
