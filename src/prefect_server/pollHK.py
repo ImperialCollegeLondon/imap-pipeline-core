@@ -10,7 +10,7 @@ from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.io import HKPathHandler
+from imap_mag.io.file import HKPathHandler
 from imap_mag.util import DatetimeProvider, HKPacket, get_dates_for_download
 from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (

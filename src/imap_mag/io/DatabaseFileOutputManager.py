@@ -5,7 +5,7 @@ from pathlib import Path
 from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.db import Database, IDatabase
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -34,12 +34,11 @@ class DatabaseFileOutputManager(IOutputManager):
         # Check if the version needs to be increased
         original_hash: str = generate_hash(original_file)
 
-        (path_handler.sequence, skip_database_insertion) = (
-            self.__get_next_available_version(
-                path_handler,
-                original_hash=original_hash,
-            )
+        (file_version, skip_database_insertion) = self.__get_next_available_version(
+            path_handler,
+            original_hash=original_hash,
         )
+        path_handler.set_sequence(file_version)
 
         # Add file locally
         (destination_file, path_handler) = self.__output_manager.add_file(
@@ -70,7 +69,7 @@ class DatabaseFileOutputManager(IOutputManager):
                     File(
                         name=destination_file.name,
                         path=destination_file.absolute().as_posix(),
-                        version=path_handler.sequence,
+                        version=path_handler.get_sequence(),
                         hash=original_hash,
                         size=destination_file.stat().st_size,
                         date=path_handler.content_date,
@@ -85,7 +84,7 @@ class DatabaseFileOutputManager(IOutputManager):
         return (destination_file, path_handler)
 
     def __get_matching_database_files(
-        self, path_handler: IFilePathHandler
+        self, path_handler: SequenceablePathHandler
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
@@ -109,7 +108,7 @@ class DatabaseFileOutputManager(IOutputManager):
 
     def __get_next_available_version(
         self,
-        path_handler: IFilePathHandler,
+        path_handler: SequenceablePathHandler,
         original_hash: str,
     ) -> tuple[int, bool]:
         """Find a viable version for a file."""
@@ -118,7 +117,7 @@ class DatabaseFileOutputManager(IOutputManager):
             logger.warning(
                 "Versioning not supported. File may be overwritten if it already exists."
             )
-            return (path_handler.sequence, False)
+            return (path_handler.get_sequence(), False)
 
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
@@ -131,7 +130,7 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         if matching_files:
-            path_handler.sequence = matching_files[0].version
+            path_handler.set_sequence(matching_files[0].version)
             preliminary_file = self.assemble_full_path(Path(""), path_handler)
 
             return (matching_files[0].version, True)
@@ -139,14 +138,14 @@ class DatabaseFileOutputManager(IOutputManager):
         # Find first available version (note that this might not be the sequential next version)
         existing_versions: set[int] = set(file.version for file in database_files)
 
-        while path_handler.sequence in existing_versions:
+        while path_handler.get_sequence() in existing_versions:
             preliminary_file = self.assemble_full_path(Path(""), path_handler)
             logger.debug(
-                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.sequence + 1}."
+                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
-            path_handler.sequence += 1
+            path_handler.increase_sequence()
 
             updated_file: Path = self.assemble_full_path(Path(""), path_handler)
             preliminary_file = updated_file
 
-        return (path_handler.sequence, False)
+        return (path_handler.get_sequence(), False)

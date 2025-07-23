@@ -3,13 +3,13 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class StandardSPDFPathHandler(IFilePathHandler):
+class StandardSPDFPathHandler(VersionedPathHandler):
     """
     Path handler for standard SPDF files.
     See: https://imap-processing.readthedocs.io/en/latest/data-access/naming-conventions.html#data-product-science-file-naming-conventions
@@ -21,9 +21,6 @@ class StandardSPDFPathHandler(IFilePathHandler):
     descriptor: str | None = None
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = None
-
-    def supports_sequencing(self) -> bool:
-        return True
 
     def get_filename(self) -> str:
         if (
@@ -39,7 +36,7 @@ class StandardSPDFPathHandler(IFilePathHandler):
                 "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
             )
 
-        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.sequence:03}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
         if (
@@ -56,5 +53,5 @@ class StandardSPDFPathHandler(IFilePathHandler):
             )
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<sequence>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )

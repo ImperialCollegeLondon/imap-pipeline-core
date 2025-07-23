@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.io import SciencePathHandler
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class FetchScience:
                                 ingestion_date=datetime.strptime(
                                     file["ingestion_date"], "%Y%m%d %H:%M:%S"
                                 ),
-                                sequence=int(file["version"].lstrip("v")),
+                                version=int(file["version"].lstrip("v")),
                                 extension="cdf",
                             )
                         else:

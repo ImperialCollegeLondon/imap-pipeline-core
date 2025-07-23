@@ -1,14 +1,11 @@
 """Tests for `OutputManager` class."""
 
-import re
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io import (
-    HKPathHandler,
-    IFilePathHandler,
-    OutputManager,
+from imap_mag.io import OutputManager
+from imap_mag.io.file import (
+    HKDecodedPathHandler,
 )
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
@@ -25,8 +22,7 @@ def test_copy_new_file(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKPathHandler(
-            level="l1",
+        HKDecodedPathHandler(
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
             extension="txt",
@@ -59,8 +55,7 @@ def test_copy_file_same_content(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKPathHandler(
-            level="l1",
+        HKDecodedPathHandler(
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
             extension="txt",
@@ -97,8 +92,7 @@ def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKPathHandler(
-            level="l1",
+        HKDecodedPathHandler(
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
             extension="txt",
@@ -137,8 +131,7 @@ def test_copy_file_existing_versions(capture_cli_logs):
     # Exercise.
     manager.add_file(
         original_file,
-        HKPathHandler(
-            level="l1",
+        HKDecodedPathHandler(
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
             extension="txt",
@@ -166,11 +159,10 @@ def test_copy_file_forced_version():
     # Exercise.
     manager.add_file(
         original_file,
-        HKPathHandler(
-            level="l1",
+        HKDecodedPathHandler(
             descriptor="pwr",
             content_date=datetime(2025, 5, 2),
-            sequence=3,
+            version=3,
             extension="txt",
         ),
     )
@@ -179,40 +171,3 @@ def test_copy_file_forced_version():
     assert Path(
         "output/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v003.txt"
     ).exists()
-
-
-@dataclass
-class TestPathHandler(IFilePathHandler):
-    def supports_sequencing(self) -> bool:
-        return False
-
-    def get_folder_structure(self) -> str:
-        return "abc"
-
-    def get_filename(self) -> str:
-        return "def"
-
-    def get_unsequenced_pattern(self):
-        return re.compile("")
-
-    @classmethod
-    def from_filename(cls, filename: Path | str) -> "TestPathHandler | None":
-        return None
-
-
-def test_copy_file_custom_providers(capture_cli_logs):
-    # Set up.
-    manager = OutputManager(Path("output"))
-
-    original_file = create_test_file(Path(".work/some_test_file.txt"))
-
-    # Exercise.
-    manager.add_file(original_file, TestPathHandler())
-
-    # Verify.
-    assert (
-        "Versioning not supported. File may be overwritten if it already exists."
-        in capture_cli_logs.text
-    )
-
-    assert Path("output/abc/def").exists()

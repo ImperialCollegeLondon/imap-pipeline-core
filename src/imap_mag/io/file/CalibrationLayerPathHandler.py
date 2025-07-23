@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class CalibrationLayerPathHandler(IFilePathHandler):
+class CalibrationLayerPathHandler(VersionedPathHandler):
     """
     Path handler for calibration layers.
     Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
@@ -21,9 +21,6 @@ class CalibrationLayerPathHandler(IFilePathHandler):
     calibration_descriptor: str | None = None
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = "json"
-
-    def supports_sequencing(self) -> bool:
-        return True
 
     def get_folder_structure(self) -> str:
         if self.content_date is None:
@@ -49,7 +46,7 @@ class CalibrationLayerPathHandler(IFilePathHandler):
                 "No 'calibration_descriptor', or 'content_date' defined. Cannot generate file name."
             )
         date_str = self.content_date.strftime("%Y%m%d")
-        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{date_str}_v{self.sequence:03d}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{date_str}_v{self.version:03d}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
         if (
@@ -63,7 +60,7 @@ class CalibrationLayerPathHandler(IFilePathHandler):
             raise ValueError("No 'content_date' defined. Cannot generate pattern.")
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<sequence>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod
@@ -71,7 +68,7 @@ class CalibrationLayerPathHandler(IFilePathHandler):
         cls, filename: str | Path
     ) -> "CalibrationLayerPathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<sequence>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -86,6 +83,6 @@ class CalibrationLayerPathHandler(IFilePathHandler):
                 instrument="mag",
                 calibration_descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                sequence=int(match["sequence"]),
+                version=int(match["version"]),
                 extension=match["ext"],
             )

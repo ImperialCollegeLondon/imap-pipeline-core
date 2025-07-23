@@ -1,13 +1,12 @@
 import logging
-import re
 from pathlib import Path
 
 from imap_mag.io import (
     DatabaseFileOutputManager,
-    IFilePathHandler,
     IOutputManager,
     OutputManager,
 )
+from imap_mag.io.file import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +45,6 @@ def copyFileToDestination(
 
         def get_filename(self) -> str:
             return self.filename
-
-        def get_unsequenced_pattern(self) -> re.Pattern:
-            return re.compile(r"")
 
         @classmethod
         def from_filename(cls, filename: Path | str) -> "SimplePathHandler | None":

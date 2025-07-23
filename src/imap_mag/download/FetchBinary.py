@@ -5,8 +5,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from imap_mag.client.WebPODA import WebPODA
-from imap_mag.io import HKPathHandler
-from imap_mag.util import CCSDSBinaryPacketFile, HKLevel
+from imap_mag.io.file import HKBinaryPathHandler
+from imap_mag.util import CCSDSBinaryPacketFile
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,10 @@ class FetchBinary:
         start_date: datetime,
         end_date: datetime,
         use_ert: bool = False,
-    ) -> dict[Path, HKPathHandler]:
+    ) -> dict[Path, HKBinaryPathHandler]:
         """Retrieve WebPODA data."""
 
-        downloaded: dict[Path, HKPathHandler] = dict()
+        downloaded: dict[Path, HKBinaryPathHandler] = dict()
 
         # If the start and end dates are the same, download all the data for that day.
         if start_date == end_date:
@@ -79,9 +79,8 @@ class FetchBinary:
             with open(day_file, "wb") as f:
                 f.write(packet_bytes)
 
-            downloaded[day_file] = HKPathHandler(
-                level=HKLevel.l0.value,
-                descriptor=HKPathHandler.convert_packet_to_descriptor(packet),
+            downloaded[day_file] = HKBinaryPathHandler(
+                descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(packet),
                 content_date=datetime.combine(day, datetime.min.time()),
                 ert=max_ert,
                 extension="pkts",

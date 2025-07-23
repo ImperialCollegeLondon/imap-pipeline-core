@@ -11,12 +11,12 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
 
-from imap_mag.io import DatastoreFileFinder, HKPathHandler, IFilePathHandler
+from imap_mag.io import DatastoreFileFinder
+from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.util import (
     CONSTANTS,
     CCSDSBinaryPacketFile,
-    HKLevel,
     HKPacket,
     TimeConversion,
 )
@@ -103,9 +103,8 @@ class HKProcessor(FileProcessor):
 
         for apid, data in datastore_data.items():
             hk_packet: str = HKPacket.from_apid(apid).packet
-            path_handler = HKPathHandler(
-                level=HKLevel.l1.value,
-                descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
+            path_handler = HKDecodedPathHandler(
+                descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(hk_packet),
                 content_date=None,
                 extension="csv",
             )
@@ -168,14 +167,15 @@ class HKProcessor(FileProcessor):
             datastore_data.setdefault(apid, pd.DataFrame())
 
             for day in days:
-                l0_path_handler = HKPathHandler(
-                    level=HKLevel.l0.value,
-                    descriptor=HKPathHandler.convert_packet_to_descriptor(hk_packet),
+                l0_path_handler = HKBinaryPathHandler(
+                    descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(
+                        hk_packet
+                    ),
                     content_date=datetime.combine(day, datetime.min.time()),
                     extension="pkts",
                 )
 
-                day_files: list[Path] = self.__datastore_finder.find_all_file_sequences(
+                day_files: list[Path] = self.__datastore_finder.find_all_file_parts(
                     l0_path_handler, throw_if_not_found=False
                 )
 
@@ -231,7 +231,7 @@ class HKProcessor(FileProcessor):
         dataframe_by_apid: dict[int, pd.DataFrame] = dict()
 
         for file in track(files, description="Processing HK files..."):
-            results: dict[int, xr.DataArray] = self.__decommutate_packets(file)
+            results: dict[int, xr.Dataset] = self.__decommutate_packets(file)
             logger.info(
                 f"Found {len(results.keys())} ApIDs ({', '.join(str(key) for key in results.keys())}) in {file}."
             )
@@ -243,7 +243,7 @@ class HKProcessor(FileProcessor):
 
         return dataframe_by_apid
 
-    def __decommutate_packets(self, file: Path) -> dict[int, xr.DataArray]:
+    def __decommutate_packets(self, file: Path) -> dict[int, xr.Dataset]:
         """Decommutate packets from a binary file by using the XTCE definitions."""
 
         # Extract data from binary file.
@@ -290,8 +290,8 @@ class HKProcessor(FileProcessor):
         return dataset_dict
 
     def __save_daily_data(
-        self, day: date, daily_data: pd.DataFrame, path_handler: HKPathHandler
-    ) -> tuple[Path, HKPathHandler]:
+        self, day: date, daily_data: pd.DataFrame, path_handler: HKDecodedPathHandler
+    ) -> tuple[Path, HKDecodedPathHandler]:
         """Save data by day to a CSV file in the work folder."""
 
         logger.debug(f"Generating file for {day.strftime('%Y-%m-%d')}.")

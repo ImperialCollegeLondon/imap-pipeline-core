@@ -3,7 +3,10 @@ import logging
 from pathlib import Path
 from typing import Literal, overload
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +19,9 @@ class DatastoreFileFinder:
     def __init__(self, location: Path) -> None:
         self.location = location
 
-    def find_all_file_sequences(
+    def find_all_file_parts(
         self,
-        path_handler: IFilePathHandler,
+        path_handler: PartitionedPathHandler,
         throw_if_not_found: bool = False,
     ) -> list[Path]:
         """Get all files matching the path handler pattern."""
@@ -30,27 +33,24 @@ class DatastoreFileFinder:
         return [Path(file) for file, _ in all_matching_files]
 
     @overload
-    def find_file_with_sequence(
+    def find_latest_version(
         self,
-        path_handler: IFilePathHandler,
-        latest_sequence: bool = True,
+        path_handler: VersionedPathHandler,
         throw_if_not_found: Literal[True] = True,
     ) -> Path:
         pass
 
     @overload
-    def find_file_with_sequence(
+    def find_latest_version(
         self,
-        path_handler: IFilePathHandler,
-        latest_sequence: bool = True,
+        path_handler: VersionedPathHandler,
         throw_if_not_found: Literal[False] = False,
     ) -> Path | None:
         pass
 
-    def find_file_with_sequence(
+    def find_latest_version(
         self,
-        path_handler: IFilePathHandler,
-        latest_sequence: bool = True,
+        path_handler: VersionedPathHandler,
         throw_if_not_found: bool = True,
     ) -> Path | None:
         """Try to get file from data store, return None if not found."""
@@ -62,27 +62,59 @@ class DatastoreFileFinder:
         if not all_matching_files:
             return None
 
-        if latest_sequence:
-            (filename_with_sequence, _) = all_matching_files[0]
-            return Path(filename_with_sequence)
-        else:
-            filename_with_sequence = next(
-                filename
-                for filename, v in all_matching_files
-                if v == path_handler.sequence
+        (filename_with_sequence, _) = all_matching_files[0]
+        return Path(filename_with_sequence)
+
+    @overload
+    def find_matching_file(
+        self,
+        path_handler: IFilePathHandler,
+        throw_if_not_found: Literal[True] = True,
+    ) -> Path:
+        pass
+
+    @overload
+    def find_matching_file(
+        self,
+        path_handler: IFilePathHandler,
+        throw_if_not_found: Literal[False] = False,
+    ) -> Path | None:
+        pass
+
+    def find_matching_file(
+        self,
+        path_handler: IFilePathHandler,
+        throw_if_not_found: bool = True,
+    ) -> Path | None:
+        matching_file = (
+            self.location
+            / path_handler.get_folder_structure()
+            / path_handler.get_filename()
+        )
+
+        if matching_file.exists():
+            return matching_file
+        elif throw_if_not_found:
+            logger.error(
+                f"No file found matching {matching_file.name} in folder {matching_file.parent}."
             )
-            return Path(filename_with_sequence)
+            raise FileNotFoundError(
+                f"No file found matching {matching_file.name} in folder {matching_file.parent}."
+            )
+        else:
+            return None
 
     def __find_files_and_sequences(
         self,
-        path_handler: IFilePathHandler,
+        path_handler: SequenceablePathHandler,
         throw_if_not_found: bool = True,
     ) -> list[tuple[str, int]]:
         pattern = path_handler.get_unsequenced_pattern()
         folder = self.location / path_handler.get_folder_structure()
+        sequence_name = path_handler.get_sequence_variable_name()
 
         all_matching_files = [
-            (filename, int(pattern.search(filename).group("sequence")))  # type: ignore
+            (filename, int(pattern.search(filename).group(sequence_name)))  # type: ignore
             for filename in glob.glob(folder.as_posix() + "/*")
             if pattern.search(filename)
         ]
@@ -91,14 +123,14 @@ class DatastoreFileFinder:
         if len(all_matching_files) == 0:
             if throw_if_not_found:
                 logger.error(
-                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}"
+                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
                 raise FileNotFoundError(
-                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}"
+                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
             else:
                 logger.info(
-                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}"
+                    f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
                 return []
 

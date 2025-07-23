@@ -3,7 +3,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 
 logger = logging.getLogger(__name__)
@@ -28,10 +28,11 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        (path_handler.sequence, skip_file_copy) = self.__get_next_available_version(
+        (file_version, skip_file_copy) = self.__get_next_available_version(
             path_handler,
             original_hash=generate_hash(original_file),
         )
+        path_handler.set_sequence(file_version)
         destination_file: Path = self.assemble_full_path(self.location, path_handler)
 
         if skip_file_copy:
@@ -54,7 +55,7 @@ class OutputManager(IOutputManager):
 
     def __get_next_available_version(
         self,
-        path_handler: IFilePathHandler,
+        path_handler: SequenceablePathHandler,
         original_hash: str,
     ) -> tuple[int, bool]:
         """Find a viable version for a file."""
@@ -63,18 +64,18 @@ class OutputManager(IOutputManager):
             logger.warning(
                 "Versioning not supported. File may be overwritten if it already exists."
             )
-            return (path_handler.sequence, False)
+            return (path_handler.get_sequence(), False)
 
         destination_file: Path = self.assemble_full_path(self.location, path_handler)
 
         while destination_file.exists():
             if generate_hash(destination_file) == original_hash:
-                return (path_handler.sequence, True)
+                return (path_handler.get_sequence(), True)
 
             logger.debug(
-                f"File {destination_file} already exists and is different. Increasing version to {path_handler.sequence + 1}."
+                f"File {destination_file} already exists and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
-            path_handler.sequence += 1
+            path_handler.increase_sequence()
             updated_file = self.assemble_full_path(self.location, path_handler)
 
             # Make sure file has changed, otherwise this in an infinite loop
@@ -88,4 +89,4 @@ class OutputManager(IOutputManager):
 
             destination_file = updated_file
 
-        return (path_handler.sequence, False)
+        return (path_handler.get_sequence(), False)

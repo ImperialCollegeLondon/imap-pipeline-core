@@ -15,9 +15,9 @@ from imap_mag import __version__
 from imap_mag.db import IDatabase, update_database_with_progress
 from imap_mag.io import (
     DatabaseFileOutputManager,
-    HKPathHandler,
     IOutputManager,
 )
+from imap_mag.io.file import HKDecodedPathHandler
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (  # noqa: F401
     NOW,
@@ -61,9 +61,8 @@ def test_database_output_manager_writes_to_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -100,9 +99,8 @@ def test_database_output_manager_same_file_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -154,16 +152,14 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    matched_path_handler = HKPathHandler(
-        sequence=2,
-        level="l1",
+    matched_path_handler = HKDecodedPathHandler(
+        version=2,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -228,16 +224,14 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_path_handler = HKPathHandler(
-        sequence=3,
-        level="l1",
+    unique_path_handler = HKDecodedPathHandler(
+        version=3,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -308,9 +302,8 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -338,9 +331,8 @@ def test_database_output_manager_errors_destination_file_different_hash(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -366,9 +358,8 @@ def test_database_output_manager_errors_database_error(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
@@ -501,16 +492,14 @@ def test_database_output_manager_real_database(
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
     )
-    path_handler = HKPathHandler(
-        sequence=1,
-        level="l1",
+    path_handler = HKDecodedPathHandler(
+        version=1,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",
     )
-    unique_path_handler = HKPathHandler(
-        sequence=3,
-        level="l1",
+    unique_path_handler = HKDecodedPathHandler(
+        version=3,
         descriptor="hsk-pw",
         content_date=datetime(2025, 5, 2),
         extension="txt",

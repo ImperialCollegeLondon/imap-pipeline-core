@@ -9,7 +9,7 @@ import pytest
 
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.download.FetchBinary import FetchBinary
-from imap_mag.io import HKPathHandler
+from imap_mag.io.file import HKBinaryPathHandler
 from tests.util.miscellaneous import (  # noqa: F401
     create_test_file,
     tidyDataFolders,
@@ -30,7 +30,7 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, None)
 
     # Exercise.
-    actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
+    actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
@@ -58,7 +58,7 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 3, 8, 58, 39)
 
     # Exercise.
-    actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
+    actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
@@ -77,7 +77,7 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
 
         assert expected_file in actual_downloaded.keys()
         assert (
-            HKPathHandler(
+            HKBinaryPathHandler(
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2025, 5, 2),
@@ -141,7 +141,7 @@ def test_fetch_binary_different_start_end_dates(
     mock_poda.download.side_effect = lambda **_: create_test_file(test_file, None)
 
     # Exercise.
-    actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
+    actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=start_date,
         end_date=end_date,
@@ -169,7 +169,7 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 2, 12, 45, 29)
 
     # Exercise.
-    actual_downloaded: dict[Path, HKPathHandler] = fetchBinary.download_binaries(
+    actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
         packet="MAG_HSK_PW",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
@@ -189,7 +189,7 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
 
         assert expected_file in actual_downloaded.keys()
         assert (
-            HKPathHandler(
+            HKBinaryPathHandler(
                 level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2025, 5, 2),

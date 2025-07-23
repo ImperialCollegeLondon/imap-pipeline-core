@@ -7,11 +7,8 @@ import typer
 from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import (
-    DatastoreFileFinder,
-    FilePathHandlerSelector,
-    IFilePathHandler,
-)
+from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
+from imap_mag.io.file import IFilePathHandler
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -57,12 +54,12 @@ def process(
 
             if path_handler is None:
                 logger.error(
-                    f"File {file} does not exist and unable to locate a copy of it in the datastore based on it's name"
+                    f"File {file} does not exist and unable to locate a copy of it in the datastore based on its name."
                 )
                 continue
 
-            file = datastore_finder.find_file_with_sequence(
-                path_handler, latest_sequence=False, throw_if_not_found=True
+            file = datastore_finder.find_matching_file(
+                path_handler, throw_if_not_found=True
             )
 
         work_files.append(file)

@@ -2,13 +2,14 @@ import logging
 from pathlib import Path
 from typing import Literal, overload
 
-from imap_mag.io.AncillaryPathHandler import AncillaryPathHandler
-from imap_mag.io.CalibrationLayerPathHandler import (
+from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
+from imap_mag.io.file.CalibrationLayerPathHandler import (
     CalibrationLayerPathHandler,
 )
-from imap_mag.io.HKPathHandler import HKPathHandler
-from imap_mag.io.IFilePathHandler import IFilePathHandler
-from imap_mag.io.SciencePathHandler import SciencePathHandler
+from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
+from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ class FilePathHandlerSelector:
     @overload
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_if_not_found: Literal[True]
+        file: Path, *, throw_if_not_found: Literal[True] = True
     ) -> IFilePathHandler:
         pass
 
     @overload
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_if_not_found: Literal[False]
+        file: Path, *, throw_if_not_found: Literal[False] = False
     ) -> IFilePathHandler | None:
         pass
 
@@ -48,7 +49,8 @@ class FilePathHandlerSelector:
         provider_to_try: list[type[IFilePathHandler]] = [
             AncillaryPathHandler,
             CalibrationLayerPathHandler,
-            HKPathHandler,
+            HKBinaryPathHandler,
+            HKDecodedPathHandler,
             SciencePathHandler,
         ]
 

@@ -6,7 +6,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from imap_mag.io import DatastoreFileFinder, HKPathHandler, IFilePathHandler
+from imap_mag.io import DatastoreFileFinder
+from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
 from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
@@ -122,7 +123,7 @@ def test_decode_hk_packet(packet_type):
 
     processed_handler: IFilePathHandler = processed_files[processed_path]
 
-    assert isinstance(processed_handler, HKPathHandler)
+    assert isinstance(processed_handler, HKDecodedPathHandler)
 
     assert processed_handler.level == "l1"
     assert processed_handler.descriptor == (
