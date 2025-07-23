@@ -52,6 +52,11 @@ class TimeConversion:
         met: npt.ArrayLike,
         reference_epoch: np.datetime64 = CONSTANTS.IMAP_EPOCH,
     ) -> list[date]:
-        """Convert mission elapsed time (MET) to Python date."""
+        """
+        Convert mission elapsed time (MET) to Python date.
+
+        Note that this does not use SPICE, thus it may differ slightly from SDC-decoded times.
+        This function should NOT be used for science decoding!
+        """
         j2000ns = TimeConversion.convert_met_to_j2000ns(met, reference_epoch)
         return TimeConversion.convert_j2000ns_to_date(j2000ns)
