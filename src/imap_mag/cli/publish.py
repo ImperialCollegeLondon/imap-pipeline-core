@@ -7,7 +7,7 @@ import typer
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
-from imap_mag.io import FilePathHandlerSelector, InputManager
+from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +51,14 @@ def publish(
     logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
 
     resolved_files: list[Path] = []
-    input_manager = InputManager(app_settings.data_store)
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
     for file in files:
         path_handler = FilePathHandlerSelector.find_by_path(
             file, throw_if_not_found=True
         )
 
-        resolved_file = input_manager.find_file_with_sequence(
+        resolved_file = datastore_finder.find_file_with_sequence(
             path_handler, latest_sequence=False, throw_if_not_found=True
         )
         resolved_files.append(resolved_file)

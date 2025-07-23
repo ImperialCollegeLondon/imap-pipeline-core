@@ -11,7 +11,7 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser import definitions
 
-from imap_mag.io import HKPathHandler, IFilePathHandler, InputManager
+from imap_mag.io import DatastoreFileFinder, HKPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.util import (
     CONSTANTS,
@@ -36,9 +36,11 @@ def add_or_concat_dataframe(
 class HKProcessor(FileProcessor):
     xtcePacketDefinition: Path
 
-    def __init__(self, work_folder: Path, input_manager: InputManager) -> None:
+    def __init__(
+        self, work_folder: Path, datastore_finder: DatastoreFileFinder
+    ) -> None:
         self.__work_folder = work_folder
-        self.__input_manager = input_manager
+        self.__datastore_finder = datastore_finder
 
     def is_supported(self, file: Path) -> bool:
         return file.suffix in [".pkts", ".bin"]
@@ -173,7 +175,7 @@ class HKProcessor(FileProcessor):
                     extension="pkts",
                 )
 
-                day_files: list[Path] = self.__input_manager.find_all_file_sequences(
+                day_files: list[Path] = self.__datastore_finder.find_all_file_sequences(
                     l0_path_handler, throw_if_not_found=False
                 )
 

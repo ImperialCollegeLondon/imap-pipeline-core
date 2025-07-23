@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from imap_mag.io import InputManager
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.HKProcessor import HKProcessor
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def dispatch(
-    file: Path | list[Path], work_folder: Path, input_manager: InputManager
+    file: Path | list[Path], work_folder: Path, datastore_finder: DatastoreFileFinder
 ) -> FileProcessor:
     """Dispatch a file or a list of files to the appropriate processor."""
 
@@ -22,7 +22,7 @@ def dispatch(
         file = file[0]
 
     for processor_type in available_processor_types:
-        processor = processor_type(work_folder, input_manager)
+        processor = processor_type(work_folder, datastore_finder)
 
         if processor.is_supported(file):
             logger.info(f"File {file} is supported by {processor_type.__name__}.")

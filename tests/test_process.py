@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from imap_mag.io import HKPathHandler, IFilePathHandler, InputManager
+from imap_mag.io import DatastoreFileFinder, HKPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
 from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
@@ -17,7 +17,7 @@ def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
 
     work_folder = Path(tempfile.gettempdir())
 
-    processor = HKProcessor(work_folder, InputManager(test_datastore))
+    processor = HKProcessor(work_folder, DatastoreFileFinder(test_datastore))
     processor.initialize(Path("xtce/tlm_20241024.xml"))
 
     return processor
@@ -54,7 +54,7 @@ def test_dispatch_hk_binary(extension):
     processor = dispatch(
         packet_path,
         Path(tempfile.gettempdir()),
-        InputManager(DATASTORE),
+        DatastoreFileFinder(DATASTORE),
     )
 
     # Verify.
@@ -73,7 +73,7 @@ def test_dispatch_unsupported_file(capture_cli_logs):
         dispatch(
             packet_path,
             Path(tempfile.gettempdir()),
-            InputManager(DATASTORE),
+            DatastoreFileFinder(DATASTORE),
         )
 
     assert (

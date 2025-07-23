@@ -8,8 +8,8 @@ from imap_mag.io.IFilePathHandler import IFilePathHandler
 logger = logging.getLogger(__name__)
 
 
-class InputManager:
-    """Manage input files."""
+class DatastoreFileFinder:
+    """Find files in the datastore."""
 
     location: Path
 

@@ -8,9 +8,9 @@ from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import (
+    DatastoreFileFinder,
     FilePathHandlerSelector,
     IFilePathHandler,
-    InputManager,
 )
 from imap_mag.process import FileProcessor, dispatch
 
@@ -45,7 +45,7 @@ def process(
 
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
-    input_manager = InputManager(app_settings.data_store)
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
     work_files: list[Path] = []
 
     for file in files:
@@ -61,14 +61,14 @@ def process(
                 )
                 continue
 
-            file = input_manager.find_file_with_sequence(
+            file = datastore_finder.find_file_with_sequence(
                 path_handler, latest_sequence=False, throw_if_not_found=True
             )
 
         work_files.append(file)
 
     # Process files.
-    file_processor: FileProcessor = dispatch(work_files, work_folder, input_manager)
+    file_processor: FileProcessor = dispatch(work_files, work_folder, datastore_finder)
     file_processor.initialize(app_settings.packet_definition)
 
     processed_files: dict[Path, IFilePathHandler] = file_processor.process(work_files)

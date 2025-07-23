@@ -10,7 +10,7 @@ from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForComma
 from imap_mag.config import AppSettings
 from imap_mag.io import (
     CalibrationLayerPathHandler,
-    InputManager,
+    DatastoreFileFinder,
     OutputManager,
     SciencePathHandler,
 )
@@ -74,8 +74,8 @@ def calibrate(
         extension="cdf",
     )
 
-    input_manager = InputManager(app_settings.data_store)
-    input_file: Path = input_manager.find_file_with_sequence(
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    input_file: Path = datastore_finder.find_file_with_sequence(
         path_handler, throw_if_not_found=True
     )
 
