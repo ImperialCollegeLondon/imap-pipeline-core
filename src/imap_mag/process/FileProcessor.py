@@ -1,7 +1,7 @@
 import abc
 from pathlib import Path
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 
 
 class FileProcessor(abc.ABC):

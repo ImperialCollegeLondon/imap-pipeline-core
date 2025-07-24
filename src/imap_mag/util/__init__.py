@@ -1,3 +1,4 @@
+from imap_mag.util.CCSDSBinaryPacketFile import CCSDSBinaryPacketFile
 from imap_mag.util.constants import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.DownloadDateManager import (
@@ -14,6 +15,7 @@ from imap_mag.util.TimeConversion import TimeConversion
 
 __all__ = [
     "CONSTANTS",
+    "CCSDSBinaryPacketFile",
     "DatetimeProvider",
     "DownloadDateManager",
     "HKLevel",

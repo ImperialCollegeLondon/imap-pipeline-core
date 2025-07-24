@@ -9,3 +9,8 @@ class CONSTANTS:
     J2000_EPOCH_POSIX = datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
 
     MAG_APID_RANGE = (992, 1119)
+
+    class CCSDS_FIELD:
+        APID = "pkt_apid"
+        SEQ_COUNTER = "src_seq_ctr"
+        SHCOARSE = "shcoarse"

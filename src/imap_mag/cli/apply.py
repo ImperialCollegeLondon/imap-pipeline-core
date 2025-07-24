@@ -11,11 +11,10 @@ from imap_mag.cli.cliUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings
-from imap_mag.io import (
+from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
-    InputManager,
-    OutputManager,
     SciencePathHandler,
 )
 from imap_mag.util import ScienceMode
@@ -34,8 +33,8 @@ def prepare_layers_for_application(layers, appSettings):
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
-    inputManager = InputManager(appSettings.data_store)
-    workLayers = []
+    datastore_finder = DatastoreFileFinder(appSettings.data_store)
+    work_layers = []
     for layer in layers:
         cal_layer_handler = CalibrationLayerPathHandler.from_filename(layer)
         if not cal_layer_handler:
@@ -43,13 +42,17 @@ def prepare_layers_for_application(layers, appSettings):
             raise ValueError(
                 f"Could not parse metadata from calibration layer: {layer}"
             )
-        versioned_cal_file = inputManager.get_versioned_file(
-            path_handler=cal_layer_handler, latest_version=False
+        versioned_cal_file = datastore_finder.find_matching_file(
+            path_handler=cal_layer_handler,
+            throw_if_not_found=True,
         )
-        workLayers.append(
-            fetch_file_for_work(versioned_cal_file, appSettings.work_folder)
+
+        work_layers.append(
+            fetch_file_for_work(
+                versioned_cal_file, appSettings.work_folder, throw_if_not_found=True
+            )
         )
-    return workLayers
+    return work_layers
 
 
 def prepare_rotation_layer_for_application(rotation, appSettings):
@@ -57,15 +60,18 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     Prepare the rotation layer for application by fetching the versioned file.
     """
     if rotation:
-        inputManager = InputManager(appSettings.data_store)
+        datastore_finder = DatastoreFileFinder(appSettings.data_store)
         rotation_handler = AncillaryPathHandler.from_filename(rotation)
         if not rotation_handler:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
-        versioned_rotation_file = inputManager.get_versioned_file(
-            path_handler=rotation_handler, latest_version=False
+        versioned_rotation_file = datastore_finder.find_matching_file(
+            path_handler=rotation_handler,
+            throw_if_not_found=True,
         )
-        return fetch_file_for_work(versioned_rotation_file, appSettings.work_folder)
+        return fetch_file_for_work(
+            versioned_rotation_file, appSettings.work_folder, throw_if_not_found=True
+        )
     return None
 
 
@@ -106,12 +112,13 @@ def apply(
         logger.error(f"Could not parse metadata from input file: {input}")
         raise ValueError(f"Could not parse metadata from input file: {input}")
 
-    input_manager = InputManager(app_settings.data_store)
-    versioned_file = input_manager.get_versioned_file(
-        path_handler=original_input_handler, latest_version=False
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    versioned_file = datastore_finder.find_matching_file(
+        path_handler=original_input_handler,
+        throw_if_not_found=True,
     )
 
-    workDataFile = fetch_file_for_work(
+    workDataFile: Path = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
 

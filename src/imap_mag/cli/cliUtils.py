@@ -2,6 +2,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Literal, overload
 
 import typer
 
@@ -43,6 +44,20 @@ def throw_error_file_not_found(source_folder: Path, filename: str) -> None:
     raise FileNotFoundError(
         f"Unable to find file to process in {source_folder} with name/pattern {filename}."
     )
+
+
+@overload
+def fetch_file_for_work(
+    file: Path, work_folder: Path, *, throw_if_not_found: Literal[True]
+) -> Path:
+    pass
+
+
+@overload
+def fetch_file_for_work(
+    file: Path, work_folder: Path, *, throw_if_not_found: Literal[False]
+) -> Path | None:
+    pass
 
 
 def fetch_file_for_work(
