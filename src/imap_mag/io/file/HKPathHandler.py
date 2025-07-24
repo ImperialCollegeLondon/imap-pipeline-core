@@ -23,6 +23,12 @@ class HKPathHandler(IFilePathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = None
 
+    @property
+    @abc.abstractmethod
+    def level(self) -> str:
+        """HK level for the handler. It cannot be set."""
+        pass
+
     def get_folder_structure(self) -> str:
         if not self.content_date or not self.descriptor:
             logger.error(
@@ -35,15 +41,10 @@ class HKPathHandler(IFilePathHandler):
         return (
             Path(self.root_folder)
             / self.instrument
-            / self._get_level()
+            / self.level
             / self.descriptor
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
-
-    @abc.abstractmethod
-    def _get_level(self) -> str:
-        """Return the HK level for the path handler."""
-        pass
 
     @staticmethod
     def _get_allowed_descriptors() -> set[str]:

@@ -78,7 +78,6 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
         assert expected_file in actual_downloaded.keys()
         assert (
             HKBinaryPathHandler(
-                level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2025, 5, 2),
                 extension="pkts",
@@ -190,7 +189,6 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
         assert expected_file in actual_downloaded.keys()
         assert (
             HKBinaryPathHandler(
-                level="l0",
                 descriptor="hsk-pw",
                 content_date=datetime(2025, 5, 2),
                 extension="pkts",
