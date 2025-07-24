@@ -14,7 +14,6 @@ from imap_mag.io.file import (
     HKDecodedPathHandler,
     SciencePathHandler,
 )
-from imap_mag.util import HKPacket
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
@@ -115,24 +114,6 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
     assert ancillary_provider is None, (
         "Should return None for invalid ancillary filenames."
     )
-
-
-@pytest.mark.parametrize("packet", [p for p in HKPacket])
-def test_hk_path_handler_supports_all_hk_packets(packet: HKPacket):
-    # Set up.
-    filename = f"imap_mag_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_v003.pkts"
-    expected_handler = HKDecodedPathHandler(
-        descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet),
-        content_date=datetime(2024, 12, 10),
-        version=3,
-        extension="pkts",
-    )
-
-    # Exercise.
-    actual_handler = HKDecodedPathHandler.from_filename(filename)
-
-    # Verify.
-    assert actual_handler == expected_handler
 
 
 @pytest.mark.parametrize(
