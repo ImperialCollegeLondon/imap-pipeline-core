@@ -211,8 +211,6 @@ class HKProcessor(FileProcessor):
 
         # Filter out files that are already in the datastore.
         new_files: list[Path] = []
-
-        # Cache resolved paths for datastore files
         resolved_datastore_files = {os.path.realpath(dsf) for dsf in datastore_files}
 
         for file in files:

@@ -30,6 +30,8 @@ class CCSDSBinaryPacketFile:
         )
 
     def get_days_by_apid(self) -> dict[int, set[date]]:
+        """Retrieve SCLK days for each APID."""
+
         days_by_apid: dict[int, set[date]] = dict()
 
         size = os.path.getsize(self.file)
