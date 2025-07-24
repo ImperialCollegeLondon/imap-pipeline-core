@@ -13,9 +13,6 @@ class VersionedPathHandler(SequenceablePathHandler):
 
     version: int = 1
 
-    def get_sequence_variable_name(self) -> str:
-        return "version"
-
     def get_sequence(self) -> int:
         return self.version
 
@@ -24,3 +21,7 @@ class VersionedPathHandler(SequenceablePathHandler):
 
     def increase_sequence(self) -> None:
         self.version += 1
+
+    @staticmethod
+    def get_sequence_variable_name() -> str:
+        return "version"

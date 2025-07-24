@@ -38,7 +38,8 @@ class SequenceablePathHandler(IFilePathHandler):
         """Get regex pattern for unsequenced files."""
         pass
 
+    @staticmethod
     @abc.abstractmethod
-    def get_sequence_variable_name(self) -> str:
+    def get_sequence_variable_name() -> str:
         """Get the name of the variable denoting a "sequence" in the class and patterns."""
         pass

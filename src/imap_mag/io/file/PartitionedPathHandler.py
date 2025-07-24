@@ -14,9 +14,6 @@ class PartitionedPathHandler(SequenceablePathHandler):
 
     part: int = 1
 
-    def get_sequence_variable_name(self) -> str:
-        return "part"
-
     def get_sequence(self) -> int:
         return self.part
 
@@ -25,3 +22,7 @@ class PartitionedPathHandler(SequenceablePathHandler):
 
     def increase_sequence(self) -> None:
         self.part += 1
+
+    @staticmethod
+    def get_sequence_variable_name() -> str:
+        return "part"
