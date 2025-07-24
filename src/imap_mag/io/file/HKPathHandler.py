@@ -30,13 +30,10 @@ class HKPathHandler(IFilePathHandler):
         pass
 
     def get_folder_structure(self) -> str:
-        if not self.content_date or not self.descriptor:
-            logger.error(
-                "No 'content_date', or 'descriptor' defined. Cannot generate folder structure."
-            )
-            raise ValueError(
-                "No 'content_date', or 'descriptor' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values(
+            "folder structure", ["descriptor", "content_date"]
+        )
+        assert self.descriptor and self.content_date
 
         return (
             Path(self.root_folder)

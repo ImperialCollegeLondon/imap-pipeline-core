@@ -1,7 +1,10 @@
 import abc
+import logging
 import typing
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 T = typing.TypeVar("T", bound="IFilePathHandler")
 
@@ -34,3 +37,22 @@ class IFilePathHandler(abc.ABC):
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
         """Instantiate a path handler from a file name."""
         pass
+
+    def _check_property_values(
+        self, method_description: str, properties: list[str]
+    ) -> None:
+        """
+        Check if the required properties are set for a method.
+
+        Raises ValueError if any of the properties are not set.
+        """
+
+        missing_properties = [
+            f"'{prop}'" for prop in properties if not getattr(self, prop)
+        ]
+
+        if missing_properties:
+            message = f"No {', '.join(missing_properties)} defined. Cannot generate {method_description}."
+
+            logger.error(message)
+            raise ValueError(message)

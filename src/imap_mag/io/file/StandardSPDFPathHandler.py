@@ -23,34 +23,18 @@ class StandardSPDFPathHandler(VersionedPathHandler):
     extension: str | None = None
 
     def get_filename(self) -> str:
-        if (
-            not self.descriptor
-            or not self.level
-            or not self.content_date
-            or not self.extension
-        ):
-            logger.error(
-                "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
-            )
-            raise ValueError(
-                "No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name."
-            )
+        super()._check_property_values(
+            "file name", ["descriptor", "level", "content_date", "extension"]
+        )
+        assert self.content_date
 
         return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        if (
-            not self.content_date
-            or not self.level
-            or not self.descriptor
-            or not self.extension
-        ):
-            logger.error(
-                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
-            )
-            raise ValueError(
-                "No 'content_date', 'level', 'descriptor', or 'extension' defined. Cannot generate pattern."
-            )
+        super()._check_property_values(
+            "pattern", ["descriptor", "level", "content_date", "extension"]
+        )
+        assert self.content_date
 
         return re.compile(
             rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"

@@ -25,13 +25,8 @@ class AncillaryPathHandler(VersionedPathHandler):
     def get_sub_folder(self) -> Path:
         """Get the subfolder for ancillary files."""
 
-        if self.descriptor is None or self.start_date is None:
-            logger.error(
-                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
-            )
-            raise ValueError(
-                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
-            )
+        super()._check_property_values("subfolder", ["descriptor", "start_date"])
+        assert self.descriptor and self.start_date
 
         match self.descriptor:
             case "ialirt-calibration":
@@ -54,22 +49,16 @@ class AncillaryPathHandler(VersionedPathHandler):
                     )
 
     def get_folder_structure(self) -> str:
-        if self.start_date is None:
-            logger.error("No 'content_date' defined. Cannot generate folder structure.")
-            raise ValueError(
-                "No 'content_date' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values("folder structure", ["start_date"])
+        assert self.start_date
 
         return (Path("science-ancillary") / self.get_sub_folder()).as_posix()
 
     def get_filename(self) -> str:
-        if self.descriptor is None or self.start_date is None or self.extension is None:
-            logger.error(
-                "No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name."
-            )
-            raise ValueError(
-                "No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name."
-            )
+        super()._check_property_values(
+            "file name", ["descriptor", "start_date", "extension"]
+        )
+        assert self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
@@ -79,13 +68,10 @@ class AncillaryPathHandler(VersionedPathHandler):
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        if not self.start_date or not self.descriptor or not self.extension:
-            logger.error(
-                "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-            )
-            raise ValueError(
-                "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-            )
+        super()._check_property_values(
+            "pattern", ["descriptor", "start_date", "extension"]
+        )
+        assert self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
@@ -98,8 +84,6 @@ class AncillaryPathHandler(VersionedPathHandler):
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "AncillaryPathHandler | None":
-        """Create path handler from filename."""
-
         match = re.match(
             r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,

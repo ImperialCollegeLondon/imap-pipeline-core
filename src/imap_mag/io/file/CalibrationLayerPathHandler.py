@@ -23,41 +23,26 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extension: str | None = "json"
 
     def get_folder_structure(self) -> str:
-        if self.content_date is None:
-            logger.error("No 'content_date' defined. Cannot generate folder structure.")
-            raise ValueError(
-                "No 'content_date' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values("folder structure", ["content_date"])
+        assert self.content_date
 
         return (
             Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self):
-        if (
-            self.calibration_descriptor is None
-            or self.content_date is None
-            or self.extension is None
-        ):
-            logger.error(
-                "No 'calibration_descriptor', or 'content_date' defined. Cannot generate file name."
-            )
-            raise ValueError(
-                "No 'calibration_descriptor', or 'content_date' defined. Cannot generate file name."
-            )
-        date_str = self.content_date.strftime("%Y%m%d")
-        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{date_str}_v{self.version:03d}.{self.extension}"
+        super()._check_property_values(
+            "file name", ["calibration_descriptor", "content_date", "extension"]
+        )
+        assert self.content_date
+
+        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        if (
-            not self.content_date
-            or not self.calibration_descriptor
-            or not self.extension
-        ):
-            logger.error(
-                "No 'content_date', 'calibration_descriptor' or 'extension' defined. Cannot generate pattern."
-            )
-            raise ValueError("No 'content_date' defined. Cannot generate pattern.")
+        super()._check_property_values(
+            "pattern", ["calibration_descriptor", "content_date", "extension"]
+        )
+        assert self.content_date
 
         return re.compile(
             rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"

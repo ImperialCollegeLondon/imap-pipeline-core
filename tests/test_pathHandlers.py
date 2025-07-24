@@ -74,7 +74,7 @@ def test_ancillary_file_handler_gives_correct_unsequenced_pattern_without_end_da
     )
 
 
-def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
+def test_get_filename_of_ancillary_path_handler_without_content_date_fails():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -85,7 +85,7 @@ def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
 
     with pytest.raises(
         ValueError,
-        match="No 'descriptor', 'start_date', or 'extension' defined. Cannot generate file name.",
+        match="No 'start_date' defined. Cannot generate file name.",
     ):
         provider.get_filename()
 
@@ -99,13 +99,11 @@ def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date_
         extension="cdf",
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match="No 'start_date' defined. Cannot generate pattern.",
+    ):
         provider.get_unsequenced_pattern()
-
-    assert (
-        str(exc_info.value)
-        == "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-    )
 
 
 def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():
@@ -198,19 +196,12 @@ def test_get_folder_structure(provider, expected_folder_structure):
     assert actual_folder_structure == expected_folder_structure
 
 
-def test_get_folder_structure_error_on_no_date():
-    # Set up.
-    provider = SciencePathHandler()
-
-    # Exercise.
-    with pytest.raises(ValueError) as excinfo:
-        provider.get_folder_structure()
-
-    # Verify.
-    assert (
-        excinfo.value.args[0]
-        == "No 'content_date', or 'level' defined. Cannot generate folder structure."
-    )
+def test_get_folder_structure_error_on_no_date_and_level():
+    with pytest.raises(
+        ValueError,
+        match="No 'content_date', 'level' defined. Cannot generate folder structure.",
+    ):
+        SciencePathHandler().get_folder_structure()
 
 
 @pytest.mark.parametrize(
@@ -251,7 +242,7 @@ def test_get_folder_structure_error_on_no_date():
 def test_get_filename_error_on_no_required_parameter(provider):
     with pytest.raises(
         ValueError,
-        match="No 'descriptor', 'content_date', or 'extension' defined. Cannot generate file name.",
+        match=r"No '[\w,']+' defined. Cannot generate file name.",
     ):
         provider.get_filename()
 

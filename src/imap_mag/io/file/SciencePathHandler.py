@@ -19,13 +19,8 @@ class SciencePathHandler(StandardSPDFPathHandler):
     ingestion_date: datetime | None = None  # date data was ingested by SDC
 
     def get_folder_structure(self) -> str:
-        if not self.content_date or not self.level:
-            logger.error(
-                "No 'content_date', or 'level' defined. Cannot generate folder structure."
-            )
-            raise ValueError(
-                "No 'content_date', or 'level' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values("folder structure", ["content_date", "level"])
+        assert self.content_date and self.level
 
         return (
             Path(self.root_folder)
