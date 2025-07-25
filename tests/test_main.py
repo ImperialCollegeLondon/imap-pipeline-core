@@ -249,7 +249,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -258,7 +258,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        re.escape("/query?table=science&instrument=mag&data_level=l1b&descriptor=")
         + ".*"
         + re.escape("&start_date=20250502&end_date=20250502&extension=cdf"),
         json.dumps({}),
@@ -331,7 +331,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -340,7 +340,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        re.escape("/query?table=science&instrument=mag&data_level=l1b&descriptor=")
         + ".*"
         + re.escape(
             "&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf"

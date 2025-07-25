@@ -62,7 +62,7 @@ def define_available_data_sdc_mappings(
     ]
 
     wiremock_manager.add_string_mapping(
-        f"/query?instrument=mag&data_level=l1c&descriptor={mode_str}-magi&{prefix}start_date={start_date_str}&{prefix}end_date={end_date_str}&extension=cdf",
+        f"/query?table=science&instrument=mag&data_level=l1c&descriptor={mode_str}-magi&{prefix}start_date={start_date_str}&{prefix}end_date={end_date_str}&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -74,7 +74,7 @@ def define_available_data_sdc_mappings(
 
 def define_unavailable_data_sdc_mappings(wiremock_manager):
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=")
+        re.escape("/query?table=science&instrument=mag&data_level=")
         + r"[lL]\d\w?"
         + re.escape("&descriptor=")
         + r".*"
