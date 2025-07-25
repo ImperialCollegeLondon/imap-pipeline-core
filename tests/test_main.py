@@ -124,6 +124,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_WEBPODA_TOKEN": "12345",
     }
 
     args = [
@@ -132,8 +133,6 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "binary",
         "--packet",
         "SID3_PW",
-        "--auth-code",
-        "12345",
         "--start-date",
         "2025-05-02",
         "--end-date",
@@ -187,6 +186,7 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_WEBPODA_TOKEN": "12345",
     }
 
     args = [
@@ -195,8 +195,6 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
         "binary",
         "--packet",
         "SID3_PW",
-        "--auth-code",
-        "12345",
         "--start-date",
         "2025-06-02",
         "--end-date",
@@ -268,6 +266,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_API_KEY": "12345",
     }
 
     # Exercise.
@@ -277,8 +276,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--verbose",
             "fetch",
             "science",
-            "--auth-code",
-            "12345",
             "--level",
             "l1b",
             "--start-date",
@@ -352,6 +349,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_API_KEY": "12345",
     }
 
     # Exercise.
@@ -361,8 +359,6 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "--verbose",
             "fetch",
             "science",
-            "--auth-code",
-            "12345",
             "--level",
             "l1b",
             "--start-date",

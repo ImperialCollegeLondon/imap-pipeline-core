@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import imap_data_access
+from pydantic import SecretStr
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
@@ -12,20 +13,24 @@ from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 def test_sdc_data_access_constructor_sets_config() -> None:
     # Set up.
+    auth_code = SecretStr("some_auth_code")
     data_dir = Path("some_test_folder")
     data_access_url = "https://some_test_url"
 
     # Exercise.
-    _ = SDCDataAccess(data_dir, data_access_url)
+    _ = SDCDataAccess(auth_code, data_dir, data_access_url)
 
     # Verify.
+    assert imap_data_access.config["API_KEY"] == auth_code.get_secret_value()
     assert imap_data_access.config["DATA_DIR"] == data_dir
     assert imap_data_access.config["DATA_ACCESS_URL"] == data_access_url
 
 
 def test_get_file_path_builds_file_path() -> None:
     # Set up.
-    data_access = SDCDataAccess(Path("some_test_folder"), "some_auth_code")
+    data_access = SDCDataAccess(
+        SecretStr("some_auth_code"), Path("some_test_folder"), "some_auth_code"
+    )
 
     # Exercise.
     (filename, file_path) = data_access.get_file_path(

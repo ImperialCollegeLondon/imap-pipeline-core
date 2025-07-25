@@ -62,25 +62,12 @@ def fetch_science(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-    auth_code: Annotated[
-        str | None,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ] = None,
 ) -> dict[Path, SciencePathHandler]:
     """Download science data from the SDC."""
 
-    # "auth-code" is usually defined in the config file but the CLI allows for it to
-    # be specified on the command cli with "--auth-code" or in an env vars:
-    # SDC_AUTH_CODE or MAG_FETCH_SCIENCE_API_AUTH_CODE
-    settings_overrides = (
-        {"fetch_science": {"api": {"auth_code": auth_code}}} if auth_code else {}
-    )
-
-    app_settings = AppSettings(**settings_overrides)  # type: ignore
+    app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -92,6 +79,7 @@ def fetch_science(
         reference_frame = None
 
     data_access = SDCDataAccess(
+        auth_code=app_settings.fetch_science.api.auth_code,
         data_dir=work_folder,
         sdc_url=app_settings.fetch_science.api.url_base,
     )
