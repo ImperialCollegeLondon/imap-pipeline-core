@@ -69,7 +69,7 @@ class Value(ArbitraryTypesAllowedBaseModel, ABC):
         PlainSerializer(serialize_dt, return_type=str),
     ]
     value: list[float]
-    magnitude: Optional[float] = None
+    magnitude: float | None = None
 
 
 class CalibrationValue(Value):
@@ -80,8 +80,8 @@ class CalibrationValue(Value):
 
 class ScienceValue(Value):
     range: int
-    quality_flag: Optional[int] = 0
-    quality_bitmask: Optional[int] = 0
+    quality_flag: int | None = 0
+    quality_bitmask: int | None = 0
 
 
 class Validity(ArbitraryTypesAllowedBaseModel):

@@ -4,11 +4,14 @@ from pathlib import Path
 import pytest
 
 from imap_mag.io import (
+    FilePathHandlerSelector,
+    NoProviderFoundError,
+)
+from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
-    FilePathHandlerSelector,
-    HKPathHandler,
-    NoProviderFoundError,
+    HKBinaryPathHandler,
+    HKDecodedPathHandler,
     SciencePathHandler,
 )
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
@@ -27,8 +30,8 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
 
     assert provider.get_folder_structure() == "science/mag/l2/2025/10"
     assert provider.get_filename() == "imap_mag_l2_norm-mago_20251017_v001.cdf"
-    assert provider.supports_versioning() is True
-    assert provider.get_unversioned_pattern().pattern == (
+    assert provider.supports_sequencing() is True
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2_norm-mago_20251017_v(?P<version>\d+)\.cdf"
     )
 
@@ -39,7 +42,7 @@ def test_standard_path_handler_fails_if_given_ancillary_file():
     assert provider is None, "SciencePathHandler should not handle ancillary files."
 
 
-def test_ancillary_file_handler_gives_correct_unversioned_pattern():
+def test_ancillary_file_handler_gives_correct_unsequenced_pattern():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -50,12 +53,12 @@ def test_ancillary_file_handler_gives_correct_unversioned_pattern():
         extension="cdf",
     )
 
-    assert provider.get_unversioned_pattern().pattern == (
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2-norm-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
     )
 
 
-def test_ancillary_file_handler_gives_correct_unversioned_pattern_without_end_date():
+def test_ancillary_file_handler_gives_correct_unsequenced_pattern_without_end_date():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -66,12 +69,12 @@ def test_ancillary_file_handler_gives_correct_unversioned_pattern_without_end_da
         extension="cdf",
     )
 
-    assert provider.get_unversioned_pattern().pattern == (
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2-calibration_20251017_v(?P<version>\d+)\.cdf"
     )
 
 
-def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
+def test_get_filename_of_ancillary_path_handler_without_content_date_fails():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -80,16 +83,14 @@ def test_get_filename_of_ancillary_path_handler_without_content_date__fails():
         extension="cdf",
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match="No 'start_date' defined. Cannot generate file name.",
+    ):
         provider.get_filename()
 
-    assert (
-        str(exc_info.value)
-        == "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
-    )
 
-
-def test_get_unversioned_pattern_of_ancillary_path_handler_without_content_date__fails():
+def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date__fails():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -98,13 +99,11 @@ def test_get_unversioned_pattern_of_ancillary_path_handler_without_content_date_
         extension="cdf",
     )
 
-    with pytest.raises(ValueError) as exc_info:
-        provider.get_unversioned_pattern()
-
-    assert (
-        str(exc_info.value)
-        == "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-    )
+    with pytest.raises(
+        ValueError,
+        match="No 'start_date' defined. Cannot generate pattern.",
+    ):
+        provider.get_unsequenced_pattern()
 
 
 def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():
@@ -159,20 +158,26 @@ def test_find_provider_by_path(
     "provider, expected_folder_structure",
     (
         (
+            HKBinaryPathHandler(
+                descriptor="hsk-pw",
+                content_date=datetime(2024, 12, 10),
+            ),
+            "hk/mag/l0/hsk-pw/2024/12",
+        ),
+        (
+            HKDecodedPathHandler(
+                descriptor="hsk-pw",
+                content_date=datetime(2024, 12, 10),
+            ),
+            "hk/mag/l1/hsk-pw/2024/12",
+        ),
+        (
             SciencePathHandler(
                 level="l1b",
                 descriptor="mago-normal",
                 content_date=datetime(2024, 12, 10),
             ),
             "science/mag/l1b/2024/12",
-        ),
-        (
-            HKPathHandler(
-                level="l0",
-                descriptor="hsk-pw",
-                content_date=datetime(2024, 12, 10),
-            ),
-            "hk/mag/l0/hsk-pw/2024/12",
         ),
         (
             SciencePathHandler(
@@ -191,35 +196,43 @@ def test_get_folder_structure(provider, expected_folder_structure):
     assert actual_folder_structure == expected_folder_structure
 
 
-def test_get_folder_structure_error_on_no_date():
-    # Set up.
-    provider = SciencePathHandler()
-
-    # Exercise.
-    with pytest.raises(ValueError) as excinfo:
-        provider.get_folder_structure()
-
-    # Verify.
-    assert (
-        excinfo.value.args[0]
-        == "No 'content_date', or 'level' defined. Cannot generate folder structure."
-    )
+def test_get_folder_structure_error_on_no_date_and_level():
+    with pytest.raises(
+        ValueError,
+        match="No 'content_date', 'level' defined. Cannot generate folder structure.",
+    ):
+        SciencePathHandler().get_folder_structure()
 
 
 @pytest.mark.parametrize(
     "provider",
     (
-        HKPathHandler(
+        HKBinaryPathHandler(
+            content_date=datetime(2024, 12, 10),
+            part=3,
+            extension="pkts",
+        ),
+        HKBinaryPathHandler(
+            descriptor="hsk-pw",
+            part=3,
+            extension="pkts",
+        ),
+        HKBinaryPathHandler(
+            descriptor="hsk-pw",
+            content_date=datetime(2024, 12, 10),
+            part=3,
+        ),
+        HKDecodedPathHandler(
             content_date=datetime(2024, 12, 10),
             version=3,
             extension="pkts",
         ),
-        HKPathHandler(
+        HKDecodedPathHandler(
             descriptor="hsk-pw",
             version=3,
             extension="pkts",
         ),
-        HKPathHandler(
+        HKDecodedPathHandler(
             descriptor="hsk-pw",
             content_date=datetime(2024, 12, 10),
             version=3,
@@ -227,15 +240,11 @@ def test_get_folder_structure_error_on_no_date():
     ),
 )
 def test_get_filename_error_on_no_required_parameter(provider):
-    # Exercise.
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError,
+        match=r"No '[\w,']+' defined. Cannot generate file name.",
+    ):
         provider.get_filename()
-
-    # Verify.
-    assert (
-        excinfo.value.args[0]
-        == "No 'descriptor', 'content_date', 'version', or 'extension' defined. Cannot generate file name."
-    )
 
 
 @pytest.mark.parametrize(
@@ -262,12 +271,20 @@ def test_get_filename_error_on_no_required_parameter(provider):
             ),
         ),
         (
-            "imap_mag_l0_hsk-pw_20241210_v003.pkts",
-            HKPathHandler(
-                level="l0",
+            "imap_mag_l0_hsk-pw_20241210_003.pkts",
+            HKBinaryPathHandler(
                 descriptor="hsk-pw",
                 content_date=datetime(2024, 12, 10),
-                version=3,
+                part=3,
+                extension="pkts",
+            ),
+        ),
+        (
+            "imap_mag_l1_hsk-pw_20251111_v002.pkts",
+            HKDecodedPathHandler(
+                descriptor="hsk-pw",
+                content_date=datetime(2025, 11, 11),
+                version=2,
                 extension="pkts",
             ),
         ),
@@ -328,7 +345,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
     ],
 )
 def test_find_correct_provider_from_filename(filename, expected):
-    actual = FilePathHandlerSelector.find_by_path(filename, throw_on_none_found=False)
+    actual = FilePathHandlerSelector.find_by_path(filename, throw_if_not_found=False)
     assert actual == expected
 
 
@@ -346,10 +363,10 @@ def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
             NoProviderFoundError,
             match=f"No suitable path handler found for file {path}.",
         ):
-            FilePathHandlerSelector.find_by_path(path, throw_on_none_found=True)
+            FilePathHandlerSelector.find_by_path(path, throw_if_not_found=True)
     else:
         path_handler = FilePathHandlerSelector.find_by_path(
-            path, throw_on_none_found=False
+            path, throw_if_not_found=False
         )
         assert path_handler is None
 

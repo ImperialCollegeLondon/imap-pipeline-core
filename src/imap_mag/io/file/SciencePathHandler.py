@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.StandardSPDFPathHandler import StandardSPDFPathHandler
+from imap_mag.io.file.StandardSPDFPathHandler import StandardSPDFPathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +19,8 @@ class SciencePathHandler(StandardSPDFPathHandler):
     ingestion_date: datetime | None = None  # date data was ingested by SDC
 
     def get_folder_structure(self) -> str:
-        if not self.content_date or not self.level:
-            logger.error(
-                "No 'content_date', or 'level' defined. Cannot generate folder structure."
-            )
-            raise ValueError(
-                "No 'content_date', or 'level' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values("folder structure", ["content_date", "level"])
+        assert self.content_date and self.level
 
         return (
             Path(self.root_folder)
@@ -41,7 +36,7 @@ class SciencePathHandler(StandardSPDFPathHandler):
             Path(filename).name,
         )
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with SPDF standard regex."
+            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with science regex."
         )
 
         if match is None:
