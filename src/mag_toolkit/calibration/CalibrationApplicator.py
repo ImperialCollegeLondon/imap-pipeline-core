@@ -4,6 +4,7 @@ from functools import reduce
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from spacepy import pycdf
 
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
@@ -163,7 +164,7 @@ class CalibrationApplicator:
             quality_flag = layer_point.quality_flag
             quality_bitmask = layer_point.quality_bitmask
 
-            time = data_point.time + np.timedelta64(timedelta, "s")
+            time = data_point.time + pd.to_timedelta(timedelta, "s").to_numpy()
 
             values.append(
                 ScienceValue(

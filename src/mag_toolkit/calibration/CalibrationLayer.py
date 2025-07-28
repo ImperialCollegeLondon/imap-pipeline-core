@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,8 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 )
 from mag_toolkit.calibration.Layer import Layer
 
+logger = logging.getLogger(__name__)
+
 
 class CalibrationLayer(Layer):
     method: CalibrationMethod
@@ -24,7 +27,9 @@ class CalibrationLayer(Layer):
         )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
-        OFFSET_SKELETON_CDF = "resource/l2_offset_skeleton.cdf"
+        OFFSET_SKELETON_CDF = (
+            "resource/imap_mag_l2-norm-offsets_20250421_20250421_v001.cdf"
+        )
         skeleton_cdf = cdf_to_xarray(str(OFFSET_SKELETON_CDF), to_datetime=False)
         epoch_values = [value.time for value in self.values]
 
@@ -32,7 +37,7 @@ class CalibrationLayer(Layer):
             [cal_value.value for cal_value in self.values],
             nan=CDF_FLOAT_FILLVAL,
         )
-        print(f"The size of offsets values is {offsets_values.shape}")
+
         epoch_data = xr.Variable(
             dims=["epoch"],
             data=epoch_values,
@@ -43,17 +48,17 @@ class CalibrationLayer(Layer):
             data=offsets_values,
             attrs=skeleton_cdf["offsets"].attrs,
         )
-        timedelta_var = xr.Variable(  # noqa: F841
+        timedelta_var = xr.Variable(
             dims=["epoch"],
             data=[cal_value.timedelta for cal_value in self.values],
             attrs=skeleton_cdf["timedeltas"].attrs,
         )
-        qf_var = xr.Variable(  # noqa: F841
+        qf_var = xr.Variable(
             dims=["epoch"],
             data=[cal_value.quality_flag for cal_value in self.values],
             attrs=skeleton_cdf["quality_flag"].attrs,
         )
-        qb_var = xr.Variable(  # noqa: F841
+        qb_var = xr.Variable(
             dims=["epoch"],
             data=[cal_value.quality_bitmask for cal_value in self.values],
             attrs=skeleton_cdf["quality_bitmask"].attrs,
@@ -62,20 +67,18 @@ class CalibrationLayer(Layer):
             data_vars={
                 "epoch": epoch_data,
                 "offsets": offsets_data,
-            },
-            coords={"axis": ["x", "y", "z"]},
-            attrs=skeleton_cdf.attrs,
-        )
-        """
-        "timedeltas": timedelta_var,
+                "timedeltas": timedelta_var,
                 "quality_flag": qf_var,
                 "quality_bitmask": qb_var,
                 "valid_start_datetime": self.validity.start,
                 "valid_end_datetime": self.validity.end,
-        """
+            },
+            coords={"axis": ["x", "y", "z"]},
+            attrs=skeleton_cdf.attrs,
+        )
 
-        # offsets_dataset.attrs["Generation_date"] = np.datetime64("now")
-        # offsets_dataset.attrs["Data_version"] = self.version
+        offsets_dataset.attrs["Generation_date"] = str(np.datetime64("now"))
+        offsets_dataset.attrs["Data_version"] = self.version
 
         xarray_to_cdf(offsets_dataset, str(filepath), istp=False)
 

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +18,8 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 )
 from mag_toolkit.calibration.Layer import Layer
 
+logger = logging.getLogger(__name__)
+
 
 class ScienceLayer(Layer):
     science_file: str
@@ -27,7 +30,7 @@ class ScienceLayer(Layer):
         L2_SKELETON_CDF = "resource/l2_dsrf_skeleton.cdf"
         l2_skeleton = cdf_to_xarray(str(L2_SKELETON_CDF), to_datetime=False)
         vectors_var = xr.Variable(
-            dims=["epoch", "axis"],
+            dims=["epoch", "direction"],
             data=[science.value for science in self.values],
             attrs=l2_skeleton["vectors"].attrs,
         )
@@ -41,29 +44,30 @@ class ScienceLayer(Layer):
             data=[science.magnitude for science in self.values],
             attrs=l2_skeleton["magnitude"].attrs,
         )
-        qf_var = xr.Variable(  # noqa: F841
+        qf_var = xr.Variable(
             dims=["epoch"],
             data=[science.quality_flag for science in self.values],
             attrs=l2_skeleton["quality_flags"].attrs,
         )
-        qb_var = xr.Variable(  # noqa: F841
+        qb_var = xr.Variable(
             dims=["epoch"],
             data=[science.quality_bitmask for science in self.values],
             attrs=l2_skeleton["quality_bitmask"].attrs,
         )
-        direction_var = l2_skeleton["direction"]  # noqa: F841
-        direction_label = l2_skeleton["direction_label"]  # noqa: F841
+        del l2_skeleton.coords["epoch"]
         l2_dataset = xr.Dataset(
             data_vars={
                 "epoch": epoch_var,
                 "vectors": vectors_var,
                 "magnitude": magnitude_var,
+                "quality_flags": qf_var,
+                "quality_bitmask": qb_var,
             },
             attrs=l2_skeleton.attrs,
+            coords=l2_skeleton.coords,
         )
-        print(l2_dataset)
 
-        xarray_to_cdf(l2_dataset, str(filepath))
+        xarray_to_cdf(l2_dataset, str(filepath), istp=False)
         return filepath
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):

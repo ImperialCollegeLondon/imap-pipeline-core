@@ -4,7 +4,12 @@ from typing import Annotated, Optional
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    PlainSerializer,
+)
 
 CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
 
@@ -35,30 +40,40 @@ class Mission(str, Enum):
 
 
 def convert_time(value: str) -> np.datetime64:
-    return np.datetime64(value)
+    return np.datetime64(value, "ns")
 
 
 def convert_timedelta(value) -> np.timedelta64:
     return pd.to_timedelta(str(value) + "s").to_numpy()
 
 
+def serialize_dt(dt: np.datetime64, _info):
+    return np.datetime_as_string(dt)
+
+
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     dependencies: list[str]
     science: list[str]
-    creation_timestamp: Annotated[np.datetime64, BeforeValidator(convert_time)]
+    creation_timestamp: Annotated[
+        np.datetime64,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ]
     comment: Optional[str] = None
 
 
 class Value(ArbitraryTypesAllowedBaseModel, ABC):
-    time: Annotated[np.datetime64, BeforeValidator(convert_time)]
+    time: Annotated[
+        np.datetime64,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ]
     value: list[float]
     magnitude: Optional[float] = None
 
 
 class CalibrationValue(Value):
-    timedelta: Annotated[np.timedelta64, BeforeValidator(convert_timedelta)] = (
-        np.timedelta64(0)
-    )
+    timedelta: float = 0.0
     quality_flag: int = 0
     quality_bitmask: int = 0
 
@@ -70,5 +85,13 @@ class ScienceValue(Value):
 
 
 class Validity(ArbitraryTypesAllowedBaseModel):
-    start: Annotated[np.datetime64, BeforeValidator(convert_time)]
-    end: Annotated[np.datetime64, BeforeValidator(convert_time)]
+    start: Annotated[
+        np.datetime64,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ]
+    end: Annotated[
+        np.datetime64,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ]
