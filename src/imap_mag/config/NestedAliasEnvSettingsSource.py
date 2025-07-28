@@ -15,6 +15,9 @@ class NestedAliasEnvSettingsSource(EnvSettingsSource):
     do it ourselves.
     This class reuses most of the logic from `EnvSettingsSource` but overrides
     the `explode_env_vars` method to also retrieve nested aliases.
+
+    Somewhat inspired by:
+    https://github.com/pydantic/pydantic/discussions/8221
     """
 
     def explode_env_vars(
