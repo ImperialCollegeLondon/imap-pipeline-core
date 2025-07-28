@@ -1,4 +1,4 @@
-from imap_mag.config.ApiSource import ApiSource
+from imap_mag.config.ApiSource import ApiSource, SdcApiSource, WebPodaApiSource
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
@@ -15,4 +15,6 @@ __all__ = [
     "FetchScienceConfig",
     "PublishConfig",
     "SaveMode",
+    "SdcApiSource",
+    "WebPodaApiSource",
 ]

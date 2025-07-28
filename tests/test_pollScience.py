@@ -171,7 +171,7 @@ async def test_poll_science_autoflow_first_ever_run(
 
     # Exercise.
     with Environment(
-        MAG_FETCH_SCIENCE_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
         await poll_science_flow()
@@ -223,7 +223,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
 
     # Exercise.
     with Environment(
-        MAG_FETCH_SCIENCE_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
         await poll_science_flow()
@@ -274,7 +274,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
 
     # Exercise.
     with Environment(
-        MAG_FETCH_SCIENCE_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
         await poll_science_flow(
@@ -330,7 +330,7 @@ async def test_poll_science_specify_ingestion_start_end_dates(
 
     # Exercise.
     with Environment(
-        MAG_FETCH_SCIENCE_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
         await poll_science_flow(
@@ -394,7 +394,7 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
             RuntimeError, match="FetchScience download failed for testing purposes."
         ),
         Environment(
-            MAG_FETCH_SCIENCE_API_URL_BASE=wiremock_manager.get_url(),
+            IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
             IMAP_API_KEY="12345",
         ),
     ):

@@ -11,6 +11,7 @@ from pydantic_settings import (
 
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
+from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class AppSettings(BaseSettings):
         return (
             # Highest priority
             init_settings,
-            env_settings,
+            NestedAliasEnvSettingsSource(settings_cls),
             YamlConfigSettingsSource(settings_cls),
             file_secret_settings,
             # Lowest priority

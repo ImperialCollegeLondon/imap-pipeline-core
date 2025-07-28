@@ -78,7 +78,7 @@ def test_process_error_with_unsupported_file_type():
     result = runner.invoke(
         app,
         ["process", "imap_mag_l1a_norm-mago_20250502_v001.cdf"],
-        env={"MAG_DATA_STORE": str(DATASTORE)},
+        env={"MAG_DATA_STORE": str(DATASTORE), "IMAP_API_KEY": "12345"},
     )
 
     print("\n" + str(result.stdout))
@@ -265,7 +265,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
         "IMAP_API_KEY": "12345",
     }
 
@@ -348,7 +348,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
         "IMAP_API_KEY": "12345",
     }
 
