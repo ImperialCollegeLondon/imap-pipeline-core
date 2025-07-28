@@ -70,12 +70,6 @@ def deploy_flows(local_debug: bool = False):
     shared_job_env_variables = dict(
         {
             PREFECT_CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
-            CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
-            ),
-            CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
-            ),
             CONSTANTS.ENV_VAR_NAMES.SDC_URL: os.getenv(CONSTANTS.ENV_VAR_NAMES.SDC_URL),
             PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
                 PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
