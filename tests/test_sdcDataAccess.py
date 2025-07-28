@@ -29,7 +29,7 @@ def test_sdc_data_access_constructor_sets_config() -> None:
 def test_get_file_path_builds_file_path() -> None:
     # Set up.
     data_access = SDCDataAccess(
-        SecretStr("some_auth_code"), Path("some_test_folder"), "some_auth_code"
+        SecretStr("some_auth_code"), Path("some_test_folder"), "https://some_test_url"
     )
 
     # Exercise.
