@@ -20,6 +20,7 @@ class PREFECT_CONSTANTS:
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1C_NORM"
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1B_BURST"
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
+        POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -35,6 +36,7 @@ class PREFECT_CONSTANTS:
     class FLOW_NAMES:
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
+        POLL_SPICE = "poll-spice"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -45,4 +47,5 @@ class PREFECT_CONSTANTS:
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
+        POLL_SPICE = "poll_spice"
         PUBLISH = "publish"
