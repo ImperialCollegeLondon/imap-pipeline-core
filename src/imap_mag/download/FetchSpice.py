@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.client import SDCDataAccess, SpiceQueryParameters
 from imap_mag.io.file import SpicePathHandler
 from imap_mag.util import SpiceType
 
@@ -44,11 +44,11 @@ class FetchSpice:
         }
 
         for type in self.__types:
-            file_details = self.__data_access.get_filename(
-                table="spice",
-                descriptor=type.value,
+            spice_query = SpiceQueryParameters(
+                type=type.value,
                 **dates,  # type: ignore
             )
+            file_details = self.__data_access.get_filename(query_parameters=spice_query)
 
             if file_details is not None:
                 for file in file_details:

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.client import ScienceQueryParameters, SDCDataAccess
 from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
@@ -59,12 +59,15 @@ class FetchScience:
             for sensor in sensors:
                 sensor_suffix = "-" + sensor.value
 
-                file_details = self.__data_access.get_filename(
+                science_query = ScienceQueryParameters(
                     level=level.value,
                     descriptor=mode.short_name
                     + (frame_suffix if (level == ScienceLevel.l2) else sensor_suffix),
                     extension="cdf",
                     **dates,  # type: ignore
+                )
+                file_details = self.__data_access.get_filename(
+                    query_parameters=science_query
                 )
 
                 if file_details is not None:

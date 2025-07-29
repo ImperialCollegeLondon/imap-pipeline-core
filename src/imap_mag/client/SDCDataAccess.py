@@ -1,12 +1,13 @@
 """Interact with SDC APIs to get MAG data via imap-data-access."""
 
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import imap_data_access
 import imap_data_access.io
 from pydantic import SecretStr
+
+from imap_mag.client.SDCQueryParameters import SDCQueryParameters
 
 logger = logging.getLogger(__name__)
 
@@ -40,60 +41,18 @@ class SDCDataAccess:
 
     def query(
         self,
-        *,
-        table: str | None = None,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
+        query_parameters: SDCQueryParameters,
     ) -> list[dict[str, str]]:
         return imap_data_access.query(
-            table=table,
-            instrument="mag",
-            data_level=level,
-            descriptor=descriptor,
-            start_date=(start_date.strftime("%Y%m%d") if start_date else None),
-            end_date=(end_date.strftime("%Y%m%d") if end_date else None),
-            ingestion_start_date=(
-                ingestion_start_date.strftime("%Y%m%d")
-                if ingestion_start_date
-                else None
-            ),
-            ingestion_end_date=(
-                ingestion_end_date.strftime("%Y%m%d") if ingestion_end_date else None
-            ),
-            version=version,
-            extension=extension,
+            table=query_parameters.table,
+            **query_parameters.to_dict(),
         )
 
     def get_filename(
         self,
-        *,
-        table: str | None = None,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
+        query_parameters: SDCQueryParameters,
     ) -> list[dict[str, str]] | None:
-        file_details: list[dict[str, str]] = self.query(
-            table=table,
-            level=level,
-            descriptor=descriptor,
-            start_date=start_date,
-            end_date=end_date,
-            ingestion_start_date=ingestion_start_date,
-            ingestion_end_date=ingestion_end_date,
-            version=version,
-            extension=extension,
-        )
+        file_details: list[dict[str, str]] = self.query(query_parameters)
 
         file_names: str = ", ".join([value["file_path"] for value in file_details])
         logger.info(f"Found {len(file_details)} matching files:\n{file_names}")
