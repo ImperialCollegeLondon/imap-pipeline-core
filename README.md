@@ -129,6 +129,15 @@ imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01
 imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03 --ingestion-date
 ```
 
+### Fetch SPICE from SDC
+
+```bash
+export IMAP_API_KEY=[YOUR_SECRET_HERE!]
+imap-mag fetch spice --types ephemeris_nominal --types pointing_attitude --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch spice --types ephemeris_nominal --start-date 2025-01-02 --end-date 2025-01-03
+imap-mag fetch spice --types ephemeris_nominal --start-date 2025-01-02 --end-date 2025-01-03 --ingestion-date
+```
+
 ### Process Binary HK to CSV
 
 ```bash
