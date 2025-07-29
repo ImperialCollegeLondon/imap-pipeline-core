@@ -10,6 +10,7 @@ from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
 from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
+from imap_mag.io.file.SpicePathHandler import SpicePathHandler
 from imap_mag.io.file.StandardSPDFPathHandler import (
     StandardSPDFPathHandler,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "PartitionedPathHandler",
     "SciencePathHandler",
     "SequenceablePathHandler",
+    "SpicePathHandler",
     "StandardSPDFPathHandler",
     "T",
     "VersionedPathHandler",

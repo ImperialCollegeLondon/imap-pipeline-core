@@ -9,9 +9,9 @@ from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.download.FetchSPICE import FetchSPICE
-from imap_mag.io import SPICEPathHandler
-from imap_mag.util import SPICEType
+from imap_mag.download.FetchSpice import FetchSpice
+from imap_mag.io.file import SpicePathHandler
+from imap_mag.util import SpiceType
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +29,9 @@ def fetch_spice(
         ),
     ] = False,
     types: Annotated[
-        list[SPICEType],
+        list[SpiceType],
         typer.Option(case_sensitive=False, help="SPICE types to download"),
-    ] = [s for s in SPICEType],
+    ] = [s for s in SpiceType],
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -39,36 +39,24 @@ def fetch_spice(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-    auth_code: Annotated[
-        str | None,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ] = None,
-) -> dict[Path, SPICEPathHandler]:
+) -> dict[Path, SpicePathHandler]:
     """Download spice data from the SDC."""
 
-    # "auth-code" is usually defined in the config file but the CLI allows for it to
-    # be specified on the command cli with "--auth-code" or in an env vars:
-    # SDC_AUTH_CODE or MAG_FETCH_SPICE_API_AUTH_CODE
-    settings_overrides = (
-        {"fetch_spice": {"api": {"auth_code": auth_code}}} if auth_code else {}
-    )
-
-    app_settings = AppSettings(**settings_overrides)  # type: ignore
+    app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_spice)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     data_access = SDCDataAccess(
+        auth_code=app_settings.fetch_spice.api.auth_code,
         data_dir=work_folder,
         sdc_url=app_settings.fetch_spice.api.url_base,
     )
 
-    fetch_spice = FetchSPICE(data_access, types=types)
-    downloaded_spice: dict[Path, SPICEPathHandler] = fetch_spice.download_spice(
+    fetch_spice = FetchSpice(data_access, types=types)
+    downloaded_spice: dict[Path, SpicePathHandler] = fetch_spice.download_spice(
         start_date=start_date,
         end_date=end_date,
         use_ingestion_date=use_ingestion_date,
@@ -83,7 +71,7 @@ def fetch_spice(
             f"Downloaded {len(downloaded_spice)} files:\n{', '.join(str(f) for f in downloaded_spice.keys())}"
         )
 
-    output_spice: dict[Path, SPICEPathHandler] = dict()
+    output_spice: dict[Path, SpicePathHandler] = dict()
 
     if app_settings.fetch_spice.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
