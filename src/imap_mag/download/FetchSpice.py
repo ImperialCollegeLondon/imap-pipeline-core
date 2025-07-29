@@ -45,7 +45,7 @@ class FetchSpice:
 
         for type in self.__types:
             spice_query = SpiceQueryParameters(
-                type=type.value,
+                type=type.name,
                 **dates,  # type: ignore
             )
             file_details = self.__data_access.get_filename(query_parameters=spice_query)

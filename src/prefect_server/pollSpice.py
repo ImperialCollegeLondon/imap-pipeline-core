@@ -124,11 +124,11 @@ async def poll_spice_flow(
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     for type in types:
-        spice_name: str = type.value
+        spice_name: str = type.name
         database_name: str = spice_name.upper()
         packet_start_timestamp = DatetimeProvider.now()
 
-        logger.info(f"---------- Downloading Packet {spice_name} ----------")
+        logger.info(f"---------- Downloading SPICE {spice_name} ----------")
 
         packet_dates = get_dates_for_download(
             packet_name=database_name,
@@ -156,7 +156,7 @@ async def poll_spice_flow(
 
         if not downloaded_spice:
             logger.info(
-                f"No data downloaded for packet {spice_name} from {packet_start_date} to {packet_end_date}."
+                f"No data downloaded for SPICE {spice_name} from {packet_start_date} to {packet_end_date}."
             )
 
         # Update database with latest ingestion date as progress (for SPICE)

@@ -64,7 +64,7 @@ def fetch_spice(
 
     if not downloaded_spice:
         logger.info(
-            f"No data downloaded for SPICE types {', '.join([t.value for t in types])} from {start_date} to {end_date}."
+            f"No data downloaded for SPICE types {', '.join([t.name for t in types])} from {start_date} to {end_date}."
         )
     else:
         logger.debug(
