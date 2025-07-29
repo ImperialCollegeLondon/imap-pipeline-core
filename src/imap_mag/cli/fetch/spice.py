@@ -25,13 +25,13 @@ def fetch_spice(
         bool,
         typer.Option(
             "--ingestion-date",
-            help="Use ingestion date into SDC database, rather than spice measurement date",
+            help="Use ingestion date into SDC database, rather than SPICE content date",
         ),
     ] = False,
     types: Annotated[
         list[SpiceType],
         typer.Option(case_sensitive=False, help="SPICE types to download"),
-    ] = [s for s in SpiceType],
+    ] = [t for t in SpiceType],
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(

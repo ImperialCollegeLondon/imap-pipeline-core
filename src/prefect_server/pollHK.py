@@ -27,7 +27,7 @@ from prefect_server.prefectUtils import (
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
-    hk_packets: list[HKPacket] = parameters["hk_packets"]  # type: ignore
+    hk_packets: list[HKPacket] = parameters["hk_packets"]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
         if parameters["start_date"] is not None
@@ -61,7 +61,7 @@ async def poll_hk_flow(
                 "description": "List of HK packets to download from WebPODA. Default is all HK packets.",
             }
         ),
-    ] = [hk for hk in HKPacket],  # type: ignore
+    ] = [hk for hk in HKPacket],
     start_date: Annotated[
         datetime | None,
         Field(

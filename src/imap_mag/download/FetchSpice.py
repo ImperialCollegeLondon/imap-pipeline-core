@@ -21,7 +21,7 @@ class FetchSpice:
     def __init__(
         self,
         data_access: SDCDataAccess,
-        types: list[SpiceType] = [s for s in SpiceType],
+        types: list[SpiceType] = [t for t in SpiceType],
     ) -> None:
         """Initialize SDC interface."""
 
