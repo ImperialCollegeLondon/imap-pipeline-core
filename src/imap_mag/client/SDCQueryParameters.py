@@ -64,6 +64,7 @@ class ScienceQueryParameters(SDCQueryParameters):
 class SpiceQueryParameters(SDCQueryParameters):
     """Query parameters for SPICE data."""
 
+    filename: str | None = None
     type: str | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
@@ -77,6 +78,7 @@ class SpiceQueryParameters(SDCQueryParameters):
 
     def to_dict(self) -> dict[str, str | None]:
         return {
+            "file_name": self.filename,
             # "kernel_type": self.type,
             "start_date": (
                 self.start_date.strftime("%Y%m%d") if self.start_date else None
@@ -92,5 +94,5 @@ class SpiceQueryParameters(SDCQueryParameters):
                 if self.ingestion_end_date
                 else None
             ),
-            "version": self.version,
+            "version": self.version if self.version else None,
         }
