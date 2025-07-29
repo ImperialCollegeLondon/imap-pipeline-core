@@ -1,6 +1,6 @@
 from abc import ABC
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated
 
 import numpy as np
 import pandas as pd
@@ -59,7 +59,7 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
         BeforeValidator(convert_time),
         PlainSerializer(serialize_dt, return_type=str),
     ]
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class Value(ArbitraryTypesAllowedBaseModel, ABC):
