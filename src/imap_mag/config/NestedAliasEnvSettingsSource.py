@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Mapping
 from typing import Any
 
@@ -53,7 +54,7 @@ class NestedAliasEnvSettingsSource(EnvSettingsSource):
                 field, field_name
             )
             for _, env_var, _ in field_info:
-                if env_var in env_vars:
+                if (env_var in env_vars) and (env_vars[env_var] not in (None, "")):
                     return {field_name: env_vars[env_var]}
 
         return {}
@@ -74,9 +75,10 @@ class NestedAliasEnvSettingsSource(EnvSettingsSource):
                     merged_results[key] = value  # discard any empty/None value
                 else:
                     print(
-                        f"Conflicting values for '{key}': {merged_results[key]} (original) and {value} (alias). Discarding alias value."
+                        f"Conflicting values for '{key}': {merged_results[key]} (original) and {value} (alias). Discarding alias value.",
+                        file=sys.stderr,
                     )
-            else:
+            elif value:
                 merged_results[key] = value
 
         return merged_results
