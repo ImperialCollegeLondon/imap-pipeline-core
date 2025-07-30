@@ -29,7 +29,13 @@ def upgrade() -> None:
         ),
     )
     op.add_column(
-        "files", sa.Column("last_modified_date", sa.DateTime(), nullable=False)
+        "files",
+        sa.Column(
+            "last_modified_date",
+            sa.DateTime(),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.add_column("files", sa.Column("deletion_date", sa.DateTime(), nullable=True))
     # ### end Alembic commands ###
