@@ -48,7 +48,10 @@ def check_inserted_file(file: File, test_file: Path, version: int):
     assert file.path == test_file.absolute().as_posix()
     assert file.version == version
     assert file.hash == hashlib.md5(b"some content").hexdigest()
-    assert file.date == datetime(2025, 5, 2)
+    assert file.content_date == datetime(2025, 5, 2)
+    assert file.creation_date == datetime.fromtimestamp(test_file.stat().st_ctime)
+    assert file.last_modified_date == datetime.fromtimestamp(test_file.stat().st_mtime)
+    assert file.deletion_date is None
     assert file.software_version == __version__
 
 
@@ -113,7 +116,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
             version=1,
             hash=hashlib.md5(b"some content").hexdigest(),
             size=0,
-            date=datetime(2025, 5, 2),
+            content_date=datetime(2025, 5, 2),
             software_version=__version__,
         )
     ]
@@ -173,7 +176,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
                 version=1,
                 hash="",
                 size=0,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
                 software_version=__version__,
             ),
             File(
@@ -182,7 +185,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
                 version=2,
                 hash=hashlib.md5(b"some content").hexdigest(),
                 size=0,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
                 software_version=__version__,
             ),
         ]
@@ -251,7 +254,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
                 version=1,
                 hash=0,
                 size=0,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
                 software_version=__version__,
             ),
             File(
@@ -260,7 +263,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
                 version=2,
                 hash=0,
                 size=0,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
                 software_version=__version__,
             ),
         ]
@@ -519,7 +522,9 @@ def test_database_output_manager_real_database(
                 version=1,
                 hash=0,
                 size=123,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
+                creation_date=datetime(2025, 5, 2, 12, 34, 56),
+                last_modified_date=datetime(2025, 5, 2, 12, 56, 34),
                 software_version=__version__,
             ),
             File(
@@ -528,7 +533,9 @@ def test_database_output_manager_real_database(
                 version=2,
                 hash=0,
                 size=456,
-                date=datetime(2025, 5, 2),
+                content_date=datetime(2025, 5, 2),
+                creation_date=datetime(2025, 5, 2, 13, 24, 56),
+                last_modified_date=datetime(2025, 5, 2, 13, 56, 24),
                 software_version=__version__,
             ),
         ]
