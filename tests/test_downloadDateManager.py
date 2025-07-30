@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 
 from imap_db.model import DownloadProgress
-from imap_mag.db import IDatabase
+from imap_mag.db import Database
 from imap_mag.util import get_dates_for_download
 from tests.util.miscellaneous import (  # noqa: F401  # noqa: F401
     BEGINNING_OF_IMAP,
@@ -21,8 +21,8 @@ LOGGER = logging.getLogger(__name__)
 
 @pytest.fixture
 def mock_database() -> mock.Mock:
-    """Fixture for a mock IDatabase instance."""
-    return mock.create_autospec(IDatabase, spec_set=True)
+    """Fixture for a mock Database instance."""
+    return mock.create_autospec(Database, spec_set=True)
 
 
 @pytest.mark.parametrize("validate_with_database", [True, False])

@@ -12,7 +12,7 @@ import pytest
 
 from imap_db.model import DownloadProgress, File
 from imap_mag import __version__
-from imap_mag.db import IDatabase, update_database_with_progress
+from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
     DatabaseFileOutputManager,
     IOutputManager,
@@ -38,8 +38,8 @@ def mock_output_manager() -> mock.Mock:
 
 @pytest.fixture
 def mock_database() -> mock.Mock:
-    """Fixture for a mock IDatabase instance."""
-    return mock.create_autospec(IDatabase, spec_set=True)
+    """Fixture for a mock Database instance."""
+    return mock.create_autospec(Database, spec_set=True)
 
 
 def check_inserted_file(file: File, test_file: Path, version: int):
