@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Annotated
 
 import numpy as np
-import pandas as pd
 from pydantic import (
     BaseModel,
     BeforeValidator,
@@ -11,7 +10,47 @@ from pydantic import (
     PlainSerializer,
 )
 
-CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
+
+class CONSTANTS:
+    L2_SKELETON_CDF = "resource/l2_dsrf_skeleton.cdf"
+    OFFSET_SKELETON_CDF = "resource/imap_mag_l2-norm-offsets_20250421_20250421_v001.cdf"
+    CDF_FLOAT_FILLVAL = -1e31  # ISTP compliant FILLVAL for CDF_FLOAT
+
+    class CDF_VARS:
+        EPOCH = "epoch"
+        VECTORS = "vectors"
+        MAGNITUDE = "magnitude"
+        RANGE = "range"
+        OFFSETS = "offsets"
+        TIMEDELTAS = "timedeltas"
+        QUALITY_FLAG = "quality_flag"
+        QUALITY_BITMASK = "quality_bitmask"
+        VALIDITY_START_DATETIME = "validity_start_datetime"
+        VALIDITY_END_DATETIME = "validity_end_datetime"
+
+    class CDF_COORDS:
+        AXIS = "axis"
+        X = "x"
+        Y = "y"
+        Z = "z"
+        DIRECTION = "direction"
+
+    class CDF_ATTRS:
+        GENERATION_DATE = "Generation_date"
+        DATA_VERSION = "Data_version"
+        LOGICAL_FILE_ID = "Logical_file_id"
+        MISSION_GROUP = "Mission_group"
+        IS_MAGO = "is_mago"
+
+    class CSV_VARS:
+        EPOCH = "epoch"
+        X = "x"
+        Y = "y"
+        Z = "z"
+        MAGNITUDE = "magnitude"
+        RANGE = "range"
+        QUALITY_FLAGS = "quality_flags"
+        QUALITY_BITMASK = "quality_bitmask"
 
 
 class ArbitraryTypesAllowedBaseModel(BaseModel):
@@ -41,10 +80,6 @@ class Mission(str, Enum):
 
 def convert_time(value: str) -> np.datetime64:
     return np.datetime64(value, "ns")
-
-
-def convert_timedelta(value) -> np.timedelta64:
-    return pd.to_timedelta(str(value) + "s").to_numpy()
 
 
 def serialize_dt(dt: np.datetime64, _info):
