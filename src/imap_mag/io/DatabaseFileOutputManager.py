@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime
 from pathlib import Path
 
 from imap_db.model import File
@@ -73,8 +74,12 @@ class DatabaseFileOutputManager(IOutputManager):
                         hash=original_hash,
                         size=destination_file.stat().st_size,
                         content_date=path_handler.content_date,
-                        creation_date=destination_file.stat().st_ctime,
-                        last_modified_date=destination_file.stat().st_mtime,
+                        creation_date=datetime.fromtimestamp(
+                            destination_file.stat().st_ctime
+                        ),
+                        last_modified_date=datetime.fromtimestamp(
+                            destination_file.stat().st_mtime
+                        ),
                         software_version=__version__,
                     )
                 )
