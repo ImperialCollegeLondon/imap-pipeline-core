@@ -1,10 +1,8 @@
 import logging
 import re
-from datetime import datetime
 from pathlib import Path
 
 from imap_db.model import File
-from imap_mag import __version__
 from imap_mag.db import Database
 from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
@@ -67,20 +65,11 @@ class DatabaseFileOutputManager(IOutputManager):
 
             try:
                 self.__database.insert_file(
-                    File(
-                        name=destination_file.name,
-                        path=destination_file.absolute().as_posix(),
+                    File.from_file(
+                        file=destination_file,
                         version=path_handler.get_sequence(),
-                        hash=original_hash,
-                        size=destination_file.stat().st_size,
+                        original_hash=original_hash,
                         content_date=path_handler.content_date,
-                        creation_date=datetime.fromtimestamp(
-                            destination_file.stat().st_ctime
-                        ),
-                        last_modified_date=datetime.fromtimestamp(
-                            destination_file.stat().st_mtime
-                        ),
-                        software_version=__version__,
                     )
                 )
             except Exception as e:
