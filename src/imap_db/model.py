@@ -20,7 +20,10 @@ class File(Base):
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer())
-    date: Mapped[datetime] = mapped_column(DateTime())
+    content_date: Mapped[datetime] = mapped_column(DateTime())
+    creation_date: Mapped[datetime] = mapped_column(DateTime())
+    last_modified_date: Mapped[datetime] = mapped_column(DateTime())
+    deletion_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     software_version: Mapped[str] = mapped_column(String(16))
 
     def __repr__(self) -> str:

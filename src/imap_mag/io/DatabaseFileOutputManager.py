@@ -72,7 +72,9 @@ class DatabaseFileOutputManager(IOutputManager):
                         version=path_handler.get_sequence(),
                         hash=original_hash,
                         size=destination_file.stat().st_size,
-                        date=path_handler.content_date,
+                        content_date=path_handler.content_date,
+                        creation_date=destination_file.stat().st_ctime,
+                        last_modified_date=destination_file.stat().st_mtime,
                         software_version=__version__,
                     )
                 )
