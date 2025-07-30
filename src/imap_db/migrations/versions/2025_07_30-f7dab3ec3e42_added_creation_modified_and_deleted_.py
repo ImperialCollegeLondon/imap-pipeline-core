@@ -34,6 +34,7 @@ def upgrade() -> None:
             "last_modified_date",
             sa.DateTime(),
             onupdate=sa.text("now()"),
+            server_default=sa.text("now()"),
             nullable=False,
         ),
     )
