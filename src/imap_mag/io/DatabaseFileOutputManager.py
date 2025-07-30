@@ -3,8 +3,7 @@ import re
 from pathlib import Path
 
 from imap_db.model import File
-from imap_mag import __version__
-from imap_mag.db import Database, IDatabase
+from imap_mag.db import Database
 from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
@@ -16,10 +15,10 @@ class DatabaseFileOutputManager(IOutputManager):
     """Decorator for adding files to database as well as output."""
 
     __output_manager: IOutputManager
-    __database: IDatabase
+    __database: Database
 
     def __init__(
-        self, output_manager: IOutputManager, database: IDatabase | None = None
+        self, output_manager: IOutputManager, database: Database | None = None
     ):
         """Initialize database and output manager."""
 
@@ -66,14 +65,11 @@ class DatabaseFileOutputManager(IOutputManager):
 
             try:
                 self.__database.insert_file(
-                    File(
-                        name=destination_file.name,
-                        path=destination_file.absolute().as_posix(),
+                    File.from_file(
+                        file=destination_file,
                         version=path_handler.get_sequence(),
-                        hash=original_hash,
-                        size=destination_file.stat().st_size,
-                        date=path_handler.content_date,
-                        software_version=__version__,
+                        original_hash=original_hash,
+                        content_date=path_handler.content_date,
                     )
                 )
             except Exception as e:
