@@ -9,6 +9,7 @@ class Environment(AbstractContextManager):
 
     def __init__(self, *args, **kwargs) -> None:
         self.key_values = {}
+        assert len(args) % 2 == 0, "Arguments must be in key-value pairs format."
 
         for i in range(len(args) // 2):
             self.key_values[args[i * 2]] = args[i * 2 + 1]
@@ -25,6 +26,6 @@ class Environment(AbstractContextManager):
 
         for key, value in self.original_values.items():
             if value is None:
-                del os.environ[key]
+                os.environ.pop(key, None)
             else:
                 os.environ[key] = value
