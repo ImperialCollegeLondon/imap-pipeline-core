@@ -10,7 +10,7 @@ Open Dev Container in Visual Studio Code. Requires the [Dev Containers](https://
 
 The container has all your tools installed and ready to go. You can run the tests, build the package, and run the CLI from the terminal in the container.
 
-To use WebPODA APIs, an access token needs to be defined in the environment as `WEBPODA_AUTH_CODE`. If this variable exists in WSL's `~/.bashrc` or `~/.zshrc`, then this will be automatically copied over to the Dev Container. The access token needs to be defined as an encrypted string, as explained on the [WebPODA documentation](https://lasp.colorado.edu/ops/imap/poda/#auth).
+To use WebPODA APIs, an access token needs to be defined in the environment as `IMAP_WEBPODA_TOKEN`. If this variable exists in WSL's `~/.bashrc` or `~/.zshrc`, then this will be automatically copied over to the Dev Container. The access token needs to be defined as an encrypted string, as explained on the [WebPODA documentation](https://lasp.colorado.edu/ops/imap/poda/#auth).
 
 ## Developer setup steps - option 2 manual linux/WSL Setup
 
@@ -114,7 +114,7 @@ All core functionality and logic should be available as simnple CLI commands as 
 ### Fetch Binary HK from WebPODA
 
 ```bash
-export WEBPODA_AUTH_CODE=[YOUR_SECRET_HERE!]
+export IMAP_WEBPODA_TOKEN=[YOUR_SECRET_HERE!]
 imap-mag fetch binary --apid 1063 --start-date 2025-01-02 --end-date 2025-01-03
 imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03
 imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-01-03 --ert
@@ -123,7 +123,7 @@ imap-mag fetch binary --packet SID3_PW --start-date 2025-01-02 --end-date 2025-0
 ### Fetch Science CDFs from SDC
 
 ```bash
-export SDC_AUTH_CODE=[YOUR_SECRET_HERE!]
+export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag fetch science --level l1b --modes burst --start-date 2025-01-02 --end-date 2025-01-03
 imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03
 imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03 --ingestion-date
@@ -138,6 +138,6 @@ imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.
 ### Publish Calibration to SDC
 
 ```bash
-export SDC_AUTH_CODE=[YOUR_SECRET_HERE!]
+export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
 ```

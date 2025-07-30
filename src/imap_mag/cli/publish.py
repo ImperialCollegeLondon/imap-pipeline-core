@@ -26,25 +26,12 @@ def publish(
             writable=False,
         ),
     ],
-    auth_code: Annotated[
-        str | None,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ] = None,
 ) -> None:
     """Publish files to the SDC."""
 
-    # "auth-code" is usually defined in the config file but the CLI allows for it to
-    # be specified on the command cli with "--auth-code" or in an env vars:
-    # SDC_AUTH_CODE or MAG_PUBLISH_API_AUTH_CODE
-    settings_overrides = (
-        {"publish": {"api": {"auth_code": auth_code}}} if auth_code else {}
-    )
-
-    app_settings = AppSettings(**settings_overrides)  # type: ignore
+    app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.publish)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -72,6 +59,7 @@ def publish(
     failed: int = 0
 
     data_access = SDCDataAccess(
+        auth_code=app_settings.publish.api.auth_code,
         data_dir=work_folder,
         sdc_url=app_settings.publish.api.url_base,
     )

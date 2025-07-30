@@ -6,6 +6,7 @@ from imap_mag.util.DownloadDateManager import (
     force_utc_timezone,
     get_dates_for_download,
 )
+from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket
 from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
@@ -18,6 +19,7 @@ __all__ = [
     "CCSDSBinaryPacketFile",
     "DatetimeProvider",
     "DownloadDateManager",
+    "Environment",
     "HKLevel",
     "HKPacket",
     "MAGSensor",

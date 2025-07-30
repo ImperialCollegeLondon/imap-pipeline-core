@@ -1327,14 +1327,14 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "imap-data-access"
-version = "0.25.0"
+version = "0.32.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "imap_data_access-0.25.0-py3-none-any.whl", hash = "sha256:0187d665e1aa75694e0460e25f3d0e19e27a3950c81eb55ef581003e8d32a815"},
-    {file = "imap_data_access-0.25.0.tar.gz", hash = "sha256:aef3b740b7e0ba9aa03d0ef70c6c38836684d45d176043398a6847e0df2f6b63"},
+    {file = "imap_data_access-0.32.0-py3-none-any.whl", hash = "sha256:e13f83bb26a2c0c5f15fe369a997e7a9ba07beab9411db7f2e4bb742f404fab1"},
+    {file = "imap_data_access-0.32.0.tar.gz", hash = "sha256:d67f00a3037b9f1bd3acb032d2b6c45b5b62ba9206292bb7ee19c2118a6c9540"},
 ]
 
 [package.dependencies]
@@ -4579,4 +4579,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "552ac49257f09ac014650f20bb7eb9d4fbb97fb69c3d08f6eb7f67509a7cbf24"
+content-hash = "5102bc83930839a75a598c5a7d3d85ec69cd58151b4d2643b4435f2a442ed256"

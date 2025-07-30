@@ -9,7 +9,8 @@ from prefect.client.schemas.objects import (
 )
 from prefect.variables import Variable
 
-from prefect_server.constants import CONSTANTS
+from imap_mag.util import CONSTANTS
+from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -68,18 +69,13 @@ def deploy_flows(local_debug: bool = False):
 
     shared_job_env_variables = dict(
         {
-            CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
-            CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
+            CONSTANTS.ENV_VAR_NAMES.SDC_URL: os.getenv(CONSTANTS.ENV_VAR_NAMES.SDC_URL),
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
+                PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
             ),
-            CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE
-            ),
-            CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
-                CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
-            ),
-            CONSTANTS.ENV_VAR_NAMES.PREFECT_LOGGING_EXTRA_LOGGERS: CONSTANTS.DEFAULT_LOGGERS,
-            CONSTANTS.ENV_VAR_NAMES.MATLAB_LICENSE: matlab_license,
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.PREFECT_LOGGING_EXTRA_LOGGERS: PREFECT_CONSTANTS.DEFAULT_LOGGERS,
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.MATLAB_LICENSE: matlab_license,
         }
     )
 
@@ -98,48 +94,48 @@ def deploy_flows(local_debug: bool = False):
         )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
         job_variables=shared_job_variables,
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     poll_science_norm_l1c_deployable = poll_science_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
         parameters={
             "modes": ["norm"],
             "level": "l1c",
         },
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
         job_variables=shared_job_variables,
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
     poll_science_burst_l1b_deployable = poll_science_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
         parameters={
             "modes": ["burst"],
             "level": "l1b",
         },
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
         job_variables=shared_job_variables,
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
     poll_science_l2_deployable = poll_science_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
         parameters={
             "modes": ["norm", "burst"],
             "level": "l2",
             "reference_frame": "dsrf",
         },
-        cron=get_cron_from_env(CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
         job_variables=shared_job_variables,
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     publish_deployable = publish_flow.to_deployment(
-        name=CONSTANTS.DEPLOYMENT_NAMES.PUBLISH,
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.PUBLISH,
         job_variables=shared_job_variables,
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     calibration_deployable = calibrate_flow.to_deployment(
@@ -148,7 +144,7 @@ def deploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     apply_deployable = apply_flow.to_deployment(
@@ -157,7 +153,7 @@ def deploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
@@ -166,7 +162,7 @@ def deploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     matlab_deployables = (
@@ -195,7 +191,7 @@ def deploy_flows(local_debug: bool = False):
     else:
         deploy_ids = deploy(
             *deployables,  # type: ignore
-            work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+            work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,
             build=False,
             push=False,
             image=f"{docker_image}:{docker_tag}",
@@ -203,7 +199,7 @@ def deploy_flows(local_debug: bool = False):
 
         matlab_deploy_ids = deploy(
             *matlab_deployables,  # type: ignore
-            work_pool_name=CONSTANTS.DEFAULT_WORKPOOL,
+            work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,
             build=False,
             push=False,
             image=f"{matlab_docker_image}:{matlab_docker_tag}",

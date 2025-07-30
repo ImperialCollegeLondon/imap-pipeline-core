@@ -6,7 +6,7 @@ import pytest
 
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
-from imap_mag.util import HKPacket
+from imap_mag.util import Environment, HKPacket
 from prefect_server.pollHK import poll_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
@@ -15,7 +15,6 @@ from tests.util.miscellaneous import (
     NOW,
     TODAY,
     mock_datetime_provider,  # noqa: F401
-    set_env,
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
@@ -197,9 +196,9 @@ async def test_poll_hk_autoflow_first_ever_run(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow()
 
@@ -267,9 +266,9 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow()
 
@@ -338,9 +337,9 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow(
             start_date=start_date,
@@ -416,9 +415,9 @@ async def test_poll_hk_specify_ert_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow(
             start_date=start_date,
@@ -502,8 +501,10 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
         pytest.raises(
             RuntimeError, match="FetchBinary download failed for testing purposes."
         ),
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+        Environment(
+            MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+            IMAP_WEBPODA_TOKEN="12345",
+        ),
     ):
         await poll_hk_flow(
             hk_packets=hk_to_poll,

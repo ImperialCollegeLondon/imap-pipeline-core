@@ -78,7 +78,7 @@ def test_process_error_with_unsupported_file_type():
     result = runner.invoke(
         app,
         ["process", "imap_mag_l1a_norm-mago_20250502_v001.cdf"],
-        env={"MAG_DATA_STORE": str(DATASTORE)},
+        env={"MAG_DATA_STORE": str(DATASTORE), "IMAP_API_KEY": "12345"},
     )
 
     print("\n" + str(result.stdout))
@@ -124,6 +124,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_WEBPODA_TOKEN": "12345",
     }
 
     args = [
@@ -132,8 +133,6 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
         "binary",
         "--packet",
         "SID3_PW",
-        "--auth-code",
-        "12345",
         "--start-date",
         "2025-05-02",
         "--end-date",
@@ -187,6 +186,7 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
 
     settings_overrides_for_env: Mapping[str, str] = {
         "MAG_FETCH_BINARY_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_WEBPODA_TOKEN": "12345",
     }
 
     args = [
@@ -195,8 +195,6 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
         "binary",
         "--packet",
         "SID3_PW",
-        "--auth-code",
-        "12345",
         "--start-date",
         "2025-06-02",
         "--end-date",
@@ -249,7 +247,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -258,7 +256,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        re.escape("/query?table=science&instrument=mag&data_level=l1b&descriptor=")
         + ".*"
         + re.escape("&start_date=20250502&end_date=20250502&extension=cdf"),
         json.dumps({}),
@@ -267,7 +265,8 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
+        "IMAP_API_KEY": "12345",
     }
 
     # Exercise.
@@ -277,8 +276,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
             "--verbose",
             "fetch",
             "science",
-            "--auth-code",
-            "12345",
             "--level",
             "l1b",
             "--start-date",
@@ -331,7 +328,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -340,7 +337,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         cdf_file,
     )
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=l1b&descriptor=")
+        re.escape("/query?table=science&instrument=mag&data_level=l1b&descriptor=")
         + ".*"
         + re.escape(
             "&ingestion_start_date=20240716&ingestion_end_date=20240716&extension=cdf"
@@ -351,7 +348,8 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
-        "MAG_FETCH_SCIENCE_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
+        "IMAP_API_KEY": "12345",
     }
 
     # Exercise.
@@ -361,8 +359,6 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "--verbose",
             "fetch",
             "science",
-            "--auth-code",
-            "12345",
             "--level",
             "l1b",
             "--start-date",

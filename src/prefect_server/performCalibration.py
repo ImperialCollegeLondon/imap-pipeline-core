@@ -8,7 +8,7 @@ from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod
-from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
+from prefect_server.constants import PREFECT_CONSTANTS
 
 
 def generate_calibration_flow_run_name() -> str:
