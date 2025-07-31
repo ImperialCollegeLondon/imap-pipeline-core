@@ -98,7 +98,7 @@ def calibrate(
     result: Path = calibrator.runCalibration(
         date,
         scienceLayerPath,
-        Path(calibrationLayerHandler.get_filename()),
+        app_settings.work_folder / Path(calibrationLayerHandler.get_filename()),
         app_settings.data_store,
         None,
     )

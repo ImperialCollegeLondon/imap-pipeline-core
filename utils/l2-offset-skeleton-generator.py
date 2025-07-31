@@ -64,7 +64,7 @@ cdf["valid_end_datetime"].attrs["VALIDMIN"] = datetime.datetime(1990, 1, 1, 0, 0
 cdf["valid_end_datetime"].attrs["VALIDMAX"] = datetime.datetime(2100, 1, 1, 0, 0, 0)
 cdf["valid_end_datetime"].attrs["VAR_TYPE"] = "metadata"
 
-cdf["epoch"] = time
+cdf["epoch"] = []
 cdf["epoch"].attrs["CATDESC"] = (
     "Time, number of nanoseconds since J2000 with leap seconds included"
 )
@@ -80,7 +80,7 @@ cdf["axis"].attrs["VAR_TYPE"] = "data"
 
 cdf.new(
     "offsets",
-    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+    [],
     recVary=True,
     type=pycdf.const.CDF_FLOAT,
 )

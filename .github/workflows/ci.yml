@@ -250,6 +250,7 @@ jobs:
             +general
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+          rev: v0.1.1
 
       - name: build
         run: ./build.sh --skip-tests
