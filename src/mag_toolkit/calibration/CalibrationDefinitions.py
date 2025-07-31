@@ -24,6 +24,7 @@ class CONSTANTS:
         OFFSETS = "offsets"
         TIMEDELTAS = "timedeltas"
         QUALITY_FLAG = "quality_flag"
+        QUALITY_FLAGS = "quality_flags"
         QUALITY_BITMASK = "quality_bitmask"
         VALIDITY_START_DATETIME = "validity_start_datetime"
         VALIDITY_END_DATETIME = "validity_end_datetime"

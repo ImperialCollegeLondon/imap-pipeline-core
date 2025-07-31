@@ -47,7 +47,7 @@ class ScienceLayer(Layer):
         qf_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
             data=[science.quality_flag for science in self.values],
-            attrs=l2_skeleton[CONSTANTS.CDF_VARS.QUALITY_FLAG].attrs,
+            attrs=l2_skeleton[CONSTANTS.CDF_VARS.QUALITY_FLAGS].attrs,
         )
         qb_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
@@ -60,7 +60,7 @@ class ScienceLayer(Layer):
                 CONSTANTS.CDF_VARS.EPOCH: epoch_var,
                 CONSTANTS.CDF_VARS.VECTORS: vectors_var,
                 CONSTANTS.CDF_VARS.MAGNITUDE: magnitude_var,
-                CONSTANTS.CDF_VARS.QUALITY_FLAG: qf_var,
+                CONSTANTS.CDF_VARS.QUALITY_FLAGS: qf_var,
                 CONSTANTS.CDF_VARS.QUALITY_BITMASK: qb_var,
             },
             attrs=l2_skeleton.attrs,
