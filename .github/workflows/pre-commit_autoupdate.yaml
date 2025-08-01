@@ -3,6 +3,11 @@ name: Pre-Commit Auto-Update
 on:
   schedule:
     - cron: "0 0 1 * *" # midnight every first of the month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   auto-update:
@@ -15,7 +20,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: update/pre-commit-hooks
-          base: dev
           title: "Chore: Update Pre-Commit Hooks"
           commit-message: "chore: update pre-commit hooks"
           body: Update versions of pre-commit hooks to latest version.
