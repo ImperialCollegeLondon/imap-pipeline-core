@@ -13,10 +13,10 @@ from wiremock.client import (
 
 from imap_mag.cli.publish import publish
 from imap_mag.main import app
+from imap_mag.util import Environment
 from prefect_server.publishFlow import publish_flow
 from tests.util.miscellaneous import (
     DATASTORE,
-    set_env,
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
@@ -58,11 +58,12 @@ def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs):
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     # Exercise.
-    with (
-        set_env("MAG_DATA_STORE", str(DATASTORE)),
-        set_env("MAG_PUBLISH_API_URL_BASE", wiremock_manager.get_url()),
+    with Environment(
+        MAG_DATA_STORE=str(DATASTORE),
+        MAG_PUBLISH_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
-        publish([upload_file], auth_code="12345")
+        publish([upload_file])
 
     # Verify.
     assert f"Publishing 1 files: {upload_file}" in capture_cli_logs.text
@@ -102,10 +103,13 @@ def test_failed_sdc_file_publish(wiremock_manager, capture_cli_logs):
             RuntimeError,
             match="Failed to publish 1 files.",
         ),
-        set_env("MAG_DATA_STORE", str(DATASTORE)),
-        set_env("MAG_PUBLISH_API_URL_BASE", wiremock_manager.get_url()),
+        Environment(
+            MAG_DATA_STORE=str(DATASTORE),
+            MAG_PUBLISH_API_URL_BASE=wiremock_manager.get_url(),
+            IMAP_API_KEY="12345",
+        ),
     ):
-        publish([upload_file1, upload_file2], auth_code="12345")
+        publish([upload_file1, upload_file2])
 
     assert (
         f"Failed to publish file {DATASTORE / Path('science/mag/l1b/2025/10') / upload_file2}"
@@ -129,10 +133,11 @@ def test_publish_file_to_sdc_cli(wiremock_manager):
     # Exercise.
     result = runner.invoke(
         app,
-        ["publish", str(upload_file), "--auth-code", "12345"],
+        ["publish", str(upload_file)],
         env={
             "MAG_DATA_STORE": str(DATASTORE),
             "MAG_PUBLISH_API_URL_BASE": wiremock_manager.get_url(),
+            "IMAP_API_KEY": "12345",
         },
     )
 
@@ -157,10 +162,10 @@ async def test_publish_flow_to_sdc(wiremock_manager, capture_cli_logs):
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     # Exercise.
-    with (
-        set_env("MAG_DATA_STORE", str(DATASTORE)),
-        set_env("MAG_PUBLISH_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_DATA_STORE=str(DATASTORE),
+        MAG_PUBLISH_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
         await publish_flow([upload_file])
 

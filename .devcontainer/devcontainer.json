@@ -35,8 +35,8 @@
     "remoteEnv": {
         // add the pyenv bin and poetry to the PATH for the dev user vscode
         "PATH": "/home/vscode/.pyenv/bin:/home/vscode/.local/bin:${containerEnv:PATH}",
-        "WEBPODA_AUTH_CODE": "${localEnv:WEBPODA_AUTH_CODE}",
-        "SDC_AUTH_CODE": "${localEnv:SDC_AUTH_CODE}",
+        "IMAP_WEBPODA_TOKEN": "${localEnv:IMAP_WEBPODA_TOKEN}",
+        "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
         "IMAP_DATA_ACCESS_URL": "${localEnv:IMAP_DATA_ACCESS_URL}",
         "SQLALCHEMY_URL": "${localEnv:SQLALCHEMY_URL}",
         // Define WireMock variables to connect Docker outside of Docker.

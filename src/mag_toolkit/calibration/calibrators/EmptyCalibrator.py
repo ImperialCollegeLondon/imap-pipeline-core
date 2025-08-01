@@ -23,6 +23,6 @@ class EmptyCalibrator(Calibrator):
         logger.info(f"Using datetime {dt_as_str}")
 
         call_matlab(
-            f'emptyCalibrator("{dt_as_str}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
+            f'calibration.wrappers.run_empty_calibrator("{dt_as_str}", "{sciencefile}", "{calfile}", "{datastore}", "{config}")'
         )
         return calfile

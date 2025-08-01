@@ -8,12 +8,8 @@ import typer
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings
-from imap_mag.io import (
-    CalibrationLayerPathHandler,
-    InputManager,
-    OutputManager,
-    SciencePathHandler,
-)
+from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
 from imap_mag.util import ScienceLevel, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationMethod,
@@ -74,24 +70,14 @@ def calibrate(
         extension="cdf",
     )
 
-    input_manager = InputManager(app_settings.data_store)
-    input_file = input_manager.get_versioned_file(path_handler)
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    input_file: Path = datastore_finder.find_latest_version(
+        path_handler, throw_if_not_found=True
+    )
 
-    if not input_file:
-        logging.critical(
-            "Unable to find a file to process matching %s",
-            path_handler.get_filename(),
-        )
-        raise FileNotFoundError(
-            f"Unable to find a file to process matching {path_handler.get_filename()}"
-        )
-
-    workFile = fetch_file_for_work(
+    workFile: Path = fetch_file_for_work(
         input_file, app_settings.work_folder, throw_if_not_found=True
     )
-    if not workFile:
-        logging.error("Unable to fetch file for work: %s", input_file)
-        raise FileNotFoundError(f"Unable to fetch file for work: {input_file}")
 
     scienceLayer = ScienceLayer.from_file(workFile)
     scienceLayerHandler = CalibrationLayerPathHandler(
@@ -112,7 +98,7 @@ def calibrate(
     result: Path = calibrator.runCalibration(
         date,
         scienceLayerPath,
-        Path(calibrationLayerHandler.get_filename()),
+        app_settings.work_folder / Path(calibrationLayerHandler.get_filename()),
         app_settings.data_store,
         None,
     )

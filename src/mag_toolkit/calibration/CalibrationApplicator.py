@@ -1,10 +1,10 @@
-import datetime
 import logging
 from collections.abc import Iterable
 from functools import reduce
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from spacepy import pycdf
 
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
@@ -49,7 +49,7 @@ class CalibrationApplicator:
                 CalibrationValue(
                     time=data_point.time,
                     value=[0, 0, 0],
-                    timedelta=0,
+                    timedelta=0,  # type: ignore
                     quality_flag=0,
                     quality_bitmask=0,
                 )
@@ -65,7 +65,7 @@ class CalibrationApplicator:
         metadata = CalibrationMetadata(
             dependencies=dependencies,
             science=[],
-            creation_timestamp=datetime.datetime.now(),
+            creation_timestamp=np.datetime64("now"),
         )
         calibrationLayer = CalibrationLayer(
             id="",
@@ -131,7 +131,7 @@ class CalibrationApplicator:
         metadata = CalibrationMetadata(
             dependencies=dependencies,
             science=[science.science_file],
-            creation_timestamp=datetime.datetime.now(),
+            creation_timestamp=np.datetime64("now"),
         )
         return ScienceLayer(
             id="",
@@ -164,7 +164,7 @@ class CalibrationApplicator:
             quality_flag = layer_point.quality_flag
             quality_bitmask = layer_point.quality_bitmask
 
-            time = data_point.time + datetime.timedelta(seconds=timedelta)
+            time = data_point.time + pd.to_timedelta(timedelta, "s").to_numpy()
 
             values.append(
                 ScienceValue(

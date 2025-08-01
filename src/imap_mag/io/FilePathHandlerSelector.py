@@ -1,13 +1,15 @@
 import logging
 from pathlib import Path
+from typing import Literal, overload
 
-from imap_mag.io.AncillaryPathHandler import AncillaryPathHandler
-from imap_mag.io.CalibrationLayerPathHandler import (
+from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
+from imap_mag.io.file.CalibrationLayerPathHandler import (
     CalibrationLayerPathHandler,
 )
-from imap_mag.io.HKPathHandler import HKPathHandler
-from imap_mag.io.IFilePathHandler import IFilePathHandler
-from imap_mag.io.SciencePathHandler import SciencePathHandler
+from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
+from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +25,23 @@ class NoProviderFoundError(Exception):
 class FilePathHandlerSelector:
     """Manager of file path handlers."""
 
+    @overload
     @staticmethod
     def find_by_path(
-        file: Path, *, throw_on_none_found: bool = True
+        file: Path, *, throw_if_not_found: Literal[True] = True
+    ) -> IFilePathHandler:
+        pass
+
+    @overload
+    @staticmethod
+    def find_by_path(
+        file: Path, *, throw_if_not_found: Literal[False] = False
+    ) -> IFilePathHandler | None:
+        pass
+
+    @staticmethod
+    def find_by_path(
+        file: Path, *, throw_if_not_found: bool = True
     ) -> IFilePathHandler | None:
         """Find a suitable path handler for the given filepath."""
 
@@ -33,7 +49,8 @@ class FilePathHandlerSelector:
         provider_to_try: list[type[IFilePathHandler]] = [
             AncillaryPathHandler,
             CalibrationLayerPathHandler,
-            HKPathHandler,
+            HKBinaryPathHandler,
+            HKDecodedPathHandler,
             SciencePathHandler,
         ]
 
@@ -43,7 +60,7 @@ class FilePathHandlerSelector:
                 logger.debug(f"Path handler {provider.__name__} matches file {file}.")
                 return path_handler
 
-        if throw_on_none_found:
+        if throw_if_not_found:
             logger.error(f"No suitable path handler found for file {file}.")
             raise NoProviderFoundError(file)
         else:

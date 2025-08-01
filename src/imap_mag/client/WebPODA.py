@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
@@ -14,14 +15,16 @@ logger = logging.getLogger(__name__)
 class WebPODA:
     """Class for downloading raw packets from WebPODA."""
 
-    __webpoda_url: str
-    __auth_code: str
+    __auth_code: SecretStr
     __output_dir: Path
+    __webpoda_url: str
 
-    def __init__(self, auth_code: str, output_dir: Path, webpoda_url: str) -> None:
+    def __init__(
+        self, auth_code: SecretStr | None, output_dir: Path, webpoda_url: str
+    ) -> None:
         """Initialize WebPODA interface."""
 
-        self.__auth_code = auth_code
+        self.__auth_code = auth_code or SecretStr("")
         self.__output_dir = output_dir
         self.__webpoda_url = webpoda_url
 
@@ -96,41 +99,6 @@ class WebPODA:
 
         return max_ert
 
-    def get_min_sctime(
-        self,
-        *,
-        packet: str,
-        start_date: datetime,
-        end_date: datetime,
-        ert: bool = False,
-    ) -> datetime | None:
-        logger.info(
-            f"Downloading time information for {packet} from {start_date} to {end_date}."
-        )
-
-        time_response: requests.Response = self.__download_from_webpoda(
-            packet,
-            "csv",
-            start_date,
-            end_date,
-            ert,
-            "project(time)&formatTime(\"yyyy-MM-dd'T'HH:mm:ss\")",
-        )
-
-        time_info = time_response.content.decode("utf-8")
-        lines = time_info.strip().splitlines()[1:]
-
-        if not lines:
-            logger.debug("No time data found.")
-            min_time = None
-        else:
-            datetimes = [datetime.fromisoformat(line) for line in lines]
-            min_time = min(datetimes)
-
-            logger.debug(f"Min time: {min_time}")
-
-        return min_time
-
     def __download_from_webpoda(
         self,
         packet: str,
@@ -143,7 +111,7 @@ class WebPODA:
         """Download any data from WebPODA."""
 
         headers = {
-            "Authorization": f"Basic {self.__auth_code}",
+            "Authorization": f"Basic {self.__auth_code.get_secret_value()}",
         }
 
         start_value: str = start_date.strftime("%Y-%m-%dT%H:%M:%S")

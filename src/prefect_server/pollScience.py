@@ -9,15 +9,17 @@ from pydantic import Field
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.io import SciencePathHandler
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import (
+    CONSTANTS,
     DatetimeProvider,
+    Environment,
     ReferenceFrame,
     ScienceLevel,
     ScienceMode,
     get_dates_for_download,
 )
-from prefect_server.constants import CONSTANTS
+from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
 
@@ -41,7 +43,7 @@ def generate_flow_run_name() -> str:
 
 
 @flow(
-    name=CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
 )
@@ -118,7 +120,7 @@ async def poll_science_flow(
     database = Database()
 
     auth_code = await get_secret_or_env_var(
-        CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
+        PREFECT_CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
@@ -156,17 +158,17 @@ async def poll_science_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        # Download binary from SDC
-        downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
-            auth_code=auth_code,
-            level=level,
-            reference_frame=reference_frame,
-            modes=[mode],
-            start_date=packet_start_date,
-            end_date=packet_end_date,
-            use_ingestion_date=use_ingestion_date,
-            fetch_mode=FetchMode.DownloadAndUpdateProgress,
-        )
+        # Download files from SDC
+        with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
+            downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
+                level=level,
+                reference_frame=reference_frame,
+                modes=[mode],
+                start_date=packet_start_date,
+                end_date=packet_end_date,
+                use_ingestion_date=use_ingestion_date,
+                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+            )
 
         if not downloaded_science:
             logger.info(

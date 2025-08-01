@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -10,7 +10,7 @@ from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchBinary import FetchBinary
-from imap_mag.io import HKPathHandler
+from imap_mag.io.file import HKBinaryPathHandler
 from imap_mag.util import HKPacket
 
 logger = logging.getLogger(__name__)
@@ -30,11 +30,11 @@ def fetch_binary(
         ),
     ] = False,
     apid: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--apid", help="ApID to download"),
     ] = None,
     packet: Annotated[
-        Optional[HKPacket],  # type: ignore
+        HKPacket | None,
         typer.Option(
             "--packet", case_sensitive=False, help="Packet to download, e.g., SID1"
         ),
@@ -46,29 +46,16 @@ def fetch_binary(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-    auth_code: Annotated[
-        str | None,
-        typer.Option(
-            envvar="WEBPODA_AUTH_CODE",
-            help="WebPODA authentication code",
-        ),
-    ] = None,
-) -> dict[Path, HKPathHandler]:
+) -> dict[Path, HKBinaryPathHandler]:
     """Download binary data from WebPODA."""
 
     # Must provide a apid or a packet.
     if (not apid and not packet) or (apid and packet):
         raise ValueError("Must provide either --apid or --packet, and not both")
 
-    # "auth-code" is usually defined in the config file but the CLI allows for it to
-    # be specified on the command cli with "--auth-code" or in an env vars:
-    # WEBPODA_AUTH_CODE or MAG_FETCH_BINARY_API_AUTH_CODE
-    settings_overrides = (
-        {"fetch_binary": {"api": {"auth_code": auth_code}}} if auth_code else {}
-    )
-
-    app_settings = AppSettings(**settings_overrides)  # type: ignore
+    app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_binary)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -90,11 +77,13 @@ def fetch_binary(
     )
 
     fetch_binary = FetchBinary(poda)
-    downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary.download_binaries(
-        packet=packet_name,
-        start_date=start_date,
-        end_date=end_date,
-        use_ert=use_ert,
+    downloaded_binaries: dict[Path, HKBinaryPathHandler] = (
+        fetch_binary.download_binaries(
+            packet=packet_name,
+            start_date=start_date,
+            end_date=end_date,
+            use_ert=use_ert,
+        )
     )
 
     if not downloaded_binaries:
@@ -106,7 +95,7 @@ def fetch_binary(
             f"Downloaded {len(downloaded_binaries)} files:\n{', '.join(str(f) for f in downloaded_binaries.keys())}"
         )
 
-    output_binaries: dict[Path, HKPathHandler] = dict()
+    output_binaries: dict[Path, HKBinaryPathHandler] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(

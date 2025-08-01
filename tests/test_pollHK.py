@@ -6,7 +6,7 @@ import pytest
 
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
-from imap_mag.util import HKPacket
+from imap_mag.util import Environment, HKPacket
 from prefect_server.pollHK import poll_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
@@ -15,7 +15,6 @@ from tests.util.miscellaneous import (
     NOW,
     TODAY,
     mock_datetime_provider,  # noqa: F401
-    set_env,
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
@@ -51,7 +50,7 @@ def define_available_data_webpoda_mappings(
 
 
 def define_unavailable_data_webpoda_mappings(wiremock_manager):
-    empty_file = os.path.abspath("tests/data/2025/EMPTY_HK.pkts")
+    empty_file = os.path.abspath("tests/test_data/EMPTY_HK.pkts")
 
     wiremock_manager.add_file_mapping(
         re.escape("/packets/SID2/")
@@ -133,7 +132,7 @@ def check_file_existence(
             "output/hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
         )
         bin_file = (
-            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v001.pkts"
+            f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_001.pkts"
         )
 
         csv_folder = os.path.join(
@@ -159,9 +158,9 @@ async def test_poll_hk_autoflow_first_ever_run(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
+        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_PROCSTAT": os.path.abspath("tests/test_data/MAG_HSK_PROCSTAT.pkts"),
     }
 
     beginning_of_imap = BEGINNING_OF_IMAP.strftime("%Y-%m-%dT%H:%M:%S")
@@ -197,9 +196,9 @@ async def test_poll_hk_autoflow_first_ever_run(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow()
 
@@ -225,9 +224,9 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_SID15": os.path.abspath("tests/data/2025/MAG_HSK_SID15.pkts"),
+        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SID15": os.path.abspath("tests/test_data/MAG_HSK_SID15.pkts"),
     }
 
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -267,9 +266,9 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow()
 
@@ -298,9 +297,9 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_SCI": os.path.abspath("tests/data/2025/MAG_HSK_SCI.pkts"),
+        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SCI": os.path.abspath("tests/test_data/MAG_HSK_SCI.pkts"),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -338,9 +337,9 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow(
             start_date=start_date,
@@ -374,9 +373,9 @@ async def test_poll_hk_specify_ert_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_SCI": os.path.abspath("tests/data/2025/MAG_HSK_SCI.pkts"),
+        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_SCI": os.path.abspath("tests/test_data/MAG_HSK_SCI.pkts"),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -416,9 +415,9 @@ async def test_poll_hk_specify_ert_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
     ):
         await poll_hk_flow(
             start_date=start_date,
@@ -465,9 +464,9 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/data/2025/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/data/2025/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_PROCSTAT": os.path.abspath("tests/data/2025/MAG_HSK_PROCSTAT.pkts"),
+        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
+        "MAG_HSK_PROCSTAT": os.path.abspath("tests/test_data/MAG_HSK_PROCSTAT.pkts"),
     }
 
     beginning_of_imap = BEGINNING_OF_IMAP.strftime("%Y-%m-%dT%H:%M:%S")
@@ -502,8 +501,10 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
         pytest.raises(
             RuntimeError, match="FetchBinary download failed for testing purposes."
         ),
-        set_env("MAG_FETCH_BINARY_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("WEBPODA_AUTH_CODE", "12345"),
+        Environment(
+            MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+            IMAP_WEBPODA_TOKEN="12345",
+        ),
     ):
         await poll_hk_flow(
             hk_packets=hk_to_poll,

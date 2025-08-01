@@ -7,12 +7,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, DownloadProgress, File
-from imap_mag.db.IDatabase import IDatabase
 
 logger = logging.getLogger(__name__)
 
 
-class Database(IDatabase):
+class Database:
     """Database manager."""
 
     __active_session: Session | None
@@ -65,6 +64,10 @@ class Database(IDatabase):
             )
 
         return self.__active_session
+
+    def insert_file(self, file: File) -> None:
+        """Insert a file into the database."""
+        self.insert_files([file])
 
     @__session_manager()
     def insert_files(self, files: list[File]) -> None:
