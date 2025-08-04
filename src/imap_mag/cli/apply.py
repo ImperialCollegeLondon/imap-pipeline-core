@@ -122,10 +122,6 @@ def apply(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
 
-    if not workDataFile:
-        logger.error(f"Could not fetch work file for input: {input}")
-        raise ValueError(f"Could not fetch work file for input: {input}")
-
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
