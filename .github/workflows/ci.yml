@@ -191,6 +191,30 @@ jobs:
             python -m pip install poetry
             ./build.sh
 
+      - name: Upload Coverage report
+        uses: actions/upload-artifact@v4
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          name: CoverageReport_python${{matrix.python-versions}}
+          path: htmlcov
+          if-no-files-found: error
+
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if:  ${{ !cancelled() }} && ${{ hashFiles('test-results.xml') != '' }}
+        with:
+          name: Test Results (${{ matrix.python-versions }})
+          path: "test-results.xml"
+          reporter: java-junit
+
+      - name: Coverage Report
+        uses: 5monkeys/cobertura-action@v14
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        with:
+          report_name: Coverage Report (${{ matrix.python-versions }})
+          path: "coverage.xml"
+          minimum_coverage: 80
+
   matlab-build:
     strategy:
       matrix:
@@ -322,30 +346,6 @@ jobs:
             ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
           cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
-
-      - name: Upload Coverage report
-        uses: actions/upload-artifact@v4
-        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
-        with:
-          name: CoverageReport_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
-          path: htmlcov
-          if-no-files-found: error
-
-      - name: Test Report
-        uses: dorny/test-reporter@v2
-        if: success() || failure()
-        with:
-          name: Test Results (${{ matrix.python-versions }})
-          path: "test-results.xml"
-          reporter: java-junit
-
-      - name: Coverage Report
-        uses: 5monkeys/cobertura-action@v14
-        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
-        with:
-          report_name: Coverage Report (${{ matrix.python-versions }})
-          path: "coverage.xml"
-          minimum_coverage: 80
 
   test_on_windows:
     strategy:
