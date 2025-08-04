@@ -152,6 +152,12 @@ class ScienceLayer(Layer):
             values=values,
         )
 
+    def calculate_magnitudes(self):
+        for i, datapoint in enumerate(self.values):
+            magnitude = np.linalg.norm(datapoint.value)
+            self.values[i].magnitude = float(magnitude)
+        return self
+
     @classmethod
     def _from_cdf(cls, path: Path):
         dataset = cdf_to_xarray(str(path), to_datetime=False)

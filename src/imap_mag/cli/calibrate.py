@@ -6,15 +6,17 @@ from typing import Annotated
 import typer
 
 from imap_mag.cli import apply
-from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings
+from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
 from imap_mag.io import DatastoreFileFinder, OutputManager
-from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
-from imap_mag.util import ScienceLevel, ScienceMode
+from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
+    CalibrationJobParameters,
     CalibrationMethod,
-    EmptyCalibrator,
-    ScienceLayer,
+    EmptyCalibrationJob,
+    GradiometerCalibrationJob,
     Sensor,
 )
 
@@ -25,13 +27,53 @@ logger = logging.getLogger(__name__)
 app.command()(apply.apply)
 
 
-# TODO: ?
-def interpolate():
-    pass
+def gradiometry(
+    date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
+    mode: Annotated[
+        ScienceMode, typer.Option(help="Science mode")
+    ] = ScienceMode.Normal,
+    kappa: Annotated[float, typer.Option(help="Kappa value for gradiometry")] = 0.0,
+    sc_interference_threshold: Annotated[
+        float, typer.Option(help="SC interference threshold")
+    ] = 10.0,
+):
+    """
+    Run gradiometry calibration.
+    """
 
+    app_settings = AppSettings()  # type: ignore
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    initialiseLoggingForCommand(work_folder)
 
-def publish():
-    pass
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+
+    method = CalibrationMethod.GRADIOMETER
+    calibration_job_parameters = CalibrationJobParameters(
+        date=date, mode=mode, sensor=Sensor.MAGO
+    )
+    calibration_configuration = CalibrationConfig(
+        gradiometer=GradiometryConfig(
+            kappa=kappa, sc_interference_threshold=sc_interference_threshold
+        )
+    )
+    calibrator = GradiometerCalibrationJob(calibration_job_parameters)
+    calibrator.setup_calibration_files(datastore_finder, work_folder)
+    calibrator.setup_datastore(app_settings.data_store)
+
+    calibration_layer_handler = CalibrationLayerPathHandler(
+        calibration_descriptor=method.short_name, content_date=date
+    )
+    result: Path = calibrator.run_calibration(
+        work_folder / Path(calibration_layer_handler.get_filename()),
+        calibration_configuration,
+    )
+
+    outputManager = OutputManager(app_settings.data_store)
+    (output_calibration_path, _) = outputManager.add_file(
+        result, path_handler=calibration_layer_handler
+    )  # type: ignore
+
+    return output_calibration_path
 
 
 # E.g., imap-mag calibrate --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
@@ -46,6 +88,12 @@ def calibrate(
     sensor: Annotated[
         Sensor, typer.Option(help="Sensor to calibrate, e.g., mago")
     ] = Sensor.MAGO,
+    configuration: Annotated[
+        str | None,
+        typer.Option(
+            help="Configuration for the calibration - should be a YAML file or a JSON string",
+        ),
+    ] = None,
 ):
     """
     Generate calibration parameters for a given input file.
@@ -60,52 +108,43 @@ def calibrate(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    # TODO: Input manager for getting data of a given level?
+    if configuration is None:
+        calibration_configuration = CalibrationConfig()
+    elif Path(configuration).is_file():
+        logger.info(f"Loading calibration configuration from {configuration}")
+        calibration_configuration = CalibrationConfig.from_file(Path(configuration))
+    else:
+        calibration_configuration = CalibrationConfig.model_validate_json(configuration)
 
-    level = ScienceLevel.l1b if mode == ScienceMode.Burst else ScienceLevel.l1c
-    path_handler = SciencePathHandler(
-        level=level.value,
-        content_date=date,
-        descriptor=f"{mode.short_name}-{sensor.value.lower()}",
-        extension="cdf",
+    calibration_job_parameters = CalibrationJobParameters(
+        date=date, mode=mode, sensor=sensor
     )
-
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
-    input_file: Path = datastore_finder.find_latest_version(
-        path_handler, throw_if_not_found=True
-    )
-
-    workFile: Path = fetch_file_for_work(
-        input_file, app_settings.work_folder, throw_if_not_found=True
-    )
-
-    scienceLayer = ScienceLayer.from_file(workFile)
-    scienceLayerHandler = CalibrationLayerPathHandler(
-        calibration_descriptor="science", content_date=date
-    )
-    scienceLayerPath = app_settings.work_folder / scienceLayerHandler.get_filename()
-    scienceLayer.writeToFile(scienceLayerPath)
 
     match method:
         case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrator()
+            calibrator = EmptyCalibrationJob(calibration_job_parameters)
+        case CalibrationMethod.GRADIOMETER:
+            calibrator = GradiometerCalibrationJob(calibration_job_parameters)
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrationLayerHandler = CalibrationLayerPathHandler(
+    calibrator.setup_calibration_files(
+        DatastoreFileFinder(app_settings.data_store), work_folder
+    )
+    calibrator.setup_datastore(app_settings.data_store)
+
+    calibration_layer_handler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
-    result: Path = calibrator.runCalibration(
-        date,
-        scienceLayerPath,
-        app_settings.work_folder / Path(calibrationLayerHandler.get_filename()),
-        app_settings.data_store,
-        None,
+
+    result: Path = calibrator.run_calibration(
+        work_folder / Path(calibration_layer_handler.get_filename()),
+        calibration_configuration,
     )
 
     outputManager = OutputManager(app_settings.data_store)
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibrationLayerHandler
+        result, path_handler=calibration_layer_handler
     )  # type: ignore
 
-    return (output_calibration_path, input_file)
+    return output_calibration_path

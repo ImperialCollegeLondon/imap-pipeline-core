@@ -91,11 +91,8 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v2
-
-      - name: build
-        run: ./build.sh
+      - name: build --skip-tests
+        run: ./build.sh --skip-tests
 
       - name: Build wheels and source tarball
         run: ./pack.sh
@@ -156,17 +153,55 @@ jobs:
           path: dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
           if-no-files-found: error
 
+      - name: Create Release ${{github.ref_name}} & upload artifacts
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
+
+  tests:
+    strategy:
+      matrix:
+        python-versions: ["3.10", "3.11", "3.12"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-versions }}
+      - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.CALIBRATION_CODE_LOCATION}}
+          sparse-checkout: |
+            +calibration
+            +general
+            external-packages
+          repository: ${{ vars.CALIBRATION_REPO }}
+          ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+          ref: v0.1.1
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+      - name: Run Tests
+        run: |
+            python -m pip install poetry
+            ./build.sh
+
       - name: Upload Coverage report
         uses: actions/upload-artifact@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
-          name: CoverageReport_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
+          name: CoverageReport_python${{matrix.python-versions}}
           path: htmlcov
           if-no-files-found: error
 
       - name: Test Report
         uses: dorny/test-reporter@v2
-        if: success() || failure()
+        if:  ${{ !cancelled() }} && ${{ hashFiles('test-results.xml') != '' }}
         with:
           name: Test Results (${{ matrix.python-versions }})
           path: "test-results.xml"
@@ -180,16 +215,6 @@ jobs:
           path: "coverage.xml"
           minimum_coverage: 80
 
-      - name: Create Release ${{github.ref_name}} & upload artifacts
-        uses: softprops/action-gh-release@v2
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        with:
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: |
-            dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
-
   matlab-build:
     strategy:
       matrix:
@@ -202,7 +227,22 @@ jobs:
       package_name: ${{ env.PACKAGE_NAME }}
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # builds fail with not enough space - needs more than the default 16GB!! in GH Actions default runners
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            # this might remove tools that are actually needed,
+            # if set to "true" but frees about 6 GB
+            tool-cache: true
+
+            # Each of these frees more space, takes more time
+            android: false
+            dotnet: false
+            haskell: false
+            large-packages: false
+            docker-images: false
+            swap-storage: false
+
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -248,11 +288,15 @@ jobs:
           sparse-checkout: |
             +calibration
             +general
+            external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          rev: v0.1.1
+          ref: v0.1.1
 
-      - name: build
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
+      - name: build --skip-tests
         run: ./build.sh --skip-tests
 
       - name: Build wheels and source tarball

@@ -153,15 +153,18 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    (L2_file, cal_file) = applier.apply(
-        workLayers, workRotationFile, workDataFile, workCalFile, workL2File
-    )
-
     outputManager = OutputManager(app_settings.data_store)
 
-    outputManager.add_file(L2_file, l2_path_handler)
-    outputManager.add_file(cal_file, cal_path_handler)
+    if layers:
+        (L2_file, cal_file) = applier.apply(
+            workLayers, workRotationFile, workDataFile, workCalFile, workL2File
+        )
 
-
-def publish():
-    pass
+        outputManager.add_file(L2_file, l2_path_handler)
+        outputManager.add_file(cal_file, cal_path_handler)
+    elif workRotationFile:
+        L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
+        outputManager.add_file(L2_file, l2_path_handler)
+    else:
+        logger.error("No calibration layers or rotation file provided.")
+        raise ValueError("No calibration layers or rotation file provided.")

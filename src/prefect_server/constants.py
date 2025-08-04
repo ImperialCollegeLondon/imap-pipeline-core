@@ -38,6 +38,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
+        GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
 
     class DEPLOYMENT_NAMES:

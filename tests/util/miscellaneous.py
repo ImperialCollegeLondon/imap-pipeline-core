@@ -1,11 +1,13 @@
 import os
+import shutil
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from imap_mag.appLogging import AppLogging
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import DatetimeProvider, Environment
 
 NOW = datetime(2025, 6, 2, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -39,6 +41,17 @@ def tidyDataFolders():
     os.system("rm -rf .work")
     os.system("rm -rf output/*")
     yield
+
+
+@pytest.fixture(autouse=False, scope="function")
+def temp_datastore():
+    temp_datastore = Path(tempfile.mkdtemp())
+    shutil.copytree(DATASTORE, temp_datastore, dirs_exist_ok=True)
+
+    with Environment(MAG_DATA_STORE=str(temp_datastore)):
+        yield temp_datastore
+
+    shutil.rmtree(temp_datastore, ignore_errors=True)
 
 
 @pytest.fixture(autouse=False)
