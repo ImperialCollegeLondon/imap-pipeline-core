@@ -5,14 +5,19 @@ from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
 from tests.test_calibration import prepare_test_file
-
-from .util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
+    DATASTORE,
     create_test_file,
+    temp_datastore,
     tidyDataFolders,
 )
 
 
-def test_empty_calibrator_makes_correct_matlab_call(monkeypatch, tmp_path):
+def test_empty_calibrator_makes_correct_matlab_call(
+    monkeypatch,
+    tmp_path,
+    temp_datastore,  # noqa: F811
+):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -24,7 +29,7 @@ def test_empty_calibrator_makes_correct_matlab_call(monkeypatch, tmp_path):
     def mock_call_matlab(command):
         assert (
             command
-            == 'calibration.wrappers.run_empty_calibrator("2025-10-17T00:00:00", ".work/imap_mag_l1c_norm-mago_20251017_v000.cdf", ".work/imap_mag_noop-layer_20251017_v001.json", "output", "")'
+            == f'calibration.wrappers.run_empty_calibrator("2025-10-17T00:00:00", ".work/imap_mag_l1c_norm-mago_20251017_v001.cdf", ".work/imap_mag_noop-layer_20251017_v001.json", "{temp_datastore}", "")'
         )
         temp_file = Path(".work") / "imap_mag_noop-layer_20251017_v001.json"
         create_test_file(temp_file)
@@ -41,8 +46,8 @@ def test_empty_calibrator_makes_correct_matlab_call(monkeypatch, tmp_path):
         method=CalibrationMethod.NOOP,
     )
 
-    assert Path(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
+    assert (
+        DATASTORE / "calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
     ).exists()
 
 

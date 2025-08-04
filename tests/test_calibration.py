@@ -20,8 +20,7 @@ from mag_toolkit.calibration import (
     Sensor,
 )
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
-
-from .util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     create_test_file,
     tidyDataFolders,
@@ -229,11 +228,13 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
 
 def test_simple_interpolation_calibration_values_apply_correctly():
     calibration_values = [
-        CalibrationValue(time=datetime(2025, 1, 1, 12, 30, 0), value=[0, 0, 0]),
-        CalibrationValue(time=datetime(2025, 1, 1, 12, 30, 2), value=[2, 0, 0]),
+        CalibrationValue(time=np.datetime64("2025-01-01T12:30"), value=[0, 0, 0]),
+        CalibrationValue(time=np.datetime64("2025-01-01T12:30:02"), value=[2, 0, 0]),
     ]
     science_values = [
-        ScienceValue(time=datetime(2025, 1, 1, 12, 30, 1), value=[0, 0, 0], range=3)
+        ScienceValue(
+            time=np.datetime64("2025-01-01T12:30:01"), value=[0, 0, 0], range=3
+        )
     ]
 
     applier = CalibrationApplicator()

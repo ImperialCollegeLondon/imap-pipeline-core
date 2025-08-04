@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Iterable
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -203,35 +202,40 @@ class CalibrationApplicator:
         data_values: Iterable[ScienceValue],
         layer_values: Iterable[CalibrationValue],
     ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
-        science_times = [data_point.time.timestamp() for data_point in data_values]
+        science_times = np.array(
+            [data_point.time for data_point in data_values], dtype="m"
+        ) / np.timedelta64(1, "s")
+        layer_times = np.array(
+            [layer_point.time for layer_point in layer_values], dtype="m"
+        ) / np.timedelta64(1, "s")
         x_vals = np.interp(
             science_times,
-            [layer_point.time.timestamp() for layer_point in layer_values],
+            layer_times,
             [layer_point.value[0] for layer_point in layer_values],
         )
         y_vals = np.interp(
             science_times,
-            [layer_point.time.timestamp() for layer_point in layer_values],
+            layer_times,
             [layer_point.value[1] for layer_point in layer_values],
         )
         z_vals = np.interp(
             science_times,
-            [layer_point.time.timestamp() for layer_point in layer_values],
+            layer_times,
             [layer_point.value[2] for layer_point in layer_values],
         )
         interpolated_quality_flags = np.interp(
             science_times,
-            [layer_point.time.timestamp() for layer_point in layer_values],
+            layer_times,
             [layer_point.quality_flag for layer_point in layer_values],
         )
         interpolated_quality_bitmasks = np.interp(
             science_times,
-            [layer_point.time.timestamp() for layer_point in layer_values],
+            layer_times,
             [layer_point.quality_bitmask for layer_point in layer_values],
         )
         interpolated_calibration_values = [
             CalibrationValue(
-                time=datetime.fromtimestamp(science_time),
+                time=pd.to_datetime(science_time, unit="s").to_numpy(),
                 value=[x_val, y_val, z_val],
                 timedelta=0,
                 quality_flag=int(interpolated_quality_flag),

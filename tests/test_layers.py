@@ -12,6 +12,7 @@ from mag_toolkit.calibration import (
     ScienceValue,
 )
 from mag_toolkit.calibration.CalibrationDefinitions import Sensor, Validity, ValueType
+from tests.util.miscellaneous import DATASTORE
 
 
 def test_science_layer_calculates_magnitude_correctly():
@@ -43,9 +44,7 @@ def test_science_layer_calculates_magnitude_correctly():
 
 def test_layer_loads_science_to_full_specificity():
     sl = ScienceLayer.from_file(
-        Path(
-            "tests/data/science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
-        )
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
     )
     assert sl.values[0].time == np.datetime64("2025-04-21T12:16:05.569359872", "ns")
     assert sl.values[1].time == np.datetime64("2025-04-21T12:16:06.069359872", "ns")
@@ -53,9 +52,7 @@ def test_layer_loads_science_to_full_specificity():
 
 def test_layer_writes_science_to_full_specificity():
     sl = ScienceLayer.from_file(
-        Path(
-            "tests/data/science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
-        )
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
     )
     test_science_layer_path = Path("output/test-science-layer.json")
     sl._write_to_json(test_science_layer_path)
@@ -100,7 +97,7 @@ def test_science_layer_writes_to_cdf_correctly(tmp_path):
         assert vecs[0][0] == science_layer.values[0].value[0]
         assert vecs[0][1] == science_layer.values[0].value[1]
         assert vecs[0][2] == science_layer.values[0].value[2]
-        assert cdf_file["epoch"][0] == science_layer.values[0].time
+        assert np.datetime64(cdf_file["epoch"][0]) == science_layer.values[0].time  # type: ignore
         assert cdf_file.attrs["Mission_group"][0] == science_layer.mission.value
 
 

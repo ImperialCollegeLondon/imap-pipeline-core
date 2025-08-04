@@ -2,7 +2,7 @@ import logging
 
 import pytz
 
-from imap_mag.io import SciencePathHandler
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration import CalibrationJobParameters
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
