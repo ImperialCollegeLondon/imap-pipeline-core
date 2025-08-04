@@ -14,8 +14,8 @@ from space_packet_parser import definitions
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
+from imap_mag.process.HKProcessSettings import HKProcessSettings
 from imap_mag.util import (
-    CONSTANTS,
     CCSDSBinaryPacketFile,
     HKPacket,
     TimeConversion,
@@ -85,9 +85,6 @@ class HKProcessor(FileProcessor):
             f"Found {len(days_by_apid)} ApIDs in {len(files)} files: {', '.join(str(apid) for apid in sorted(days_by_apid.keys()))}"
         )
 
-        # Filter out non-MAG ApIDs.
-        # days_by_apid = self.__filter_mag_apids(days_by_apid)
-
         # Load data for each ApID.
         datastore_data, datastore_files = self.__load_datastore_data(days_by_apid)
 
@@ -126,35 +123,15 @@ class HKProcessor(FileProcessor):
             for day_info, daily_data in data.groupby(dates):
                 day: date = day_info[0] if isinstance(day_info, tuple) else day_info  # type: ignore
 
-                path, handler = self.__save_daily_data(day, daily_data, path_handler)
+                path, handler = self.__save_daily_data(
+                    day,
+                    daily_data,
+                    path_handler,
+                    HKProcessSettings.from_instrument(packet.instrument),
+                )
                 processed_files[path] = handler
 
         return processed_files
-
-    def __filter_mag_apids(
-        self, days_by_apid: dict[int, set[date]]
-    ) -> dict[int, set[date]]:
-        """Filter out non-MAG ApIDs."""
-
-        non_mag_apids: list[int] = [
-            apid
-            for apid in days_by_apid.keys()
-            if apid
-            not in range(CONSTANTS.MAG_APID_RANGE[0], CONSTANTS.MAG_APID_RANGE[1] + 1)
-        ]
-
-        if non_mag_apids:
-            logger.warning(
-                f"Filtering out non-MAG ApIDs: {', '.join(str(apid) for apid in sorted(non_mag_apids))}"
-            )
-
-            days_by_apid = {
-                apid: days
-                for apid, days in days_by_apid.items()
-                if apid not in non_mag_apids
-            }
-
-        return days_by_apid
 
     def __load_datastore_data(
         self, days_by_apid: dict[int, set[date]]
@@ -243,8 +220,13 @@ class HKProcessor(FileProcessor):
 
         dataframe_by_apid: dict[int, pd.DataFrame] = dict()
 
-        for file in track(files, description="Processing HK files..."):
-            results: dict[int, xr.Dataset] = self.__decommutate_packets(file)
+        for file in track(files, description="Decommutating HK files..."):
+            try:
+                results: dict[int, xr.Dataset] = self.__decommutate_packets(file)
+            except Exception as e:
+                logger.error(f"Failed to decommutate packets from {file}:\n{e}")
+                continue
+
             logger.info(
                 f"Found {len(results.keys())} ApIDs ({', '.join(str(key) for key in results.keys())}) in {file}."
             )
@@ -303,7 +285,11 @@ class HKProcessor(FileProcessor):
         return dataset_dict
 
     def __save_daily_data(
-        self, day: date, daily_data: pd.DataFrame, path_handler: HKDecodedPathHandler
+        self,
+        day: date,
+        daily_data: pd.DataFrame,
+        path_handler: HKDecodedPathHandler,
+        process_settings: HKProcessSettings,
     ) -> tuple[Path, HKDecodedPathHandler]:
         """Save data by day to a CSV file in the work folder."""
 
@@ -314,16 +300,12 @@ class HKProcessor(FileProcessor):
 
         # Save to CSV.
         daily_data.drop_duplicates(
-            subset=[
-                CONSTANTS.CCSDS_FIELD.APID,
-                # CONSTANTS.CCSDS_FIELD.SHCOARSE,
-                CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
-            ],
+            subset=process_settings.drop_duplicate_variables,
             keep="last",
             inplace=True,
         )
         daily_data.sort_values(
-            by=[CONSTANTS.CCSDS_FIELD.SEQ_COUNTER],
+            by=process_settings.sort_variables,
             inplace=True,
         )
         daily_data.to_csv(file_path)

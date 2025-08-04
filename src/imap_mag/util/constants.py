@@ -14,6 +14,8 @@ class CONSTANTS:
         APID = "pkt_apid"
         SEQ_COUNTER = "src_seq_ctr"
         SHCOARSE = "shcoarse"
+        HK_LOW_TPSH_MET_SEC = "hk_low_tpsh_met_sec"
+        HK_LOW_TPSH_MET_SUBSEC = "hk_low_tpsh_met_subsec"
 
     class ENV_VAR_NAMES:
         WEBPODA_AUTH_CODE = "IMAP_WEBPODA_TOKEN"
