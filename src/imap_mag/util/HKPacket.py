@@ -162,6 +162,7 @@ class SpacecraftPacket(HKPacket):
     """Enum for Spacecraft HK packets."""
 
     SCID_X285 = 645, "SCID_X285"
+    SCGLOBAL = 2047, "SCGLOBAL"
 
     @property
     def instrument(self) -> IMAPInstrument:

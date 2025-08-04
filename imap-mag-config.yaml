@@ -6,7 +6,7 @@
 # General application conifguration:
 work_folder: '.work'
 data_store:  'output/'
-packet_definition: 'xtce/tlm_20250610.xml'
+packet_definition: 'xtce/tlm_20250804.xml'
 
 # Command specific configuration:
 fetch_binary:

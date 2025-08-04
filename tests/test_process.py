@@ -19,7 +19,7 @@ def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
     work_folder = Path(tempfile.gettempdir())
 
     processor = HKProcessor(work_folder, DatastoreFileFinder(test_datastore))
-    processor.initialize(Path("xtce/tlm_20250610.xml"))
+    processor.initialize(Path("xtce/tlm_20250804.xml"))
 
     return processor
 
