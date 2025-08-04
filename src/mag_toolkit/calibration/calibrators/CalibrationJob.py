@@ -4,7 +4,7 @@ from pathlib import Path
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.config.CalibrationConfig import CalibrationConfig
-from imap_mag.io import InputManager
+from imap_mag.io import DatastoreFileFinder
 from mag_toolkit.calibration import CalibrationJobParameters
 
 logger = logging.getLogger(__name__)
@@ -21,23 +21,16 @@ class CalibrationJob(ABC):
 
     def setup_calibration_files(
         self,
-        input_manager: InputManager,
+        datastore_finder: DatastoreFileFinder,
         work_folder: Path,
     ):
         path_handlers = self._get_path_handlers(self.calibration_job_parameters)
 
         for key in path_handlers:
             path_handler = path_handlers[key]
-            input_file = input_manager.get_versioned_file(path_handler)
-            if not input_file:
-                logger.critical(
-                    "Unable to find a science file to process matching %s",
-                    path_handler.get_filename(),
-                    " required for calibration",
-                )
-                raise FileNotFoundError(
-                    f"Unable to find a file to process matching {path_handler.get_filename()}"
-                )
+            input_file = datastore_finder.find_matching_file(
+                path_handler, throw_if_not_found=True
+            )
             work_file = fetch_file_for_work(
                 input_file, work_folder, throw_if_not_found=True
             )

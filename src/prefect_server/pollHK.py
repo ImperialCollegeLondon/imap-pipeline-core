@@ -10,9 +10,15 @@ from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.io import HKPathHandler
-from imap_mag.util import DatetimeProvider, HKPacket, get_dates_for_download
-from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
+from imap_mag.io.file import HKBinaryPathHandler
+from imap_mag.util import (
+    CONSTANTS,
+    DatetimeProvider,
+    Environment,
+    HKPacket,
+    get_dates_for_download,
+)
+from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
 )
@@ -32,7 +38,7 @@ def generate_flow_run_name() -> str:
     packet_names = [hk.name for hk in hk_packets]
     packet_text = (
         f"{','.join(packet_names)}-Packets"
-        if packet_names != HKPacket.list()
+        if packet_names != HKPacket.names()
         else "all-HK"
     )
 
@@ -102,7 +108,7 @@ async def poll_hk_flow(
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
-        PREFECT_CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
+        CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
     if force_database_update and not force_ert:
@@ -136,14 +142,15 @@ async def poll_hk_flow(
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
-        downloaded_binaries: dict[Path, HKPathHandler] = fetch_binary(
-            auth_code=auth_code,
-            packet=packet,
-            start_date=packet_start_date,
-            end_date=packet_end_date,
-            use_ert=use_ert,
-            fetch_mode=FetchMode.DownloadAndUpdateProgress,
-        )
+        # Download binary from WebPODA
+        with Environment(CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE, auth_code):
+            downloaded_binaries: dict[Path, HKBinaryPathHandler] = fetch_binary(
+                packet=packet,
+                start_date=packet_start_date,
+                end_date=packet_end_date,
+                use_ert=use_ert,
+                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+            )
 
         if downloaded_binaries:
             # Process binary data into CSV

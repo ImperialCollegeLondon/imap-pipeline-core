@@ -1,8 +1,12 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from imap_mag import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +24,38 @@ class File(Base):
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer())
-    date: Mapped[datetime] = mapped_column(DateTime())
+    content_date: Mapped[datetime] = mapped_column(DateTime())
+    creation_date: Mapped[datetime] = mapped_column(
+        DateTime(), server_default=func.now()
+    )
+    last_modified_date: Mapped[datetime] = mapped_column(
+        DateTime(), onupdate=func.now()
+    )
+    deletion_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     software_version: Mapped[str] = mapped_column(String(16))
 
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
+
+    @classmethod
+    def from_file(
+        cls,
+        file: Path,
+        version: int,
+        original_hash: str,
+        content_date: datetime,
+    ) -> "File":
+        return cls(
+            name=file.name,
+            path=file.absolute().as_posix(),
+            version=version,
+            hash=original_hash,
+            size=file.stat().st_size,
+            content_date=content_date,
+            creation_date=datetime.fromtimestamp(file.stat().st_ctime),
+            last_modified_date=datetime.fromtimestamp(file.stat().st_mtime),
+            software_version=__version__,
+        )
 
 
 class DownloadProgress(Base):

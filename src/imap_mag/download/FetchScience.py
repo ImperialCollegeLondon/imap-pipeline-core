@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.io import SciencePathHandler
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)

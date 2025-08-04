@@ -1,24 +1,16 @@
 import logging
 from pathlib import Path
-from typing import overload
 
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.HKProcessor import HKProcessor
 
 logger = logging.getLogger(__name__)
 
 
-@overload
-def dispatch(file: Path, work_folder: Path) -> FileProcessor:
-    pass
-
-
-@overload
-def dispatch(file: list[Path], work_folder: Path) -> FileProcessor:
-    pass
-
-
-def dispatch(file: Path | list[Path], work_folder: Path) -> FileProcessor:
+def dispatch(
+    file: Path | list[Path], work_folder: Path, datastore_finder: DatastoreFileFinder
+) -> FileProcessor:
     """Dispatch a file or a list of files to the appropriate processor."""
 
     available_processor_types: list[type] = [
@@ -30,7 +22,7 @@ def dispatch(file: Path | list[Path], work_folder: Path) -> FileProcessor:
         file = file[0]
 
     for processor_type in available_processor_types:
-        processor = processor_type(work_folder)
+        processor = processor_type(work_folder, datastore_finder)
 
         if processor.is_supported(file):
             logger.info(f"File {file} is supported by {processor_type.__name__}.")

@@ -9,11 +9,8 @@ from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
-from imap_mag.io import (
-    CalibrationLayerPathHandler,
-    InputManager,
-    OutputManager,
-)
+from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
@@ -48,7 +45,7 @@ def gradiometry(
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
     initialiseLoggingForCommand(work_folder)
 
-    input_manager = InputManager(app_settings.data_store)
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
     method = CalibrationMethod.GRADIOMETER
     calibration_job_parameters = CalibrationJobParameters(
@@ -60,7 +57,7 @@ def gradiometry(
         )
     )
     calibrator = GradiometerCalibrationJob(calibration_job_parameters)
-    calibrator.setup_calibration_files(input_manager, work_folder)
+    calibrator.setup_calibration_files(datastore_finder, work_folder)
     calibrator.setup_datastore(app_settings.data_store)
 
     calibration_layer_handler = CalibrationLayerPathHandler(
@@ -132,14 +129,14 @@ def calibrate(
             raise ValueError("Calibration method is not implemented")
 
     calibrator.setup_calibration_files(
-        InputManager(app_settings.data_store), work_folder
+        DatastoreFileFinder(app_settings.data_store), work_folder
     )
     calibrator.setup_datastore(app_settings.data_store)
 
     calibration_layer_handler = CalibrationLayerPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
-    #
+
     result: Path = calibrator.run_calibration(
         work_folder / Path(calibration_layer_handler.get_filename()),
         calibration_configuration,

@@ -1,5 +1,4 @@
 import os
-from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -16,7 +15,7 @@ BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
-DATASTORE = Path("tests/data")
+DATASTORE = Path("tests/datastore")
 
 
 @pytest.fixture(autouse=False)
@@ -68,17 +67,3 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
         file_path.write_text(content)
 
     return file_path
-
-
-@contextmanager
-def set_env(key, value):
-    original_value = os.environ.get(key)
-    os.environ[key] = value
-
-    try:
-        yield
-    finally:
-        if original_value is None:
-            del os.environ[key]
-        else:
-            os.environ[key] = original_value

@@ -1,9 +1,10 @@
 import logging
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from spacepy import pycdf
 
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
@@ -124,7 +125,7 @@ class CalibrationApplicator:
         offsets_metadata = CalibrationMetadata(
             dependencies=dependencies,
             science=[original_science.science_file],
-            creation_timestamp=datetime.now(),
+            creation_timestamp=np.datetime64("now"),
         )
         offsets_layer = CalibrationLayer(
             id=calibration_id,
@@ -163,7 +164,7 @@ class CalibrationApplicator:
         metadata = CalibrationMetadata(
             dependencies=dependencies,
             science=[science.science_file],
-            creation_timestamp=datetime.now(),
+            creation_timestamp=np.datetime64("now"),
         )
         science_layer = ScienceLayer(
             id="",
@@ -270,7 +271,7 @@ class CalibrationApplicator:
             quality_flag = layer_point.quality_flag
             quality_bitmask = layer_point.quality_bitmask
 
-            time = data_point.time + timedelta(seconds=timedelta_value)
+            time = data_point.time + pd.to_timedelta(timedelta_value, "s").to_numpy()
 
             values.append(
                 ScienceValue(

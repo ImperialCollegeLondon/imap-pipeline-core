@@ -3,9 +3,8 @@ import re
 from pathlib import Path
 
 from imap_db.model import File
-from imap_mag import __version__
-from imap_mag.db import Database, IDatabase
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.db import Database
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -16,10 +15,10 @@ class DatabaseFileOutputManager(IOutputManager):
     """Decorator for adding files to database as well as output."""
 
     __output_manager: IOutputManager
-    __database: IDatabase
+    __database: Database
 
     def __init__(
-        self, output_manager: IOutputManager, database: IDatabase | None = None
+        self, output_manager: IOutputManager, database: Database | None = None
     ):
         """Initialize database and output manager."""
 
@@ -34,12 +33,11 @@ class DatabaseFileOutputManager(IOutputManager):
         # Check if the version needs to be increased
         original_hash: str = generate_hash(original_file)
 
-        (path_handler.version, skip_database_insertion) = (
-            self.__get_next_available_version(
-                path_handler,
-                original_hash=original_hash,
-            )
+        (file_version, skip_database_insertion) = self.__get_next_available_version(
+            path_handler,
+            original_hash=original_hash,
         )
+        path_handler.set_sequence(file_version)
 
         # Add file locally
         (destination_file, path_handler) = self.__output_manager.add_file(
@@ -67,14 +65,11 @@ class DatabaseFileOutputManager(IOutputManager):
 
             try:
                 self.__database.insert_file(
-                    File(
-                        name=destination_file.name,
-                        path=destination_file.absolute().as_posix(),
-                        version=path_handler.version,
-                        hash=original_hash,
-                        size=destination_file.stat().st_size,
-                        date=path_handler.content_date,
-                        software_version=__version__,
+                    File.from_file(
+                        file=destination_file,
+                        version=path_handler.get_sequence(),
+                        original_hash=original_hash,
+                        content_date=path_handler.content_date,
                     )
                 )
             except Exception as e:
@@ -85,7 +80,7 @@ class DatabaseFileOutputManager(IOutputManager):
         return (destination_file, path_handler)
 
     def __get_matching_database_files(
-        self, path_handler: IFilePathHandler
+        self, path_handler: SequenceablePathHandler
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
@@ -109,18 +104,17 @@ class DatabaseFileOutputManager(IOutputManager):
 
     def __get_next_available_version(
         self,
-        path_handler: IFilePathHandler,
+        path_handler: SequenceablePathHandler,
         original_hash: str,
     ) -> tuple[int, bool]:
         """Find a viable version for a file."""
 
-        if not path_handler.supports_versioning():
+        if not path_handler.supports_sequencing():
             logger.warning(
                 "Versioning not supported. File may be overwritten if it already exists."
             )
-            return (path_handler.version, False)
+            return (path_handler.get_sequence(), False)
 
-            Path(""), path_handler
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
         # Find the file whose hash matches the original file
@@ -132,7 +126,7 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         if matching_files:
-            path_handler.version = matching_files[0].version
+            path_handler.set_sequence(matching_files[0].version)
             preliminary_file = self.assemble_full_path(Path(""), path_handler)
 
             return (matching_files[0].version, True)
@@ -140,14 +134,14 @@ class DatabaseFileOutputManager(IOutputManager):
         # Find first available version (note that this might not be the sequential next version)
         existing_versions: set[int] = set(file.version for file in database_files)
 
-        while path_handler.version in existing_versions:
+        while path_handler.get_sequence() in existing_versions:
             preliminary_file = self.assemble_full_path(Path(""), path_handler)
             logger.debug(
-                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.version + 1}."
+                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
-            path_handler.version += 1
+            path_handler.increase_sequence()
 
             updated_file: Path = self.assemble_full_path(Path(""), path_handler)
             preliminary_file = updated_file
 
-        return (path_handler.version, False)
+        return (path_handler.get_sequence(), False)

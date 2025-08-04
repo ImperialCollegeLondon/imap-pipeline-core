@@ -1,4 +1,4 @@
-class CONSTANTS:
+class PREFECT_CONSTANTS:
     DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access"
     DEFAULT_WORKPOOL = "default-pool"
 
@@ -21,8 +21,6 @@ class CONSTANTS:
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1B_BURST"
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
 
-        WEBPODA_AUTH_CODE = "WEBPODA_AUTH_CODE"
-        SDC_AUTH_CODE = "SDC_AUTH_CODE"
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
         PREFECT_LOGGING_EXTRA_LOGGERS = "PREFECT_LOGGING_EXTRA_LOGGERS"

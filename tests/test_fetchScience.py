@@ -9,7 +9,7 @@ import pytest
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.download.FetchScience import FetchScience
-from imap_mag.io import SciencePathHandler
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
@@ -56,6 +56,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
+    test_file.write_text("contents")
 
     mock_soc.get_filename.side_effect = lambda **_: [
         {
@@ -182,6 +183,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
+    test_file.write_text("contents")
 
     mock_soc.get_filename.side_effect = lambda **_: [
         {
@@ -239,6 +241,7 @@ def test_fetch_l2_science_with_both_sensors(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
+    test_file.write_text("contents")
 
     mock_soc.get_filename.side_effect = lambda **_: [
         {

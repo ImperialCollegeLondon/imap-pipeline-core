@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.download.FetchScience import FetchScience
-from imap_mag.util import ScienceMode
+from imap_mag.util import Environment, ScienceMode
 from prefect_server.pollScience import poll_science_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
@@ -19,7 +19,6 @@ from tests.util.miscellaneous import (
     YESTERDAY,
     create_test_file,
     mock_datetime_provider,  # noqa: F401
-    set_env,
     tidyDataFolders,  # noqa: F401
 )
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
@@ -62,7 +61,7 @@ def define_available_data_sdc_mappings(
     ]
 
     wiremock_manager.add_string_mapping(
-        f"/query?instrument=mag&data_level=l1c&descriptor={mode_str}-magi&{prefix}start_date={start_date_str}&{prefix}end_date={end_date_str}&extension=cdf",
+        f"/query?table=science&instrument=mag&data_level=l1c&descriptor={mode_str}-magi&{prefix}start_date={start_date_str}&{prefix}end_date={end_date_str}&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -74,7 +73,7 @@ def define_available_data_sdc_mappings(
 
 def define_unavailable_data_sdc_mappings(wiremock_manager):
     wiremock_manager.add_string_mapping(
-        re.escape("/query?instrument=mag&data_level=")
+        re.escape("/query?table=science&instrument=mag&data_level=")
         + r"[lL]\d\w?"
         + re.escape("&descriptor=")
         + r".*"
@@ -171,9 +170,9 @@ async def test_poll_science_autoflow_first_ever_run(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
         await poll_science_flow()
 
@@ -223,9 +222,9 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
         await poll_science_flow()
 
@@ -274,9 +273,9 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
         await poll_science_flow(
             modes=[ScienceMode.Burst],
@@ -330,9 +329,9 @@ async def test_poll_science_specify_ingestion_start_end_dates(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    with (
-        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
     ):
         await poll_science_flow(
             modes=[ScienceMode.Burst],
@@ -394,8 +393,10 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
         pytest.raises(
             RuntimeError, match="FetchScience download failed for testing purposes."
         ),
-        set_env("MAG_FETCH_SCIENCE_API_URL_BASE", wiremock_manager.get_url()),
-        set_env("SDC_AUTH_CODE", "12345"),
+        Environment(
+            IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+            IMAP_API_KEY="12345",
+        ),
     ):
         await poll_science_flow(
             modes=[ScienceMode.Normal],

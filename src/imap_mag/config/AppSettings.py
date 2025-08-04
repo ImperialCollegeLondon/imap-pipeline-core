@@ -10,8 +10,9 @@ from pydantic_settings import (
 )
 
 from imap_mag.config.CommandConfig import CommandConfig
-from imap_mag.config.FetchConfig import FetchConfig
-from imap_mag.config.UploadConfig import UploadConfig
+from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
+from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
+from imap_mag.config.PublishConfig import PublishConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,10 @@ class AppSettings(BaseSettings):
     packet_definition: Path
 
     # Command settings
-    fetch_binary: FetchConfig
-    fetch_science: FetchConfig
+    fetch_binary: FetchBinaryConfig
+    fetch_science: FetchScienceConfig
     process: CommandConfig
-    publish: UploadConfig
+    publish: PublishConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:
@@ -60,7 +61,7 @@ class AppSettings(BaseSettings):
         return (
             # Highest priority
             init_settings,
-            env_settings,
+            NestedAliasEnvSettingsSource(settings_cls),
             YamlConfigSettingsSource(settings_cls),
             file_secret_settings,
             # Lowest priority

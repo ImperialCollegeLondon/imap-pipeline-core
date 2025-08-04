@@ -5,12 +5,10 @@ from typing import Annotated
 import typer
 
 from imap_mag import appUtils
-from imap_mag.cli.cliUtils import (
-    fetch_file_for_work,
-    initialiseLoggingForCommand,
-)
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import IFilePathHandler
+from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
+from imap_mag.io.file import IFilePathHandler
 from imap_mag.process import FileProcessor, dispatch
 
 logger = logging.getLogger(__name__)
@@ -44,20 +42,35 @@ def process(
 
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
     work_files: list[Path] = []
 
     for file in files:
-        work_files.append(
-            fetch_file_for_work(file, work_folder, throw_if_not_found=True)  # type: ignore
-        )
+        # If the file is not a relative/absolute path, try to find it in the datastore.
+        if not file.exists():
+            path_handler: IFilePathHandler | None = (
+                FilePathHandlerSelector.find_by_path(file, throw_if_not_found=False)
+            )
 
-    # Process files
-    file_processor: FileProcessor = dispatch(work_files, work_folder)
+            if path_handler is None:
+                logger.error(
+                    f"File {file} does not exist and unable to locate a copy of it in the datastore based on its name."
+                )
+                continue
+
+            file = datastore_finder.find_matching_file(
+                path_handler, throw_if_not_found=True
+            )
+
+        work_files.append(file)
+
+    # Process files.
+    file_processor: FileProcessor = dispatch(work_files, work_folder, datastore_finder)
     file_processor.initialize(app_settings.packet_definition)
 
     processed_files: dict[Path, IFilePathHandler] = file_processor.process(work_files)
 
-    # Copy files to the output directory
+    # Copy files to the output directory.
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     output_manager = appUtils.getOutputManagerByMode(

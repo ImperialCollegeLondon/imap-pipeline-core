@@ -7,7 +7,8 @@ import typer
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
-from imap_mag.io import FilePathHandlerSelector, InputManager
+from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
+from imap_mag.io.file import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -25,25 +26,12 @@ def publish(
             writable=False,
         ),
     ],
-    auth_code: Annotated[
-        str | None,
-        typer.Option(
-            envvar="SDC_AUTH_CODE",
-            help="IMAP Science Data Centre API Key",
-        ),
-    ] = None,
 ) -> None:
     """Publish files to the SDC."""
 
-    # "auth-code" is usually defined in the config file but the CLI allows for it to
-    # be specified on the command cli with "--auth-code" or in an env vars:
-    # SDC_AUTH_CODE or MAG_PUBLISH_API_AUTH_CODE
-    settings_overrides = (
-        {"publish": {"api": {"auth_code": auth_code}}} if auth_code else {}
-    )
-
-    app_settings = AppSettings(**settings_overrides)  # type: ignore
+    app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.publish)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -51,14 +39,15 @@ def publish(
     logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
 
     resolved_files: list[Path] = []
-    input_manager = InputManager(app_settings.data_store)
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
     for file in files:
-        path_handler = FilePathHandlerSelector.find_by_path(file)
-        assert path_handler is not None
+        path_handler: IFilePathHandler = FilePathHandlerSelector.find_by_path(
+            file, throw_if_not_found=True
+        )
 
-        resolved_file = input_manager.get_versioned_file(
-            path_handler, latest_version=False
+        resolved_file = datastore_finder.find_matching_file(
+            path_handler, throw_if_not_found=True
         )
         resolved_files.append(resolved_file)
 
@@ -70,6 +59,7 @@ def publish(
     failed: int = 0
 
     data_access = SDCDataAccess(
+        auth_code=app_settings.publish.api.auth_code,
         data_dir=work_folder,
         sdc_url=app_settings.publish.api.url_base,
     )

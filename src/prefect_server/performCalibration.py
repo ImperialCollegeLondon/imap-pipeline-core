@@ -9,7 +9,7 @@ from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
-from prefect_server.constants import CONSTANTS as PREFECT_CONSTANTS
+from prefect_server.constants import PREFECT_CONSTANTS
 
 
 def generate_calibration_flow_run_name() -> str:

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import imap_data_access
 import imap_data_access.io
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,14 @@ class SDCUploadError(Exception):
 class SDCDataAccess:
     """Class for uploading and downloading MAG data via imap-data-access."""
 
-    def __init__(self, data_dir: Path, sdc_url: str | None = None) -> None:
+    def __init__(
+        self, auth_code: SecretStr | None, data_dir: Path, sdc_url: str | None = None
+    ) -> None:
         """Initialize SDC API client."""
 
+        imap_data_access.config["API_KEY"] = (
+            auth_code.get_secret_value() if auth_code else None
+        )
         imap_data_access.config["DATA_DIR"] = data_dir
         imap_data_access.config["DATA_ACCESS_URL"] = sdc_url
 

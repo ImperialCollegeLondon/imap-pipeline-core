@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AncillaryPathHandler(IFilePathHandler):
+class AncillaryPathHandler(VersionedPathHandler):
     """
     Path handler for ancillary files
     """
@@ -22,19 +22,11 @@ class AncillaryPathHandler(IFilePathHandler):
     end_date: datetime | None = None  # end date of validity
     extension: str | None = None
 
-    def supports_versioning(self) -> bool:
-        return True
-
     def get_sub_folder(self) -> Path:
         """Get the subfolder for ancillary files."""
 
-        if self.descriptor is None or self.start_date is None:
-            logger.error(
-                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
-            )
-            raise ValueError(
-                "No 'descriptor' or 'start_date' defined. Cannot determine subfolder."
-            )
+        super()._check_property_values("subfolder", ["descriptor", "start_date"])
+        assert self.descriptor and self.start_date
 
         match self.descriptor:
             case "ialirt-calibration":
@@ -57,27 +49,16 @@ class AncillaryPathHandler(IFilePathHandler):
                     )
 
     def get_folder_structure(self) -> str:
-        if self.start_date is None:
-            logger.error("No 'content_date' defined. Cannot generate folder structure.")
-            raise ValueError(
-                "No 'content_date' defined. Cannot generate folder structure."
-            )
+        super()._check_property_values("folder structure", ["start_date"])
+        assert self.start_date
 
         return (Path("science-ancillary") / self.get_sub_folder()).as_posix()
 
     def get_filename(self) -> str:
-        if (
-            self.descriptor is None
-            or self.start_date is None
-            or self.version is None
-            or self.extension is None
-        ):
-            logger.error(
-                "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
-            )
-            raise ValueError(
-                "No 'descriptor', 'start_date', 'version', or 'extension' defined. Cannot generate file name."
-            )
+        super()._check_property_values(
+            "file name", ["descriptor", "start_date", "extension"]
+        )
+        assert self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
@@ -86,14 +67,11 @@ class AncillaryPathHandler(IFilePathHandler):
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
 
-    def get_unversioned_pattern(self) -> re.Pattern:
-        if not self.start_date or not self.descriptor or not self.extension:
-            logger.error(
-                "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-            )
-            raise ValueError(
-                "No 'start_date' or 'descriptor' or 'extension' defined. Cannot generate pattern."
-            )
+    def get_unsequenced_pattern(self) -> re.Pattern:
+        super()._check_property_values(
+            "pattern", ["descriptor", "start_date", "extension"]
+        )
+        assert self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
@@ -106,8 +84,6 @@ class AncillaryPathHandler(IFilePathHandler):
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "AncillaryPathHandler | None":
-        """Create path handler from filename."""
-
         match = re.match(
             r"imap_mag_(?P<descr>[^_]+(-calibration|-offsets))_(?P<start>\d{8})_((?P<end>\d{8})_)?v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,

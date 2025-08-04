@@ -224,7 +224,7 @@ jobs:
             external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          ref: v0.1.0
+          ref: v0.1.1
 
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2

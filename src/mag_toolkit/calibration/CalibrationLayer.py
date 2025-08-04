@@ -1,16 +1,19 @@
-from datetime import datetime
+import logging
 from pathlib import Path
 
 import numpy as np
-from spacepy import pycdf
+import xarray as xr
+from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
-    CDF_FLOAT_FILLVAL,
+    CONSTANTS,
     CalibrationMethod,
     CalibrationValue,
     ValueType,
 )
 from mag_toolkit.calibration.Layer import Layer
+
+logger = logging.getLogger(__name__)
 
 
 class CalibrationLayer(Layer):
@@ -24,25 +27,66 @@ class CalibrationLayer(Layer):
         )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
-        OFFSET_SKELETON_CDF = "resource/l2_offset_skeleton.cdf"
-        with pycdf.CDF(str(filepath), OFFSET_SKELETON_CDF) as offset_cdf:
-            offset_cdf["epoch"] = [value.time for value in self.values]
-            offset_cdf["offsets"][...] = np.nan_to_num(
-                [cal_value.value for cal_value in self.values], nan=CDF_FLOAT_FILLVAL
-            )
-            offset_cdf["timedeltas"] = [
-                cal_value.timedelta for cal_value in self.values
-            ]
-            offset_cdf["quality_flag"] = [
-                cal_value.quality_flag for cal_value in self.values
-            ]
-            offset_cdf["quality_bitmask"] = [
-                cal_value.quality_bitmask for cal_value in self.values
-            ]
-            offset_cdf["valid_start_datetime"] = self.validity.start
-            offset_cdf["valid_end_datetime"] = self.validity.end
+        skeleton_cdf = cdf_to_xarray(
+            str(CONSTANTS.OFFSET_SKELETON_CDF), to_datetime=False
+        )
+        epoch_values = [value.time for value in self.values]
 
-            offset_cdf.attrs["Generation_date"] = datetime.now()
-            offset_cdf.attrs["Data_version"] = self.version
+        offsets_values = np.nan_to_num(
+            [cal_value.value for cal_value in self.values],
+            nan=CONSTANTS.CDF_FLOAT_FILLVAL,
+        )
+
+        epoch_data = xr.Variable(
+            dims=[CONSTANTS.CDF_VARS.EPOCH],
+            data=epoch_values,
+            attrs=skeleton_cdf[CONSTANTS.CDF_VARS.EPOCH].attrs,
+        )
+        offsets_data = xr.Variable(
+            dims=[CONSTANTS.CDF_VARS.EPOCH, CONSTANTS.CDF_COORDS.AXIS],
+            data=offsets_values,
+            attrs=skeleton_cdf[CONSTANTS.CDF_VARS.OFFSETS].attrs,
+        )
+        timedelta_var = xr.Variable(
+            dims=[CONSTANTS.CDF_VARS.EPOCH],
+            data=[cal_value.timedelta for cal_value in self.values],
+            attrs=skeleton_cdf[CONSTANTS.CDF_VARS.TIMEDELTAS].attrs,
+        )
+        qf_var = xr.Variable(
+            dims=[CONSTANTS.CDF_VARS.EPOCH],
+            data=[cal_value.quality_flag for cal_value in self.values],
+            attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_FLAG].attrs,
+        )
+        qb_var = xr.Variable(
+            dims=[CONSTANTS.CDF_VARS.EPOCH],
+            data=[cal_value.quality_bitmask for cal_value in self.values],
+            attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_BITMASK].attrs,
+        )
+        offsets_dataset = xr.Dataset(
+            data_vars={
+                CONSTANTS.CDF_VARS.EPOCH: epoch_data,
+                CONSTANTS.CDF_VARS.OFFSETS: offsets_data,
+                CONSTANTS.CDF_VARS.TIMEDELTAS: timedelta_var,
+                CONSTANTS.CDF_VARS.QUALITY_FLAG: qf_var,
+                CONSTANTS.CDF_VARS.QUALITY_BITMASK: qb_var,
+                CONSTANTS.CDF_VARS.VALIDITY_START_DATETIME: self.validity.start,
+                CONSTANTS.CDF_VARS.VALIDITY_END_DATETIME: self.validity.end,
+            },
+            coords={
+                CONSTANTS.CDF_COORDS.AXIS: [
+                    CONSTANTS.CDF_COORDS.X,
+                    CONSTANTS.CDF_COORDS.Y,
+                    CONSTANTS.CDF_COORDS.Z,
+                ]
+            },
+            attrs=skeleton_cdf.attrs,
+        )
+
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GENERATION_DATE] = str(
+            np.datetime64("now")
+        )
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = self.version
+
+        xarray_to_cdf(offsets_dataset, str(filepath), istp=False)
 
         return filepath

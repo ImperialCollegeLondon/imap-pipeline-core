@@ -5,7 +5,7 @@ from testcontainers.postgres import PostgresContainer
 
 from imap_db.model import Base
 from imap_mag.db import Database
-from tests.util.miscellaneous import set_env
+from imap_mag.util import Environment
 
 
 @pytest.fixture(scope="function")
@@ -17,7 +17,7 @@ def test_database():
         Session = sessionmaker(bind=engine)
         session = Session()
 
-        with set_env("SQLALCHEMY_URL", postgres.get_connection_url()):
+        with Environment(SQLALCHEMY_URL=postgres.get_connection_url()):
             yield Database(db_url=postgres.get_connection_url())
 
         session.close()
