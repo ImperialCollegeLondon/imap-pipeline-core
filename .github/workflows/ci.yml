@@ -175,7 +175,22 @@ jobs:
       package_name: ${{ env.PACKAGE_NAME }}
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # builds fail with not enough space - needs more than the default 16GB!! in GH Actions default runners
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            # this might remove tools that are actually needed,
+            # if set to "true" but frees about 6 GB
+            tool-cache: true
+
+            # Each of these frees more space, takes more time
+            android: false
+            dotnet: false
+            haskell: false
+            large-packages: false
+            docker-images: false
+            swap-storage: false
+
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
