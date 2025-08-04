@@ -86,7 +86,7 @@ class HKProcessor(FileProcessor):
         )
 
         # Filter out non-MAG ApIDs.
-        days_by_apid = self.__filter_mag_apids(days_by_apid)
+        # days_by_apid = self.__filter_mag_apids(days_by_apid)
 
         # Load data for each ApID.
         datastore_data, datastore_files = self.__load_datastore_data(days_by_apid)
@@ -102,9 +102,14 @@ class HKProcessor(FileProcessor):
         processed_files: dict[Path, IFilePathHandler] = {}
 
         for apid, data in datastore_data.items():
-            hk_packet: str = HKPacket.from_apid(apid).packet
+            packet: HKPacket = HKPacket.from_any_apid(apid)
+            packet_name: str = packet.packet
+
             path_handler = HKDecodedPathHandler(
-                descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(hk_packet),
+                instrument=packet.instrument.value,
+                descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(
+                    packet_name
+                ),
                 content_date=None,
                 extension="csv",
             )
@@ -114,7 +119,7 @@ class HKProcessor(FileProcessor):
                 data.index.values
             )
             logger.info(
-                f"Splitting data for ApID {apid} ({hk_packet}) into separate files for each day:\n"
+                f"Splitting data for ApID {apid} ({packet_name}) into separate files for each day:\n"
                 f"{', '.join(d.strftime('%Y%m%d') for d in sorted(set(dates)))}"
             )
 
@@ -160,16 +165,19 @@ class HKProcessor(FileProcessor):
         datastore_files: set[Path] = set()
 
         for apid, days in days_by_apid.items():
-            hk_packet: str = HKPacket.from_apid(apid).packet
+            packet: HKPacket = HKPacket.from_any_apid(apid)
+            packet_name: str = packet.packet
+
             logger.info(
-                f"Processing ApID {apid} ({hk_packet}) for days:\n{', '.join(d.strftime('%Y-%m-%d') for d in sorted(days))}"
+                f"Processing ApID {apid} ({packet_name}) for days:\n{', '.join(d.strftime('%Y-%m-%d') for d in sorted(days))}"
             )
             datastore_data.setdefault(apid, pd.DataFrame())
 
             for day in days:
                 l0_path_handler = HKBinaryPathHandler(
+                    instrument=packet.instrument.value,
                     descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(
-                        hk_packet
+                        packet_name
                     ),
                     content_date=datetime.combine(day, datetime.min.time()),
                     extension="pkts",
@@ -181,12 +189,12 @@ class HKProcessor(FileProcessor):
 
                 if not day_files:
                     logger.debug(
-                        f"No existing files found for {hk_packet} on {day.strftime('%Y-%m-%d')} in datastore."
+                        f"No existing files found for {packet_name} on {day.strftime('%Y-%m-%d')} in datastore."
                     )
                     continue
                 else:
                     logger.info(
-                        f"Found {len(day_files)} existing files for {hk_packet} on {day.strftime('%Y-%m-%d')} in datastore."
+                        f"Found {len(day_files)} existing files for {packet_name} on {day.strftime('%Y-%m-%d')} in datastore."
                     )
 
                 day_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(
@@ -274,7 +282,7 @@ class HKProcessor(FileProcessor):
                     elif hasattr(value, "decode"):
                         value = int.from_bytes(value, byteorder="big")
 
-                    updated_key = re.sub(r"^mag_\w+?\.", "", key.lower())
+                    updated_key = re.sub(r"^\w+?_\w+?\.", "", key.lower())
                     data_dict[apid][updated_key].append(value)
 
         # Convert data to xarray datasets.
@@ -308,14 +316,14 @@ class HKProcessor(FileProcessor):
         daily_data.drop_duplicates(
             subset=[
                 CONSTANTS.CCSDS_FIELD.APID,
-                CONSTANTS.CCSDS_FIELD.SHCOARSE,
+                # CONSTANTS.CCSDS_FIELD.SHCOARSE,
                 CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
             ],
             keep="last",
             inplace=True,
         )
         daily_data.sort_values(
-            by=[CONSTANTS.CCSDS_FIELD.SHCOARSE, CONSTANTS.CCSDS_FIELD.SEQ_COUNTER],
+            by=[CONSTANTS.CCSDS_FIELD.SEQ_COUNTER],
             inplace=True,
         )
         daily_data.to_csv(file_path)

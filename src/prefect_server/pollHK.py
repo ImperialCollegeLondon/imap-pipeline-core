@@ -16,6 +16,7 @@ from imap_mag.util import (
     DatetimeProvider,
     Environment,
     HKPacket,
+    MAGPacket,
     get_dates_for_download,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -35,12 +36,12 @@ def generate_flow_run_name() -> str:
     )
     end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
-    packet_names = [hk.name for hk in hk_packets]
-    packet_text = (
-        f"{','.join(packet_names)}-Packets"
-        if packet_names != HKPacket.names()
-        else "all-HK"
-    )
+    packet_names: list[str] = [hk.name for hk in hk_packets]
+
+    if packet_names == MAGPacket.names():
+        packet_text: str = "all-MAG-HK"
+    else:
+        packet_text = f"{','.join(packet_names)}-Packets"
 
     return (
         f"Download-{packet_text}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
@@ -59,9 +60,10 @@ async def poll_hk_flow(
             json_schema_extra={
                 "title": "HK packets to download",
                 "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
-            }
+                "options": ", ".join(HKPacket.names()),
+            },
         ),
-    ] = HKPacket.get_all_mag(),  # type: ignore
+    ] = MAGPacket.all(),  # type: ignore
     start_date: Annotated[
         datetime | None,
         Field(

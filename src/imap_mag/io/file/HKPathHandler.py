@@ -49,7 +49,7 @@ class HKPathHandler(IFilePathHandler):
 
         return {
             HKPathHandler.convert_packet_to_descriptor(hk.packet).partition("-")[0]
-            for hk in HKPacket
+            for hk in HKPacket.all()
         }
 
     @staticmethod

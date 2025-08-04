@@ -20,7 +20,7 @@ def test_hk_decoded_path_handler_is_l1_only():
     assert handler.level == HKLevel.l1.value
 
 
-@pytest.mark.parametrize("packet", [p for p in HKPacket])
+@pytest.mark.parametrize("packet", [p for p in HKPacket.all()])
 def test_hk_binary_path_handler_supports_all_hk_packets(packet: HKPacket):
     # Set up.
     filename = f"imap_mag_l0_{HKBinaryPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_003.pkts"
@@ -38,7 +38,7 @@ def test_hk_binary_path_handler_supports_all_hk_packets(packet: HKPacket):
     assert actual_handler == expected_handler
 
 
-@pytest.mark.parametrize("packet", [p for p in HKPacket])
+@pytest.mark.parametrize("packet", [p for p in HKPacket.all()])
 def test_hk_decoded_path_handler_supports_all_hk_packets(packet: HKPacket):
     # Set up.
     filename = f"imap_mag_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_v003.pkts"

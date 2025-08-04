@@ -1,15 +1,22 @@
+import abc
 import logging
-from enum import Enum
+import typing
+from enum import Enum, EnumMeta
 
 from imap_mag.util import CONSTANTS
+from imap_mag.util.IMAPInstrument import IMAPInstrument
 
 logger = logging.getLogger(__name__)
 
+T = typing.TypeVar("T", bound="HKPacket")
 
-class HKPacket(Enum):
-    """Enum for HK packets."""
 
-    def __init__(self, apid: int, packet: str, instrument: str) -> None:
+class HKPacketMetaClass(abc.ABCMeta, EnumMeta):
+    pass
+
+
+class HKPacket(abc.ABC, Enum, metaclass=HKPacketMetaClass):
+    def __init__(self, apid: int, packet: str) -> None:
         super().__init__()
 
         # Typer does not support Enums with tuple values,
@@ -18,22 +25,79 @@ class HKPacket(Enum):
 
         self.apid = apid
         self.packet = packet
-        self.instrument = instrument
+
+    @property
+    @abc.abstractmethod
+    def instrument(self) -> IMAPInstrument:
+        """Return the instrument associated with this HK packet."""
+        pass
+
+    @classmethod
+    def all(cls: type[T]) -> list[T]:
+        """Get all HK packets."""
+
+        if cls is HKPacket:
+            all = []
+            for hk_type in cls.__subclasses__():
+                all.extend(hk_type.all())
+            return all
+        else:
+            return list(cls)
+
+    @classmethod
+    def names(cls: type[T]) -> list[str]:
+        """List all HK packet names."""
+        return [e.name for e in cls.all()]
+
+    @classmethod
+    def from_any_apid(cls, apid: int) -> "HKPacket":
+        """Get HKPacket from APID."""
+
+        for hk_type in cls.__subclasses__():
+            try:
+                return hk_type.from_apid(apid)
+            except ValueError:
+                continue
+
+        logger.error(f"ApID {apid} does not match any known HK packet.")
+        raise ValueError(f"ApID {apid} does not match any known HK packet.")
+
+    @classmethod
+    def from_any_name(cls, packet_name: str) -> "HKPacket":
+        """Get HKPacket from packet name."""
+
+        for hk_type in cls.__subclasses__():
+            try:
+                return hk_type[packet_name]
+            except KeyError:
+                continue
+
+        logger.error(f"Packet name {packet_name} does not match any known HK packet.")
+        raise ValueError(
+            f"Packet name {packet_name} does not match any known HK packet."
+        )
+
+    @classmethod
+    @abc.abstractmethod
+    def from_apid(cls: type[T], apid: int) -> T:
+        """Get HKPacket from APID."""
+        pass
+
+
+class MAGPacket(HKPacket):
+    """Enum for MAG HK packets."""
 
     # SID packets
-    SID1 = 1028, "MAG_HSK_SID1", "mag"
-    SID2 = 1055, "MAG_HSK_SID2", "mag"
-    SID3_PW = 1063, "MAG_HSK_PW", "mag"
-    SID4_STATUS = 1064, "MAG_HSK_STATUS", "mag"
-    SID5_SCI = 1082, "MAG_HSK_SCI", "mag"
-    SID11_PROCSTAT = 1051, "MAG_HSK_PROCSTAT", "mag"
-    SID12 = 1060, "MAG_HSK_SID12", "mag"
-    SID15 = 1053, "MAG_HSK_SID15", "mag"
-    SID16 = 1054, "MAG_HSK_SID16", "mag"
-    SID20 = 1045, "MAG_HSK_SID20", "mag"
-
-    SCID_X285 = 645, "SCID_X285", "sc"
-    ILO_APP_NHK = 677, "ILO_APP_NHK", "ilo"
+    SID1 = 1028, "MAG_HSK_SID1"
+    SID2 = 1055, "MAG_HSK_SID2"
+    SID3_PW = 1063, "MAG_HSK_PW"
+    SID4_STATUS = 1064, "MAG_HSK_STATUS"
+    SID5_SCI = 1082, "MAG_HSK_SCI"
+    SID11_PROCSTAT = 1051, "MAG_HSK_PROCSTAT"
+    SID12 = 1060, "MAG_HSK_SID12"
+    SID15 = 1053, "MAG_HSK_SID15"
+    SID16 = 1054, "MAG_HSK_SID16"
+    SID20 = 1045, "MAG_HSK_SID20"
 
     # All other HK packets
     EHS_AUTONOMY = 1071, "MAG_EHS_AUTONOMY"
@@ -70,29 +134,13 @@ class HKPacket(Enum):
     TCC_SPIERR = 1069, "MAG_TCC_SPIERR"
     TCC_SUCC = 1059, "MAG_TCC_SUCC"
 
-    @classmethod
-    def all(cls) -> list["HKPacket"]:
-        """Get all HK packets."""
-        return list(cls)
+    @property
+    def instrument(self) -> IMAPInstrument:
+        return IMAPInstrument.MAG
 
     @classmethod
-    def names(cls) -> list[str]:
-        """List all HK packet names."""
-        return [e.name for e in cls]
-
-    @classmethod
-    def get_all_mag(cls):
-        """Get all MAG HK packets."""
-        return [e for e in cls if e.instrument == "mag"]
-
-    @classmethod
-    def get_all_other(cls):
-        """Get all HK packets that are not MAG-specific."""
-        return [e for e in cls if e.instrument != "mag"]
-
-    @classmethod
-    def from_apid(cls, apid: int) -> "HKPacket":
-        """Get HKPacket from APID."""
+    def from_apid(cls, apid: int) -> "MAGPacket":
+        """Get MAGPacket from APID."""
 
         for e in cls:
             if e.apid == apid:
@@ -108,3 +156,45 @@ class HKPacket(Enum):
         else:
             logger.critical(f"ApID {apid} does not match any known MAG HK packet.")
             raise ValueError(f"ApID {apid} does not match any known MAG HK packet.")
+
+
+class SpacecraftPacket(HKPacket):
+    """Enum for Spacecraft HK packets."""
+
+    SCID_X285 = 645, "SCID_X285"
+
+    @property
+    def instrument(self) -> IMAPInstrument:
+        return IMAPInstrument.SC
+
+    @classmethod
+    def from_apid(cls, apid: int) -> "SpacecraftPacket":
+        """Get SpacecraftPacket from APID."""
+
+        for e in cls:
+            if e.apid == apid:
+                return e
+
+        logger.critical(f"ApID {apid} does not match any known S/C HK packet.")
+        raise ValueError(f"ApID {apid} does not match any known S/C HK packet.")
+
+
+class ILOPacket(HKPacket):
+    """Enum for ILO HK packets."""
+
+    ILO_APP_NHK = 677, "ILO_APP_NHK"
+
+    @property
+    def instrument(self) -> IMAPInstrument:
+        return IMAPInstrument.ILO
+
+    @classmethod
+    def from_apid(cls, apid: int) -> "ILOPacket":
+        """Get ILOPacket from APID."""
+
+        for e in cls:
+            if e.apid == apid:
+                return e
+
+        logger.critical(f"ApID {apid} does not match any known ILO HK packet.")
+        raise ValueError(f"ApID {apid} does not match any known ILO HK packet.")
