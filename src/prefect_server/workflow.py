@@ -154,7 +154,7 @@ def deploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-        tags=[CONSTANTS.PREFECT_TAG],
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     apply_deployable = apply_flow.to_deployment(
