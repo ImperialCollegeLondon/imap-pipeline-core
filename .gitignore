@@ -132,6 +132,9 @@ dmypy.json
 # mkdocs build dir
 site/
 
+# Windows
+*:Zone.Identifier
+
 .work
 /output
 src/matlab/calibration
