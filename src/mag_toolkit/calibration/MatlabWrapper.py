@@ -22,7 +22,7 @@ def get_matlab_command():
 def call_matlab(command, first_call=True):
     MATLAB_COMMAND = get_matlab_command()
     if first_call:
-        default_matlab_path = "/home/matlab/Documents/MATLAB"
+        default_matlab_path = "/app/matlab"
         local_matlab_path = "src/matlab"
         setup_matlab_path(default_matlab_path, MATLAB_COMMAND)
         setup_matlab_path(local_matlab_path, MATLAB_COMMAND)
