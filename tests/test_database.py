@@ -17,7 +17,7 @@ from imap_mag.io import (
     DatabaseFileOutputManager,
     IOutputManager,
 )
-from imap_mag.io.file import HKDecodedPathHandler
+from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (  # noqa: F401
     NOW,
@@ -484,7 +484,92 @@ def test_update_database_update_needed_old_data(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
-def test_database_output_manager_real_database(
+def test_database_output_manager_real_database_l0_hk_partitioned_file(
+    mock_output_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    path_handler = HKBinaryPathHandler(
+        part=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    unique_path_handler = HKBinaryPathHandler(
+        part=3,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        unique_path_handler,
+    )
+
+    test_database.insert_files(
+        [
+            File(
+                name="imap_mag_l0_hsk-pw_20250502_001.txt",
+                path="hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt",
+                version=1,
+                hash=0,
+                size=123,
+                content_date=datetime(2025, 5, 2),
+                creation_date=datetime(2025, 5, 2, 12, 34, 56),
+                last_modified_date=datetime(2025, 5, 2, 12, 56, 34),
+                software_version=__version__,
+            ),
+            File(
+                name="imap_mag_l0_hsk-pw_20250502_002.txt",
+                path="hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt",
+                version=2,
+                hash=0,
+                size=456,
+                content_date=datetime(2025, 5, 2),
+                creation_date=datetime(2025, 5, 2, 13, 24, 56),
+                last_modified_date=datetime(2025, 5, 2, 13, 56, 24),
+                software_version=__version__,
+            ),
+        ]
+    )
+
+    # Exercise.
+    (actual_file, actual_path_handler) = database_manager.add_file(
+        original_file, path_handler
+    )
+
+    # Verify.
+    mock_output_manager.add_file.assert_called_once_with(
+        original_file, unique_path_handler
+    )
+
+    assert (
+        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt')} already exists in database and is different. Increasing version to 2."
+        in capture_cli_logs.text
+    )
+    assert (
+        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt')} already exists in database and is different. Increasing version to 3."
+        in capture_cli_logs.text
+    )
+    assert f"Inserting {test_file} into database." in capture_cli_logs.text
+
+    assert actual_file == test_file
+    assert actual_path_handler == unique_path_handler
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_database_output_manager_real_database_l1_hk_versioned_file(
     mock_output_manager: mock.Mock,
     test_database,  # noqa: F811
     capture_cli_logs,
