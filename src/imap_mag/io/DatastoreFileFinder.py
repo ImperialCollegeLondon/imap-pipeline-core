@@ -3,10 +3,13 @@ import logging
 from pathlib import Path
 from typing import Literal, overload
 
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
-from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
-from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
-from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.io.file import (
+    IFilePathHandler,
+    PartitionedPathHandler,
+    SequenceablePathHandler,
+    UnsequencedStyle,
+    VersionedPathHandler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +112,7 @@ class DatastoreFileFinder:
         path_handler: SequenceablePathHandler,
         throw_if_not_found: bool = True,
     ) -> list[tuple[str, int]]:
-        pattern = path_handler.get_unsequenced_pattern()
+        pattern = path_handler.get_unsequenced_pattern(style=UnsequencedStyle.Regex)
         folder = self.location / path_handler.get_folder_structure()
         sequence_name = path_handler.get_sequence_variable_name()
 

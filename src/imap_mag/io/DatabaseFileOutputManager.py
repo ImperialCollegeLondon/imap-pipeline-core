@@ -1,10 +1,9 @@
 import logging
-import re
 from pathlib import Path
 
 from imap_db.model import File
 from imap_mag.db import Database
-from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
+from imap_mag.io.file import SequenceablePathHandler, UnsequencedStyle
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -84,8 +83,9 @@ class DatabaseFileOutputManager(IOutputManager):
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
-        matching_filename: str = path_handler.get_filename()
-        matching_filename = re.sub(r"v\d{3}", "v%", matching_filename)
+        matching_filename: str = path_handler.get_unsequenced_pattern(
+            style=UnsequencedStyle.SQL
+        )
 
         logger.debug(
             f"Searching for files in database with name matching {matching_filename}."
