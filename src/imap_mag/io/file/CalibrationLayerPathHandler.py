@@ -50,9 +50,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     def get_unsequenced_pattern(self, style: Literal[UnsequencedStyle.SQL]) -> str:
         pass
 
-    def get_unsequenced_pattern(
-        self, style: UnsequencedStyle = UnsequencedStyle.Regex
-    ) -> re.Pattern | str:
+    def get_unsequenced_pattern(self, style: UnsequencedStyle) -> re.Pattern | str:
         super()._check_property_values(
             "pattern", ["calibration_descriptor", "content_date", "extension"]
         )

@@ -54,9 +54,7 @@ class SequenceablePathHandler(IFilePathHandler):
         pass
 
     @abc.abstractmethod
-    def get_unsequenced_pattern(
-        self, style: UnsequencedStyle = UnsequencedStyle.Regex
-    ) -> re.Pattern | str:
+    def get_unsequenced_pattern(self, style: UnsequencedStyle) -> re.Pattern | str:
         pass
 
     @staticmethod
