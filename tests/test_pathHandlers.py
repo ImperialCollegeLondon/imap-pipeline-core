@@ -33,7 +33,7 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
     assert provider.get_filename() == "imap_mag_l2_norm-mago_20251017_v001.cdf"
     assert provider.supports_sequencing() is True
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
-        r"imap_mag_l2_norm-mago_20251017_v(?P<version>\d+)\.cdf"
+        r"imap_mag_l2_norm\-mago_20251017_v(?P<version>\d+)\.cdf"
     )
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
         "imap_mag_l2_norm-mago_20251017_v%.cdf"
@@ -58,7 +58,7 @@ def test_ancillary_file_handler_gives_correct_unsequenced_pattern():
     )
 
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
-        r"imap_mag_l2-norm-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
+        r"imap_mag_l2\-norm\-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
     )
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
         "imap_mag_l2-norm-offsets_20251017_20251017_v%.cdf"
@@ -77,7 +77,7 @@ def test_ancillary_file_handler_gives_correct_unsequenced_pattern_without_end_da
     )
 
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
-        r"imap_mag_l2-calibration_20251017_v(?P<version>\d+)\.cdf"
+        r"imap_mag_l2\-calibration_20251017_v(?P<version>\d+)\.cdf"
     )
     assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
         "imap_mag_l2-calibration_20251017_v%.cdf"
