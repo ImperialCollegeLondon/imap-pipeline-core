@@ -96,8 +96,6 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         database_files: list[File] = self.__database.get_files(
-            # File.name.like(matching_filename)
-            # File.name.op("regexp")(matching_filename.pattern),
             text(f"name ~ '{matching_string}'"),
         )
         database_files = [
