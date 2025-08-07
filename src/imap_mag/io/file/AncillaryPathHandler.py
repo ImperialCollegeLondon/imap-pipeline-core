@@ -3,9 +3,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, overload
 
-from imap_mag.io.file.SequenceablePathHandler import UnsequencedStyle
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
@@ -69,39 +67,20 @@ class AncillaryPathHandler(VersionedPathHandler):
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
 
-    @overload
-    def get_unsequenced_pattern(
-        self, style: Literal[UnsequencedStyle.Regex]
-    ) -> re.Pattern:
-        pass
-
-    @overload
-    def get_unsequenced_pattern(self, style: Literal[UnsequencedStyle.SQL]) -> str:
-        pass
-
-    def get_unsequenced_pattern(self, style: UnsequencedStyle) -> re.Pattern | str:
+    def get_unsequenced_pattern(self) -> re.Pattern:
         super()._check_property_values(
             "pattern", ["descriptor", "start_date", "extension"]
         )
-        assert self.start_date
+        assert self.descriptor and self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
         else:
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
-        prefix = (
-            f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_"
+        return re.compile(
+            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}_{valid_date_range}_v(?P<version>\d+)\.{self.extension}"
         )
-        suffix = f".{self.extension}"
-
-        match style:
-            case UnsequencedStyle.Regex:
-                return re.compile(
-                    rf"{re.escape(prefix)}v(?P<version>\d+){re.escape(suffix)}"
-                )
-            case UnsequencedStyle.SQL:
-                return f"{prefix}v%{suffix}"
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "AncillaryPathHandler | None":

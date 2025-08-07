@@ -6,7 +6,7 @@ from sqlalchemy.sql import text
 
 from imap_db.model import File
 from imap_mag.db import Database
-from imap_mag.io.file import SequenceablePathHandler, UnsequencedStyle
+from imap_mag.io.file import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -86,9 +86,7 @@ class DatabaseFileOutputManager(IOutputManager):
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
-        matching_regex: re.Pattern = path_handler.get_unsequenced_pattern(
-            style=UnsequencedStyle.Regex
-        )
+        matching_regex: re.Pattern = path_handler.get_unsequenced_pattern()
         matching_string: str = re.sub(
             r"\(\?P<[^>]+>([^)]+)\)", r"\1", matching_regex.pattern
         )

@@ -13,7 +13,6 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
     SciencePathHandler,
-    UnsequencedStyle,
 )
 from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
@@ -32,11 +31,8 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
     assert provider.get_folder_structure() == "science/mag/l2/2025/10"
     assert provider.get_filename() == "imap_mag_l2_norm-mago_20251017_v001.cdf"
     assert provider.supports_sequencing() is True
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2_norm\-mago_20251017_v(?P<version>\d+)\.cdf"
-    )
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
-        "imap_mag_l2_norm-mago_20251017_v%.cdf"
     )
 
 
@@ -57,11 +53,8 @@ def test_ancillary_file_handler_gives_correct_unsequenced_pattern():
         extension="cdf",
     )
 
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2\-norm\-offsets_20251017_20251017_v(?P<version>\d+)\.cdf"
-    )
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
-        "imap_mag_l2-norm-offsets_20251017_20251017_v%.cdf"
     )
 
 
@@ -76,11 +69,8 @@ def test_ancillary_file_handler_gives_correct_unsequenced_pattern_without_end_da
         extension="cdf",
     )
 
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.Regex).pattern == (
+    assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2\-calibration_20251017_v(?P<version>\d+)\.cdf"
-    )
-    assert provider.get_unsequenced_pattern(style=UnsequencedStyle.SQL) == (
-        "imap_mag_l2-calibration_20251017_v%.cdf"
     )
 
 
@@ -100,16 +90,7 @@ def test_get_filename_of_ancillary_path_handler_without_content_date_fails():
         provider.get_filename()
 
 
-@pytest.mark.parametrize(
-    "style",
-    [
-        UnsequencedStyle.Regex,
-        UnsequencedStyle.SQL,
-    ],
-)
-def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date_fails(
-    style,
-):
+def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date__fails():
     provider = AncillaryPathHandler(
         mission="imap",
         instrument="mag",
@@ -122,7 +103,7 @@ def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date_
         ValueError,
         match="No 'start_date' defined. Cannot generate pattern.",
     ):
-        provider.get_unsequenced_pattern(style)
+        provider.get_unsequenced_pattern()
 
 
 def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern():

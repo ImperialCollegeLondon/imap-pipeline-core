@@ -1,15 +1,9 @@
 import abc
 import re
 from dataclasses import dataclass
-from enum import Enum
-from typing import Literal, final, overload
+from typing import final
 
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
-
-
-class UnsequencedStyle(Enum):
-    Regex = "regex"
-    SQL = "sql"
 
 
 @dataclass
@@ -41,20 +35,9 @@ class SequenceablePathHandler(IFilePathHandler):
         """Increase the sequence count by 1."""
         pass
 
-    @overload
-    def get_unsequenced_pattern(
-        self, style: Literal[UnsequencedStyle.Regex]
-    ) -> re.Pattern:
-        """Get regex pattern for unsequenced files."""
-        pass
-
-    @overload
-    def get_unsequenced_pattern(self, style: Literal[UnsequencedStyle.SQL]) -> str:
-        """Get SQL pattern for unsequenced files."""
-        pass
-
     @abc.abstractmethod
-    def get_unsequenced_pattern(self, style: UnsequencedStyle) -> re.Pattern | str:
+    def get_unsequenced_pattern(self) -> re.Pattern:
+        """Get regex pattern for unsequenced files."""
         pass
 
     @staticmethod

@@ -7,7 +7,6 @@ from imap_mag.io.file import (
     IFilePathHandler,
     PartitionedPathHandler,
     SequenceablePathHandler,
-    UnsequencedStyle,
     VersionedPathHandler,
 )
 
@@ -112,7 +111,7 @@ class DatastoreFileFinder:
         path_handler: SequenceablePathHandler,
         throw_if_not_found: bool = True,
     ) -> list[tuple[str, int]]:
-        pattern = path_handler.get_unsequenced_pattern(style=UnsequencedStyle.Regex)
+        pattern = path_handler.get_unsequenced_pattern()
         folder = self.location / path_handler.get_folder_structure()
         sequence_name = path_handler.get_sequence_variable_name()
 
