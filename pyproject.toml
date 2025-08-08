@@ -43,7 +43,6 @@ pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
 pytest-mock = "^3.14.0"
 pytest-asyncio = "^1.1.0"
-pyinstaller = "^6.10.0"
 pre-commit = "^3.8.0"
 ruff = "^0.8.1"
 docker = "^7.1.0"
@@ -69,9 +68,6 @@ testpaths = [
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry-pyinstaller-plugin.scripts]
-imap-mag = { source = "src/imap_mag/main.py", type = "onefile", bundle = false }
 
 [tool.ruff.lint]
 select = [

@@ -50,7 +50,7 @@ chown -R $IMAP_USERNAME:$IMAP_USERNAME /mnt/imap-data
 ./pack.sh
 ```
 
-You can also build a compiled linux executable with `./build-linux.sh` and a docker image with `./build-docker.sh`
+You can also build a docker image with `./build-docker.sh`
 
 ## Using the CLI inside the docker container
 
