@@ -96,7 +96,7 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         database_files: list[File] = self.__database.get_files(
-            text(f"name ~ '{matching_string}'"),
+            text("name ~ :matcher").bindparams(matcher=matching_string),
         )
         database_files = [
             file

@@ -99,6 +99,7 @@ def calibrate_flow(
 def calibrate_and_apply_flow(
     date: datetime,
     method: CalibrationMethod,
+    configuration: CalibrationConfig | None,
     mode: ScienceMode,
     sensor: Sensor = Sensor.MAGO,
     calibration_output_type: FileType = FileType.CDF,
@@ -108,7 +109,9 @@ def calibrate_and_apply_flow(
     Calibrate and apply the calibration in one flow.
     """
     # First, calibrate
-    cal_layer = calibrate_flow(date=date, method=method, mode=mode, sensor=sensor)
+    cal_layer = calibrate_flow(
+        date=date, method=method, mode=mode, sensor=sensor, configuration=configuration
+    )
 
     layer = CalibrationLayer.from_file(cal_layer)
     science_input = layer.metadata.science[0]

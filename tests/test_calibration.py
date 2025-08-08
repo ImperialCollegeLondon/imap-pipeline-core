@@ -290,28 +290,30 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
             assert mag == pytest.approx(computed_magnitude, rel=1e-6)
 
 
+def get_test_matlab_command():
+    if os.getenv("MLM_LICENSE_TOKEN") and (which("matlab-batch") is not None):
+        return "matlab-batch"
+    else:
+        return "matlab"
+
+
 @pytest.fixture()
 def matlab_test_setup():
-    # Code that will run before your test, for example:
-    setup_matlab_path("src/matlab", "matlab-batch")
-    # A test function will be run at this point
+    setup_matlab_path("src/matlab", get_test_matlab_command())
     yield
-
-
-def test_matlab_command():
-    return "matlab-batch"
 
 
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab-batch") is None,
+    or which(get_test_matlab_command()) is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     matlab_test_setup, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(
-        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command", test_matlab_command
+        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+        get_test_matlab_command,
     )
     prepare_test_file(
         "imap_mag_l1c_norm-mago-hundred-vectors_20250421_v001.cdf",
@@ -328,10 +330,10 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
+        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ).exists()
     with open(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
+        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -358,14 +360,15 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab-batch") is None,
+    or which(get_test_matlab_command()) is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
     matlab_test_setup, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(
-        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command", test_matlab_command
+        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+        get_test_matlab_command,
     )
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20260930_v001.cdf",
@@ -392,13 +395,11 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     with open(output_file) as f:
         grad_layer = json.load(f)
 
-    format = "%Y-%m-%dT%H:%M:%S.%f"
-
     assert grad_layer["method"] == "gradiometer"
     assert len(grad_layer["values"]) == 99
-    assert datetime.strptime(
-        grad_layer["values"][0]["time"], format
-    ) == datetime.strptime("2026-09-30T00:00:08.285840", format), (
+    assert np.datetime64(grad_layer["values"][0]["time"]) == np.datetime64(
+        "2026-09-30T00:00:08.285840"
+    ), (
         "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
     )
 
