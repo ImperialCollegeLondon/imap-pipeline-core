@@ -2,9 +2,11 @@ import logging
 import re
 from pathlib import Path
 
+from sqlalchemy.sql import text
+
 from imap_db.model import File
 from imap_mag.db import Database
-from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
+from imap_mag.io.file import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -84,15 +86,17 @@ class DatabaseFileOutputManager(IOutputManager):
     ) -> list[File]:
         """Get all files in the database with the same name and path."""
 
-        matching_filename: str = path_handler.get_filename()
-        matching_filename = re.sub(r"v\d{3}", "v%", matching_filename)
+        matching_regex: re.Pattern = path_handler.get_unsequenced_pattern()
+        matching_string: str = re.sub(
+            r"\(\?P<[^>]+>([^)]+)\)", r"\1", matching_regex.pattern
+        )
 
         logger.debug(
-            f"Searching for files in database with name matching {matching_filename}."
+            f"Searching for files in database with name matching {matching_string}."
         )
 
         database_files: list[File] = self.__database.get_files(
-            File.name.like(matching_filename)
+            text(f"name ~ '{matching_string}'"),
         )
         database_files = [
             file

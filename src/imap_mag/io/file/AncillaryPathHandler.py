@@ -71,7 +71,7 @@ class AncillaryPathHandler(VersionedPathHandler):
         super()._check_property_values(
             "pattern", ["descriptor", "start_date", "extension"]
         )
-        assert self.start_date
+        assert self.descriptor and self.start_date
 
         if self.end_date is None:
             valid_date_range = self.start_date.strftime("%Y%m%d")
@@ -79,7 +79,7 @@ class AncillaryPathHandler(VersionedPathHandler):
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}_{valid_date_range}_v(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod

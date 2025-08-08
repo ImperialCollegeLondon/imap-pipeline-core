@@ -42,10 +42,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         super()._check_property_values(
             "pattern", ["calibration_descriptor", "content_date", "extension"]
         )
-        assert self.content_date
+        assert self.calibration_descriptor and self.content_date
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{re.escape(self.calibration_descriptor)}\\-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod
