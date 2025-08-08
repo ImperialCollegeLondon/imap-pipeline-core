@@ -291,10 +291,10 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
 
 
 def get_test_matlab_command():
-    if which("matlab") is not None:
-        return "matlab"
-    else:
+    if os.getenv("MLM_LICENSE_TOKEN") and (which("matlab-batch") is not None):
         return "matlab-batch"
+    else:
+        return "matlab"
 
 
 @pytest.fixture()
@@ -395,13 +395,11 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     with open(output_file) as f:
         grad_layer = json.load(f)
 
-    format = "%Y-%m-%dT%H:%M:%S.%f"
-
     assert grad_layer["method"] == "gradiometer"
     assert len(grad_layer["values"]) == 99
-    assert datetime.strptime(
-        grad_layer["values"][0]["time"][:-3], format
-    ) == datetime.strptime("2026-09-30T00:00:08.285840", format), (
+    assert np.datetime64(grad_layer["values"][0]["time"]) == np.datetime64(
+        "2026-09-30T00:00:08.285840"
+    ), (
         "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
     )
 
