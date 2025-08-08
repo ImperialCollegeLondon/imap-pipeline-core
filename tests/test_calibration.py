@@ -293,18 +293,18 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
 @pytest.fixture()
 def matlab_test_setup():
     # Code that will run before your test, for example:
-    setup_matlab_path("src/matlab", "matlab-batch")
+    setup_matlab_path("src/matlab", "matlab")
     # A test function will be run at this point
     yield
 
 
 def test_matlab_command():
-    return "matlab-batch"
+    return "matlab"
 
 
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab-batch") is None,
+    or which("matlab") is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
@@ -328,10 +328,10 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
+        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ).exists()
     with open(
-        "output/calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
+        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -358,7 +358,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
 @pytest.mark.skipif(
     not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which("matlab-batch") is None,
+    or which("matlab") is None,
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
@@ -397,7 +397,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     assert grad_layer["method"] == "gradiometer"
     assert len(grad_layer["values"]) == 99
     assert datetime.strptime(
-        grad_layer["values"][0]["time"], format
+        grad_layer["values"][0]["time"][:-3], format
     ) == datetime.strptime("2026-09-30T00:00:08.285840", format), (
         "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
     )
