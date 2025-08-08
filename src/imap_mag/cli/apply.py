@@ -6,12 +6,13 @@ from typing import Annotated
 
 import typer
 
+from imap_mag import appUtils
 from imap_mag.cli.cliUtils import (
     fetch_file_for_work,
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings
-from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
@@ -153,18 +154,21 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    outputManager = OutputManager(app_settings.data_store)
+    output_manager = appUtils.getOutputManagerByMode(
+        app_settings.data_store,
+        use_database=True,
+    )
 
     if layers:
         (L2_file, cal_file) = applier.apply(
             workLayers, workRotationFile, workDataFile, workCalFile, workL2File
         )
 
-        outputManager.add_file(L2_file, l2_path_handler)
-        outputManager.add_file(cal_file, cal_path_handler)
+        output_manager.add_file(L2_file, l2_path_handler)
+        output_manager.add_file(cal_file, cal_path_handler)
     elif workRotationFile:
         L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
-        outputManager.add_file(L2_file, l2_path_handler)
+        output_manager.add_file(L2_file, l2_path_handler)
     else:
         logger.error("No calibration layers or rotation file provided.")
         raise ValueError("No calibration layers or rotation file provided.")
