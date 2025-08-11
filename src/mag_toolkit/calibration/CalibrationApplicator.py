@@ -32,6 +32,7 @@ class CalibrationApplicator:
             if not layer.exists():
                 raise FileNotFoundError(f"Layer file {layer} does not exist")
             calibration_layer = CalibrationLayer.from_file(layer)
+            logger.info(f"Applying offsets from {layer}")
 
             science_values, offsets = self._apply_layer_to_science_values(
                 calibration_layer.value_type,
@@ -79,6 +80,7 @@ class CalibrationApplicator:
             raise ValueError("No calibration layers or rotation file provided")
 
         if rotation is not None:
+            logger.info(f"Rotation science data according to {rotation}")
             science_data.values = self._rotate(rotation, science_data)
 
         science_values = science_data.values
@@ -265,6 +267,11 @@ class CalibrationApplicator:
 
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
+                logger.error(
+                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
+                )
+                logger.error(data_point)
+                logger.error(layer_point)
                 raise ValueError("Layer and data timestamps do not align")
 
             data_point_vector = np.array(data_point.value)
@@ -298,7 +305,9 @@ class CalibrationApplicator:
 
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
-                raise ValueError("Layer and data timestamps do not align")
+                raise ValueError(
+                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
+                )
 
             data_point_vector = np.array(data_point.value)
             layer_vector = np.array(layer_point.value)
