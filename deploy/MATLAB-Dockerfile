@@ -62,11 +62,11 @@ USER ${IMAP_USERNAME}
 
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
-RUN python3 -m pip install --user --no-deps -r requirements.txt
+RUN python -m pip install --user --no-deps -r requirements.txt
 
 # now install the imap-mag package as the user
 COPY dist/python${PYTHON_VERSION}/${TOOL_PACKAGE} python${PYTHON_VERSION}/
-RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
+RUN python -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image

@@ -4,13 +4,17 @@ set -e
 # compile and test the app for the current python version
 
 # what version is this?
-python3 --version
+python --version
 
 # restore dependencies & create an venv if needed
 poetry install
 
 # load the current python virtual environment - assumes you have already probably run "poetry shell" or are calling from build-python-versions.sh
-source .venv/bin/activate
+if [ -d ".venv" ]; then
+    # load the python virtual environment
+    echo "Loading virtual env in .venv"
+    source .venv/bin/activate
+fi
 
 # tidy up fomatting and check syntax
 poetry run ruff check --fix

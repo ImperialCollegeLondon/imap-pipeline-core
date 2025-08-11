@@ -57,7 +57,7 @@
                 //"python.defaultInterpreterPath": "/usr/local/bin/python"
 
                 // use the active venv
-                "python.defaultInterpreterPath": ".venv/bin/python3",
+                "python.defaultInterpreterPath": ".venv/bin/python",
 
                 // change to zsh default shell
                 "terminal.integrated.defaultProfile.linux": "zsh",

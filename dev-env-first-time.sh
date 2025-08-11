@@ -1,5 +1,5 @@
 # install poetry
-curl -sSL https://install.python-poetry.org | python3 -
+curl -sSL https://install.python-poetry.org | python -
 
 # add pyenv to bashrc
 echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc

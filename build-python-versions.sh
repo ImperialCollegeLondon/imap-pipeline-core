@@ -18,7 +18,7 @@ do
     mkdir $PACK_OUTPUT_FOLDER
 
     # build it
-    bash build.sh
+    bash build.sh "$@"
     bash pack.sh
 
     # copy output to a child folder for this version
