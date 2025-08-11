@@ -6,6 +6,9 @@ on:
       - "README**"
     tags:
       - "v*"
+    branches:
+      - "main"
+      - "rel/*"
   pull_request:
     branches:
       - "*"
