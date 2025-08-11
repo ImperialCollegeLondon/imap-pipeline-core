@@ -118,6 +118,8 @@ def apply(
         throw_if_not_found=True,
     )
 
+    logger.info(f"Applying layers to input file {versioned_file}")
+
     workDataFile: Path = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
