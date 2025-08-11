@@ -298,7 +298,9 @@ class CalibrationApplicator:
 
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
-                raise ValueError("Layer and data timestamps do not align")
+                raise ValueError(
+                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
+                )
 
             data_point_vector = np.array(data_point.value)
             layer_vector = np.array(layer_point.value)
