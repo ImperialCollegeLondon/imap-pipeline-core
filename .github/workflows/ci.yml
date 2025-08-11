@@ -29,7 +29,7 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: "3.12"
-  CALIBRATION_TAG: "v0.1.2"
+  CALIBRATION_TAG: "v0.1.3"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
 jobs:
