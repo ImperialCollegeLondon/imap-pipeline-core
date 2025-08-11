@@ -28,7 +28,7 @@ class CalibrationJob(ABC):
 
         for key in path_handlers:
             path_handler = path_handlers[key]
-            input_file = datastore_finder.find_matching_file(
+            input_file = datastore_finder.find_latest_version(
                 path_handler, throw_if_not_found=True
             )
             work_file = fetch_file_for_work(
