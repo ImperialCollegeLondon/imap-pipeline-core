@@ -268,7 +268,7 @@ class CalibrationApplicator:
         for data_point, layer_point in zip(data_values, layer_values):
             if data_point.time != layer_point.time:
                 logger.error(
-                    "Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
+                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
                 )
                 logger.error(data_point)
                 logger.error(layer_point)
