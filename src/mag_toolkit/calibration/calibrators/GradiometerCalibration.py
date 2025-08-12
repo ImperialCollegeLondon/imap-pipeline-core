@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pytz
 
@@ -55,7 +56,7 @@ class GradiometerCalibrationJob(CalibrationJob):
 
         return path_handlers
 
-    def run_calibration(self, calfile, configuration: CalibrationConfig):
+    def run_calibration(self, calfile, config: CalibrationConfig) -> Path:
         """
         Run the gradiometry calibration.
         :param date: The date for which to run the calibration.
@@ -79,6 +80,6 @@ class GradiometerCalibrationJob(CalibrationJob):
             )
 
         call_matlab(
-            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{configuration.gradiometer.kappa!s}", "{configuration.gradiometer.sc_interference_threshold!s}")'
+            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{config.gradiometer.kappa!s}", "{config.gradiometer.sc_interference_threshold!s}")'
         )
         return calfile
