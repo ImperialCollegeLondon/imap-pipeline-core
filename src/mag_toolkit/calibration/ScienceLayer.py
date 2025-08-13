@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 class ScienceLayer(Layer):
     science_file: str
     value_type: ValueType
-    values: list[ScienceValue]
+    values: list[ScienceValue] = []  # noqa: RUF012
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
         l2_skeleton = cdf_to_xarray(str(CONSTANTS.L2_SKELETON_CDF), to_datetime=False)
@@ -88,7 +89,7 @@ class ScienceLayer(Layer):
                 CONSTANTS.CSV_VARS.Z: z,
                 CONSTANTS.CSV_VARS.MAGNITUDE: magnitude,
                 CONSTANTS.CSV_VARS.RANGE: range,
-                CONSTANTS.CSV_VARS.QUALITY_FLAGS: quality_flags,
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: quality_flags,
                 CONSTANTS.CSV_VARS.QUALITY_BITMASK: quality_bitmask,
             }
         )
@@ -115,12 +116,19 @@ class ScienceLayer(Layer):
             return super().from_file(path)
 
     @classmethod
+    def _load_data_file(cls, path: Path, existing_model) -> "ScienceLayer":
+        science_only_layer = cls.from_file(path)
+        existing_model.values = deepcopy(science_only_layer.values)
+
+        return existing_model
+
+    @classmethod
     def _from_csv(cls, path: Path):
         df = pd.read_csv(path)
         if df.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
 
-        epoch = df["t"].to_numpy(dtype=np.datetime64)
+        epoch = df[CONSTANTS.CSV_VARS.EPOCH].to_numpy(dtype=np.datetime64)
         x = df[CONSTANTS.CSV_VARS.X].to_numpy()
         y = df[CONSTANTS.CSV_VARS.Y].to_numpy()
         z = df[CONSTANTS.CSV_VARS.Z].to_numpy()
@@ -145,6 +153,7 @@ class ScienceLayer(Layer):
             metadata=CalibrationMetadata(
                 dependencies=[],
                 science=[],
+                data_filename=path,
                 creation_timestamp=np.datetime64("now"),
             ),
             value_type=ValueType.VECTOR,
@@ -184,6 +193,7 @@ class ScienceLayer(Layer):
         metadata = CalibrationMetadata(
             dependencies=[],
             science=[],
+            data_filename=path,
             creation_timestamp=np.datetime64("now"),
         )
 

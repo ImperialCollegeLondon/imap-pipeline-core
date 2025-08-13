@@ -3,8 +3,11 @@ from pathlib import Path
 from typing import Literal, overload
 
 from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
-from imap_mag.io.file.CalibrationLayerPathHandler import (
-    CalibrationLayerPathHandler,
+from imap_mag.io.file.CalibrationDataPathHandler import (
+    CalibrationDataPathHandler,
+)
+from imap_mag.io.file.CalibrationMetadataPathHandler import (
+    CalibrationMetadataPathHandler,
 )
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
@@ -48,7 +51,8 @@ class FilePathHandlerSelector:
         # Providers to try in alphabetical order.
         provider_to_try: list[type[IFilePathHandler]] = [
             AncillaryPathHandler,
-            CalibrationLayerPathHandler,
+            CalibrationMetadataPathHandler,
+            CalibrationDataPathHandler,
             HKBinaryPathHandler,
             HKDecodedPathHandler,
             SciencePathHandler,

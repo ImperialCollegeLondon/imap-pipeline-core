@@ -56,7 +56,9 @@ class GradiometerCalibrationJob(CalibrationJob):
 
         return path_handlers
 
-    def run_calibration(self, calfile, config: CalibrationConfig) -> Path:
+    def run_calibration(
+        self, calfile: Path, datafile: Path, config: CalibrationConfig
+    ) -> tuple[Path, Path]:
         """
         Run the gradiometry calibration.
         :param date: The date for which to run the calibration.
@@ -64,7 +66,7 @@ class GradiometerCalibrationJob(CalibrationJob):
         :param calfile: The path to the calibration file to be created.
         :param datastore: The path to the data store.
         :param config: Optional configuration for the calibration.
-        :return: The path to the created calibration file."""
+        :return: The paths to the created calibration metadata and science files."""
 
         dt_as_str = (
             self.calibration_job_parameters.date.astimezone(pytz.utc)
@@ -80,6 +82,6 @@ class GradiometerCalibrationJob(CalibrationJob):
             )
 
         call_matlab(
-            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{self.data_store}", "{config.gradiometer.kappa!s}", "{config.gradiometer.sc_interference_threshold!s}")'
+            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{datafile}", "{self.data_store}", "{config.gradiometer.kappa!s}", "{config.gradiometer.sc_interference_threshold!s}")'
         )
-        return calfile
+        return calfile, datafile

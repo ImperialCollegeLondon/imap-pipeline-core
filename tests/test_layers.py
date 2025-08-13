@@ -127,9 +127,9 @@ def test_science_layer_writes_to_csv(tmp_path):
     science_layer.calculate_magnitudes()
     science_layer.writeToFile(csv_path)
 
-    df = pd.read_csv(csv_path, parse_dates=["epoch"])
+    df = pd.read_csv(csv_path, parse_dates=["time"])
     assert df.x.iloc[0] == science_layer.values[0].value[0]
     assert df.y.iloc[0] == science_layer.values[0].value[1]
     assert df.z.iloc[0] == science_layer.values[0].value[2]
     assert df.magnitude.iloc[0] == np.linalg.norm(science_layer.values[0].value)
-    assert df.epoch.iloc[0] == science_layer.values[0].time
+    assert df.time.iloc[0] == science_layer.values[0].time
