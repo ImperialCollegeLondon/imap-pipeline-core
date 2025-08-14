@@ -117,6 +117,11 @@ class ScienceLayer(Layer):
 
     @classmethod
     def _load_data_file(cls, path: Path, existing_model) -> "ScienceLayer":
+        if existing_model.values:
+            logger.warning(
+                f"Existing science values will be overwritten with data in {path!s}."
+            )
+
         science_only_layer = cls.from_file(path)
         existing_model.values = deepcopy(science_only_layer.values)
 

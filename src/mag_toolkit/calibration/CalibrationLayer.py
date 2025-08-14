@@ -107,6 +107,11 @@ class CalibrationLayer(Layer):
 
     @classmethod
     def _load_data_file(cls, path: Path, existing_model) -> "CalibrationLayer":
+        if existing_model.values:
+            logger.warning(
+                f"Existing calibration values will be overwritten with data in {path!s}."
+            )
+
         calibration_only_layer = cls.from_file(path)
         existing_model.values = deepcopy(calibration_only_layer.values)
 

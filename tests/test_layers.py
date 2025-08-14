@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +16,7 @@ from mag_toolkit.calibration import (
     ScienceValue,
 )
 from mag_toolkit.calibration.CalibrationDefinitions import Sensor, Validity, ValueType
-from tests.util.miscellaneous import DATASTORE
+from tests.util.miscellaneous import DATASTORE, TEST_DATA
 
 
 def test_science_layer_calculates_magnitude_correctly():
@@ -165,6 +166,31 @@ def test_calibration_layer_loads_csv_correctly():
     assert len(cl.values) == 16
     assert cl.values[0].time == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
     assert cl.values[-1].time == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
+
+
+def test_calibration_layer_warning_on_overwriting_existing_data(
+    tmp_path, capture_cli_logs
+):
+    # Set up.
+    metadata_file = TEST_DATA / "metadata_file_with_values_and_data_file.json"
+    data_file = (
+        DATASTORE
+        / "calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv"
+    )
+
+    shutil.copy(metadata_file, tmp_path / "metadata_file.json")
+    shutil.copy(data_file, tmp_path / "data_file.csv")
+
+    # Exercise.
+    cl = CalibrationLayer.from_file(tmp_path / "metadata_file.json")
+
+    # Verify.
+    assert (
+        f"Existing calibration values will be overwritten with data in {tmp_path / 'data_file.csv'!s}."
+        in capture_cli_logs.text
+    )
+
+    assert len(cl.values) == 16
 
 
 def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
