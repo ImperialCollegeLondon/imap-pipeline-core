@@ -10,7 +10,12 @@ from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
-from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
+    DATASTORE,
+    TEST_DATA,
+    TEST_TRUTH,
+    tidyDataFolders,
+)
 
 
 def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
@@ -49,7 +54,7 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
 )
 def test_dispatch_hk_binary(extension):
     # Set up.
-    packet_path = Path("tests/test_data/MAG_HSK_SOME" + extension)
+    packet_path = TEST_DATA / "MAG_HSK_SOME" + extension
 
     # Exercise.
     processor = dispatch(
@@ -64,7 +69,7 @@ def test_dispatch_hk_binary(extension):
 
 def test_dispatch_unsupported_file(capture_cli_logs):
     # Set up.
-    packet_path = Path("tests/test_data/MAG_HSK_SOME.txt")
+    packet_path = TEST_DATA / "MAG_HSK_SOME.txt"
 
     # Exercise and verify.
     with pytest.raises(
@@ -95,8 +100,8 @@ def test_dispatch_unsupported_file(capture_cli_logs):
 )
 def test_decode_hk_packet(packet_type):
     # Set up.
-    packet_path = Path("tests/test_data") / (packet_type.packet + ".pkts")
-    expected_path = Path("tests/test_truth") / (packet_type.packet + ".csv")
+    packet_path = TEST_DATA / (packet_type.packet + ".pkts")
+    expected_path = TEST_TRUTH / (packet_type.packet + ".csv")
 
     processor = instantiate_hk_processor()
 
@@ -140,7 +145,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
     """
 
     # Set up.
-    packet_path = Path("tests/test_data/MAG_HSK_PW.pkts")
+    packet_path = TEST_DATA / "MAG_HSK_PW.pkts"
     processor = instantiate_hk_processor()
 
     # Exercise.
@@ -180,8 +185,8 @@ def test_decode_hk_packet_with_two_files_for_two_days(capture_cli_logs):
     """
 
     # Set up.
-    packet_path1 = Path("tests/test_data/MAG_HSK_PW_20250421_sclk.bin")
-    packet_path2 = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
+    packet_path1 = TEST_DATA / "MAG_HSK_PW_20250421_sclk.bin"
+    packet_path2 = TEST_DATA / "MAG_HSK_PW_20251017_sclk.pkts"
 
     processor = instantiate_hk_processor()
 
@@ -228,8 +233,8 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_COMBINED.pkts"
 
-    power_path = Path("tests/test_data/MAG_HSK_PW.pkts")
-    status_path = Path("tests/test_data/MAG_HSK_STATUS.pkts")
+    power_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    status_path = TEST_DATA / "MAG_HSK_STATUS.pkts"
 
     with open(power_path, "rb") as power_file, open(status_path, "rb") as status_file:
         power_data = power_file.read()
@@ -271,7 +276,7 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     """Test that HKProcessor loads existing data and includes it in the output file (without duplicates)."""
 
     # Set up.
-    packet_path = Path("tests/test_data/MAG_HSK_PW_20251017_sclk.pkts")
+    packet_path = TEST_DATA / "MAG_HSK_PW_20251017_sclk.pkts"
     processor = instantiate_hk_processor()
 
     # Exercise.
@@ -324,7 +329,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     """Very specific test to check that we support the `groupby` method returning a tuple for the `day` parameter."""
 
     # Set up.
-    packet_path = Path("tests/test_data/groupby_day_as_tuple.bin")
+    packet_path = TEST_DATA / "groupby_day_as_tuple.bin"
     processor = instantiate_hk_processor()
 
     # Exercise.
@@ -354,7 +359,7 @@ def test_hk_processor_throws_error_on_corrupt_hk_packet(
 
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
-    original_path = Path("tests/test_data/MAG_HSK_PW.pkts")
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
 
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
@@ -384,8 +389,8 @@ def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
     # Set up.
     packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
 
-    original_path = Path("tests/test_data/MAG_HSK_PW.pkts")
-    expected_path = Path("tests/test_truth/MAG_HSK_PW.csv")
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    expected_path = TEST_TRUTH / "MAG_HSK_PW.csv"
 
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
