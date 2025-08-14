@@ -99,6 +99,11 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         noop_layer = json.load(f)
 
     assert noop_layer["method"] == "noop"
+    assert len(noop_layer["metadata"]["science"]) == 1
+    assert (
+        noop_layer["metadata"]["science"][0]
+        == "imap_mag_l1c_norm-mago_20250421_v001.cdf"
+    )
 
     layer_data = (
         temp_datastore
@@ -156,6 +161,11 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         grad_layer = json.load(f)
 
     assert grad_layer["method"] == "gradiometer"
+    assert len(grad_layer["metadata"]["science"]) == 1
+    assert (
+        grad_layer["metadata"]["science"][0]
+        == "imap_mag_l1c_norm-mago_20260930_v001.cdf"
+    )
 
     layer_data = (
         temp_datastore
