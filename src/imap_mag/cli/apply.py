@@ -79,6 +79,7 @@ def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
                 "Calibration layer data defined in metadata file. No separate file will be used."
             )
             continue
+
         elif Path(data_filename).exists():
             versioned_data_file: Path = Path(data_filename)
         elif (Path(layer).parent / data_filename).exists():
