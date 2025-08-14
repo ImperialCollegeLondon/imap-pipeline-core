@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 
@@ -20,6 +21,19 @@ class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: ValueType
     values: list[CalibrationValue]
+
+    def as_df(self) -> pd.DataFrame:
+        """
+        Convert the calibration layer to a pandas DataFrame.
+        """
+        data = {
+            "epoch": [value.time for value in self.values],
+            "value": [value.value for value in self.values],
+            "timedelta": [value.timedelta for value in self.values],
+            "quality_flag": [value.quality_flag for value in self.values],
+            "quality_bitmask": [value.quality_bitmask for value in self.values],
+        }
+        return pd.DataFrame(data)
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
         raise NotImplementedError(

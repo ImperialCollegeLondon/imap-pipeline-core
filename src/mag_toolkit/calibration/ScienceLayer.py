@@ -27,6 +27,22 @@ class ScienceLayer(Layer):
     value_type: ValueType
     values: list[ScienceValue]
 
+    def as_df(self) -> pd.DataFrame:
+        """
+        Convert the science layer to a pandas DataFrame.
+        """
+        data = {
+            "epoch": [science.time for science in self.values],
+            "x": [science.value[0] for science in self.values],
+            "y": [science.value[1] for science in self.values],
+            "z": [science.value[2] for science in self.values],
+            "range": [science.range for science in self.values],
+            "magnitude": [science.magnitude for science in self.values],
+            "quality_flag": [science.quality_flag for science in self.values],
+            "quality_bitmask": [science.quality_bitmask for science in self.values],
+        }
+        return pd.DataFrame(data)
+
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
         l2_skeleton = cdf_to_xarray(str(CONSTANTS.L2_SKELETON_CDF), to_datetime=False)
         vectors_var = xr.Variable(

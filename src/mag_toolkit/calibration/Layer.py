@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import pandas as pd
 import yaml
 from pydantic import BaseModel
 
@@ -27,6 +28,9 @@ class Layer(BaseModel, ABC):
             as_dict = yaml.safe_load(fid)
         model = cls(**as_dict)
         return model
+
+    @abstractmethod
+    def as_df(self) -> pd.DataFrame: ...
 
     @abstractmethod
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path: ...
