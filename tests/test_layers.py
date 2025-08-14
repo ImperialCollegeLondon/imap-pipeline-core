@@ -1,6 +1,5 @@
 import json
 import shutil
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -54,11 +53,11 @@ def test_layer_loads_science_to_full_specificity():
     assert sl.values[1].time == np.datetime64("2025-04-21T12:16:06.069359872", "ns")
 
 
-def test_layer_writes_science_to_full_specificity():
+def test_layer_writes_science_to_full_specificity(tmp_path):
     sl = ScienceLayer.from_file(
         DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
     )
-    test_science_layer_path = Path("output/test-science-layer.json")
+    test_science_layer_path = tmp_path / "test-science-layer.json"
     sl._write_to_json(test_science_layer_path)
 
     with open(test_science_layer_path) as f:
