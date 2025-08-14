@@ -68,7 +68,6 @@ def matlab_test_setup():
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     matlab_test_setup,
-    tmp_path,
     monkeypatch,
     temp_datastore,  # noqa: F811
 ):
@@ -134,7 +133,6 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
     matlab_test_setup,
-    tmp_path,
     monkeypatch,
     temp_datastore,  # noqa: F811
 ):
