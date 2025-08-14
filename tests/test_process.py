@@ -54,7 +54,7 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
 )
 def test_dispatch_hk_binary(extension):
     # Set up.
-    packet_path = TEST_DATA / "MAG_HSK_SOME" + extension
+    packet_path = TEST_DATA / ("MAG_HSK_SOME" + extension)
 
     # Exercise.
     processor = dispatch(
