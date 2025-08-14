@@ -23,6 +23,7 @@ from mag_toolkit.calibration import (
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
+    TEST_DATA,
     create_test_file,
     temp_datastore,
     tidyDataFolders,
@@ -254,6 +255,37 @@ def test_apply_writes_magnitudes_correctly(tmp_path, temp_datastore):  # noqa: F
             # Convert to list for comparison
             computed_magnitude = np.linalg.norm(correct_vec)
             assert mag == pytest.approx(computed_magnitude, rel=1e-6)
+
+
+@pytest.mark.parametrize(
+    "invalid_metadata_file",
+    [
+        TEST_DATA / "metadata_file_no_metadata.json",
+        TEST_DATA / "metadata_file_no_data_filename.json",
+    ],
+)
+def test_apply_errors_on_metadata_incorrect_data_filename_format(
+    invalid_metadata_file,
+    temp_datastore,  # noqa: F811
+):
+    # Set up.
+    calibration_layer = "imap_mag_noop-layer-meta_20251017_v001.json"
+
+    shutil.copy(
+        invalid_metadata_file,
+        temp_datastore / "calibration/layers/2025/10" / calibration_layer,
+    )
+
+    # Exercise and verify.
+    with pytest.raises(
+        Exception,
+        match=f"Metadata file {temp_datastore / 'calibration/layers/2025/10' / calibration_layer} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing.",
+    ):
+        apply(
+            layers=[calibration_layer],
+            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            date=datetime(2025, 10, 17),
+        )
 
 
 def get_test_matlab_command():
