@@ -35,17 +35,17 @@ class Layer(BaseModel, ABC):
         if not model.metadata.data_filename:
             return model
 
-        data_filenames: list[Path] = [
+        files_to_try: list[Path] = [
             model.metadata.data_filename,
             path.parent / model.metadata.data_filename.name,
         ]
 
-        for file in data_filenames:
+        for file in files_to_try:
             if file.exists():
                 return cls._load_data_file(file, model)
 
         raise FileNotFoundError(
-            f"Layer data file {model.metadata.data_filename} not found. Looked in:\n{', '.join(str(file) for file in data_filenames)}"
+            f"Layer data file {model.metadata.data_filename} not found. Looked in:\n{', '.join(str(file) for file in files_to_try)}"
         )
 
     @classmethod

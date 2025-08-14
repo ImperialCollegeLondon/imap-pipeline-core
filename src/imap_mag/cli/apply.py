@@ -31,7 +31,7 @@ class FileType(Enum):
     JSON = "json"
 
 
-def prepare_layers_for_application(layers, appSettings):
+def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
@@ -64,10 +64,25 @@ def prepare_layers_for_application(layers, appSettings):
         with open(versioned_metadata_file) as fid:
             as_dict = yaml.safe_load(fid)
 
+        if not (("metadata" in as_dict) and ("data_filename" in as_dict["metadata"])):
+            logger.error(
+                f"Metadata file {versioned_metadata_file} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing."
+            )
+            raise LookupError(
+                f"Metadata file {versioned_metadata_file} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing."
+            )
+
         data_filename = as_dict["metadata"]["data_filename"]
 
-        if Path(data_filename).exists():
+        if data_filename is None:
+            logger.info(
+                "Calibration layer data defined in metadata file. No separate file will be used."
+            )
+            continue
+        elif Path(data_filename).exists():
             versioned_data_file: Path = Path(data_filename)
+        elif (Path(layer).parent / data_filename).exists():
+            versioned_data_file = Path(layer).parent / data_filename
         else:
             cal_data_handler = CalibrationDataPathHandler.from_filename(data_filename)
 
@@ -79,10 +94,14 @@ def prepare_layers_for_application(layers, appSettings):
                     f"Could not parse metadata from calibration data file: {data_filename}"
                 )
 
-            versioned_data_file: Path = datastore_finder.find_matching_file(
+            versioned_data_file = datastore_finder.find_matching_file(
                 path_handler=cal_data_handler,
                 throw_if_not_found=True,
             )
+
+        logger.info(
+            f"Calibration layer data defined in separate file: {versioned_data_file}"
+        )
 
         fetch_file_for_work(
             versioned_data_file,
