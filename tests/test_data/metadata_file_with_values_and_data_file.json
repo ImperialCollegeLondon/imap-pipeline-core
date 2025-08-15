@@ -1,0 +1,34 @@
+{
+    "id": "",
+    "metadata": {
+        "comment": "This is a zero value calibration file",
+        "creation_timestamp": "2025-03-28T11:22:20",
+        "data_filename": "data_file.csv",
+        "dependencies": [],
+        "science": [
+            ".work/imap_mag_l1b_norm-mago_20251017_v002.json"
+        ]
+    },
+    "method": "noop",
+    "mission": "IMAP",
+    "sensor": "MAGo",
+    "validity": {
+        "end": "2025-10-17T02:11:59.021309",
+        "start": "2025-10-17T02:11:51.521"
+    },
+    "value_type": "vector",
+    "values": [
+        {
+            "quality_bitmask": 0.0,
+            "quality_flag": 0.0,
+            "time": "2025-10-17T02:11:51.521309",
+            "timedelta": 0.0,
+            "value": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        }
+    ],
+    "version": 0.0
+}

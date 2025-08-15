@@ -5,7 +5,7 @@ from pathlib import Path
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io import DatastoreFileFinder
-from mag_toolkit.calibration import CalibrationJobParameters
+from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 
 logger = logging.getLogger(__name__)
 
@@ -98,5 +98,7 @@ class CalibrationJob(ABC):
             self.data_store = datastore
 
     @abstractmethod
-    def run_calibration(self, calfile, config: CalibrationConfig) -> Path:
+    def run_calibration(
+        self, calfile: Path, datafile: Path, config: CalibrationConfig
+    ) -> tuple[Path, Path]:
         """Calibration that generates a calibration layer."""

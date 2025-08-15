@@ -9,7 +9,8 @@ from imap_mag.io import (
 )
 from imap_mag.io.file import (
     AncillaryPathHandler,
-    CalibrationLayerPathHandler,
+    CalibrationDataPathHandler,
+    CalibrationMetadataPathHandler,
     HKBinaryPathHandler,
     HKDecodedPathHandler,
     SciencePathHandler,
@@ -33,6 +34,12 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
     assert provider.supports_sequencing() is True
     assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2_norm\-mago_20251017_v(?P<version>\d+)\.cdf"
+    )
+    assert provider.get_full_path() == Path(
+        "science/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+    )
+    assert provider.get_full_path(Path("my_datastore")) == Path(
+        "my_datastore/science/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
     )
 
 
@@ -130,15 +137,25 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
         ),
         (
             Path(
-                "imap/mag/calibration/layer/2025/10/imap_mag_offsets-layer_20251004_v002.json"
+                "imap/mag/calibration/layer/2025/10/imap_mag_offsets-layer-meta_20251004_v002.json"
             ),
-            CalibrationLayerPathHandler(
+            CalibrationMetadataPathHandler(
                 version=2,
                 calibration_descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
-                extension="json",
             ),
-            "CalibrationLayerPathHandler",
+            "CalibrationMetadataPathHandler",
+        ),
+        (
+            Path(
+                "imap/mag/calibration/layer/2025/10/imap_mag_offsets-layer-data_20251004_v002.csv"
+            ),
+            CalibrationDataPathHandler(
+                version=2,
+                calibration_descriptor="offsets",
+                content_date=datetime(2025, 10, 4),
+            ),
+            "CalibrationDataPathHandler",
         ),
     ],
 )

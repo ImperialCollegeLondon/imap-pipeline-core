@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pytz
 
@@ -43,8 +44,10 @@ class EmptyCalibrationJob(CalibrationJob):
 
         return path_handlers
 
-    def run_calibration(self, calfile, config=None):
-        # produce an epmpty calibration through matlab
+    def run_calibration(
+        self, calfile: Path, datafile: Path, config=None
+    ) -> tuple[Path, Path]:
+        # produce an empty calibration through matlab
 
         dt_as_str = (
             self.calibration_job_parameters.date.astimezone(pytz.utc)
@@ -55,7 +58,7 @@ class EmptyCalibrationJob(CalibrationJob):
         logger.info(f"Using datetime {dt_as_str}")
 
         call_matlab(
-            f'calibration.wrappers.run_empty_calibrator("{dt_as_str}", "{self.required_files[self.science_file_key]}", "{calfile}", "{self.data_store}", "")'
+            f'calibration.wrappers.run_empty_calibrator("{dt_as_str}", "{self.required_files[self.science_file_key]}", "{calfile}", "{datafile}", "{self.data_store}", "")'
         )
 
-        return calfile
+        return calfile, datafile

@@ -24,6 +24,10 @@ class OutputManager(IOutputManager):
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
         """Add file to output location."""
 
+        if not original_file.exists():
+            logger.error(f"File {original_file} does not exist.")
+            raise FileNotFoundError(f"File {original_file} does not exist.")
+
         if not self.location.exists():
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)

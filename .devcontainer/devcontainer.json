@@ -39,6 +39,7 @@
         "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
         "IMAP_DATA_ACCESS_URL": "${localEnv:IMAP_DATA_ACCESS_URL}",
         "SQLALCHEMY_URL": "${localEnv:SQLALCHEMY_URL}",
+        "MLM_LICENSE_FILE": "${localEnv:MLM_LICENSE_FILE}",
         // Define WireMock variables to connect Docker outside of Docker.
         "WIREMOCK_DIND": "1",
         "TESTCONTAINERS_HOST_OVERRIDE": "host.docker.internal"

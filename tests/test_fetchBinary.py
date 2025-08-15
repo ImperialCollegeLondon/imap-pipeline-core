@@ -11,6 +11,7 @@ from imap_mag.client.WebPODA import WebPODA
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.io.file import HKBinaryPathHandler
 from tests.util.miscellaneous import (  # noqa: F401
+    TEST_DATA,
     create_test_file,
     tidyDataFolders,
 )
@@ -51,8 +52,8 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
 
-    test_file = Path("tests/test_data/MAG_HSK_PW.pkts")
-    expected_file = Path("tests/test_data/MAG_HSK_PW_20250502_sclk.bin")
+    test_file = TEST_DATA / "MAG_HSK_PW.pkts"
+    expected_file = TEST_DATA / "MAG_HSK_PW_20250502_sclk.bin"
 
     mock_poda.download.side_effect = lambda **_: test_file
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 3, 8, 58, 39)
@@ -161,8 +162,8 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
     # Set up.
     fetchBinary = FetchBinary(mock_poda)
 
-    test_file = Path("tests/test_data/MAG_HSK_PW.pkts")
-    expected_file = Path("tests/test_data/MAG_HSK_PW_20250502_sclk.bin")
+    test_file = TEST_DATA / "MAG_HSK_PW.pkts"
+    expected_file = TEST_DATA / "MAG_HSK_PW_20250502_sclk.bin"
 
     mock_poda.download.side_effect = lambda **_: test_file
     mock_poda.get_max_ert.side_effect = lambda **_: datetime(2025, 6, 2, 12, 45, 29)

@@ -10,7 +10,10 @@ from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
 from imap_mag.io import DatastoreFileFinder, OutputManager
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file import (
+    CalibrationDataPathHandler,
+    CalibrationMetadataPathHandler,
+)
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
@@ -36,7 +39,7 @@ def gradiometry(
     sc_interference_threshold: Annotated[
         float, typer.Option(help="SC interference threshold")
     ] = 10.0,
-):
+) -> Path:
     """
     Run gradiometry calibration.
     """
@@ -60,18 +63,25 @@ def gradiometry(
     calibrator.setup_calibration_files(datastore_finder, work_folder)
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_layer_handler = CalibrationLayerPathHandler(
+    calibration_metadata_handler = CalibrationMetadataPathHandler(
         calibration_descriptor=method.short_name, content_date=date
     )
-    result: Path = calibrator.run_calibration(
-        work_folder / Path(calibration_layer_handler.get_filename()),
+    calibration_data_handler = CalibrationDataPathHandler(
+        calibration_descriptor=method.short_name, content_date=date
+    )
+
+    metadata_path, data_path = calibrator.run_calibration(
+        work_folder / Path(calibration_metadata_handler.get_filename()),
+        work_folder / Path(calibration_data_handler.get_filename()),
         calibration_configuration,
     )
 
     outputManager = OutputManager(app_settings.data_store)
+
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibration_layer_handler
-    )  # type: ignore
+        metadata_path, path_handler=calibration_metadata_handler
+    )
+    outputManager.add_file(data_path, path_handler=calibration_data_handler)
 
     return output_calibration_path
 
@@ -94,7 +104,7 @@ def calibrate(
             help="Configuration for the calibration - should be a YAML file or a JSON string",
         ),
     ] = None,
-):
+) -> Path:
     """
     Generate calibration parameters for a given input file.
     imap-mag calibrate --from [date] --to [date] --method [method] [input]
@@ -133,18 +143,24 @@ def calibrate(
     )
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_layer_handler = CalibrationLayerPathHandler(
+    calibration_metadata_handler = CalibrationMetadataPathHandler(
+        calibration_descriptor=method.value, content_date=date
+    )
+    calibration_data_handler = CalibrationDataPathHandler(
         calibration_descriptor=method.value, content_date=date
     )
 
-    result: Path = calibrator.run_calibration(
-        work_folder / Path(calibration_layer_handler.get_filename()),
+    metadata_path, data_path = calibrator.run_calibration(
+        work_folder / Path(calibration_metadata_handler.get_filename()),
+        work_folder / Path(calibration_data_handler.get_filename()),
         calibration_configuration,
     )
 
     outputManager = OutputManager(app_settings.data_store)
+
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibration_layer_handler
-    )  # type: ignore
+        metadata_path, path_handler=calibration_metadata_handler
+    )
+    outputManager.add_file(data_path, path_handler=calibration_data_handler)
 
     return output_calibration_path
