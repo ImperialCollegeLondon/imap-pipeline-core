@@ -124,8 +124,12 @@ class WebPODA:
             if "packets/SID" not in self.__webpoda_url
             else self.__webpoda_url
         )
-        url_base = url_base.rstrip("/")
-        url = f"{url_base}/{packet}.{extension}?{time_var}%3E={start_value}&{time_var}%3C{end_value}&{data}"
+        file_name = f"{packet}.{extension}"
+        time_filter_querystring = (
+            f"{time_var}%3E={start_value}&{time_var}%3C{end_value}"
+        )
+        additional_querystring = data
+        url = f"{urllib.parse.urljoin(url_base, file_name)}?{time_filter_querystring}&{additional_querystring}"
         logger.debug(f"Downloading from: {url}")
 
         try:
