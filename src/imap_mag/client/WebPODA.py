@@ -118,13 +118,14 @@ class WebPODA:
         end_value: str = end_date.strftime("%Y-%m-%dT%H:%M:%S")
         time_var = "ert" if ert else "time"
 
-        url = (
+        # default to the pre-launch system ID if one is not passed in the URL
+        url_base: str = (
             f"{urllib.parse.urljoin(self.__webpoda_url, 'packets/SID2/')}"
-            f"{packet}.{extension}?"
-            f"{time_var}%3E={start_value}&"
-            f"{time_var}%3C{end_value}&"
-            f"{data}"
+            if "packets/SID" not in self.__webpoda_url
+            else self.__webpoda_url
         )
+        url_base = url_base.rstrip("/")
+        url = f"{url_base}/{packet}.{extension}?{time_var}%3E={start_value}&{time_var}%3C{end_value}&{data}"
         logger.debug(f"Downloading from: {url}")
 
         try:
