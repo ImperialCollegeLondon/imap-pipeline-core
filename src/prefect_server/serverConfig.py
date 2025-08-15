@@ -1,10 +1,22 @@
 import prefect
 import prefect.docker
 from prefect import get_client
+from prefect.filesystems import LocalFileSystem
+from prefect_managedfiletransfer import RCloneConfigFileBlock
 from pydantic import SecretStr
 
 from imap_db.main import create_db, upgrade_db
 from prefect_server.constants import PREFECT_CONSTANTS
+
+SAMPLE_RCLONE_FILE_CONTENTS = """\
+[imap_sharepoint]
+type = memory
+# or better still a real sharepoint one like:
+# type = onedrive
+# token = {"access_token":"...","token_type":"Bearer","refresh_token":"...","expiry":"2000-00-00T00:00:00.000000000Z"}
+# drive_id = ...
+# drive_type = documentLibrary
+"""
 
 
 class ServerConfig:
@@ -88,6 +100,17 @@ class ServerConfig:
             (
                 PREFECT_CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
                 prefect.blocks.system.Secret(value=SecretStr("")),
+            ),
+            (
+                CONSTANTS.SHAREPOINT_BLOCK_NAME,
+                RCloneConfigFileBlock(
+                    remote_name="imap_sharepoint",
+                    config_file_contents=SAMPLE_RCLONE_FILE_CONTENTS,
+                ),
+            ),
+            (
+                CONSTANTS.IMAP_DATASTORE_BLOCK_NAME,
+                LocalFileSystem(basepath="/data"),
             ),
         ]
         blocks = await client.read_block_documents()
