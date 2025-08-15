@@ -6,6 +6,10 @@ class PREFECT_CONSTANTS:
 
     SKIPPED_STATE_NAME = "Skipped"
 
+    SHAREPOINT_BLOCK_NAME = "imap-sharepoint"
+
+    IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
+
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
@@ -40,6 +44,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
         GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
+        SHAREPOINT_UPLOAD = "sharepoint-upload"
 
     class DEPLOYMENT_NAMES:
         POLL_HK = "poll_hk"
@@ -47,3 +52,4 @@ class PREFECT_CONSTANTS:
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
         PUBLISH = "publish"
+        SHAREPOINT_UPLOAD = "sharepoint_upload"
