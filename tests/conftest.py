@@ -11,6 +11,10 @@ from tests.util.wiremock import WireMockManager
 def capture_cli_logs(caplog, enableLogging):  # noqa: F811
     """Capture logs for the duration of the test."""
     caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="imap_db")
+    caplog.set_level(logging.DEBUG, logger="imap_mag")
+    caplog.set_level(logging.DEBUG, logger="mag_toolkit")
+    caplog.set_level(logging.DEBUG, logger="prefect_server")
     yield caplog
 
 
