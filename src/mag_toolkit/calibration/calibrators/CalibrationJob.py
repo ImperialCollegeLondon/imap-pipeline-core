@@ -5,6 +5,7 @@ from pathlib import Path
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io import DatastoreFileFinder
+from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 
 logger = logging.getLogger(__name__)
@@ -14,15 +15,18 @@ class CalibrationJob(ABC):
     data_store: Path | None = None
 
     calibration_job_parameters: CalibrationJobParameters
+    work_folder: Path
 
-    def __init__(self, calibration_job_parameters: CalibrationJobParameters):
+    def __init__(
+        self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
+    ):
         self.required_files: dict = dict()
         self.calibration_job_parameters = calibration_job_parameters
+        self.work_folder = work_folder
 
     def setup_calibration_files(
         self,
         datastore_finder: DatastoreFileFinder,
-        work_folder: Path,
     ):
         path_handlers = self._get_path_handlers(self.calibration_job_parameters)
 
@@ -32,7 +36,7 @@ class CalibrationJob(ABC):
                 path_handler, throw_if_not_found=True
             )
             work_file = fetch_file_for_work(
-                input_file, work_folder, throw_if_not_found=True
+                input_file, self.work_folder, throw_if_not_found=True
             )
             self.set_file(key, work_file)
 
@@ -99,6 +103,6 @@ class CalibrationJob(ABC):
 
     @abstractmethod
     def run_calibration(
-        self, calfile: Path, datafile: Path, config: CalibrationConfig
+        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
     ) -> tuple[Path, Path]:
         """Calibration that generates a calibration layer."""

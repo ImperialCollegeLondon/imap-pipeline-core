@@ -7,7 +7,7 @@ import pandas as pd
 import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 
-from imap_mag.io.file import CalibrationMetadataPathHandler
+from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -145,17 +145,12 @@ class CalibrationLayer(Layer):
             )
         ]
 
-        calibration_metadata_handler = CalibrationMetadataPathHandler.from_filename(
-            path
-        )
+        calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
 
         method: CalibrationMethod = (
-            CalibrationMethod.from_string(
-                calibration_metadata_handler.calibration_descriptor
-            )
+            CalibrationMethod.from_string(calibration_metadata_handler.descriptor)
             if (
-                calibration_metadata_handler
-                and calibration_metadata_handler.calibration_descriptor
+                calibration_metadata_handler and calibration_metadata_handler.descriptor
             )
             else CalibrationMethod.NOOP
         )

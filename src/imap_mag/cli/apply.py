@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-import yaml
 
 from imap_mag.cli.cliUtils import (
     fetch_file_for_work,
@@ -15,12 +14,11 @@ from imap_mag.config import AppSettings
 from imap_mag.io import DatastoreFileFinder, OutputManager
 from imap_mag.io.file import (
     AncillaryPathHandler,
-    CalibrationDataPathHandler,
-    CalibrationMetadataPathHandler,
+    CalibrationLayerPathHandler,
     SciencePathHandler,
 )
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationApplicator
+from mag_toolkit.calibration import CalibrationApplicator, CalibrationLayer
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +36,8 @@ def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
     datastore_finder = DatastoreFileFinder(appSettings.data_store)
     work_layers = []
     for layer in layers:
-        cal_meta_handler = CalibrationMetadataPathHandler.from_filename(layer)
-        if not cal_meta_handler:
+        cal_handler = CalibrationLayerPathHandler.from_filename(layer)
+        if not cal_handler:
             logger.error(
                 f"Could not parse metadata from calibration metadata file: {layer}"
             )
@@ -47,65 +45,29 @@ def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
                 f"Could not parse metadata from calibration metadata file: {layer}"
             )
 
-        versioned_metadata_file: Path = datastore_finder.find_matching_file(
-            path_handler=cal_meta_handler,
+        versioned_layer_file: Path = datastore_finder.find_matching_file(
+            path_handler=cal_handler,
             throw_if_not_found=True,
         )
 
         work_layers.append(
             fetch_file_for_work(
-                versioned_metadata_file,
+                versioned_layer_file,
                 appSettings.work_folder,
                 throw_if_not_found=True,
             )
         )
 
         # Get data file
-        with open(versioned_metadata_file) as fid:
-            as_dict = yaml.safe_load(fid)
+        cal_layer = CalibrationLayer.from_file(versioned_layer_file)
 
-        if not (("metadata" in as_dict) and ("data_filename" in as_dict["metadata"])):
-            logger.error(
-                f"Metadata file {versioned_metadata_file} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing."
-            )
-            raise LookupError(
-                f"Metadata file {versioned_metadata_file} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing."
-            )
-
-        data_filename = as_dict["metadata"]["data_filename"]
-
-        if data_filename is None:
-            logger.info(
-                "Calibration layer data defined in metadata file. No separate file will be used."
-            )
+        if cal_layer.metadata.data_filename is None:
             continue
 
-        elif Path(data_filename).exists():
-            versioned_data_file: Path = Path(data_filename)
-        elif (Path(layer).parent / data_filename).exists():
-            versioned_data_file = Path(layer).parent / data_filename
-        else:
-            cal_data_handler = CalibrationDataPathHandler.from_filename(data_filename)
-
-            if not cal_data_handler:
-                logger.error(
-                    f"Could not parse metadata from calibration data file: {data_filename}"
-                )
-                raise ValueError(
-                    f"Could not parse metadata from calibration data file: {data_filename}"
-                )
-
-            versioned_data_file = datastore_finder.find_matching_file(
-                path_handler=cal_data_handler,
-                throw_if_not_found=True,
-            )
-
-        logger.info(
-            f"Calibration layer data defined in separate file: {versioned_data_file}"
-        )
+        data_filename: str = cal_handler.get_equivalent_data_handler().get_filename()
 
         fetch_file_for_work(
-            versioned_data_file,
+            versioned_layer_file.parent / data_filename,
             appSettings.work_folder,
             throw_if_not_found=True,
         )
@@ -156,7 +118,7 @@ def apply(
     Apply calibration rotation and layers to an input science file.
 
     imap-mag calibration apply --date [date] --rotation [rotation] [layers] [input]
-    e.g. imap-mag calibration apply --date --rotation imap_mag_l2-calibration_20251017_v004.cdf imap_mag_noop-layer-meta_20251017_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
+    e.g. imap-mag calibration apply --date --rotation imap_mag_l2-calibration_20251017_v004.cdf imap_mag_noop-layer_20251017_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)

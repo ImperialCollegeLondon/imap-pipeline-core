@@ -64,14 +64,14 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
     capture_cli_logs,
 ):
     apply(
-        layers=["imap_mag_noop-layer-meta_20251017_v001.json"],
+        layers=["imap_mag_noop-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
         date=datetime(2025, 10, 17),
     )
     verify_noop_20251017_results(temp_datastore)
 
     assert (
-        f"Calibration layer data defined in separate file: {temp_datastore / 'calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv'}"
+        "Calibration layer data defined in separate file: .work/imap_mag_noop-layer-data_20251017_v001.csv"
         in capture_cli_logs.text
     )
 
@@ -81,7 +81,7 @@ def test_apply_works_with_metadata_files_containing_values(
     capture_cli_logs,
 ):
     # Set up.
-    calibration_layer = "imap_mag_noop-layer-meta_20251017_v002.json"
+    calibration_layer = "imap_mag_noop-layer_20251017_v002.json"
 
     copy_test_file_to_database(
         temp_datastore / "calibration/layers/2025/10",
@@ -107,7 +107,7 @@ def test_apply_works_with_metadata_files_containing_values(
 
 def test_apply_fails_when_timestamps_dont_align(temp_datastore):  # noqa: F811
     for f in [
-        "imap_mag_misaligned-timestamps-layer-meta_20251017_v001.json",
+        "imap_mag_misaligned-timestamps-layer_20251017_v001.json",
         "imap_mag_misaligned-timestamps-layer-data_20251017_v001.csv",
     ]:
         copy_test_file_to_database(
@@ -117,7 +117,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore):  # noqa: F811
 
     with pytest.raises(Exception, match="Layer and data timestamps do not align"):
         apply(
-            layers=["imap_mag_misaligned-timestamps-layer-meta_20251017_v001.json"],
+            layers=["imap_mag_misaligned-timestamps-layer_20251017_v001.json"],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
             date=datetime(2025, 10, 17),
         )
@@ -153,19 +153,10 @@ def test_apply_fails_when_no_layers_provided(temp_datastore):  # noqa: F811
     ).exists()
 
 
-@pytest.mark.parametrize(
-    "invalid_metadata_file",
-    [
-        TEST_DATA / "metadata_file_no_metadata.json",
-        TEST_DATA / "metadata_file_no_data_filename.json",
-    ],
-)
-def test_apply_errors_on_metadata_incorrect_data_filename_format(
-    invalid_metadata_file,
-    temp_datastore,  # noqa: F811
-):
+def test_apply_errors_on_metadata_incorrect_data_filename_format(temp_datastore):  # noqa: F811
     # Set up.
-    calibration_layer = "imap_mag_noop-layer-meta_20251017_v001.json"
+    invalid_metadata_file = TEST_DATA / "metadata_file_no_metadata.json"
+    calibration_layer = "imap_mag_noop-layer_20251017_v001.json"
 
     copy_test_file_to_database(
         temp_datastore / "calibration/layers/2025/10",
@@ -176,7 +167,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
     # Exercise and verify.
     with pytest.raises(
         Exception,
-        match=f"Metadata file {temp_datastore / 'calibration/layers/2025/10' / calibration_layer} must have the correct format: 'metadata' or 'metadata.data_filename' fields are missing.",
+        match="Field required",
     ):
         apply(
             layers=[calibration_layer],
@@ -223,7 +214,7 @@ def test_apply_performs_correct_rotation(temp_datastore):  # noqa: F811
 
 def test_apply_adds_offsets_together_correctly(temp_datastore):  # noqa: F811
     for f in [
-        "imap_mag_four-vector-offsets-layer-meta_20251017_v001.json",
+        "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
         copy_test_file_to_database(
@@ -238,7 +229,7 @@ def test_apply_adds_offsets_together_correctly(temp_datastore):  # noqa: F811
     )
 
     apply(
-        layers=["imap_mag_four-vector-offsets-layer-meta_20251017_v001.json"],
+        layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
         date=datetime(2025, 10, 17),
     )
@@ -292,7 +283,7 @@ def test_simple_interpolation_calibration_values_apply_correctly():
 
 def test_apply_writes_magnitudes_correctly(temp_datastore):  # noqa: F811
     for f in [
-        "imap_mag_four-vector-offsets-layer-meta_20251017_v001.json",
+        "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
         copy_test_file_to_database(
@@ -306,7 +297,7 @@ def test_apply_writes_magnitudes_correctly(temp_datastore):  # noqa: F811
     )
 
     apply(
-        layers=["imap_mag_four-vector-offsets-layer-meta_20251017_v001.json"],
+        layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         date=datetime(2025, 10, 17),
     )

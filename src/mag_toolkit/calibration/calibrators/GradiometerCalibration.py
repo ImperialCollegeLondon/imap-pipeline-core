@@ -4,7 +4,7 @@ from pathlib import Path
 import pytz
 
 from imap_mag.config.CalibrationConfig import CalibrationConfig
-from imap_mag.io.file import SciencePathHandler
+from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration import CalibrationJobParameters
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
@@ -19,8 +19,10 @@ class GradiometerCalibrationJob(CalibrationJob):
     mago_key = "mago_science_file"
     magi_key = "magi_science_file"
 
-    def __init__(self, calibration_job_parameters: CalibrationJobParameters):
-        super().__init__(calibration_job_parameters)
+    def __init__(
+        self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
+    ):
+        super().__init__(calibration_job_parameters, work_folder)
         self.name = CalibrationMethod.GRADIOMETER
 
         self.required_files[self.mago_key] = None
@@ -57,7 +59,7 @@ class GradiometerCalibrationJob(CalibrationJob):
         return path_handlers
 
     def run_calibration(
-        self, calfile: Path, datafile: Path, config: CalibrationConfig
+        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
     ) -> tuple[Path, Path]:
         """
         Run the gradiometry calibration.
@@ -72,6 +74,10 @@ class GradiometerCalibrationJob(CalibrationJob):
             self.calibration_job_parameters.date.astimezone(pytz.utc)
             .replace(tzinfo=None)
             .isoformat()
+        )
+        calfile = self.work_folder / cal_handler.get_filename()
+        datafile = (
+            self.work_folder / cal_handler.get_equivalent_data_handler().get_filename()
         )
 
         logger.info(f"Using datetime {dt_as_str}")

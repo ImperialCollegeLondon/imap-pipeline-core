@@ -10,10 +10,7 @@ from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings
 from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
 from imap_mag.io import DatastoreFileFinder, OutputManager
-from imap_mag.io.file import (
-    CalibrationDataPathHandler,
-    CalibrationMetadataPathHandler,
-)
+from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
@@ -59,29 +56,27 @@ def gradiometry(
             kappa=kappa, sc_interference_threshold=sc_interference_threshold
         )
     )
-    calibrator = GradiometerCalibrationJob(calibration_job_parameters)
-    calibrator.setup_calibration_files(datastore_finder, work_folder)
+
+    calibrator = GradiometerCalibrationJob(calibration_job_parameters, work_folder)
+    calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_metadata_handler = CalibrationMetadataPathHandler(
-        calibration_descriptor=method.short_name, content_date=date
-    )
-    calibration_data_handler = CalibrationDataPathHandler(
-        calibration_descriptor=method.short_name, content_date=date
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=method.short_name, content_date=date
     )
 
     metadata_path, data_path = calibrator.run_calibration(
-        work_folder / Path(calibration_metadata_handler.get_filename()),
-        work_folder / Path(calibration_data_handler.get_filename()),
-        calibration_configuration,
+        calibration_handler, calibration_configuration
     )
 
     outputManager = OutputManager(app_settings.data_store)
 
     (output_calibration_path, _) = outputManager.add_file(
-        metadata_path, path_handler=calibration_metadata_handler
+        metadata_path, path_handler=calibration_handler
     )
-    outputManager.add_file(data_path, path_handler=calibration_data_handler)
+    outputManager.add_file(
+        data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
 
     return output_calibration_path
 
@@ -132,35 +127,32 @@ def calibrate(
 
     match method:
         case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrationJob(calibration_job_parameters)
+            calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
         case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrationJob(calibration_job_parameters)
+            calibrator = GradiometerCalibrationJob(
+                calibration_job_parameters, work_folder
+            )
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator.setup_calibration_files(
-        DatastoreFileFinder(app_settings.data_store), work_folder
-    )
+    calibrator.setup_calibration_files(DatastoreFileFinder(app_settings.data_store))
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_metadata_handler = CalibrationMetadataPathHandler(
-        calibration_descriptor=method.value, content_date=date
-    )
-    calibration_data_handler = CalibrationDataPathHandler(
-        calibration_descriptor=method.value, content_date=date
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=method.short_name, content_date=date
     )
 
     metadata_path, data_path = calibrator.run_calibration(
-        work_folder / Path(calibration_metadata_handler.get_filename()),
-        work_folder / Path(calibration_data_handler.get_filename()),
-        calibration_configuration,
+        calibration_handler, calibration_configuration
     )
 
     outputManager = OutputManager(app_settings.data_store)
 
     (output_calibration_path, _) = outputManager.add_file(
-        metadata_path, path_handler=calibration_metadata_handler
+        metadata_path, path_handler=calibration_handler
     )
-    outputManager.add_file(data_path, path_handler=calibration_data_handler)
+    outputManager.add_file(
+        data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
 
     return output_calibration_path

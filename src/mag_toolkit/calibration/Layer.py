@@ -1,3 +1,4 @@
+import logging
 import typing
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -11,6 +12,8 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     Sensor,
     Validity,
 )
+
+logger = logging.getLogger(__name__)
 
 T = typing.TypeVar("T", bound="Layer")
 
@@ -33,6 +36,9 @@ class Layer(BaseModel, ABC):
         # If data is defined in a separate file load it, otherwise
         # leave it as is.
         if not model.metadata.data_filename:
+            logger.debug(
+                "Calibration layer data defined in metadata file. No separate file will be used."
+            )
             return model
 
         files_to_try: list[Path] = [
@@ -42,6 +48,9 @@ class Layer(BaseModel, ABC):
 
         for file in files_to_try:
             if file.exists():
+                model.metadata.data_filename = file
+                logger.debug(f"Calibration layer data defined in separate file: {file}")
+
                 return cls._load_data_file(file, model)
 
         raise FileNotFoundError(
