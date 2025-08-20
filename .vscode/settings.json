@@ -29,5 +29,6 @@
             "database": "imap",
             "username": "postgres"
         }
-    ]
+    ],
+    "python-envs.pythonProjects": []
 }

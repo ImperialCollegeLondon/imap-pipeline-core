@@ -6,35 +6,22 @@
         "context": "."
     },
     "features": {
-        // "ghcr.io/devcontainers/features/common-utils:2":{
-        //     "installZsh": "true",
-        //     "username": "vscode",
-        //     "userUid": "1000",
-        //     "userGid": "1000",
-        //     "upgradePackages": "true"
-        // },
-        // "ghcr.io/devcontainers/features/git:1": {
-        //     "version": "latest",
-        //     "ppa": "false"
-        // },
+        "ghcr.io/gvatsal60/dev-container-features/pre-commit:1": {},
 
         // allow access to the HOST docker socker for docker desktop
-        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
 
-        },
         "ghcr.io/mathworks/devcontainer-features/matlab:0": {
             "release": "r2024a",
             "products": "MATLAB Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox"
         }
 
-        // poetry also available as a dev container feature but we install it using dev-env-first-time.sh so PATH is setup
-        //"ghcr.io/devcontainers-contrib/features/poetry:2": {},
         // uncommment act if you want to be able to run github actions locally. This needs "docker in docker" setup for devcontainer
         //"ghcr.io/dhoeric/features/act:1": {}
     },
     "remoteEnv": {
-        // add the pyenv bin and poetry to the PATH for the dev user vscode
-        "PATH": "/home/vscode/.pyenv/bin:/home/vscode/.local/bin:${containerEnv:PATH}",
+        // add the poetry to the PATH for the dev user vscode
+        "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
         "IMAP_WEBPODA_TOKEN": "${localEnv:IMAP_WEBPODA_TOKEN}",
         "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
         "IMAP_DATA_ACCESS_URL": "${localEnv:IMAP_DATA_ACCESS_URL}",
@@ -46,7 +33,7 @@
     },
     "postCreateCommand": "pip install --user -U pre-commit && pre-commit install-hooks && pre-commit autoupdate",
     // install poetry in first startup in vscode
-    "postStartCommand": "./dev-env-first-time.sh",
+    "postStartCommand": "poetry install",
 
     // Configure tool-specific properties.
     "customizations": {
