@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io import (
     DatabaseFileOutputManager,
     IOutputManager,
@@ -11,15 +12,13 @@ from imap_mag.io.file import IFilePathHandler
 logger = logging.getLogger(__name__)
 
 
-def getOutputManagerByMode(
-    destination_folder: Path, use_database: bool
-) -> IOutputManager:
+def getOutputManagerByMode(settings: AppSettings, use_database: bool) -> IOutputManager:
     """Retrieve output manager based on destination and mode."""
 
-    output_manager: IOutputManager = OutputManager(destination_folder)
+    output_manager: IOutputManager = OutputManager(settings.data_store)
 
     if use_database:
-        return DatabaseFileOutputManager(output_manager)
+        return DatabaseFileOutputManager(output_manager, settings=settings)
     else:
         return output_manager
 

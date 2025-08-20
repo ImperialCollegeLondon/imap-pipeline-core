@@ -5,6 +5,7 @@ from pathlib import Path
 from sqlalchemy.sql import text
 
 from imap_db.model import File
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io.file import SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
@@ -18,13 +19,18 @@ class DatabaseFileOutputManager(IOutputManager):
 
     __output_manager: IOutputManager
     __database: Database
+    __settings: AppSettings
 
     def __init__(
-        self, output_manager: IOutputManager, database: Database | None = None
+        self,
+        output_manager: IOutputManager,
+        database: Database | None = None,
+        settings: AppSettings | None = None,
     ):
         """Initialize database and output manager."""
 
         self.__output_manager = output_manager
+        self.__settings = settings if settings else AppSettings()  # type: ignore
 
         if database is None:
             self.__database = Database()
@@ -63,14 +69,18 @@ class DatabaseFileOutputManager(IOutputManager):
                 f"File {destination_file} already exists in database and is the same. Skipping insertion."
             )
         else:
-            logger.info(f"Inserting {destination_file} into database.")
-
+            file_with_app_relative_path = destination_file.absolute().relative_to(
+                self.__settings.data_store.absolute()
+            )
+            logger.info(
+                f"Inserting {file_with_app_relative_path} into database with relative path {file_with_app_relative_path}"
+            )
             try:
                 self.__database.insert_file(
                     File.from_file(
-                        file=destination_file,
+                        file=file_with_app_relative_path,
                         version=path_handler.get_sequence(),
-                        original_hash=original_hash,
+                        hash=original_hash,
                         content_date=path_handler.content_date,
                     )
                 )

@@ -1,75 +1,100 @@
+import fnmatch
 from datetime import datetime, timezone
 from pathlib import Path
 
 import prefect_managedfiletransfer
 from prefect import flow, get_run_logger
+from prefect.states import Completed
 
-from imap_db.model import File
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from prefect_server.constants import CONSTANTS
+from prefect_server.constants import PREFECT_CONSTANTS
 
 PROGRESS_KEY = "sharepoint-upload"
 
 
 @flow(
-    name=CONSTANTS.FLOW_NAMES.SHAREPOINT_UPLOAD,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.SHAREPOINT_UPLOAD,
     log_prints=True,
 )
-async def upload_new_files_to_sharepoint():
+async def upload_new_files_to_sharepoint(
+    find_files_after: datetime | None = None, how_many: int | None = None
+):
     """
     Publish new files to sharepoint
     """
 
     logger = get_run_logger()
 
+    app_settings = AppSettings()  # type: ignore
     db = Database()
     started = datetime.now(tz=timezone.utc)
     download_progress = db.get_download_progress(PROGRESS_KEY)
     if download_progress.progress_timestamp is None:
-        download_progress.progress_timestamp = datetime(2010, 1, 1)
-    new_files_db = db.get_files(File.date > download_progress.progress_timestamp)
+        download_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=timezone.utc)
 
-    path_patterns_to_upload = [
-        "science/mag/l1b",
-        "science/mag/l1c",
-        "science/mag/l1d",
-        "science/mag/l2",
-        "science/mag/l2-pre",
-        "hk/mag/l1",
-    ]
+    last_modified_date = (
+        download_progress.progress_timestamp
+        if find_files_after is None
+        else find_files_after
+    )
+
+    logger.info(
+        f"Looking for {len(how_many) if how_many else 'all'} files modified after {last_modified_date}"
+    )
+
+    new_files_db = db.get_files_since(last_modified_date, how_many)
+
+    download_progress.record_checked_download(started)
+
+    logger.info(
+        f"Found {len(new_files_db)} new files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
+    )
 
     files = [
-        Path(f.path)
+        f
         for f in new_files_db
-        if any(p in f.path for p in path_patterns_to_upload)
+        if any(fnmatch.fnmatch(f.path, p) for p in app_settings.upload.paths_to_match)
     ]
 
-    logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
+    logger.info(
+        f"{len(files)} files matching upload patterns.\n Publishing {', '.join(str(f) for f in files)}"
+    )
 
-    data_root_to_remove = Path("/data")
-    sharepoint_root = Path("Flight Data")
+    sharepoint_root = Path(app_settings.upload.root_path)
 
     for file in files:
-        destination_without_root = sharepoint_root / file.relative_to(
-            data_root_to_remove
+        path = Path(file.path).absolute()
+        path_with_datastore_root_stripped = path.relative_to(
+            app_settings.data_store.absolute()
         )
+        destination_path = sharepoint_root / path_with_datastore_root_stripped
+
+        if not path.exists():
+            logger.warning(f"File {path} does not exist, skipping upload.")
+            continue
 
         await prefect_managedfiletransfer.upload_file_flow(
-            destination_block_or_blockname=CONSTANTS.SHAREPOINT_BLOCK_NAME,
-            source_folder=file.parent,
-            pattern_to_upload=file.name,
-            destination_file=destination_without_root,
+            destination_block_or_blockname=PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
+            source_folder=path.parent,
+            pattern_to_upload=path.name,
+            destination_file=destination_path,
             update_only_if_newer_mode=True,
             mode=prefect_managedfiletransfer.TransferType.Copy,
         )
 
-    download_progress.record_checked_download(started)
-    if new_files_db:
-        latest_timestamp = max(f.date for f in new_files_db)
-        logger.debug(f"Latest downloaded timestamp for files is {latest_timestamp}.")
-        download_progress.record_successful_download(latest_timestamp)
+    result = None
+    if files:
+        logger.debug("Uploading completed")
+        latest_file_timestamp = max(f.last_modified_date for f in files)
+        new_progress_date = min(started, latest_file_timestamp.astimezone(timezone.utc))
+        download_progress.record_successful_download(new_progress_date)
+        logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
+
+        result = Completed(message=f"{len(files)} files uploaded")
     else:
-        logger.info("No new files to upload.")
+        result = Completed(message="No work to do 💤", name="Skipped")
 
     db.save(download_progress)
-    logger.info("All files uploaded to SharePoint.")
+    logger.info(f"{len(files)} file(s) uploaded to SharePoint")
+    return result

@@ -21,3 +21,4 @@ def test_database():
             yield Database(db_url=postgres.get_connection_url())
 
         session.close()
+        engine.dispose()

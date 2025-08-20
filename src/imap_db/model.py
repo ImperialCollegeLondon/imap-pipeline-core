@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -42,14 +43,17 @@ class File(Base):
         cls,
         file: Path,
         version: int,
-        original_hash: str,
+        hash: str | None,
         content_date: datetime,
     ) -> "File":
+        if hash is None or hash == "":
+            hash = hashlib.md5(file.read_bytes()).hexdigest()
+
         return cls(
             name=file.name,
             path=file.absolute().as_posix(),
             version=version,
-            hash=original_hash,
+            hash=hash,
             size=file.stat().st_size,
             content_date=content_date,
             creation_date=datetime.fromtimestamp(file.stat().st_ctime),

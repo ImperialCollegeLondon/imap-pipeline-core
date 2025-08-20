@@ -29,8 +29,8 @@ def enableLogging():
         logfile_file="debug",
         logfile_log_level="debug",
         logfile_log_color=False,
-        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s",
-        console_log_line_template="%(color_on)s%(message)s%(color_off)s",
+        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-5s] %(message)s%(color_off)s",
+        console_log_line_template="%(color_on)s[%(levelname)-5s] %(name)s %(message)s%(color_off)s",
     )
     yield
     AppLogging.reset_setup_flag()  # Reset logging setup after test

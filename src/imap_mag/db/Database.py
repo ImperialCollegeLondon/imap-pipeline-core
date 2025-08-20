@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, DownloadProgress, File
@@ -89,6 +89,25 @@ class Database:
     def get_files(self, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
         return session.query(File).filter(*args).filter_by(**kwargs).all()
+
+    def get_files_since(
+        self, last_modified_date: datetime, how_many: int | None = None
+    ) -> list[File]:
+        statement = (
+            select(File)
+            .where(
+                File.last_modified_date > last_modified_date,
+                File.deletion_date.is_(None),
+            )
+            .order_by(File.last_modified_date)
+        )
+
+        if how_many is not None:
+            statement = statement.limit(how_many)
+
+        logger.debug(f"Executing SQL statement: {statement}")
+
+        return list(self.session().execute(statement).scalars().all())
 
     @__session_manager(expire_on_commit=False)
     def get_download_progress(self, item_name: str) -> DownloadProgress:

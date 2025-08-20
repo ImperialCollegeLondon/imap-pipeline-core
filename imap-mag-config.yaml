@@ -31,3 +31,14 @@ publish:
 
 process:
     work_sub_folder:
+
+upload:
+    root_path: "Flight Data (dev)"
+    paths_to_match:
+        - "*/science/mag/l1b/*"
+        - "*/science/mag/l1c/*"
+        - "*/science/mag/l1d/*"
+        - "*/science/mag/l2/*"
+        - "*/science/mag/l2-pre/*"
+        - "*/hk/mag/l1/*"
+

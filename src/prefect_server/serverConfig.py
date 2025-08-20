@@ -1,7 +1,6 @@
 import prefect
 import prefect.docker
 from prefect import get_client
-from prefect.filesystems import LocalFileSystem
 from prefect_managedfiletransfer import RCloneConfigFileBlock
 from pydantic import SecretStr
 
@@ -102,15 +101,11 @@ class ServerConfig:
                 prefect.blocks.system.Secret(value=SecretStr("")),
             ),
             (
-                CONSTANTS.SHAREPOINT_BLOCK_NAME,
+                PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
                 RCloneConfigFileBlock(
                     remote_name="imap_sharepoint",
                     config_file_contents=SAMPLE_RCLONE_FILE_CONTENTS,
                 ),
-            ),
-            (
-                CONSTANTS.IMAP_DATASTORE_BLOCK_NAME,
-                LocalFileSystem(basepath="/data"),
             ),
         ]
         blocks = await client.read_block_documents()
