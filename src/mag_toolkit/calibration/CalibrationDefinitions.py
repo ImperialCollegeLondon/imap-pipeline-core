@@ -1,5 +1,6 @@
 from abc import ABC
 from enum import Enum
+from pathlib import Path
 from typing import Annotated
 
 import numpy as np
@@ -44,13 +45,17 @@ class CONSTANTS:
         IS_MAGO = "is_mago"
 
     class CSV_VARS:
-        EPOCH = "epoch"
+        EPOCH = "time"
         X = "x"
         Y = "y"
         Z = "z"
+        OFFSET_X = "offset_x"
+        OFFSET_Y = "offset_y"
+        OFFSET_Z = "offset_z"
         MAGNITUDE = "magnitude"
         RANGE = "range"
-        QUALITY_FLAGS = "quality_flags"
+        TIMEDELTA = "timedelta"
+        QUALITY_FLAG = "quality_flag"
         QUALITY_BITMASK = "quality_bitmask"
 
 
@@ -75,6 +80,14 @@ class CalibrationMethod(Enum):
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
+
+    @classmethod
+    def from_string(cls, name: str) -> "CalibrationMethod":
+        for method in cls:
+            if method.short_name == name or method.long_name == name:
+                return method
+
+        raise ValueError(f"Unknown calibration method: {name}")
 
 
 class Sensor(str, Enum):
@@ -102,6 +115,7 @@ def serialize_dt(dt: np.datetime64, _info):
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     dependencies: list[str]
     science: list[str]
+    data_filename: Path | None = None
     creation_timestamp: Annotated[
         np.datetime64,
         BeforeValidator(convert_time),

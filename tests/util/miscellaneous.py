@@ -18,6 +18,8 @@ END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
 DATASTORE = Path("tests/datastore")
+TEST_DATA = Path("tests/test_data")
+TEST_TRUTH = Path("tests/test_truth")
 
 
 @pytest.fixture(autouse=False)

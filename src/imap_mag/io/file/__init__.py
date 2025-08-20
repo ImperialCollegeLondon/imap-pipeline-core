@@ -1,5 +1,7 @@
 from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
-from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
+from imap_mag.io.file.CalibrationLayerPathHandler import (
+    CalibrationLayerPathHandler,
+)
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
@@ -11,6 +13,7 @@ from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 __all__ = [
     "AncillaryPathHandler",
+    "CalibrationLayerPathHandler",
     "CalibrationLayerPathHandler",
     "HKBinaryPathHandler",
     "HKDecodedPathHandler",
