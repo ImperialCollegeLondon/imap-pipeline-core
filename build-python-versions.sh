@@ -13,7 +13,7 @@ for version in 3.10 3.11 3.12 3.13
 do
     PACK_OUTPUT_FOLDER="$OUTPUT_DIR/python$version"
     # apply the version to the current shell
-    pyenv local $version
+    uv python pin $version
     poetry env use python$version
     mkdir $PACK_OUTPUT_FOLDER
 
