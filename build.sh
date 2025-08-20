@@ -4,10 +4,11 @@ set -e
 # compile and test the app for the current python version
 
 # what version is this?
-python --version
+poetry run python --version
 
 # restore dependencies & create an venv if needed
-poetry install
+echo "Restoring dependencies..."
+poetry install -q
 
 # load the current python virtual environment - assumes you have already probably run "poetry shell" or are calling from build-python-versions.sh
 if [ -d ".venv" ]; then
