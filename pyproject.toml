@@ -60,7 +60,7 @@ pythonpath = [
   ".", "src"
 ]
 minversion = "8.0"
-addopts = "-s"
+# addopts = "-s"
 testpaths = [
     "tests/*.py",
     "tests/**/*.py",
