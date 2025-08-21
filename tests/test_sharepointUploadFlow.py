@@ -9,10 +9,7 @@ from imap_db.model import File
 from imap_mag.util import Environment
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
-from tests.util.miscellaneous import (
-    DATASTORE,
-    tidyDataFolders,  # noqa: F401
-)
+from tests.util.miscellaneous import DATASTORE
 
 
 @pytest.mark.asyncio
