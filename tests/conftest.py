@@ -21,6 +21,11 @@ logging.getLogger("testcontainers").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+pytest_plugins = (
+    "tests.util.database",
+    "tests.util.miscellaneous",
+)
+
 
 @pytest.fixture(scope="function", autouse=False)
 def capture_cli_logs(caplog, enableLogging):  # noqa: F811
