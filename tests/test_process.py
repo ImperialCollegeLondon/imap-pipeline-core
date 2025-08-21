@@ -10,7 +10,7 @@ from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
-from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import DATASTORE
 
 
 def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:

@@ -6,6 +6,7 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
+from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
@@ -17,7 +18,6 @@ from imap_mag.util import (
     ReferenceFrame,
     ScienceLevel,
     ScienceMode,
-    get_dates_for_download,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
@@ -144,13 +144,12 @@ async def poll_science_flow(
 
         logger.info(f"---------- Downloading Packet {packet_name} ----------")
 
-        packet_dates = get_dates_for_download(
-            packet_name=database_name,
-            database=database,
+        date_manager = DownloadDateManager(packet_name, database)
+
+        packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
             original_end_date=end_date,
             validate_with_database=use_database,
-            logger=logger,
         )
 
         if packet_dates is None:
