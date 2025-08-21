@@ -29,7 +29,7 @@ else
 fi
 
 if [ "$1" != "--skip-tests" ]; then
-    poetry run pytest --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
+    poetry run pytest -n 4 --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
 else
     echo "Skipping tests"
 fi

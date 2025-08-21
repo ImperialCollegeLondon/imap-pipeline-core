@@ -49,6 +49,7 @@ ruff = "^0.8.1"
 docker = "^7.1.0"
 testcontainers = "^4.10.0"
 wiremock = "^2.7.0"
+pytest-xdist = "^3.8.0"
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
