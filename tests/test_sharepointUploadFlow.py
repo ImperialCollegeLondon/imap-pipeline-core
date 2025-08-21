@@ -6,6 +6,7 @@ import pytest
 from prefect.filesystems import LocalFileSystem
 
 from imap_db.model import File
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import Environment
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
@@ -21,23 +22,25 @@ async def test_upload_new_files_to_sharepoint_does_upload_a_file_locally(
         "tests/datastore/science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
     )
     sharepoint = Path(tempfile.mkdtemp())
-    test_database.insert_file(
-        File.from_file(upload_file, 1, "NOT-REAL-HASH", datetime(2025, 10, 17))
-    )
-    destination = LocalFileSystem(basepath=sharepoint.as_posix())
-    await destination.save(PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME, overwrite=True)
-
-    expected_path = (
-        sharepoint
-        / "Flight Data (dev)"
-        / upload_file.absolute().relative_to(DATASTORE.absolute())
-    )
-    expected_path.unlink(missing_ok=True)
-
-    # Exercise.
     with Environment(
         MAG_DATA_STORE=str(DATASTORE),
     ):
+        test_database.insert_file(
+            File.from_file(
+                upload_file, 1, "NOT-REAL-HASH", datetime(2025, 10, 17), AppSettings()
+            )
+        )
+        destination = LocalFileSystem(basepath=sharepoint.as_posix())
+        await destination.save(PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME, overwrite=True)
+
+        expected_path = (
+            sharepoint
+            / "Flight Data (dev)"
+            / upload_file.absolute().relative_to(DATASTORE.absolute())
+        )
+        expected_path.unlink(missing_ok=True)
+
+        # Exercise.
         await upload_new_files_to_sharepoint()
 
     # Verify.

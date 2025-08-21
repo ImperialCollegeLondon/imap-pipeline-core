@@ -69,28 +69,15 @@ class DatabaseFileOutputManager(IOutputManager):
                 f"File {destination_file} already exists in database and is the same. Skipping insertion."
             )
         else:
-            try:
-                file_with_app_relative_path = destination_file.absolute().relative_to(
-                    self.__settings.data_store.absolute()
-                )
-            # match exception by message text "not a subpath"
-            except ValueError as e:
-                if "is not in the subpath of" in str(e):
-                    logger.warning(
-                        f"File {destination_file} is not within the data store path {self.__settings.data_store}"
-                    )
-                    file_with_app_relative_path = destination_file
-                else:
-                    raise
-
-            logger.info(f"Inserting {file_with_app_relative_path} into database.")
+            logger.info(f"Inserting {destination_file} into database.")
             try:
                 self.__database.insert_file(
                     File.from_file(
-                        file=file_with_app_relative_path,
+                        file=destination_file,
                         version=path_handler.get_sequence(),
                         hash=original_hash,
                         content_date=path_handler.content_date,
+                        settings=self.__settings,
                     )
                 )
             except Exception as e:
