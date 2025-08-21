@@ -40,7 +40,7 @@ async def upload_new_files_to_sharepoint(
     )
 
     logger.info(
-        f"Looking for {len(how_many) if how_many else 'all'} files modified after {last_modified_date}"
+        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date}"
     )
 
     new_files_db = db.get_files_since(last_modified_date, how_many)
@@ -64,20 +64,24 @@ async def upload_new_files_to_sharepoint(
     sharepoint_root = Path(app_settings.upload.root_path)
 
     for file in files:
-        path = Path(file.path).absolute()
-        path_with_datastore_root_stripped = path.relative_to(
-            app_settings.data_store.absolute()
-        )
-        destination_path = sharepoint_root / path_with_datastore_root_stripped
+        path_inside_datastore = Path(file.path)
+        if app_settings.data_store in Path(file.path).parents:
+            path_inside_datastore = path_inside_datastore.absolute().relative_to(
+                app_settings.data_store.absolute()
+            )
+        path_inc_datastore = app_settings.data_store / path_inside_datastore
+        destination_path = sharepoint_root / path_inside_datastore
 
-        if not path.exists():
-            logger.warning(f"File {path} does not exist, skipping upload.")
+        if not path_inc_datastore.exists():
+            logger.warning(
+                f"File {path_inside_datastore} does not exist, skipping upload."
+            )
             continue
 
         await prefect_managedfiletransfer.upload_file_flow(
             destination_block_or_blockname=PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
-            source_folder=path.parent,
-            pattern_to_upload=path.name,
+            source_folder=path_inc_datastore.parent,
+            pattern_to_upload=path_inc_datastore.name,
             destination_file=destination_path,
             update_only_if_newer_mode=True,
             mode=prefect_managedfiletransfer.TransferType.Copy,

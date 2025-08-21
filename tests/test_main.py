@@ -15,7 +15,6 @@ from imap_mag.main import app
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     temp_datastore,
-    tidyDataFolders,
 )
 
 runner = CliRunner()

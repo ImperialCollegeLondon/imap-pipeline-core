@@ -19,9 +19,8 @@ from tests.util.miscellaneous import (
     YESTERDAY,
     create_test_file,
     mock_datetime_provider,  # noqa: F401
-    tidyDataFolders,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 
 
 def get_database_id_from_mode(mode: ScienceMode) -> str:
@@ -195,6 +194,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    preclean_work_and_output,
 ):
     # Set up.
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)

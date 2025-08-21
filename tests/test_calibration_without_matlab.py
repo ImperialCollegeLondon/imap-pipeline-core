@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
@@ -9,10 +11,10 @@ from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     create_test_file,
     temp_datastore,
-    tidyDataFolders,
 )
 
 
+@pytest.mark.xdist_group(name="datastore")
 def test_empty_calibrator_makes_correct_matlab_call(
     monkeypatch,
     tmp_path,
@@ -51,6 +53,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
     ).exists()
 
 
+@pytest.mark.xdist_group(name="datastore")
 def test_gradiometer_calibrator_makes_correct_matlab_call(monkeypatch, tmp_path):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20260930_v001.cdf",

@@ -23,7 +23,6 @@ from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     create_test_file,
-    tidyDataFolders,
 )
 
 
@@ -48,7 +47,9 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     )
 
 
-def test_apply_produces_output_science_file_and_offsets_file_with_data(tmp_path):
+def test_apply_produces_output_science_file_and_offsets_file_with_data(
+    tmp_path, preclean_work_and_output
+):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -90,7 +91,7 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(tmp_path)
         assert "quality_bitmask" in cdf
 
 
-def test_apply_fails_when_timestamps_dont_align(tmp_path):
+def test_apply_fails_when_timestamps_dont_align(tmp_path, preclean_work_and_output):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -120,7 +121,7 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
     assert str(exc_info.value) == "Layer and data timestamps do not align"
 
 
-def test_apply_fails_when_no_layers_provided(tmp_path):
+def test_apply_fails_when_no_layers_provided(tmp_path, preclean_work_and_output):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -145,7 +146,7 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
     assert str(exc_info.value) == "No calibration layers or rotation file provided."
 
 
-def test_apply_performs_correct_rotation(tmp_path):
+def test_apply_performs_correct_rotation(tmp_path, preclean_work_and_output):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -185,7 +186,7 @@ def test_apply_performs_correct_rotation(tmp_path):
             assert vec == pytest.approx(correct_vec, rel=1e-6)
 
 
-def test_apply_adds_offsets_together_correctly(tmp_path):
+def test_apply_adds_offsets_together_correctly(tmp_path, preclean_work_and_output):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -251,7 +252,7 @@ def test_simple_interpolation_calibration_values_apply_correctly():
     assert resulting_science[0].value == [1, 0, 0]
 
 
-def test_apply_writes_magnitudes_correctly(tmp_path):
+def test_apply_writes_magnitudes_correctly(tmp_path, preclean_work_and_output):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",

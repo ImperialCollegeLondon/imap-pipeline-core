@@ -4,7 +4,7 @@ import pytest
 from wiremock.testing.testcontainer import wiremock_container
 
 from tests.util.miscellaneous import enableLogging  # noqa: F401
-from tests.util.wiremock import WireMockManager
+from tests.util.WireMockManager import WireMockManager
 
 # quieten some loggers for dependencies when run in tests with debug
 print("\n[conftest.py] Setting loggers to INFO level for dependencies...\n")

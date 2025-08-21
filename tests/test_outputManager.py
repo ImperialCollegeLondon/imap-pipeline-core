@@ -7,13 +7,12 @@ from imap_mag.io import OutputManager
 from imap_mag.io.file import (
     HKDecodedPathHandler,
 )
-from tests.util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (
     create_test_file,
-    tidyDataFolders,
 )
 
 
-def test_copy_new_file(capture_cli_logs):
+def test_copy_new_file(capture_cli_logs, preclean_work_and_output):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -40,7 +39,7 @@ def test_copy_new_file(capture_cli_logs):
     ).exists()
 
 
-def test_copy_file_same_content(capture_cli_logs):
+def test_copy_file_same_content(capture_cli_logs, preclean_work_and_output):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -74,7 +73,9 @@ def test_copy_file_same_content(capture_cli_logs):
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
-def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
+def test_copy_file_second_existing_file_with_same_content(
+    capture_cli_logs, preclean_work_and_output
+):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -115,7 +116,7 @@ def test_copy_file_second_existing_file_with_same_content(capture_cli_logs):
     assert existing_file.stat().st_mtime == existing_modification_time
 
 
-def test_copy_file_existing_versions(capture_cli_logs):
+def test_copy_file_existing_versions(capture_cli_logs, preclean_work_and_output):
     # Set up.
     manager = OutputManager(Path("output"))
 
@@ -150,7 +151,7 @@ def test_copy_file_existing_versions(capture_cli_logs):
     ).exists()
 
 
-def test_copy_file_forced_version():
+def test_copy_file_forced_version(preclean_work_and_output):
     # Set up.
     manager = OutputManager(Path("output"))
 

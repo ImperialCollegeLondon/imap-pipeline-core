@@ -15,9 +15,8 @@ from tests.util.miscellaneous import (
     NOW,
     TODAY,
     mock_datetime_provider,  # noqa: F401
-    tidyDataFolders,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 
 
 def define_available_data_webpoda_mappings(
