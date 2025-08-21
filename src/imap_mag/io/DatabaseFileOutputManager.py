@@ -73,7 +73,7 @@ class DatabaseFileOutputManager(IOutputManager):
                 self.__settings.data_store.absolute()
             )
             logger.info(
-                f"Inserting {file_with_app_relative_path} into database with relative path {file_with_app_relative_path}"
+                f"Inserting {file_with_app_relative_path} into database."
             )
             try:
                 self.__database.insert_file(
