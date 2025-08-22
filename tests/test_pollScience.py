@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.util import Environment, ScienceMode
 from prefect_server.pollScience import poll_science_flow
@@ -131,9 +132,10 @@ def verify_available_modes(
 
 
 def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: datetime):
+    datastore = AppSettings().data_store
     for mode in modes_to_check:
         data_folder = os.path.join(
-            "output/science/mag/l1c", actual_timestamp.strftime("%Y/%m")
+            datastore, "science/mag/l1c", actual_timestamp.strftime("%Y/%m")
         )
         cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_v000.cdf"
 
@@ -149,6 +151,7 @@ async def test_poll_science_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    clean_datastore,
 ):
     # Set up.
     ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
@@ -194,7 +197,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
-    preclean_work_and_output,
+    clean_datastore,
 ):
     # Set up.
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -250,6 +253,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     mock_datetime_provider,  # noqa: F811
     force_database_update,
     capture_cli_logs,
+    clean_datastore,
 ):
     # Set up.
     start_date = datetime(2025, 4, 1)
