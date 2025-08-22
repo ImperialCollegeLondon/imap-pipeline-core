@@ -28,6 +28,9 @@ else
     exit 1
 fi
 
+#slow on GH Actions
+export PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS="100"
+
 if [ "$1" != "--skip-tests" ]; then
     args=(
         run pytest
