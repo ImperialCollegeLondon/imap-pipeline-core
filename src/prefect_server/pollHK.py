@@ -118,12 +118,12 @@ async def poll_hk_flow(
     use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:
-        packet_name = packet.packet
+        progress_item_id = packet.packet
         packet_start_timestamp = DatetimeProvider.now()
 
-        logger.info(f"---------- Downloading Packet {packet_name} ----------")
+        logger.info(f"---------- Downloading Packet {progress_item_id} ----------")
 
-        date_manager = DownloadDateManager(packet_name, database)
+        date_manager = DownloadDateManager(progress_item_id, database)
 
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
@@ -152,7 +152,7 @@ async def poll_hk_flow(
             process(files, save_mode=SaveMode.LocalAndDatabase)
         else:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
+                f"No data downloaded for {progress_item_id} from {packet_start_date} to {packet_end_date}."
             )
 
         # Update database with latest content date as progress (for HK)
@@ -167,13 +167,13 @@ async def poll_hk_flow(
             )
 
             update_database_with_progress(
-                packet_name=packet_name,
+                progress_item_id=progress_item_id,
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ert_timestamp,
                 logger=logger,
             )
         else:
-            logger.info(f"Database not updated for {packet_name}.")
+            logger.info(f"Database not updated for {progress_item_id}.")
 
     logger.info("---------- Finished ----------")

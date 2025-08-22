@@ -153,7 +153,8 @@ def check_file_existence(
 async def test_poll_hk_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+    preclean_work_and_output,
 ):
     # Set up.
     binary_files: dict[str, str] = {

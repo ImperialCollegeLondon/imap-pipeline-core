@@ -348,7 +348,7 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     ],
 )
 def test_hk_processor_throws_error_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes, capture_cli_logs
+    start_idx, end_idx, replace_bytes, capture_cli_logs, preclean_work_and_output
 ):
     """Test that HKProcessor throws an error on corrupt HK packet."""
 

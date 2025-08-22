@@ -401,7 +401,7 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
@@ -434,7 +434,7 @@ def test_update_database_update_needed_no_data(
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
@@ -467,7 +467,7 @@ def test_update_database_update_needed_old_data(
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=TODAY,

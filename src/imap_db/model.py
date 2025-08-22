@@ -48,11 +48,11 @@ class File(Base):
         content_date: datetime,
         settings: AppSettings,
     ) -> "File":
-        if hash is None or hash == "":
-            hash = hashlib.md5(file.read_bytes()).hexdigest()
-
         if not file.exists():
             raise FileNotFoundError(f"File {file} does not exist.")
+
+        if hash is None or hash == "":
+            hash = hashlib.md5(file.read_bytes()).hexdigest()
 
         size = file.stat().st_size
 
