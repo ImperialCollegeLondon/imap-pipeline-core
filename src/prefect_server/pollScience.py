@@ -138,13 +138,12 @@ async def poll_science_flow(
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     for mode in modes:
-        packet_name = mode.packet
         packet_start_timestamp = DatetimeProvider.now()
-        database_name = f"{packet_name}_{level.value.upper()}"
+        progress_item_id = f"{mode.packet}_{level.value.upper()}"
 
-        logger.info(f"---------- Downloading Packet {packet_name} ----------")
+        logger.info(f"---------- Downloading Packet {mode.packet} ----------")
 
-        date_manager = DownloadDateManager(packet_name, database)
+        date_manager = DownloadDateManager(progress_item_id, database)
 
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
@@ -171,7 +170,7 @@ async def poll_science_flow(
 
         if not downloaded_science:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
+                f"No data downloaded for packet {mode.packet} from {packet_start_date} to {packet_end_date}."
             )
 
         # Update database with latest ingestion date as progress (for science)
@@ -186,13 +185,13 @@ async def poll_science_flow(
             )
 
             update_database_with_progress(
-                packet_name=database_name,
+                progress_item_id=progress_item_id,
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ingestion_date,
                 logger=logger,
             )
         else:
-            logger.info(f"Database not updated for {packet_name}.")
+            logger.info(f"Database not updated for {progress_item_id}.")
 
     logger.info("---------- Finished ----------")

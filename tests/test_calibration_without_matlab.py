@@ -1,8 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-import pytest
-
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
@@ -14,11 +12,11 @@ from tests.util.miscellaneous import (  # noqa: F401
 )
 
 
-@pytest.mark.xdist_group(name="datastore")
 def test_empty_calibrator_makes_correct_matlab_call(
     monkeypatch,
     tmp_path,
     temp_datastore,  # noqa: F811
+    preclean_work_and_output,
 ):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
@@ -53,8 +51,9 @@ def test_empty_calibrator_makes_correct_matlab_call(
     ).exists()
 
 
-@pytest.mark.xdist_group(name="datastore")
-def test_gradiometer_calibrator_makes_correct_matlab_call(monkeypatch, tmp_path):
+def test_gradiometer_calibrator_makes_correct_matlab_call(
+    monkeypatch, tmp_path, preclean_work_and_output
+):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20260930_v001.cdf",
         "science/mag/l1c",
