@@ -254,6 +254,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     force_database_update,
     capture_cli_logs,
     clean_datastore,
+    dynamic_work_folder,
 ):
     # Set up.
     start_date = datetime(2025, 4, 1)
