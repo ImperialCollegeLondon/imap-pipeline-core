@@ -313,7 +313,7 @@ def matlab_test_setup():
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path, monkeypatch
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -334,10 +334,10 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ).exists()
     with open(
-        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -373,7 +373,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup, tmp_path, monkeypatch
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -399,7 +399,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         kappa=0.25,
         sc_interference_threshold=10.0,
     )
-    output_file = "output/calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+    output_file = f"{clean_datastore}/calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
     assert Path(output_file).exists()
     with open(output_file) as f:
         grad_layer = json.load(f)
