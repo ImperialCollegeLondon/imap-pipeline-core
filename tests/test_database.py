@@ -405,7 +405,6 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
-        logger=LOGGER,
     )
 
     # Verify
@@ -438,7 +437,6 @@ def test_update_database_update_needed_no_data(
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
-        logger=LOGGER,
     )
 
     # Verify
@@ -471,7 +469,6 @@ def test_update_database_update_needed_old_data(
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=TODAY,
-        logger=LOGGER,
     )
 
     # Verify

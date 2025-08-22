@@ -171,7 +171,6 @@ async def poll_hk_flow(
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ert_timestamp,
-                logger=logger,
             )
         else:
             logger.info(f"Database not updated for {progress_item_id}.")

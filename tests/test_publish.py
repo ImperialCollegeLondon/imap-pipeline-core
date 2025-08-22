@@ -51,7 +51,7 @@ def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs):
+def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs, dynamic_work_folder):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
@@ -76,7 +76,9 @@ def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_failed_sdc_file_publish(wiremock_manager, capture_cli_logs):
+def test_failed_sdc_file_publish(
+    wiremock_manager, capture_cli_logs, dynamic_work_folder
+):
     # Set up.
     upload_file1 = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file1)
@@ -124,7 +126,9 @@ def test_failed_sdc_file_publish(wiremock_manager, capture_cli_logs):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_publish_file_to_sdc_cli(wiremock_manager):
+def test_publish_file_to_sdc_cli(
+    wiremock_manager, dynamic_work_folder, capture_cli_logs
+):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
@@ -143,10 +147,10 @@ def test_publish_file_to_sdc_cli(wiremock_manager):
     # Verify.
     assert result.exit_code == 0
 
-    assert f"Publishing 1 files: {upload_file}" in result.output
+    assert f"Publishing 1 files: {upload_file}" in capture_cli_logs.text
     assert (
         f"Found 1 files for publish: {DATASTORE / Path('science/mag/l1c/2025/10') / upload_file}"
-        in result.output
+        in capture_cli_logs.text
     )
 
 
@@ -155,7 +159,9 @@ def test_publish_file_to_sdc_cli(wiremock_manager):
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-async def test_publish_flow_to_sdc(wiremock_manager, capture_cli_logs):
+async def test_publish_flow_to_sdc(
+    wiremock_manager, capture_cli_logs, dynamic_work_folder
+):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)

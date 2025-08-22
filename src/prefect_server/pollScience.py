@@ -152,7 +152,7 @@ async def poll_science_flow(
         )
 
         if packet_dates is None:
-            continue
+            logger.info(f"No dates for download of {progress_item_id} - skipping")
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
@@ -189,9 +189,12 @@ async def poll_science_flow(
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ingestion_date,
-                logger=logger,
             )
         else:
             logger.info(f"Database not updated for {progress_item_id}.")
+
+        logger.info(
+            f"---------- Finished downloading Packet {progress_item_id} ----------"
+        )
 
     logger.info("---------- Finished ----------")
