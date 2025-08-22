@@ -106,7 +106,7 @@ def fetch_science(
 
     if app_settings.fetch_science.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
-            app_settings.data_store,
+            app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 

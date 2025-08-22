@@ -8,7 +8,6 @@ import imap_data_access
 from pydantic import SecretStr
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_sdc_data_access_constructor_sets_config() -> None:

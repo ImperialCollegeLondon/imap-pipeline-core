@@ -74,7 +74,7 @@ def process(
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     output_manager = appUtils.getOutputManagerByMode(
-        app_settings.data_store,
+        app_settings,
         use_database=(save_mode == SaveMode.LocalAndDatabase),
     )
 

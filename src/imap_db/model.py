@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
+from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +44,38 @@ class File(Base):
         cls,
         file: Path,
         version: int,
-        original_hash: str,
+        hash: str | None,
         content_date: datetime,
+        settings: AppSettings,
     ) -> "File":
+        if not file.exists():
+            raise FileNotFoundError(f"File {file} does not exist.")
+
+        if hash is None or hash == "":
+            hash = hashlib.md5(file.read_bytes()).hexdigest()
+
+        size = file.stat().st_size
+
+        try:
+            file_with_app_relative_path = file.absolute().relative_to(
+                settings.data_store.absolute()
+            )
+        # match exception by message text "not a subpath"
+        except ValueError as e:
+            if "is not in the subpath of" in str(e):
+                logger.warning(
+                    f"File {file} is not within the data store path {settings.data_store}"
+                )
+                file_with_app_relative_path = file
+            else:
+                raise
+
         return cls(
             name=file.name,
-            path=file.absolute().as_posix(),
+            path=file_with_app_relative_path.as_posix(),
             version=version,
-            hash=original_hash,
-            size=file.stat().st_size,
+            hash=hash,
+            size=size,
             content_date=content_date,
             creation_date=datetime.fromtimestamp(file.stat().st_ctime),
             last_modified_date=datetime.fromtimestamp(file.stat().st_mtime),

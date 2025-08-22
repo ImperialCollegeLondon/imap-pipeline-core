@@ -10,7 +10,7 @@ from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
-from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import DATASTORE
 
 
 def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
@@ -348,12 +348,12 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     ],
 )
 def test_hk_processor_throws_error_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes, capture_cli_logs
+    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
 ):
     """Test that HKProcessor throws an error on corrupt HK packet."""
 
     # Set up.
-    packet_path = Path(tempfile.gettempdir()) / "MAG_HSK_CORRUPT.pkts"
+    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
     original_path = Path("tests/test_data/MAG_HSK_PW.pkts")
 
     with open(original_path, "rb") as original_file:

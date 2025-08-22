@@ -5,18 +5,35 @@ from unittest import mock
 import pytest
 
 from imap_db.model import DownloadProgress
+from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.db import Database
-from imap_mag.util import get_dates_for_download
 from tests.util.miscellaneous import (  # noqa: F401  # noqa: F401
     BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
     YESTERDAY,
     mock_datetime_provider,
-    tidyDataFolders,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def get_dates_for_download(
+    packet_name,
+    database,
+    original_start_date,
+    original_end_date,
+    validate_with_database,
+):
+    date_manager = DownloadDateManager(packet_name, database)
+
+    packet_dates = date_manager.get_dates_for_download(
+        original_start_date=original_start_date,
+        original_end_date=original_end_date,
+        validate_with_database=validate_with_database,
+    )
+
+    return packet_dates
 
 
 @pytest.fixture
@@ -45,7 +62,6 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
-        logger=LOGGER,
     )
 
     # Verify
@@ -91,7 +107,6 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         original_start_date=None,
         original_end_date=original_end_date,
         validate_with_database=validate_with_database,
-        logger=LOGGER,
     )
 
     # Verify
@@ -133,7 +148,6 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=False,
-        logger=LOGGER,
     )
 
     # Verify
@@ -176,7 +190,6 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
-        logger=LOGGER,
     )
 
     # Verify
@@ -223,7 +236,6 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
-        logger=LOGGER,
     )
 
     # Verify
@@ -271,7 +283,6 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
-        logger=LOGGER,
     )
 
     # Verify
@@ -315,7 +326,6 @@ def test_get_start_end_dates_not_up_to_date(
         original_start_date=original_start_date,
         original_end_date=None,
         validate_with_database=True,
-        logger=LOGGER,
     )
 
     # Verify
@@ -362,7 +372,6 @@ def test_get_start_end_dates_fully_up_to_date(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=True,
-        logger=LOGGER,
     )
 
     # Verify
@@ -401,7 +410,6 @@ def test_get_start_end_dates_partially_up_to_date(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=True,
-        logger=LOGGER,
     )
 
     # Verify

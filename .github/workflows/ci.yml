@@ -126,7 +126,7 @@ jobs:
             # use custom value instead of git tag
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }}
             # set latest tag for default branch
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
             # branch event
             type=ref,event=branch
             # pull request event
@@ -328,11 +328,11 @@ jobs:
             # use custom value instead of git tag,prefix=matlab-
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }},prefix=matlab-
             # set latest tag for default branch
-            type=raw,value=latest,prefix=matlab-
+            type=raw,value=latest,prefix=matlab-,enable={{is_default_branch}}
             # branch event
             type=ref,event=branch,prefix=matlab-
             # pull request event
-            type=ref,event=pr,prefix=matlab-
+            type=ref,event=pr,prefix=matlab-pr-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

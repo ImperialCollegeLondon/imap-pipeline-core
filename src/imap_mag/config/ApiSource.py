@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-from imap_mag.util import CONSTANTS
+from imap_mag.util.constants import CONSTANTS
 
 
 class ApiSource(BaseModel):

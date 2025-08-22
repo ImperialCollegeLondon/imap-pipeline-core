@@ -9,7 +9,7 @@ def test_custom_env_settings_no_aliases_loads_default():
     # Exercise.
     settings_source = NestedAliasEnvSettingsSource(settings_cls)  # type: ignore
     settings_overrides = settings_source.explode_env_vars(
-        "fetch_science", settings_cls.model_fields["fetch_science"], env_vars
+        "fetch_science", AppSettings.model_fields["fetch_science"], env_vars
     )
 
     # Verify.
@@ -28,7 +28,7 @@ def test_custom_env_settings_loads_nested_aliases():
     # Exercise.
     settings_source = NestedAliasEnvSettingsSource(settings_cls)  # type: ignore
     settings_overrides = settings_source.explode_env_vars(
-        "fetch_science", settings_cls.model_fields["fetch_science"], env_vars
+        "fetch_science", AppSettings.model_fields["fetch_science"], env_vars
     )
 
     # Verify.
@@ -53,7 +53,7 @@ def test_custom_env_settings_loads_env_names():
     # Exercise.
     settings_source = NestedAliasEnvSettingsSource(settings_cls)  # type: ignore
     settings_overrides = settings_source.explode_env_vars(
-        "fetch_science", settings_cls.model_fields["fetch_science"], env_vars
+        "fetch_science", AppSettings.model_fields["fetch_science"], env_vars
     )
 
     # Verify.
@@ -80,7 +80,7 @@ def test_custom_env_settings_conflict_disregards_aliases(capsys):
     # Exercise.
     settings_source = NestedAliasEnvSettingsSource(settings_cls)  # type: ignore
     settings_overrides = settings_source.explode_env_vars(
-        "fetch_science", settings_cls.model_fields["fetch_science"], env_vars
+        "fetch_science", AppSettings.model_fields["fetch_science"], env_vars
     )
 
     # Verify.
@@ -116,7 +116,7 @@ def test_custom_env_settings_ignores_empty_nested_aliases():
     # Exercise.
     settings_source = NestedAliasEnvSettingsSource(settings_cls)  # type: ignore
     settings_overrides = settings_source.explode_env_vars(
-        "fetch_science", settings_cls.model_fields["fetch_science"], env_vars
+        "fetch_science", AppSettings.model_fields["fetch_science"], env_vars
     )
 
     # Verify.

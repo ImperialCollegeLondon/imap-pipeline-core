@@ -11,6 +11,7 @@ from spacepy import pycdf
 
 from imap_mag.cli.apply import CalibrationApplicator, apply
 from imap_mag.cli.calibrate import calibrate, gradiometry
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -23,7 +24,6 @@ from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     create_test_file,
-    tidyDataFolders,
 )
 
 
@@ -32,14 +32,15 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     Prepare a calibration test file by copying the specified calibration layer
     to the output directory with the correct folder structure.
     """
+    datastore = AppSettings().data_store
     dest_filename = test_file if rename is None else rename
     if year and month:
         dest_filepath = (
-            Path("output") / sub_folders / str(year) / f"{month:02d}" / dest_filename
+            datastore / sub_folders / str(year) / f"{month:02d}" / dest_filename
         )
         original_filepath = DATASTORE / f"{sub_folders}/{year}/{month:02d}/{test_file}"
     else:
-        dest_filepath = Path("output") / sub_folders / dest_filename
+        dest_filepath = datastore / sub_folders / dest_filename
         original_filepath = DATASTORE / sub_folders / test_file
     os.makedirs(dest_filepath.parent, exist_ok=True)
     shutil.copy(
@@ -48,7 +49,9 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     )
 
 
-def test_apply_produces_output_science_file_and_offsets_file_with_data(tmp_path):
+def test_apply_produces_output_science_file_and_offsets_file_with_data(
+    tmp_path, dynamic_work_folder, clean_datastore
+):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -68,11 +71,9 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(tmp_path)
         input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
         date=datetime(2025, 10, 17),
     )
-    output_l2_file = (
-        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
-    )
+    output_l2_file = f"{clean_datastore}/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     assert Path(output_l2_file).exists()
-    output_offsets_file = "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
+    output_offsets_file = f"{clean_datastore}/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v000.cdf"
     assert Path(output_offsets_file).exists()
 
     with pycdf.CDF(output_offsets_file) as offsets_cdf:
@@ -90,7 +91,7 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(tmp_path)
         assert "quality_bitmask" in cdf
 
 
-def test_apply_fails_when_timestamps_dont_align(tmp_path):
+def test_apply_fails_when_timestamps_dont_align(tmp_path, clean_datastore):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -111,16 +112,16 @@ def test_apply_fails_when_timestamps_dont_align(tmp_path):
         )
 
     assert not Path(
-        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
+        f"{clean_datastore}/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v001.cdf"
     ).exists()
     assert not Path(
-        "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+        f"{clean_datastore}/science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     ).exists()
 
     assert str(exc_info.value) == "Layer and data timestamps do not align"
 
 
-def test_apply_fails_when_no_layers_provided(tmp_path):
+def test_apply_fails_when_no_layers_provided(tmp_path, clean_datastore):
     prepare_test_file(
         "imap_mag_l1c_norm-mago_20251017_v001.cdf",
         "science/mag/l1c",
@@ -135,17 +136,19 @@ def test_apply_fails_when_no_layers_provided(tmp_path):
             date=datetime(2025, 10, 17),
         )
 
-    assert not Path(
-        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
+    assert not (
+        clean_datastore
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
     ).exists()
-    assert not Path(
-        "output/science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
+    assert not (
+        clean_datastore
+        / "science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
     ).exists()
 
     assert str(exc_info.value) == "No calibration layers or rotation file provided."
 
 
-def test_apply_performs_correct_rotation(tmp_path):
+def test_apply_performs_correct_rotation(tmp_path, clean_datastore):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -164,9 +167,7 @@ def test_apply_performs_correct_rotation(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = (
-        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
-    )
+    output_file = f"{clean_datastore}/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
@@ -185,7 +186,9 @@ def test_apply_performs_correct_rotation(tmp_path):
             assert vec == pytest.approx(correct_vec, rel=1e-6)
 
 
-def test_apply_adds_offsets_together_correctly(tmp_path):
+def test_apply_adds_offsets_together_correctly(
+    tmp_path, clean_datastore, dynamic_work_folder
+):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -205,9 +208,7 @@ def test_apply_adds_offsets_together_correctly(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = (
-        "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
-    )
+    output_file = f"{clean_datastore}/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
 
     assert Path(output_file).exists()
 
@@ -251,7 +252,7 @@ def test_simple_interpolation_calibration_values_apply_correctly():
     assert resulting_science[0].value == [1, 0, 0]
 
 
-def test_apply_writes_magnitudes_correctly(tmp_path):
+def test_apply_writes_magnitudes_correctly(tmp_path, clean_datastore):
     prepare_test_file(
         "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "science/mag/l1c",
@@ -270,7 +271,10 @@ def test_apply_writes_magnitudes_correctly(tmp_path):
         date=datetime(2025, 10, 17),
     )
 
-    output_file = "output/science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    output_file = str(
+        clean_datastore
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago-four-vectors-four-ranges_20251017_v000.cdf"
+    )
 
     assert Path(output_file).exists()
 
@@ -309,7 +313,7 @@ def matlab_test_setup():
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path, monkeypatch
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -330,10 +334,10 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ).exists()
     with open(
-        "output/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -369,7 +373,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup, tmp_path, monkeypatch
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -395,7 +399,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         kappa=0.25,
         sc_interference_threshold=10.0,
     )
-    output_file = "output/calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+    output_file = f"{clean_datastore}/calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
     assert Path(output_file).exists()
     with open(output_file) as f:
         grad_layer = json.load(f)
