@@ -38,6 +38,7 @@ spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
 ccsdspy = "^1.4.2"
 prefect-managedfiletransfer = "^0.2.0"
+pytest-env = "^1.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
@@ -61,10 +62,13 @@ pythonpath = [
   ".", "src"
 ]
 minversion = "8.0"
-# addopts = "-s"
 testpaths = [
     "tests/*.py",
     "tests/**/*.py",
+]
+env = [
+    "PREFECT_LOGGING_EXTRA_LOGGERS=imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access",
+    "PREFECT_LOGGING_LEVEL=INFO"
 ]
 
 [build-system]

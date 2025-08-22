@@ -121,6 +121,13 @@ class Database:
 
         return download_progress
 
+    def get_all_download_progress(self) -> list[DownloadProgress]:
+        statement = select(DownloadProgress).order_by(
+            DownloadProgress.progress_timestamp.desc()
+        )
+
+        return list(self.session().execute(statement).scalars().all())
+
     @__session_manager()
     def save(self, model: Base) -> None:
         session = self.__get_active_session()
@@ -132,7 +139,6 @@ def update_database_with_progress(
     database: Database,
     checked_timestamp: datetime,
     latest_timestamp: datetime | None,
-    logger: logging.Logger | logging.LoggerAdapter,
 ) -> None:
     download_progress = database.get_download_progress(progress_item_id)
 

@@ -29,7 +29,20 @@ else
 fi
 
 if [ "$1" != "--skip-tests" ]; then
-    poetry run pytest -n 4 --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
+    args=(
+        run pytest
+        # distribute tests across 4 processes aggressively
+        # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
+        -n 4 --dist worksteal
+        # coverage parameters
+        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html
+        --junitxml=test-results.xml # CI readable report
+        --durations 10  # print top 10 slow tests
+        tests # folder name of tests
+    )
+    poetry "${args[@]}"
+
+
 else
     echo "Skipping tests"
 fi
