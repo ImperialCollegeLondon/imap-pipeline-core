@@ -1,5 +1,4 @@
 import os
-import random
 import re
 from datetime import datetime, timedelta
 
@@ -192,8 +191,6 @@ async def test_poll_hk_autoflow_first_ever_run(
     not_available_hk: list[HKPacket] = list(
         {p for p in HKPacket}.difference(available_hk)
     )
-    # make not_available_hk a random subset of 3 items for test speed
-    not_available_hk = random.sample(not_available_hk, 3)
 
     wiremock_manager.reset()
 
