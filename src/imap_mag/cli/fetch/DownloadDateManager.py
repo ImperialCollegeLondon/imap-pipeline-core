@@ -85,9 +85,9 @@ class DownloadDateManager:
         original_end_date: datetime | None,
         validate_with_database: bool,
     ) -> tuple[datetime, datetime] | None:
-        download_progress = self.__database.get_download_progress(self.__packet_name)
-        self.__last_checked_date = download_progress.get_last_checked_date()
-        self.__progress_timestamp = download_progress.get_progress_timestamp()
+        workflow_progress = self.__database.get_workflow_progress(self.__packet_name)
+        self.__last_checked_date = workflow_progress.get_last_checked_date()
+        self.__progress_timestamp = workflow_progress.get_progress_timestamp()
 
         start_date = self._get_start_date(original_start_date)
         end_date = self._get_end_date(original_end_date)

@@ -29,12 +29,12 @@ async def upload_new_files_to_sharepoint(
     app_settings = AppSettings()  # type: ignore
     db = Database()
     started = datetime.now(tz=timezone.utc)
-    download_progress = db.get_download_progress(PROGRESS_KEY)
-    if download_progress.progress_timestamp is None:
-        download_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=timezone.utc)
+    workflow_progress = db.get_workflow_progress(PROGRESS_KEY)
+    if workflow_progress.progress_timestamp is None:
+        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=timezone.utc)
 
     last_modified_date = (
-        download_progress.progress_timestamp
+        workflow_progress.progress_timestamp
         if find_files_after is None
         else find_files_after
     )
@@ -45,7 +45,7 @@ async def upload_new_files_to_sharepoint(
 
     new_files_db = db.get_files_since(last_modified_date, how_many)
 
-    download_progress.record_checked_download(started)
+    workflow_progress.record_checked_download(started)
 
     logger.info(
         f"Found {len(new_files_db)} new files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
@@ -92,13 +92,13 @@ async def upload_new_files_to_sharepoint(
         logger.debug("Uploading completed")
         latest_file_timestamp = max(f.last_modified_date for f in files)
         new_progress_date = min(started, latest_file_timestamp.astimezone(timezone.utc))
-        download_progress.record_successful_download(new_progress_date)
+        workflow_progress.record_successful_download(new_progress_date)
         logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
 
         result = Completed(message=f"{len(files)} files uploaded")
     else:
         result = Completed(message="No work to do 💤", name="Skipped")
 
-    db.save(download_progress)
+    db.save(workflow_progress)
     logger.info(f"{len(files)} file(s) uploaded to SharePoint")
     return result

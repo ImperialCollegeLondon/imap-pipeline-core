@@ -94,22 +94,22 @@ def define_unavailable_data_sdc_mappings(wiremock_manager):
 
 def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode]):
     for mode in not_requested_modes:
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_not_available_modes(database, not_available_modes: list[ScienceMode]):
     for mode in not_available_modes:
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_available_modes(
@@ -120,12 +120,12 @@ def verify_available_modes(
 ):
     for mode in available_modes:
         # Database.
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() == ingestion_timestamp
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() == ingestion_timestamp
 
     # Files.
     check_file_existence(available_modes, actual_timestamp)
@@ -206,11 +206,11 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager.reset()
 
     # Some data is available for "today" for Normal mode.
-    download_progress = test_database.get_download_progress(
+    workflow_progress = test_database.get_workflow_progress(
         get_database_id_from_mode(ScienceMode.Normal)
     )
-    download_progress.record_successful_download(progress_timestamp)
-    test_database.save(download_progress)
+    workflow_progress.record_successful_download(progress_timestamp)
+    test_database.save(workflow_progress)
 
     define_available_data_sdc_mappings(
         wiremock_manager,
