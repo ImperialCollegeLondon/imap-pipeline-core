@@ -97,7 +97,9 @@ async def upload_new_files_to_sharepoint(
 
         result = Completed(message=f"{len(files)} files uploaded")
     else:
-        result = Completed(message="No work to do 💤", name="Skipped")
+        result = Completed(
+            message="No work to do 💤", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME
+        )
 
     db.save(workflow_progress)
     logger.info(f"{len(files)} file(s) uploaded to SharePoint")
