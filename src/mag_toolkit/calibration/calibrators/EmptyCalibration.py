@@ -67,4 +67,10 @@ class EmptyCalibrationJob(CalibrationJob):
             f'calibration.wrappers.run_empty_calibrator("{dt_as_str}", "{self.required_files[self.science_file_key]}", "{calfile}", "{datafile}", "{self.data_store}", "")'
         )
 
+        if not calfile.exists():
+            raise FileNotFoundError(f"Calibration file {calfile} was not created.")
+
+        if not datafile.exists():
+            raise FileNotFoundError(f"Data file {datafile} was not created.")
+
         return calfile, datafile

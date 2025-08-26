@@ -90,4 +90,11 @@ class GradiometerCalibrationJob(CalibrationJob):
         call_matlab(
             f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{datafile}", "{self.data_store}", "{config.gradiometer.kappa!s}", "{config.gradiometer.sc_interference_threshold!s}")'
         )
+
+        if not calfile.exists():
+            raise FileNotFoundError(f"Calibration file {calfile} was not created.")
+
+        if not datafile.exists():
+            raise FileNotFoundError(f"Data file {datafile} was not created.")
+
         return calfile, datafile
