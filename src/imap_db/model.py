@@ -83,15 +83,15 @@ class File(Base):
         )
 
 
-class DownloadProgress(Base):
-    __tablename__ = "download_progress"
+class WorkflowProgress(Base):
+    __tablename__ = "workflow_progress"
 
     item_name: Mapped[str] = mapped_column(String(32), primary_key=True, unique=True)
     progress_timestamp: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
     last_checked_date: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
 
     def __repr__(self):
-        return f"<DownloadProgress {self.item_name} (progress_timestamp={self.progress_timestamp}, last_checked_date={self.last_checked_date})>"
+        return f"<WorkflowProgress {self.item_name} (progress_timestamp={self.progress_timestamp}, last_checked_date={self.last_checked_date})>"
 
     def get_item_name(self) -> str:
         return self.item_name

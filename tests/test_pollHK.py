@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from imap_db.model import DownloadProgress
+from imap_db.model import WorkflowProgress
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
@@ -91,29 +91,29 @@ def define_unavailable_data_webpoda_mappings(wiremock_manager):
 
 
 def verify_not_requested_hk(database, not_requested_hk: list[HKPacket]):
-    progress_items = database.get_all_download_progress()
+    progress_items = database.get_all_workflow_progress()
     for hk in not_requested_hk:
         # find the matching progress item
-        download_progress = next(
+        workflow_progress = next(
             (item for item in progress_items if item.item_name == hk.packet),
-            DownloadProgress(item_name=hk.packet),
+            WorkflowProgress(item_name=hk.packet),
         )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_not_available_hk(database, not_available_hk: list[HKPacket]):
-    progress_items = database.get_all_download_progress()
+    progress_items = database.get_all_workflow_progress()
     for hk in not_available_hk:
         # find the matching progress item
-        download_progress = next(
+        workflow_progress = next(
             (item for item in progress_items if item.item_name == hk.packet),
-            DownloadProgress(item_name=hk.packet),
+            WorkflowProgress(item_name=hk.packet),
         )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_available_hk(
@@ -124,10 +124,10 @@ def verify_available_hk(
 ):
     for hk in available_hk:
         # Database.
-        download_progress = database.get_download_progress(hk.packet)
+        workflow_progress = database.get_workflow_progress(hk.packet)
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() == ert_timestamp
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() == ert_timestamp
 
     # Files.
     check_file_existence(available_hk, actual_timestamp)
@@ -260,9 +260,9 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 
     # Some data is available only for specific packets.
     for hk in available_hk:
-        download_progress = test_database.get_download_progress(hk.packet)
-        download_progress.record_successful_download(progress_timestamp)
-        test_database.save(download_progress)
+        workflow_progress = test_database.get_workflow_progress(hk.packet)
+        workflow_progress.record_successful_download(progress_timestamp)
+        test_database.save(workflow_progress)
 
         define_available_data_webpoda_mappings(
             wiremock_manager,
@@ -522,13 +522,13 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
         )
 
     # Verify.
-    progress_items = test_database.get_all_download_progress()
+    progress_items = test_database.get_all_workflow_progress()
     for hk in [p for p in HKPacket]:
         # find the matching progress item
-        download_progress = next(
+        workflow_progress = next(
             (item for item in progress_items if item.item_name == hk.packet),
-            DownloadProgress(item_name=hk.packet),
+            WorkflowProgress(item_name=hk.packet),
         )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None

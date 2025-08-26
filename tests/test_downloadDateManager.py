@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from imap_db.model import DownloadProgress
+from imap_db.model import WorkflowProgress
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.db import Database
 from tests.util.miscellaneous import (  # noqa: F401  # noqa: F401
@@ -50,10 +50,10 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     result = get_dates_for_download(
@@ -81,7 +81,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -93,10 +93,10 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     original_end_date = datetime(2025, 2, 13, 12, 34, 0)
 
@@ -123,7 +123,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -133,10 +133,10 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     original_start_date = datetime(2025, 2, 12, 0, 0, 0)
     original_end_date = datetime(2025, 2, 13, 12, 34, 0)
@@ -165,7 +165,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -177,11 +177,11 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-    download_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     result = get_dates_for_download(
@@ -197,7 +197,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
 
     start_date, end_date = result
 
-    assert start_date == download_progress.progress_timestamp
+    assert start_date == workflow_progress.progress_timestamp
     assert end_date == END_OF_TODAY
 
     assert (
@@ -205,11 +205,11 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         in capture_cli_logs.text
     )
     assert (
-        f"Start date not provided. Using last updated date {download_progress.progress_timestamp} for MAG_SCI_NORM from database."
+        f"Start date not provided. Using last updated date {workflow_progress.progress_timestamp} for MAG_SCI_NORM from database."
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -223,11 +223,11 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
     # Set up
     original_last_checked_date = YESTERDAY + timedelta(hours=1)
 
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-    download_progress.last_checked_date = original_last_checked_date
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress.last_checked_date = original_last_checked_date
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     result = get_dates_for_download(
@@ -255,7 +255,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is original_last_checked_date
+    assert workflow_progress.last_checked_date is original_last_checked_date
     assert not mock_database.save.called
 
 
@@ -270,11 +270,11 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
     older_than_yesterday = datetime(2025, 3, 21, 12, 45, 7)
     expected_start_date = datetime(2025, 3, 21, 12, 45, 7) - timedelta(hours=1)
 
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-    download_progress.last_checked_date = older_than_yesterday
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress.last_checked_date = older_than_yesterday
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     result = get_dates_for_download(
@@ -302,7 +302,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is older_than_yesterday
+    assert workflow_progress.last_checked_date is older_than_yesterday
     assert not mock_database.save.called
 
 
@@ -312,10 +312,10 @@ def test_get_start_end_dates_not_up_to_date(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     original_start_date = datetime(2025, 3, 21, 12, 45, 7)
 
@@ -346,7 +346,7 @@ def test_get_start_end_dates_not_up_to_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -356,14 +356,14 @@ def test_get_start_end_dates_fully_up_to_date(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-    download_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
-    original_start_date = download_progress.progress_timestamp - timedelta(days=2)
-    original_end_date = download_progress.progress_timestamp - timedelta(days=1)
+    original_start_date = workflow_progress.progress_timestamp - timedelta(days=2)
+    original_end_date = workflow_progress.progress_timestamp - timedelta(days=1)
 
     # Exercise
     result = get_dates_for_download(
@@ -384,7 +384,7 @@ def test_get_start_end_dates_fully_up_to_date(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called
 
 
@@ -394,14 +394,14 @@ def test_get_start_end_dates_partially_up_to_date(
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
-    download_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
-    original_start_date = download_progress.progress_timestamp - timedelta(days=1)
-    original_end_date = download_progress.progress_timestamp + timedelta(days=1)
+    original_start_date = workflow_progress.progress_timestamp - timedelta(days=1)
+    original_end_date = workflow_progress.progress_timestamp + timedelta(days=1)
 
     # Exercise
     result = get_dates_for_download(
@@ -417,15 +417,15 @@ def test_get_start_end_dates_partially_up_to_date(
 
     start_date, end_date = result
 
-    assert start_date == download_progress.progress_timestamp
+    assert start_date == workflow_progress.progress_timestamp
     assert end_date == original_end_date
 
     assert "Using provided end date" in capture_cli_logs.text
     assert "Using provided start date" in capture_cli_logs.text
     assert (
-        f"Packet MAG_SCI_NORM is partially up to date. Downloading from {download_progress.progress_timestamp}."
+        f"Packet MAG_SCI_NORM is partially up to date. Downloading from {workflow_progress.progress_timestamp}."
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is None
+    assert workflow_progress.last_checked_date is None
     assert not mock_database.save.called

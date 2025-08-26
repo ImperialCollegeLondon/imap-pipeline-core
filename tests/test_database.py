@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from imap_db.model import DownloadProgress, File
+from imap_db.model import File, WorkflowProgress
 from imap_mag import __version__
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
@@ -391,13 +391,13 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    download_progress.progress_timestamp = TODAY
+    assert workflow_progress.last_checked_date is None
+    workflow_progress.progress_timestamp = TODAY
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
@@ -413,8 +413,8 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is TODAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is TODAY
     assert mock_database.save.called
 
 
@@ -423,13 +423,13 @@ def test_update_database_update_needed_no_data(
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    assert download_progress.progress_timestamp is None
+    assert workflow_progress.last_checked_date is None
+    assert workflow_progress.progress_timestamp is None
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
@@ -445,8 +445,8 @@ def test_update_database_update_needed_no_data(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is YESTERDAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is YESTERDAY
     assert mock_database.save.called
 
 
@@ -455,13 +455,13 @@ def test_update_database_update_needed_old_data(
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    download_progress.progress_timestamp = YESTERDAY
+    assert workflow_progress.last_checked_date is None
+    workflow_progress.progress_timestamp = YESTERDAY
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
@@ -477,8 +477,8 @@ def test_update_database_update_needed_old_data(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is TODAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is TODAY
     assert mock_database.save.called
 
 
