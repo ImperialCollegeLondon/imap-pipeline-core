@@ -153,6 +153,7 @@ async def poll_science_flow(
 
         if packet_dates is None:
             logger.info(f"No dates for download of {progress_item_id} - skipping")
+            continue
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
