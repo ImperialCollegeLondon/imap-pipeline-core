@@ -35,6 +35,7 @@ env:
   CALIBRATION_TAG: "v0.1.5"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
+  PYTEST_XDIST_AUTO_NUM_WORKERS : "2"
 jobs:
   qa:
     runs-on: ubuntu-latest

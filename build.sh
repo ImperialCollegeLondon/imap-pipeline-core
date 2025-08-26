@@ -36,7 +36,7 @@ if [ "$1" != "--skip-tests" ]; then
         run pytest
         # distribute tests across 4 processes aggressively
         # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
-        -n auto --dist worksteal --maxprocesses=3
+        -n auto --dist worksteal --maxprocesses=4
         # coverage parameters
         --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html
         --junitxml=test-results.xml # CI readable report
