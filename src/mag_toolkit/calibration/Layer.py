@@ -41,21 +41,13 @@ class Layer(BaseModel, ABC):
             )
             return model
 
-        files_to_try: list[Path] = [
-            model.metadata.data_filename,
-            path.parent / model.metadata.data_filename.name,
-        ]
+        data_file: Path = path.parent / model.metadata.data_filename.name
 
-        for file in files_to_try:
-            if file.exists():
-                model.metadata.data_filename = file
-                logger.debug(f"Calibration layer data defined in separate file: {file}")
+        if not data_file.exists():
+            raise FileNotFoundError(f"Layer data file {data_file!s} not found.")
 
-                return cls._load_data_file(file, model)
-
-        raise FileNotFoundError(
-            f"Layer data file {model.metadata.data_filename} not found. Looked in:\n{', '.join(str(file) for file in files_to_try)}"
-        )
+        logger.debug(f"Calibration layer data defined in separate file: {data_file!s}")
+        return cls._load_data_file(data_file, model)
 
     @classmethod
     @abstractmethod

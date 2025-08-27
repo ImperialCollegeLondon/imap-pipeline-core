@@ -61,16 +61,12 @@ def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
         # Get data file
         cal_layer = CalibrationLayer.from_file(versioned_layer_file)
 
-        if cal_layer.metadata.data_filename is None:
-            continue
-
-        data_filename: str = cal_handler.get_equivalent_data_handler().get_filename()
-
-        fetch_file_for_work(
-            versioned_layer_file.parent / data_filename,
-            appSettings.work_folder,
-            throw_if_not_found=True,
-        )
+        if cal_layer.metadata.data_filename:
+            fetch_file_for_work(
+                versioned_layer_file.parent / cal_layer.metadata.data_filename,
+                appSettings.work_folder,
+                throw_if_not_found=True,
+            )
 
     return work_layers
 

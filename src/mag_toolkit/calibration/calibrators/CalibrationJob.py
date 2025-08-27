@@ -61,6 +61,31 @@ class CalibrationJob(ABC):
         :param sensor: The sensor type.
         :return: A dictionary of path handlers."""
 
+    def get_next_viable_version_layer(
+        self,
+        datastore_finder: DatastoreFileFinder,
+        layer_handler: CalibrationLayerPathHandler,
+    ) -> CalibrationLayerPathHandler:
+        """
+        Get the next viable version for a calibration layer.
+        :return: Calibration layer handler for next viable version.
+        """
+
+        latest_version_file: Path | None = datastore_finder.find_latest_version(
+            layer_handler, throw_if_not_found=False
+        )
+
+        if latest_version_file is None:
+            return layer_handler
+        else:
+            latest_version_handler: CalibrationLayerPathHandler | None = (
+                CalibrationLayerPathHandler.from_filename(latest_version_file)
+            )
+            assert latest_version_handler is not None
+
+            latest_version_handler.increase_sequence()
+            return latest_version_handler
+
     def _check_environment_is_setup(self):
         if not self._check_for_required_files():
             logger.error("Required files are incomplete")

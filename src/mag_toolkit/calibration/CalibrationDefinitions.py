@@ -113,9 +113,9 @@ def serialize_dt(dt: np.datetime64, _info):
 
 
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
+    data_filename: Path | None = None
     dependencies: list[str]
     science: list[str]
-    data_filename: Path | None = None
     creation_timestamp: Annotated[
         np.datetime64,
         BeforeValidator(convert_time),

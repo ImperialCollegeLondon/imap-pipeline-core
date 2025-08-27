@@ -42,7 +42,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         assert self.descriptor and self.content_date
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}\\-layer{re.escape(self.extra_descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}\-layer{re.escape(self.extra_descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":

@@ -64,6 +64,9 @@ def gradiometry(
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=method.short_name, content_date=date
     )
+    calibration_handler = calibrator.get_next_viable_version_layer(
+        datastore_finder, calibration_handler
+    )
 
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration
@@ -135,11 +138,16 @@ def calibrate(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator.setup_calibration_files(DatastoreFileFinder(app_settings.data_store))
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+
+    calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
 
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=method.short_name, content_date=date
+    )
+    calibration_handler = calibrator.get_next_viable_version_layer(
+        datastore_finder, calibration_handler
     )
 
     metadata_path, data_path = calibrator.run_calibration(
