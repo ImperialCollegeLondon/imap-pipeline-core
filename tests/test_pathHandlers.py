@@ -14,7 +14,6 @@ from imap_mag.io.file import (
     HKDecodedPathHandler,
     SciencePathHandler,
 )
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_path_handler_returns_correct_values_for_standard_l2_file():

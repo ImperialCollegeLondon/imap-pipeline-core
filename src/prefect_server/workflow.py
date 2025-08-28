@@ -7,6 +7,7 @@ from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
+from prefect.events import DeploymentEventTrigger
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
@@ -22,6 +23,7 @@ from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
 from prefect_server.serverConfig import ServerConfig
+from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
 
 
 async def get_matlab_license_server():
@@ -139,6 +141,38 @@ def deploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    upload_deployable = upload_new_files_to_sharepoint.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.SHAREPOINT_UPLOAD,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_SHAREPOINT_UPLOAD
+        ),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        triggers=[
+            DeploymentEventTrigger(
+                name="Trigger upload after HK poll",
+                expect={"prefect.flow-run.Completed"},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
+                },
+            ),
+            DeploymentEventTrigger(
+                name="Trigger upload after science poll",
+                expect={"prefect.flow-run.Completed"},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
+                },
+            ),
+            DeploymentEventTrigger(
+                name="Trigger upload after APPLY_CALIBRATION",
+                expect={"prefect.flow-run.Completed"},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
+                },
+            ),
+        ],
+    )
+
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
         job_variables=shared_job_variables,
@@ -188,6 +222,7 @@ def deploy_flows(local_debug: bool = False):
         poll_science_burst_l1b_deployable,
         poll_science_l2_deployable,
         publish_deployable,
+        upload_deployable,
     )
 
     if local_debug:

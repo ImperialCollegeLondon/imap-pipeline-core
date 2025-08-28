@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from imap_db.model import DownloadProgress, File
+from imap_db.model import File, WorkflowProgress
 from imap_mag import __version__
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
@@ -19,12 +19,11 @@ from imap_mag.io import (
 )
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler
 from tests.util.database import test_database  # noqa: F401
-from tests.util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (
     NOW,
     TODAY,
     YESTERDAY,
     create_test_file,
-    tidyDataFolders,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -42,9 +41,11 @@ def mock_database() -> mock.Mock:
     return mock.create_autospec(Database, spec_set=True)
 
 
-def check_inserted_file(file: File, test_file: Path, version: int):
+def check_inserted_file(
+    file: File, test_file: Path, version: int, file_name: str = "test_file.txt"
+):
     # Two instances of `File` will never be equal, so we check the attributes.
-    assert file.name == "test_file.txt"
+    assert file.name == file_name
     assert file.path == test_file.absolute().as_posix()
     assert file.version == version
     assert file.hash == hashlib.md5(b"some content").hexdigest()
@@ -56,7 +57,8 @@ def check_inserted_file(file: File, test_file: Path, version: int):
 
 
 def test_database_output_manager_writes_to_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock
+    mock_output_manager: mock.Mock,
+    mock_database: mock.Mock,
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
@@ -71,14 +73,14 @@ def test_database_output_manager_writes_to_database(
         extension="txt",
     )
 
-    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    test_file = Path(tempfile.gettempdir()) / "test_file1.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
     )
 
     mock_database.insert_file.side_effect = lambda file: check_inserted_file(
-        file, test_file, version=1
+        file, test_file, version=1, file_name="test_file1.txt"
     )
 
     # Exercise.
@@ -94,7 +96,10 @@ def test_database_output_manager_writes_to_database(
 
 
 def test_database_output_manager_same_file_already_exists_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
+    mock_output_manager: mock.Mock,
+    mock_database: mock.Mock,
+    capture_cli_logs,
+    preclean_work_and_output,
 ) -> None:
     # Set up.
     database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
@@ -240,7 +245,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         extension="txt",
     )
 
-    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    test_file = Path(tempfile.gettempdir()) / "test_file3.txt"
     mock_output_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
@@ -269,7 +274,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
         ]
     ]
     mock_database.insert_file.side_effect = lambda file: check_inserted_file(
-        file, test_file, version=3
+        file, test_file, version=3, file_name="test_file3.txt"
     )
 
     # Exercise.
@@ -386,21 +391,20 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    download_progress.progress_timestamp = TODAY
+    assert workflow_progress.last_checked_date is None
+    workflow_progress.progress_timestamp = TODAY
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
-        logger=LOGGER,
     )
 
     # Verify
@@ -409,8 +413,8 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is TODAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is TODAY
     assert mock_database.save.called
 
 
@@ -419,21 +423,20 @@ def test_update_database_update_needed_no_data(
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    assert download_progress.progress_timestamp is None
+    assert workflow_progress.last_checked_date is None
+    assert workflow_progress.progress_timestamp is None
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=YESTERDAY,
-        logger=LOGGER,
     )
 
     # Verify
@@ -442,8 +445,8 @@ def test_update_database_update_needed_no_data(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is YESTERDAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is YESTERDAY
     assert mock_database.save.called
 
 
@@ -452,21 +455,20 @@ def test_update_database_update_needed_old_data(
     mock_database,
 ) -> None:
     # Set up
-    download_progress = DownloadProgress()
-    download_progress.item_name = "MAG_SCI_NORM"
+    workflow_progress = WorkflowProgress()
+    workflow_progress.item_name = "MAG_SCI_NORM"
 
-    assert download_progress.last_checked_date is None
-    download_progress.progress_timestamp = YESTERDAY
+    assert workflow_progress.last_checked_date is None
+    workflow_progress.progress_timestamp = YESTERDAY
 
-    mock_database.get_download_progress.return_value = download_progress
+    mock_database.get_workflow_progress.return_value = workflow_progress
 
     # Exercise
     update_database_with_progress(
-        packet_name="MAG_SCI_NORM",
+        progress_item_id="MAG_SCI_NORM",
         database=mock_database,
         checked_timestamp=NOW,
         latest_timestamp=TODAY,
-        logger=LOGGER,
     )
 
     # Verify
@@ -475,8 +477,8 @@ def test_update_database_update_needed_old_data(
         in capture_cli_logs.text
     )
 
-    assert download_progress.last_checked_date is NOW
-    assert download_progress.progress_timestamp is TODAY
+    assert workflow_progress.last_checked_date is NOW
+    assert workflow_progress.progress_timestamp is TODAY
     assert mock_database.save.called
 
 

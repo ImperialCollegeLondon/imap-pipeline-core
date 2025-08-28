@@ -20,6 +20,12 @@ def initialiseLoggingForCommand(folder):
         folder,
         f"{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.log",
     )
+    console_log_line_template = "%(color_on)s%(message)s%(color_off)s"
+    if level == "debug":
+        console_log_line_template = (
+            "%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s"
+        )
+
     if not AppLogging.set_up_logging(
         console_log_output="stdout",
         console_log_level=level,
@@ -28,7 +34,7 @@ def initialiseLoggingForCommand(folder):
         logfile_log_level="debug",
         logfile_log_color=False,
         log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s",
-        console_log_line_template="%(color_on)s%(message)s%(color_off)s",
+        console_log_line_template=console_log_line_template,
     ):
         print("Failed to set up logging, aborting.")
         raise typer.Abort()

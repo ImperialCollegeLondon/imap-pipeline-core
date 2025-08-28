@@ -28,8 +28,24 @@ else
     exit 1
 fi
 
+#slow on GH Actions
+export PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS="100"
+
 if [ "$1" != "--skip-tests" ]; then
-    poetry run pytest -s --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
+    args=(
+        run pytest
+        # distribute tests across 4 processes aggressively
+        # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
+        -n auto --dist worksteal --maxprocesses=4
+        # coverage parameters
+        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html
+        --junitxml=test-results.xml # CI readable report
+        --durations 10  # print top 10 slow tests
+        tests # folder name of tests
+    )
+    poetry "${args[@]}"
+
+
 else
     echo "Skipping tests"
 fi

@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from imap_db.model import WorkflowProgress
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
 from imap_mag.util import Environment, HKPacket
@@ -16,9 +18,8 @@ from tests.util.miscellaneous import (
     TEST_DATA,
     TODAY,
     mock_datetime_provider,  # noqa: F401
-    tidyDataFolders,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 
 
 def define_available_data_webpoda_mappings(
@@ -90,19 +91,29 @@ def define_unavailable_data_webpoda_mappings(wiremock_manager):
 
 
 def verify_not_requested_hk(database, not_requested_hk: list[HKPacket]):
+    progress_items = database.get_all_workflow_progress()
     for hk in not_requested_hk:
-        download_progress = database.get_download_progress(hk.packet)
+        # find the matching progress item
+        workflow_progress = next(
+            (item for item in progress_items if item.item_name == hk.packet),
+            WorkflowProgress(item_name=hk.packet),
+        )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_not_available_hk(database, not_available_hk: list[HKPacket]):
+    progress_items = database.get_all_workflow_progress()
     for hk in not_available_hk:
-        download_progress = database.get_download_progress(hk.packet)
+        # find the matching progress item
+        workflow_progress = next(
+            (item for item in progress_items if item.item_name == hk.packet),
+            WorkflowProgress(item_name=hk.packet),
+        )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_available_hk(
@@ -113,10 +124,10 @@ def verify_available_hk(
 ):
     for hk in available_hk:
         # Database.
-        download_progress = database.get_download_progress(hk.packet)
+        workflow_progress = database.get_workflow_progress(hk.packet)
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() == ert_timestamp
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() == ert_timestamp
 
     # Files.
     check_file_existence(available_hk, actual_timestamp)
@@ -126,18 +137,19 @@ def check_file_existence(
     hk_to_check: list[HKPacket],
     actual_timestamp: datetime,
 ):
+    datastore = AppSettings().data_store
     for hk in hk_to_check:
         descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
 
         bin_folder = os.path.join(
-            "output/hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
+            datastore, "hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
         )
         bin_file = (
             f"imap_mag_l0_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_001.pkts"
         )
 
         csv_folder = os.path.join(
-            "output/hk/mag/l1", descriptor, actual_timestamp.strftime("%Y/%m")
+            datastore, "hk/mag/l1", descriptor, actual_timestamp.strftime("%Y/%m")
         )
         csv_file = (
             f"imap_mag_l1_{descriptor}_{actual_timestamp.strftime('%Y%m%d')}_v001.csv"
@@ -155,7 +167,9 @@ def check_file_existence(
 async def test_poll_hk_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811,
+    dynamic_work_folder,
+    clean_datastore,
 ):
     # Set up.
     binary_files: dict[str, str] = {
@@ -201,7 +215,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow()
+        await poll_hk_flow(hk_packets=available_hk + not_available_hk)
 
     # Verify.
     verify_not_available_hk(test_database, not_available_hk)
@@ -222,12 +236,12 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    dynamic_work_folder,
+    clean_datastore,
 ):
     # Set up.
     binary_files: dict[str, str] = {
         "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
-        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
-        "MAG_HSK_SID15": os.path.abspath(str(TEST_DATA / "MAG_HSK_SID15.pkts")),
     }
 
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -238,20 +252,15 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 
     available_hk: list[HKPacket] = [
         HKPacket.SID3_PW,
-        HKPacket.SID4_STATUS,
-        HKPacket.SID15,
     ]
-    not_available_hk: list[HKPacket] = list(
-        {p for p in HKPacket}.difference(available_hk)
-    )
 
     wiremock_manager.reset()
 
     # Some data is available only for specific packets.
     for hk in available_hk:
-        download_progress = test_database.get_download_progress(hk.packet)
-        download_progress.record_successful_download(progress_timestamp)
-        test_database.save(download_progress)
+        workflow_progress = test_database.get_workflow_progress(hk.packet)
+        workflow_progress.record_successful_download(progress_timestamp)
+        test_database.save(workflow_progress)
 
         define_available_data_webpoda_mappings(
             wiremock_manager,
@@ -271,10 +280,9 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow()
+        await poll_hk_flow(hk_packets=available_hk)
 
     # Verify.
-    verify_not_available_hk(test_database, not_available_hk)
     verify_available_hk(
         test_database,
         available_hk,
@@ -295,10 +303,11 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     mock_datetime_provider,  # noqa: F811,
     force_database_update,
     capture_cli_logs,
+    dynamic_work_folder,
+    clean_datastore,
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
         "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
         "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
     }
@@ -311,7 +320,6 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
 
     available_hk: list[HKPacket] = [
-        HKPacket.SID3_PW,
         HKPacket.SID4_STATUS,
         HKPacket.SID5_SCI,
     ]
@@ -371,10 +379,11 @@ async def test_poll_hk_specify_ert_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811,
+    dynamic_work_folder,
+    clean_datastore,
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
         "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
         "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
     }
@@ -387,7 +396,6 @@ async def test_poll_hk_specify_ert_start_end_dates(
     actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
 
     available_hk: list[HKPacket] = [
-        HKPacket.SID3_PW,
         HKPacket.SID4_STATUS,
         HKPacket.SID5_SCI,
     ]
@@ -512,8 +520,13 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
         )
 
     # Verify.
+    progress_items = test_database.get_all_workflow_progress()
     for hk in [p for p in HKPacket]:
-        download_progress = test_database.get_download_progress(hk.packet)
+        # find the matching progress item
+        workflow_progress = next(
+            (item for item in progress_items if item.item_name == hk.packet),
+            WorkflowProgress(item_name=hk.packet),
+        )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None

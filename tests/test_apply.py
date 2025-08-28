@@ -12,11 +12,9 @@ from mag_toolkit.calibration import (
     ScienceValue,
 )
 from tests.util.miscellaneous import (  # noqa: F401
-    DATASTORE,
     TEST_DATA,
     create_test_file,
     temp_datastore,
-    tidyDataFolders,
 )
 
 

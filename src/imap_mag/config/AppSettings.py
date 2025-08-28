@@ -13,6 +13,7 @@ from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
+from imap_mag.config.UploadConfig import UploadConfig
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class AppSettings(BaseSettings):
     fetch_science: FetchScienceConfig
     process: CommandConfig
     publish: PublishConfig
+    upload: UploadConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

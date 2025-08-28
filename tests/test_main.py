@@ -16,7 +16,6 @@ from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     TEST_DATA,
     temp_datastore,
-    tidyDataFolders,
 )
 
 runner = CliRunner()
@@ -46,6 +45,7 @@ def test_process_with_binary_hk_converts_to_csv(
     binary_file,
     output_file,
     temp_datastore,  # noqa: F811
+    dynamic_work_folder,
 ):
     # Set up.
     expectedHeader = "epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,hk_strucid,p1v5v,p1v8v,p3v3v,p2v5v,p8v,n8v,icu_temp,p2v4v,p1v5i,p1v8i,p3v3i,p2v5i,p8vi,n8vi,fob_temp,fib_temp,magosatflagx,magosatflagy,magosatflagz,magisatflagx,magisatflagy,magisatflagz,spare1,magorange,magirange,spare2,magitfmisscnt,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len\n"

@@ -10,10 +10,9 @@ import pytest
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.io.file import HKBinaryPathHandler
-from tests.util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (
     TEST_DATA,
     create_test_file,
-    tidyDataFolders,
 )
 
 

@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from imap_mag.cli.calibrate import calibrate, gradiometry
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -22,7 +23,6 @@ from tests.util.miscellaneous import (  # noqa: F401
     TEST_DATA,
     create_test_file,
     temp_datastore,
-    tidyDataFolders,
 )
 
 
@@ -31,15 +31,15 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     Prepare a calibration test file by copying the specified calibration layer
     to the output directory with the correct folder structure.
     """
+    datastore = AppSettings().data_store
     dest_filename = test_file if rename is None else rename
-    test_datastore = Path(os.getenv("MAG_DATA_STORE", "output"))
     if year and month:
         dest_filepath = (
-            test_datastore / sub_folders / str(year) / f"{month:02d}" / dest_filename
+            datastore / sub_folders / str(year) / f"{month:02d}" / dest_filename
         )
         original_filepath = DATASTORE / f"{sub_folders}/{year}/{month:02d}/{test_file}"
     else:
-        dest_filepath = test_datastore / sub_folders / dest_filename
+        dest_filepath = datastore / sub_folders / dest_filename
         original_filepath = DATASTORE / sub_folders / test_file
     os.makedirs(dest_filepath.parent, exist_ok=True)
     shutil.copy(
@@ -67,9 +67,7 @@ def matlab_test_setup():
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup,
-    monkeypatch,
-    temp_datastore,  # noqa: F811
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -89,13 +87,12 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         mode=ScienceMode.Normal,
         method=CalibrationMethod.NOOP,
     )
-
-    layer_metadata = (
-        temp_datastore
-        / "calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
-    )
-    assert layer_metadata.exists()
-    with open(layer_metadata) as f:
+    assert Path(
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+    ).exists()
+    with open(
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+    ) as f:
         noop_layer = json.load(f)
 
     assert noop_layer["method"] == "noop"
@@ -106,7 +103,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     )
 
     layer_data = (
-        temp_datastore
+        clean_datastore
         / "calibration/layers/2025/04/imap_mag_noop-layer-data_20250421_v001.csv"
     )
     assert layer_data.exists()
@@ -137,9 +134,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup,
-    monkeypatch,
-    temp_datastore,  # noqa: F811
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -153,7 +148,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         sc_interference_threshold=10.0,
     )
     layer_metadata = (
-        temp_datastore
+        clean_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
     )
     assert layer_metadata.exists()
@@ -168,7 +163,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     )
 
     layer_data = (
-        temp_datastore
+        clean_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-layer-data_20260930_v001.csv"
     )
     assert layer_data.exists()
@@ -176,11 +171,10 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         grad_data = pd.read_csv(f)
 
     assert len(grad_data) == 99
-    assert np.datetime64(grad_data["time"][0]) == np.datetime64(
-        "2026-09-30T00:00:08.285840"
-    ), (
-        "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
-    )
+    assert (
+        np.datetime64(grad_data["time"][0])
+        == np.datetime64("2026-09-30T00:00:08.285840")
+    ), "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
 
     try:
         cal_layer = CalibrationLayer.from_file(layer_metadata)

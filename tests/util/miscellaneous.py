@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -21,6 +22,8 @@ DATASTORE = Path("tests/datastore")
 TEST_DATA = Path("tests/test_data")
 TEST_TRUTH = Path("tests/test_truth")
 
+logger = logging.getLogger(__name__)
+
 
 @pytest.fixture(autouse=False)
 def enableLogging():
@@ -31,15 +34,20 @@ def enableLogging():
         logfile_file="debug",
         logfile_log_level="debug",
         logfile_log_color=False,
-        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s",
-        console_log_line_template="%(color_on)s%(message)s%(color_off)s",
+        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-5s] %(message)s%(color_off)s",
+        console_log_line_template="%(color_on)s[%(levelname)-5s] %(name)s %(message)s%(color_off)s",
     )
     yield
     AppLogging.reset_setup_flag()  # Reset logging setup after test
 
 
-@pytest.fixture(autouse=True)
-def tidyDataFolders():
+@pytest.fixture(
+    autouse=False,
+    scope="function",
+    params=[pytest.param("", marks=pytest.mark.xdist_group("datastore"))],
+)
+def preclean_work_and_output():
+    logger.info("Cleaning up work and output directories...")
     os.system("rm -rf .work")
     os.system("rm -rf output/*")
     yield

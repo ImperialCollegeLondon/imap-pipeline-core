@@ -9,13 +9,13 @@ from tests.util.miscellaneous import (  # noqa: F401
     TEST_DATA,
     create_test_file,
     temp_datastore,
-    tidyDataFolders,
 )
 
 
 def test_empty_calibrator_makes_correct_matlab_call(
     monkeypatch,
     temp_datastore,  # noqa: F811
+    preclean_work_and_output,
 ):
     copy_test_file_to_database(
         temp_datastore / "science/mag/l1c/2025/10",
@@ -56,6 +56,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
 def test_gradiometer_calibrator_makes_correct_matlab_call(
     monkeypatch,
     temp_datastore,  # noqa: F811
+    preclean_work_and_output
 ):
     def mock_call_matlab(command):
         assert (

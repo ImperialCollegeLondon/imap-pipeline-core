@@ -1,11 +1,11 @@
 [project]
 requires-python = ">=3.10"
 name = "imap-mag"
-version = "3.2.0"
+version = "3.3.0"
 
 [tool.poetry]
 name = "imap-mag"
-version = "3.2.0"
+version = "3.3.0"
 description = "Process IMAP data"
 authors = ["alastairtree"]
 readme = "README.md"
@@ -37,6 +37,8 @@ prefect-docker = "^0.6.1"
 spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
 ccsdspy = "^1.4.2"
+prefect-managedfiletransfer = "^0.2.0"
+pytest-env = "^1.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
@@ -48,6 +50,7 @@ ruff = "^0.8.1"
 docker = "^7.1.0"
 testcontainers = "^4.10.0"
 wiremock = "^2.7.0"
+pytest-xdist = "^3.8.0"
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
@@ -59,10 +62,13 @@ pythonpath = [
   ".", "src"
 ]
 minversion = "8.0"
-addopts = "-s"
 testpaths = [
     "tests/*.py",
     "tests/**/*.py",
+]
+env = [
+    "PREFECT_LOGGING_EXTRA_LOGGERS=imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access",
+    "PREFECT_LOGGING_LEVEL=INFO"
 ]
 
 [build-system]
