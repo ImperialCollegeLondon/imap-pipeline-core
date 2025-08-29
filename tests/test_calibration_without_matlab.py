@@ -4,22 +4,21 @@ from pathlib import Path
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
-from tests.test_apply import copy_test_file
-from tests.util.miscellaneous import (  # noqa: F401
+from tests.util.miscellaneous import (
     TEST_DATA,
+    copy_test_file,
     create_test_file,
-    temp_datastore,
 )
 
 
 def test_empty_calibrator_makes_correct_matlab_call(
     monkeypatch,
-    temp_datastore,  # noqa: F811
+    temp_datastore,
     preclean_work_and_output,
 ):
     copy_test_file(
-        temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        temp_datastore / "science/mag/l1c/2025/10",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
     )
 
@@ -55,7 +54,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
 
 def test_gradiometer_calibrator_makes_correct_matlab_call(
     monkeypatch,
-    temp_datastore,  # noqa: F811
+    temp_datastore,
     preclean_work_and_output,
 ):
     def mock_call_matlab(command):
@@ -97,7 +96,7 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
 
 def test_gradiometer_calibrator_finds_next_viable_version(
     monkeypatch,
-    temp_datastore,  # noqa: F811
+    temp_datastore,
 ):
     def mock_call_matlab(command):
         assert (

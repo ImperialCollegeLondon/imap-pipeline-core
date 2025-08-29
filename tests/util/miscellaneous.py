@@ -90,3 +90,13 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
         file_path.write_text(content)
 
     return file_path
+
+
+def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None = None):
+    if not new_filename:
+        new_filename = src_file.name
+
+    shutil.copy(
+        src_file,
+        dest_folder / new_filename,
+    )

@@ -1,5 +1,4 @@
 import re
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -12,17 +11,7 @@ from mag_toolkit.calibration import (
     CalibrationValue,
     ScienceValue,
 )
-from tests.util.miscellaneous import TEST_DATA
-
-
-def copy_test_file(dest_folder: Path, src_file: Path, new_filename: str | None = None):
-    if not new_filename:
-        new_filename = src_file.name
-
-    shutil.copy(
-        src_file,
-        dest_folder / new_filename,
-    )
+from tests.util.miscellaneous import TEST_DATA, copy_test_file
 
 
 def verify_noop_20251017_results(datastore):
@@ -75,8 +64,8 @@ def test_apply_works_with_metadata_files_containing_values(
     calibration_layer = "imap_mag_noop-layer_20251017_v002.json"
 
     copy_test_file(
-        temp_datastore / "calibration/layers/2025/10",
         TEST_DATA / "metadata_file_with_values.json",
+        temp_datastore / "calibration/layers/2025/10",
         calibration_layer,
     )
 
@@ -102,8 +91,8 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
         "imap_mag_misaligned-timestamps-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
-            temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
+            temp_datastore / "calibration/layers/2025/10",
         )
 
     with pytest.raises(Exception, match="Layer and data timestamps do not align"):
@@ -152,8 +141,8 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
     calibration_layer = "imap_mag_noop-layer_20251017_v001.json"
 
     copy_test_file(
-        temp_datastore / "calibration/layers/2025/10",
         invalid_metadata_file,
+        temp_datastore / "calibration/layers/2025/10",
         calibration_layer,
     )
 
@@ -171,8 +160,8 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
 
 def test_apply_performs_correct_rotation(dynamic_work_folder, temp_datastore):
     copy_test_file(
-        temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        temp_datastore / "science/mag/l1c/2025/10",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
     )
 
@@ -211,13 +200,13 @@ def test_apply_adds_offsets_together_correctly(dynamic_work_folder, temp_datasto
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
-            temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
+            temp_datastore / "calibration/layers/2025/10",
         )
 
     copy_test_file(
-        temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        temp_datastore / "science/mag/l1c/2025/10",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
     )
 
@@ -280,13 +269,13 @@ def test_apply_writes_magnitudes_correctly(temp_datastore, dynamic_work_folder):
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
-            temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
+            temp_datastore / "calibration/layers/2025/10",
         )
 
     copy_test_file(
-        temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
+        temp_datastore / "science/mag/l1c/2025/10",
     )
 
     apply(
