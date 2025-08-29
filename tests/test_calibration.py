@@ -12,18 +12,9 @@ import pytest
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import (
-    CalibrationLayer,
-    CalibrationMethod,
-    Sensor,
-)
+from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
-from tests.util.miscellaneous import (  # noqa: F401
-    DATASTORE,
-    TEST_DATA,
-    create_test_file,
-    temp_datastore,
-)
+from tests.util.miscellaneous import DATASTORE
 
 
 def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None):
@@ -134,7 +125,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
+    matlab_test_setup, tmp_path, monkeypatch, temp_datastore, dynamic_work_folder
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -148,7 +139,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         sc_interference_threshold=10.0,
     )
     layer_metadata = (
-        clean_datastore
+        temp_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
     )
     assert layer_metadata.exists()
@@ -163,7 +154,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     )
 
     layer_data = (
-        clean_datastore
+        temp_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-layer-data_20260930_v001.csv"
     )
     assert layer_data.exists()
@@ -171,11 +162,10 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         grad_data = pd.read_csv(f)
 
     assert len(grad_data) == 99
-    assert np.datetime64(grad_data["time"][0]) == np.datetime64(
-        "2026-09-30T00:00:08.285840"
-    ), (
-        "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
-    )
+    assert (
+        np.datetime64(grad_data["time"][0])
+        == np.datetime64("2026-09-30T00:00:08.285840")
+    ), "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
 
     try:
         cal_layer = CalibrationLayer.from_file(layer_metadata)

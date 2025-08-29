@@ -19,7 +19,7 @@ def get_matlab_command():
     return "matlab"
 
 
-def call_matlab(command, first_call=True):
+def call_matlab(command, first_call=True, timeout=60 * 5):
     MATLAB_COMMAND = get_matlab_command()
     if first_call:
         default_matlab_path = "/app/matlab"
@@ -33,7 +33,7 @@ def call_matlab(command, first_call=True):
     cmd = [MATLAB_COMMAND, "-nodesktop", "-batch"]
     cmd.append(command)
 
-    logger.debug(f"Calling MATLAB with command: {cmd}")
+    logger.info(f"Calling MATLAB with command: \n  {' '.join(cmd)}")
     p = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
@@ -41,3 +41,11 @@ def call_matlab(command, first_call=True):
     while (line := p.stdout.readline()) != "":  # type: ignore
         line = line.rstrip()
         logger.info(line)
+
+    p.wait(timeout=timeout)
+
+    logger.info(f"MATLAB process finished with return code {p.returncode}")
+
+    if p.returncode != 0:
+        logger.error(f"MATLAB command failed with return code {p.returncode}")
+        raise RuntimeError("MATLAB command failed")
