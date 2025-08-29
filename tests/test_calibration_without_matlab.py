@@ -4,7 +4,7 @@ from pathlib import Path
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
-from tests.test_apply import copy_test_file_to_database
+from tests.test_apply import copy_test_file
 from tests.util.miscellaneous import (  # noqa: F401
     TEST_DATA,
     create_test_file,
@@ -17,7 +17,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
     temp_datastore,  # noqa: F811
     preclean_work_and_output,
 ):
-    copy_test_file_to_database(
+    copy_test_file(
         temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -56,7 +56,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
 def test_gradiometer_calibrator_makes_correct_matlab_call(
     monkeypatch,
     temp_datastore,  # noqa: F811
-    preclean_work_and_output
+    preclean_work_and_output,
 ):
     def mock_call_matlab(command):
         assert (

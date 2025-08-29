@@ -1,3 +1,4 @@
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -11,22 +12,16 @@ from mag_toolkit.calibration import (
     CalibrationValue,
     ScienceValue,
 )
-from tests.util.miscellaneous import (  # noqa: F401
-    TEST_DATA,
-    create_test_file,
-    temp_datastore,
-)
+from tests.util.miscellaneous import TEST_DATA
 
 
-def copy_test_file_to_database(
-    path: Path, original_file: Path, new_file: str | None = None
-):
-    if not new_file:
-        new_file = original_file.name
+def copy_test_file(dest_folder: Path, src_file: Path, new_filename: str | None = None):
+    if not new_filename:
+        new_filename = src_file.name
 
     shutil.copy(
-        original_file,
-        path / new_file,
+        src_file,
+        dest_folder / new_filename,
     )
 
 
@@ -58,8 +53,7 @@ def verify_noop_20251017_results(datastore):
 
 
 def test_apply_produces_output_science_file_and_offsets_file_with_data(
-    temp_datastore,  # noqa: F811
-    capture_cli_logs,
+    temp_datastore, capture_cli_logs, dynamic_work_folder
 ):
     apply(
         layers=["imap_mag_noop-layer_20251017_v001.json"],
@@ -68,20 +62,19 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
     )
     verify_noop_20251017_results(temp_datastore)
 
-    assert (
-        "Calibration layer data defined in separate file: .work/imap_mag_noop-layer-data_20251017_v001.csv"
-        in capture_cli_logs.text
+    assert re.search(
+        r"Calibration layer data defined in separate file: /.*/calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv",
+        capture_cli_logs.text,
     )
 
 
 def test_apply_works_with_metadata_files_containing_values(
-    temp_datastore,  # noqa: F811
-    capture_cli_logs,
+    temp_datastore, capture_cli_logs, dynamic_work_folder
 ):
     # Set up.
     calibration_layer = "imap_mag_noop-layer_20251017_v002.json"
 
-    copy_test_file_to_database(
+    copy_test_file(
         temp_datastore / "calibration/layers/2025/10",
         TEST_DATA / "metadata_file_with_values.json",
         calibration_layer,
@@ -103,12 +96,12 @@ def test_apply_works_with_metadata_files_containing_values(
     )
 
 
-def test_apply_fails_when_timestamps_dont_align(temp_datastore):  # noqa: F811
+def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_folder):
     for f in [
         "imap_mag_misaligned-timestamps-layer_20251017_v001.json",
         "imap_mag_misaligned-timestamps-layer-data_20251017_v001.csv",
     ]:
-        copy_test_file_to_database(
+        copy_test_file(
             temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
         )
@@ -130,7 +123,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore):  # noqa: F811
     ).exists()
 
 
-def test_apply_fails_when_no_layers_provided(temp_datastore):  # noqa: F811
+def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder):
     # No layers provided, should raise ValueError
     with pytest.raises(
         ValueError, match="No calibration layers or rotation file provided."
@@ -151,12 +144,14 @@ def test_apply_fails_when_no_layers_provided(temp_datastore):  # noqa: F811
     ).exists()
 
 
-def test_apply_errors_on_metadata_incorrect_data_filename_format(temp_datastore):  # noqa: F811
+def test_apply_errors_on_metadata_incorrect_data_filename_format(
+    temp_datastore, dynamic_work_folder
+):
     # Set up.
     invalid_metadata_file = TEST_DATA / "metadata_file_no_metadata.json"
     calibration_layer = "imap_mag_noop-layer_20251017_v001.json"
 
-    copy_test_file_to_database(
+    copy_test_file(
         temp_datastore / "calibration/layers/2025/10",
         invalid_metadata_file,
         calibration_layer,
@@ -174,8 +169,8 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(temp_datastore)
         )
 
 
-def test_apply_performs_correct_rotation(temp_datastore):  # noqa: F811
-    copy_test_file_to_database(
+def test_apply_performs_correct_rotation(dynamic_work_folder, temp_datastore):
+    copy_test_file(
         temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -210,17 +205,17 @@ def test_apply_performs_correct_rotation(temp_datastore):  # noqa: F811
             assert vec == pytest.approx(correct_vec, rel=1e-6)
 
 
-def test_apply_adds_offsets_together_correctly(temp_datastore):  # noqa: F811
+def test_apply_adds_offsets_together_correctly(dynamic_work_folder, temp_datastore):
     for f in [
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
-        copy_test_file_to_database(
+        copy_test_file(
             temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
         )
 
-    copy_test_file_to_database(
+    copy_test_file(
         temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         "imap_mag_l1c_norm-mago_20251017_v000.cdf",
@@ -279,17 +274,17 @@ def test_simple_interpolation_calibration_values_apply_correctly():
     assert resulting_science[0].value == [1, 0, 0]
 
 
-def test_apply_writes_magnitudes_correctly(temp_datastore):  # noqa: F811
+def test_apply_writes_magnitudes_correctly(temp_datastore, dynamic_work_folder):
     for f in [
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
     ]:
-        copy_test_file_to_database(
+        copy_test_file(
             temp_datastore / "calibration/layers/2025/10",
             TEST_DATA / f,
         )
 
-    copy_test_file_to_database(
+    copy_test_file(
         temp_datastore / "science/mag/l1c/2025/10",
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
     )
