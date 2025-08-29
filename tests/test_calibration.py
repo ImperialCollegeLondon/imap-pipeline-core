@@ -162,10 +162,11 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         grad_data = pd.read_csv(f)
 
     assert len(grad_data) == 99
-    assert (
-        np.datetime64(grad_data["time"][0])
-        == np.datetime64("2026-09-30T00:00:08.285840")
-    ), "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
+    assert np.datetime64(grad_data["time"][0]) == np.datetime64(
+        "2026-09-30T00:00:08.285840"
+    ), (
+        "First timestamp should match the MAGo first timestamp 2026-09-30T00:00:08.285840"
+    )
 
     try:
         cal_layer = CalibrationLayer.from_file(layer_metadata)
