@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 from imap_mag.main import app
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
+    TEST_DATA,
     temp_datastore,
 )
 
@@ -31,7 +32,7 @@ def test_app_says_hello():
     "binary_file, output_file",
     [
         (
-            "tests/test_data/MAG_HSK_PW.pkts",
+            str(TEST_DATA / "MAG_HSK_PW.pkts"),
             "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
         (
@@ -114,7 +115,7 @@ def test_process_error_with_unsupported_file_type():
 )
 def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Set up.
-    binary_file = os.path.abspath("tests/test_data/MAG_HSK_PW.pkts")
+    binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
@@ -176,7 +177,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 )
 def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Set up.
-    binary_file = os.path.abspath("tests/test_data/MAG_HSK_PW.pkts")
+    binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(packet)",
@@ -250,7 +251,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/test_data/imap_mag_l1b_norm-mago_20250502_v001.cdf"
+        str(TEST_DATA / "imap_mag_l1b_norm-mago_20250502_v001.cdf")
     )
 
     wiremock_manager.add_string_mapping(
@@ -331,7 +332,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/test_data/imap_mag_l1b_norm-mago_20250502_v001.cdf"
+        str(TEST_DATA / "imap_mag_l1b_norm-mago_20250502_v001.cdf")
     )
 
     wiremock_manager.add_string_mapping(

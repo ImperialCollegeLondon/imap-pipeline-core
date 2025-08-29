@@ -3,6 +3,7 @@
     "metadata": {
         "comment": "This is a zero value calibration file",
         "creation_timestamp": "2025-03-28T11:22:20",
+        "data_filename": null,
         "dependencies": [],
         "science": [
             ".work/imap_mag_l1b_norm-mago_20251017_v002.json"
@@ -20,7 +21,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:51.522309",
+            "time": "2025-10-17T02:11:51.521309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -31,7 +32,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:52.121309",
+            "time": "2025-10-17T02:11:52.021309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -42,7 +43,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:52.321309",
+            "time": "2025-10-17T02:11:52.521309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -53,7 +54,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:53.021509",
+            "time": "2025-10-17T02:11:53.021309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -64,7 +65,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:53.521310",
+            "time": "2025-10-17T02:11:53.521309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -75,7 +76,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:54.022509",
+            "time": "2025-10-17T02:11:54.021309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -86,7 +87,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:54.531309",
+            "time": "2025-10-17T02:11:54.521309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -97,7 +98,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:55.121309",
+            "time": "2025-10-17T02:11:55.021309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -108,7 +109,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:55.721309",
+            "time": "2025-10-17T02:11:55.521309",
             "timedelta": 0.0,
             "value": [
                 0.0,
@@ -119,7 +120,7 @@
         {
             "quality_bitmask": 0.0,
             "quality_flag": 0.0,
-            "time": "2025-10-17T02:11:56.134309",
+            "time": "2025-10-17T02:11:56.021309",
             "timedelta": 0.0,
             "value": [
                 0.0,

@@ -15,6 +15,7 @@ from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
+    TEST_DATA,
     TODAY,
     mock_datetime_provider,  # noqa: F401
 )
@@ -51,7 +52,7 @@ def define_available_data_webpoda_mappings(
 
 
 def define_unavailable_data_webpoda_mappings(wiremock_manager):
-    empty_file = os.path.abspath("tests/test_data/EMPTY_HK.pkts")
+    empty_file = os.path.abspath(str(TEST_DATA / "EMPTY_HK.pkts"))
 
     wiremock_manager.add_file_mapping(
         re.escape("/packets/SID2/")
@@ -172,9 +173,9 @@ async def test_poll_hk_autoflow_first_ever_run(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_PROCSTAT": os.path.abspath("tests/test_data/MAG_HSK_PROCSTAT.pkts"),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_PROCSTAT": os.path.abspath(str(TEST_DATA / "MAG_HSK_PROCSTAT.pkts")),
     }
 
     beginning_of_imap = BEGINNING_OF_IMAP.strftime("%Y-%m-%dT%H:%M:%S")
@@ -240,7 +241,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
     }
 
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -307,8 +308,8 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_SCI": os.path.abspath("tests/test_data/MAG_HSK_SCI.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -383,8 +384,8 @@ async def test_poll_hk_specify_ert_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_SCI": os.path.abspath("tests/test_data/MAG_HSK_SCI.pkts"),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -472,9 +473,9 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath("tests/test_data/MAG_HSK_PW.pkts"),
-        "MAG_HSK_STATUS": os.path.abspath("tests/test_data/MAG_HSK_STATUS.pkts"),
-        "MAG_HSK_PROCSTAT": os.path.abspath("tests/test_data/MAG_HSK_PROCSTAT.pkts"),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_PROCSTAT": os.path.abspath(str(TEST_DATA / "MAG_HSK_PROCSTAT.pkts")),
     }
 
     beginning_of_imap = BEGINNING_OF_IMAP.strftime("%Y-%m-%dT%H:%M:%S")

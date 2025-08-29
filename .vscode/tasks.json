@@ -16,6 +16,19 @@
             }
         },
         {
+            "label": "pre-commit",
+            "type": "shell",
+            "command": "poetry run pre-commit run --all",
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            }
+        },
+        {
             "type": "docker-build",
             "label": "docker-build",
             "platform": "python",

@@ -18,9 +18,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
 
     mission: str = "imap"
     instrument: str = "mag"
-    calibration_descriptor: str | None = None
+    descriptor: str | None = None
+    extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
-    extension: str | None = "json"
+    extension: str = "json"
 
     def get_folder_structure(self) -> str:
         super()._check_property_values("folder structure", ["content_date"])
@@ -30,22 +31,27 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
-    def get_filename(self):
-        super()._check_property_values(
-            "file name", ["calibration_descriptor", "content_date", "extension"]
-        )
+    def get_filename(self) -> str:
+        super()._check_property_values("file name", ["descriptor", "content_date"])
         assert self.content_date
 
-        return f"{self.mission}_{self.instrument}_{self.calibration_descriptor}-layer_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        super()._check_property_values(
-            "pattern", ["calibration_descriptor", "content_date", "extension"]
-        )
-        assert self.calibration_descriptor and self.content_date
+        super()._check_property_values("pattern", ["descriptor", "content_date"])
+        assert self.descriptor and self.content_date
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{re.escape(self.calibration_descriptor)}\\-layer_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}\-layer{re.escape(self.extra_descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+        )
+
+    def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":
+        return CalibrationLayerPathHandler(
+            descriptor=self.descriptor,
+            extra_descriptor="-data",
+            content_date=self.content_date,
+            version=self.version,
+            extension="csv",
         )
 
     @classmethod
@@ -64,9 +70,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             return None
         else:
             return cls(
-                mission="imap",
-                instrument="mag",
-                calibration_descriptor=match["descr"],
+                descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 version=int(match["version"]),
                 extension=match["ext"],

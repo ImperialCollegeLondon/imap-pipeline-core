@@ -1,0 +1,12 @@
+{
+    "id": "",
+    "method": "noop",
+    "mission": "IMAP",
+    "sensor": "MAGo",
+    "validity": {
+        "end": "2025-10-17T02:11:59.021309",
+        "start": "2025-10-17T02:11:51.521"
+    },
+    "value_type": "vector",
+    "version": 0.0
+}
