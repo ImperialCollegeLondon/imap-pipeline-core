@@ -1,7 +1,10 @@
 """Tests for `OutputManager` class."""
 
+import re
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 from imap_mag.io import OutputManager
 from imap_mag.io.file import (
@@ -192,3 +195,18 @@ def test_copy_file_forced_version(temp_folder_path):
     assert Path(
         f"{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v003.txt"
     ).exists()
+
+
+def test_error_on_file_not_found(capture_cli_logs):
+    # Set up.
+    manager = OutputManager(Path("output"))
+
+    original_file = Path("does_not/exist.right?")
+
+    # Exercise and verify.
+    with pytest.raises(
+        FileNotFoundError, match=f"File {re.escape(str(original_file))} does not exist."
+    ):
+        manager.add_file(original_file, HKDecodedPathHandler())
+
+    assert f"File {original_file} does not exist." in capture_cli_logs.text

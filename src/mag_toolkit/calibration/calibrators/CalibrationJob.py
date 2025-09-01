@@ -5,7 +5,8 @@ from pathlib import Path
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io import DatastoreFileFinder
-from mag_toolkit.calibration import CalibrationJobParameters
+from imap_mag.io.file import CalibrationLayerPathHandler
+from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +15,18 @@ class CalibrationJob(ABC):
     data_store: Path | None = None
 
     calibration_job_parameters: CalibrationJobParameters
+    work_folder: Path
 
-    def __init__(self, calibration_job_parameters: CalibrationJobParameters):
+    def __init__(
+        self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
+    ):
         self.required_files: dict = dict()
         self.calibration_job_parameters = calibration_job_parameters
+        self.work_folder = work_folder
 
     def setup_calibration_files(
         self,
         datastore_finder: DatastoreFileFinder,
-        work_folder: Path,
     ):
         path_handlers = self._get_path_handlers(self.calibration_job_parameters)
 
@@ -32,7 +36,7 @@ class CalibrationJob(ABC):
                 path_handler, throw_if_not_found=True
             )
             work_file = fetch_file_for_work(
-                input_file, work_folder, throw_if_not_found=True
+                input_file, self.work_folder, throw_if_not_found=True
             )
             self.set_file(key, work_file)
 
@@ -56,6 +60,31 @@ class CalibrationJob(ABC):
         :param mode: The science mode.
         :param sensor: The sensor type.
         :return: A dictionary of path handlers."""
+
+    def get_next_viable_version_layer(
+        self,
+        datastore_finder: DatastoreFileFinder,
+        layer_handler: CalibrationLayerPathHandler,
+    ) -> CalibrationLayerPathHandler:
+        """
+        Get the next viable version for a calibration layer.
+        :return: Calibration layer handler for next viable version.
+        """
+
+        latest_version_file: Path | None = datastore_finder.find_latest_version(
+            layer_handler, throw_if_not_found=False
+        )
+
+        if latest_version_file is None:
+            return layer_handler
+        else:
+            latest_version_handler: CalibrationLayerPathHandler | None = (
+                CalibrationLayerPathHandler.from_filename(latest_version_file)
+            )
+            assert latest_version_handler is not None
+
+            latest_version_handler.increase_sequence()
+            return latest_version_handler
 
     def _check_environment_is_setup(self):
         if not self._check_for_required_files():
@@ -98,5 +127,7 @@ class CalibrationJob(ABC):
             self.data_store = datastore
 
     @abstractmethod
-    def run_calibration(self, calfile, config: CalibrationConfig) -> Path:
+    def run_calibration(
+        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+    ) -> tuple[Path, Path]:
         """Calibration that generates a calibration layer."""

@@ -33,6 +33,12 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
     assert provider.get_unsequenced_pattern().pattern == (
         r"imap_mag_l2_norm\-mago_20251017_v(?P<version>\d+)\.cdf"
     )
+    assert provider.get_full_path() == Path(
+        "science/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+    )
+    assert provider.get_full_path(Path("my_datastore")) == Path(
+        "my_datastore/science/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
+    )
 
 
 def test_standard_path_handler_fails_if_given_ancillary_file():
@@ -113,6 +119,27 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
     )
 
 
+def test_calibration_layer_get_equivalent_data_handler():
+    # Set up.
+    path_handler = CalibrationLayerPathHandler(
+        version=2,
+        descriptor="offsets",
+        content_date=datetime(2025, 10, 4),
+    )
+
+    # Exercise.
+    data_handler = path_handler.get_equivalent_data_handler()
+
+    # Verify.
+    assert data_handler == CalibrationLayerPathHandler(
+        version=2,
+        descriptor="offsets",
+        extra_descriptor="-data",
+        content_date=datetime(2025, 10, 4),
+        extension="csv",
+    )
+
+
 @pytest.mark.parametrize(
     "path, expected_provider, provider_type",
     [
@@ -133,9 +160,8 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
             ),
             CalibrationLayerPathHandler(
                 version=2,
-                calibration_descriptor="offsets",
+                descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
-                extension="json",
             ),
             "CalibrationLayerPathHandler",
         ),

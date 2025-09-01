@@ -36,7 +36,7 @@ def gradiometry(
     sc_interference_threshold: Annotated[
         float, typer.Option(help="SC interference threshold")
     ] = 10.0,
-):
+) -> Path:
     """
     Run gradiometry calibration.
     """
@@ -56,22 +56,33 @@ def gradiometry(
             kappa=kappa, sc_interference_threshold=sc_interference_threshold
         )
     )
-    calibrator = GradiometerCalibrationJob(calibration_job_parameters)
-    calibrator.setup_calibration_files(datastore_finder, work_folder)
+
+    calibrator = GradiometerCalibrationJob(calibration_job_parameters, work_folder)
+    calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_layer_handler = CalibrationLayerPathHandler(
-        calibration_descriptor=method.short_name, content_date=date
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=method.short_name, content_date=date
     )
-    result: Path = calibrator.run_calibration(
-        work_folder / Path(calibration_layer_handler.get_filename()),
-        calibration_configuration,
+    # TODO: REFACTOR - We are trying to get the path of the next available version of a path but here we are creating 2 path handler objects and passing one into the other. Seems convoluted. Why not just pick the right version when we create the handler to start with in a class constructor?
+    calibration_handler = calibrator.get_next_viable_version_layer(
+        datastore_finder, calibration_handler
+    )
+
+    # TODO: REFACTOR - we are passing 2 things here because of the separate CSV data files needing a path. We should pass one thing and refactor the complexity of having to pass a handler for the data file. Perhaps a layer object should just manage the CSV data file.
+    metadata_path, data_path = calibrator.run_calibration(
+        calibration_handler, calibration_configuration
     )
 
     outputManager = OutputManager(app_settings.data_store)
+
+    # TODO: REFACTOR - this is convoluted to add the 2 files. Something like outputManager.add_files(layer.get_output_files()) would be better
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibration_layer_handler
-    )  # type: ignore
+        metadata_path, path_handler=calibration_handler
+    )
+    outputManager.add_file(
+        data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
 
     return output_calibration_path
 
@@ -94,7 +105,7 @@ def calibrate(
             help="Configuration for the calibration - should be a YAML file or a JSON string",
         ),
     ] = None,
-):
+) -> Path:
     """
     Generate calibration parameters for a given input file.
     imap-mag calibrate --from [date] --to [date] --method [method] [input]
@@ -122,29 +133,37 @@ def calibrate(
 
     match method:
         case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrationJob(calibration_job_parameters)
+            calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
         case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrationJob(calibration_job_parameters)
+            calibrator = GradiometerCalibrationJob(
+                calibration_job_parameters, work_folder
+            )
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator.setup_calibration_files(
-        DatastoreFileFinder(app_settings.data_store), work_folder
-    )
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+
+    calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
 
-    calibration_layer_handler = CalibrationLayerPathHandler(
-        calibration_descriptor=method.value, content_date=date
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=method.short_name, content_date=date
+    )
+    calibration_handler = calibrator.get_next_viable_version_layer(
+        datastore_finder, calibration_handler
     )
 
-    result: Path = calibrator.run_calibration(
-        work_folder / Path(calibration_layer_handler.get_filename()),
-        calibration_configuration,
+    metadata_path, data_path = calibrator.run_calibration(
+        calibration_handler, calibration_configuration
     )
 
     outputManager = OutputManager(app_settings.data_store)
+
     (output_calibration_path, _) = outputManager.add_file(
-        result, path_handler=calibration_layer_handler
-    )  # type: ignore
+        metadata_path, path_handler=calibration_handler
+    )
+    outputManager.add_file(
+        data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
 
     return output_calibration_path

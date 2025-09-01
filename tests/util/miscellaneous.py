@@ -19,6 +19,8 @@ END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
 DATASTORE = Path("tests/datastore")
+TEST_DATA = Path("tests/test_data")
+TEST_TRUTH = Path("tests/test_truth")
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +90,13 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
         file_path.write_text(content)
 
     return file_path
+
+
+def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None = None):
+    if not new_filename:
+        new_filename = src_file.name
+
+    shutil.copy(
+        src_file,
+        dest_folder / new_filename,
+    )

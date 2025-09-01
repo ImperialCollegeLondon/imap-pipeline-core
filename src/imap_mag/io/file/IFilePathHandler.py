@@ -24,6 +24,10 @@ class IFilePathHandler(abc.ABC):
         """Denotes whether this path handler supports sequence-like indexes."""
         pass
 
+    def get_full_path(self, parent: Path = Path()) -> Path:
+        """Get the full path of the file."""
+        return parent / self.get_folder_structure() / self.get_filename()
+
     @abc.abstractmethod
     def get_folder_structure(self) -> str:
         pass

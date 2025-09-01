@@ -46,6 +46,7 @@ class CalibrationApplicator:
 
         return (science_values, total_offsets)
 
+    # TODO: could this be just another layer rather than a special case?
     def apply_rotation(
         self,
         rotation: Path,

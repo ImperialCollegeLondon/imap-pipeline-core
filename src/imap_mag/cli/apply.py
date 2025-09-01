@@ -18,7 +18,7 @@ from imap_mag.io.file import (
     SciencePathHandler,
 )
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationApplicator
+from mag_toolkit.calibration import CalibrationApplicator, CalibrationLayer
 
 logger = logging.getLogger(__name__)
 
@@ -29,29 +29,46 @@ class FileType(Enum):
     JSON = "json"
 
 
-def prepare_layers_for_application(layers, appSettings):
+# TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
+def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
     datastore_finder = DatastoreFileFinder(appSettings.data_store)
     work_layers = []
     for layer in layers:
-        cal_layer_handler = CalibrationLayerPathHandler.from_filename(layer)
-        if not cal_layer_handler:
-            logger.error(f"Could not parse metadata from calibration layer: {layer}")
-            raise ValueError(
-                f"Could not parse metadata from calibration layer: {layer}"
+        cal_handler = CalibrationLayerPathHandler.from_filename(layer)
+        if not cal_handler:
+            logger.error(
+                f"Could not parse metadata from calibration metadata file: {layer}"
             )
-        versioned_cal_file = datastore_finder.find_matching_file(
-            path_handler=cal_layer_handler,
+            raise ValueError(
+                f"Could not parse metadata from calibration metadata file: {layer}"
+            )
+
+        versioned_layer_file: Path = datastore_finder.find_matching_file(
+            path_handler=cal_handler,
             throw_if_not_found=True,
         )
 
         work_layers.append(
             fetch_file_for_work(
-                versioned_cal_file, appSettings.work_folder, throw_if_not_found=True
+                versioned_layer_file,
+                appSettings.work_folder,
+                throw_if_not_found=True,
             )
         )
+
+        # Get data file
+        cal_layer = CalibrationLayer.from_file(versioned_layer_file)
+
+        if cal_layer.metadata.data_filename:
+            fetch_file_for_work(
+                versioned_layer_file.parent / cal_layer.metadata.data_filename,
+                appSettings.work_folder,
+                throw_if_not_found=True,
+            )
+
     return work_layers
 
 
