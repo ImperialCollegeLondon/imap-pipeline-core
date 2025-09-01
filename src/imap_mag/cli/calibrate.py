@@ -64,16 +64,19 @@ def gradiometry(
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=method.short_name, content_date=date
     )
+    # TODO: REFACTOR - We are trying to get the path of the next available version of a path but here we are creating 2 path handler objects and passing one into the other. Seems convoluted. Why not just pick the right version when we create the handler to start with in a class constructor?
     calibration_handler = calibrator.get_next_viable_version_layer(
         datastore_finder, calibration_handler
     )
 
+    # TODO: REFACTOR - we are passing 2 things here because of the separate CSV data files needing a path. We should pass one thing and refactor the complexity of having to pass a handler for the data file. Perhaps a layer object should just manage the CSV data file.
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration
     )
 
     outputManager = OutputManager(app_settings.data_store)
 
+    # TODO: REFACTOR - this is convoluted to add the 2 files. Something like outputManager.add_files(layer.get_output_files()) would be better
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler
     )

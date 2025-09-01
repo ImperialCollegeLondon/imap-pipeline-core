@@ -29,6 +29,7 @@ class FileType(Enum):
     JSON = "json"
 
 
+# TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
 def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
     """
     Prepare the calibration layers for application by fetching the versioned files.
