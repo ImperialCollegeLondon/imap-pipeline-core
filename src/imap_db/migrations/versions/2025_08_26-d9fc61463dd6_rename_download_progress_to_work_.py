@@ -17,15 +17,9 @@ depends_on = None
 
 def upgrade() -> None:
     op.rename_table("download_progress", "workflow_progress")
-    op.execute(
-        "ALTER INDEX download_progress_item_name_key RENAME TO workflow_progress_item_name_key"
-    )
     op.execute("ALTER INDEX download_progress_pkey RENAME TO workflow_progress_pkey")
 
 
 def downgrade() -> None:
     op.rename_table("workflow_progress", "download_progress")
-    op.execute(
-        "ALTER INDEX workflow_progress_item_name_key RENAME TO download_progress_item_name_key"
-    )
     op.execute("ALTER INDEX workflow_progress_pkey RENAME TO download_progress_pkey")
