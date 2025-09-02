@@ -178,6 +178,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
         uses: actions/checkout@v4
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         with:
           path: ${{ env.CALIBRATION_CODE_LOCATION}}
           sparse-checkout: |
@@ -286,6 +287,7 @@ jobs:
 
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
         uses: actions/checkout@v4
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         with:
           path: ${{ env.CALIBRATION_CODE_LOCATION}}
           sparse-checkout: |
