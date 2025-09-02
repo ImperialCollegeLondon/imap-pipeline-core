@@ -6,12 +6,13 @@ from typing import Annotated
 
 import typer
 
+from imap_mag import appUtils
 from imap_mag.cli.cliUtils import (
     fetch_file_for_work,
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings
-from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
@@ -172,7 +173,7 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    outputManager = OutputManager(app_settings.data_store)
+    outputManager = appUtils.getOutputManagerByMode(app_settings, use_database=True)
 
     if layers:
         (L2_file, cal_file) = applier.apply(
