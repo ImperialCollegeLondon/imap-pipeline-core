@@ -33,10 +33,10 @@ class HKDecodedPathHandler(VersionedPathHandler, HKPathHandler):
         super()._check_property_values(
             "pattern", ["descriptor", "content_date", "extension"]
         )
-        assert self.content_date
+        assert self.descriptor and self.content_date
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{re.escape(self.descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod

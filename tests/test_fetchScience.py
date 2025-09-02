@@ -11,7 +11,6 @@ from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.io.file import SciencePathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 @pytest.fixture

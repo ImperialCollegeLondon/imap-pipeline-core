@@ -1,11 +1,14 @@
+import logging
 import os
+import shutil
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from imap_mag.appLogging import AppLogging
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import DatetimeProvider, Environment
 
 NOW = datetime(2025, 6, 2, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -16,6 +19,10 @@ END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
 DATASTORE = Path("tests/datastore")
+TEST_DATA = Path("tests/test_data")
+TEST_TRUTH = Path("tests/test_truth")
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=False)
@@ -27,18 +34,34 @@ def enableLogging():
         logfile_file="debug",
         logfile_log_level="debug",
         logfile_log_color=False,
-        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s",
-        console_log_line_template="%(color_on)s%(message)s%(color_off)s",
+        log_line_template="%(color_on)s[%(asctime)s] [%(levelname)-5s] %(message)s%(color_off)s",
+        console_log_line_template="%(color_on)s[%(levelname)-5s] %(name)s %(message)s%(color_off)s",
     )
     yield
     AppLogging.reset_setup_flag()  # Reset logging setup after test
 
 
-@pytest.fixture(autouse=True)
-def tidyDataFolders():
+@pytest.fixture(
+    autouse=False,
+    scope="function",
+    params=[pytest.param("", marks=pytest.mark.xdist_group("datastore"))],
+)
+def preclean_work_and_output():
+    logger.info("Cleaning up work and output directories...")
     os.system("rm -rf .work")
     os.system("rm -rf output/*")
     yield
+
+
+@pytest.fixture(autouse=False, scope="function")
+def temp_datastore():
+    temp_datastore = Path(tempfile.mkdtemp())
+    shutil.copytree(DATASTORE, temp_datastore, dirs_exist_ok=True)
+
+    with Environment(MAG_DATA_STORE=str(temp_datastore)):
+        yield temp_datastore
+
+    shutil.rmtree(temp_datastore, ignore_errors=True)
 
 
 @pytest.fixture(autouse=False)
@@ -67,3 +90,13 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
         file_path.write_text(content)
 
     return file_path
+
+
+def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None = None):
+    if not new_filename:
+        new_filename = src_file.name
+
+    shutil.copy(
+        src_file,
+        dest_folder / new_filename,
+    )

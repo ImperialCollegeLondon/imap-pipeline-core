@@ -7,18 +7,12 @@ from prefect.runtime import flow_run
 from pydantic import Field
 
 from imap_mag.cli.fetch.binary import fetch_binary
+from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import HKBinaryPathHandler
-from imap_mag.util import (
-    CONSTANTS,
-    DatetimeProvider,
-    Environment,
-    HKPacket,
-    MAGPacket,
-    get_dates_for_download,
-)
+from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, HKPacket, MAGPacket
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
@@ -125,18 +119,17 @@ async def poll_hk_flow(
     use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:
-        packet_name = packet.packet
+        progress_item_id = packet.packet
         packet_start_timestamp = DatetimeProvider.now()
 
-        logger.info(f"---------- Downloading Packet {packet_name} ----------")
+        logger.info(f"---------- Downloading Packet {progress_item_id} ----------")
 
-        packet_dates = get_dates_for_download(
-            packet_name=packet_name,
-            database=database,
+        date_manager = DownloadDateManager(progress_item_id, database)
+
+        packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
             original_end_date=end_date,
             validate_with_database=use_database,
-            logger=logger,
         )
 
         if packet_dates is None:
@@ -160,7 +153,7 @@ async def poll_hk_flow(
             process(files, save_mode=SaveMode.LocalAndDatabase)
         else:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
+                f"No data downloaded for {progress_item_id} from {packet_start_date} to {packet_end_date}."
             )
 
         # Update database with latest content date as progress (for HK)
@@ -175,13 +168,12 @@ async def poll_hk_flow(
             )
 
             update_database_with_progress(
-                packet_name=packet_name,
+                progress_item_id=progress_item_id,
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ert_timestamp,
-                logger=logger,
             )
         else:
-            logger.info(f"Database not updated for {packet_name}.")
+            logger.info(f"Database not updated for {progress_item_id}.")
 
     logger.info("---------- Finished ----------")

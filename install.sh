@@ -12,7 +12,7 @@ then
 fi
 
 # install using pipx for nice clean isolation
-python3 -m pip install --user pipx
+python -m pip install --user pipx
 
 # use the tar file in the dist folder (assumes you already ran build-all.sh) to install the TOOL CLI as a global tool
 pipx install --python $TOOL_PYTHON_VERSION dist/$TOOL_PYTHON_VERSION/$TOOL_PACKAGE

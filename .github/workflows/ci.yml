@@ -4,10 +4,11 @@ on:
   push:
     paths-ignore:
       - "README**"
-    branches:
-      - "**"
     tags:
       - "v*"
+    branches:
+      - "main"
+      - "rel/*"
   pull_request:
     branches:
       - "*"
@@ -31,8 +32,10 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: "3.12"
+  CALIBRATION_TAG: "task/split-layer-csv"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
+  PYTEST_XDIST_AUTO_NUM_WORKERS : "2"
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -43,7 +46,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python-versions: ["3.10", "3.11", "3.12"]
+        python-versions: ["3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -91,11 +94,8 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v2
-
-      - name: build
-        run: ./build.sh
+      - name: build --skip-tests
+        run: ./build.sh --skip-tests
 
       - name: Build wheels and source tarball
         run: ./pack.sh
@@ -127,7 +127,7 @@ jobs:
             # use custom value instead of git tag
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }}
             # set latest tag for default branch
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
             # branch event
             type=ref,event=branch
             # pull request event
@@ -156,17 +156,56 @@ jobs:
           path: dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
           if-no-files-found: error
 
+      - name: Create Release ${{github.ref_name}} & upload artifacts
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
+
+  tests:
+    strategy:
+      matrix:
+        python-versions: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-versions }}
+      - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
+        uses: actions/checkout@v4
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        with:
+          path: ${{ env.CALIBRATION_CODE_LOCATION}}
+          sparse-checkout: |
+            +calibration
+            +general
+            external-packages
+          repository: ${{ vars.CALIBRATION_REPO }}
+          ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
+          ref: ${{ env.CALIBRATION_TAG }}
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+      - name: Run Tests
+        run: |
+            python -m pip install poetry
+            ./build.sh
+
       - name: Upload Coverage report
         uses: actions/upload-artifact@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
-          name: CoverageReport_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
+          name: CoverageReport_python${{matrix.python-versions}}
           path: htmlcov
           if-no-files-found: error
 
       - name: Test Report
         uses: dorny/test-reporter@v2
-        if: success() || failure()
+        if:  ${{ !cancelled() }} && ${{ hashFiles('test-results.xml') != '' }}
         with:
           name: Test Results (${{ matrix.python-versions }})
           path: "test-results.xml"
@@ -180,20 +219,10 @@ jobs:
           path: "coverage.xml"
           minimum_coverage: 80
 
-      - name: Create Release ${{github.ref_name}} & upload artifacts
-        uses: softprops/action-gh-release@v2
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        with:
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: |
-            dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
-
   matlab-build:
     strategy:
       matrix:
-        python-versions: ["3.10", "3.11", "3.12"]
+        python-versions: ["3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -202,7 +231,22 @@ jobs:
       package_name: ${{ env.PACKAGE_NAME }}
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # builds fail with not enough space - needs more than the default 16GB!! in GH Actions default runners
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            # this might remove tools that are actually needed,
+            # if set to "true" but frees about 6 GB
+            tool-cache: true
+
+            # Each of these frees more space, takes more time
+            android: false
+            dotnet: false
+            haskell: false
+            large-packages: false
+            docker-images: false
+            swap-storage: false
+
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -243,16 +287,18 @@ jobs:
 
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
         uses: actions/checkout@v4
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         with:
           path: ${{ env.CALIBRATION_CODE_LOCATION}}
           sparse-checkout: |
             +calibration
             +general
+            external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          rev: v0.1.1
+          ref: ${{ env.CALIBRATION_TAG }}
 
-      - name: build
+      - name: build --skip-tests
         run: ./build.sh --skip-tests
 
       - name: Build wheels and source tarball
@@ -285,11 +331,11 @@ jobs:
             # use custom value instead of git tag,prefix=matlab-
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }},prefix=matlab-
             # set latest tag for default branch
-            type=raw,value=latest,prefix=matlab-
+            type=raw,value=latest,prefix=matlab-,enable={{is_default_branch}}
             # branch event
             type=ref,event=branch,prefix=matlab-
             # pull request event
-            type=ref,event=pr,prefix=matlab-
+            type=ref,event=pr,prefix=matlab-pr-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -302,129 +348,3 @@ jobs:
             ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
           cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
-
-  test_on_windows:
-    strategy:
-      matrix:
-        python-versions: ["3.10", "3.11", "3.12"]
-        os: [windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-versions }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
-
-      - name: Run tests
-        run: poetry run pytest -s --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
-
-      - name: Upload Coverage report
-        uses: actions/upload-artifact@v4
-        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
-        with:
-          name: CoverageReport_${{ matrix.os }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
-          path: htmlcov
-          if-no-files-found: error
-
-      - name: Test Report
-        uses: dorny/test-reporter@v2
-        if: success() || failure()
-        with:
-          name: Test Results (${{ matrix.os }}) (${{ matrix.python-versions }})
-          path: "test-results.xml"
-          reporter: java-junit
-
-  build_single_file_binary:
-    strategy:
-      matrix:
-        os: [linux, windows]
-        include:
-          - os: linux
-            image: batonogov/pyinstaller-linux:v4.7.2 # This is the version that supports Python 3.12
-            executable: imap-mag
-            folder: manylinux_2_36_x86_64
-          - os: windows
-            image: batonogov/pyinstaller-windows:v4.7.1 # This is the version that supports Python 3.12
-            executable: imap-mag.exe
-            folder: win_amd64
-
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PREFERED_PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-
-      - name: Set REVISION
-        run: echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Declare version variables for dev builds
-        id: variables_step_dev
-        run: |
-          # Override the version with a dev suffix because we are not on a tag. Tag builds pull version directly from pyproject.toml
-          poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
-          echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
-          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
-          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        shell: bash
-
-      - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
-        id: variables_step
-        run: |
-          echo "Version used by poetry: $(poetry version --short)"
-          echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
-          echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-        shell: bash
-
-      - uses: addnab/docker-run-action@v3
-        with:
-          registry: gcr.io
-          image: ${{ matrix.image }}
-          options: -v ${{ github.workspace }}:/src/
-          run: |
-            python -m pip install poetry
-            python -m poetry self add poetry-pyinstaller-plugin
-            python -m poetry install
-            python -m poetry build
-            if [ ! -f dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }} ]
-            then
-                echo "Cannot find dist/pyinstaller/${{ matrix.folder }}/${{ matrix.executable }}"
-                exit 1
-            fi
-
-      - name: Zip up the binary
-        run: |
-          sudo chown -R $(whoami):$(whoami) .
-          cp pyinstaller/${{ matrix.folder }}/${{ matrix.executable}} .
-          zip -r ${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip  ${{ matrix.executable }}
-          echo "PACKAGE_ZIP=${{ env.PACKAGE_NAME }}_${{ matrix.executable }}_v${{ env.PACKAGE_VERSION }}.zip" >> $GITHUB_ENV
-        working-directory: dist
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PACKAGE_ZIP }}
-          path: dist/${{ env.PACKAGE_ZIP }}
-          if-no-files-found: error
-
-      - name: Upload artifacts to release (tagged only))
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: |
-            dist/${{ env.PACKAGE_ZIP }}

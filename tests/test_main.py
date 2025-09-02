@@ -12,7 +12,11 @@ import pytest
 from typer.testing import CliRunner
 
 from imap_mag.main import app
-from tests.util.miscellaneous import DATASTORE, tidyDataFolders  # noqa: F401
+from tests.util.miscellaneous import (  # noqa: F401
+    DATASTORE,
+    TEST_DATA,
+    temp_datastore,
+)
 
 runner = CliRunner()
 
@@ -28,16 +32,21 @@ def test_app_says_hello():
     "binary_file, output_file",
     [
         (
-            "tests/test_data/MAG_HSK_PW.pkts",
-            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
+            str(TEST_DATA / "MAG_HSK_PW.pkts"),
+            "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
         (
             "imap_mag_l0_hsk-pw_20250502_001.pkts",
-            DATASTORE / "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
+            "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.csv",
         ),
     ],
 )
-def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
+def test_process_with_binary_hk_converts_to_csv(
+    binary_file,
+    output_file,
+    temp_datastore,  # noqa: F811
+    dynamic_work_folder,
+):
     # Set up.
     expectedHeader = "epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,hk_strucid,p1v5v,p1v8v,p3v3v,p2v5v,p8v,n8v,icu_temp,p2v4v,p1v5i,p1v8i,p3v3i,p2v5i,p8vi,n8vi,fob_temp,fib_temp,magosatflagx,magosatflagy,magosatflagz,magisatflagx,magisatflagy,magisatflagz,spare1,magorange,magirange,spare2,magitfmisscnt,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len\n"
     expectedFirstLine = "799424368184000000,483848304,0,1,0,3,25,3,1.52370834,1.82973516,3.3652049479999997,2.54942028,9.735992639,-9.7267671632,19.470153600000003,2.36297684,423.7578925213,18.436028516,116.40531765999998,87.2015252,119.75070000000001,90.32580000000002,19.640128302955475,19.482131117873905,NotSaturated,NotSaturated,NotSaturated,NotSaturated,NotSaturated,NotSaturated,0,RANGE0,RANGE0,0,0,0,0,1,1063,3,0,43\n"
@@ -52,25 +61,24 @@ def test_process_with_binary_hk_converts_to_csv(binary_file, output_file):
             binary_file,
         ],
         env={
-            "MAG_DATA_STORE": str(DATASTORE),
+            "MAG_DATA_STORE": str(temp_datastore),
         },
     )
 
     print("\n" + str(result.stdout))
 
     # Verify.
-    try:
-        assert result.exit_code == 0
-        assert output_file.exists()
+    output_file = temp_datastore / output_file
 
-        with open(output_file) as f:
-            lines = f.readlines()
-            assert expectedHeader == lines[0]
-            assert expectedFirstLine == lines[1]
-            assert expectedLastLine == lines[-1]
-            assert expectedNumRows == len(lines)
-    finally:
-        output_file.unlink(missing_ok=True)
+    assert result.exit_code == 0
+    assert output_file.exists()
+
+    with open(output_file) as f:
+        lines = f.readlines()
+        assert expectedHeader == lines[0]
+        assert expectedFirstLine == lines[1]
+        assert expectedLastLine == lines[-1]
+        assert expectedNumRows == len(lines)
 
 
 def test_process_error_with_unsupported_file_type():
@@ -107,7 +115,7 @@ def test_process_error_with_unsupported_file_type():
 )
 def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     # Set up.
-    binary_file = os.path.abspath("tests/test_data/MAG_HSK_PW.pkts")
+    binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
@@ -169,7 +177,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 )
 def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     # Set up.
-    binary_file = os.path.abspath("tests/test_data/MAG_HSK_PW.pkts")
+    binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?ert%3E=2025-06-02T00:00:00&ert%3C2025-06-03T00:00:00&project(packet)",
@@ -243,7 +251,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/test_data/imap_mag_l1b_norm-mago_20250502_v001.cdf"
+        str(TEST_DATA / "imap_mag_l1b_norm-mago_20250502_v001.cdf")
     )
 
     wiremock_manager.add_string_mapping(
@@ -324,7 +332,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         }
     ]
     cdf_file = os.path.abspath(
-        "tests/test_data/imap_mag_l1b_norm-mago_20250502_v001.cdf"
+        str(TEST_DATA / "imap_mag_l1b_norm-mago_20250502_v001.cdf")
     )
 
     wiremock_manager.add_string_mapping(

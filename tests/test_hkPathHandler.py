@@ -7,7 +7,6 @@ from imap_mag.io.file import (
     HKDecodedPathHandler,
 )
 from imap_mag.util import HKLevel, HKPacket
-from tests.util.miscellaneous import tidyDataFolders  # noqa: F401
 
 
 def test_hk_binary_path_handler_is_l0_only():

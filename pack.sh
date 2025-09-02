@@ -6,13 +6,14 @@ set -e
 # if the folder ".venv" exists
 if [ -d ".venv" ]; then
     #load the python virtual environment
+    echo "Loading virtual env in .venv"
     source .venv/bin/activate
 fi
 
 # you can set version with command "poetry version 1.2.3 before this, otherwise we just take it from the pyproject.toml file"
-PYTHON_VERSION="$(python3 -c 'import sys; print (f"{sys.version_info.major}.{sys.version_info.minor}")')"
+PYTHON_VERSION="$(python -c 'import sys; print (f"{sys.version_info.major}.{sys.version_info.minor}")')"
 OUTPUT_DIST_FOLDER=dist/python$PYTHON_VERSION
-echo "Packing version $(poetry version --short) for $(python3 --version) into $OUTPUT_DIST_FOLDER"
+echo "Packing version $(poetry version --short) for $(python --version) into $OUTPUT_DIST_FOLDER"
 poetry lock
 poetry build
 

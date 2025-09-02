@@ -7,7 +7,7 @@
         "editor.formatOnSave": true
     },
     "python.testing.pytestArgs": [
-        "tests"
+        "-s", "tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
@@ -29,5 +29,6 @@
             "database": "imap",
             "username": "postgres"
         }
-    ]
+    ],
+    "python-envs.pythonProjects": []
 }

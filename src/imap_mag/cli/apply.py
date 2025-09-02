@@ -18,7 +18,7 @@ from imap_mag.io.file import (
     SciencePathHandler,
 )
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationApplicator
+from mag_toolkit.calibration import CalibrationApplicator, CalibrationLayer
 
 logger = logging.getLogger(__name__)
 
@@ -29,29 +29,46 @@ class FileType(Enum):
     JSON = "json"
 
 
-def prepare_layers_for_application(layers, appSettings):
+# TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
+def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
     datastore_finder = DatastoreFileFinder(appSettings.data_store)
     work_layers = []
     for layer in layers:
-        cal_layer_handler = CalibrationLayerPathHandler.from_filename(layer)
-        if not cal_layer_handler:
-            logger.error(f"Could not parse metadata from calibration layer: {layer}")
-            raise ValueError(
-                f"Could not parse metadata from calibration layer: {layer}"
+        cal_handler = CalibrationLayerPathHandler.from_filename(layer)
+        if not cal_handler:
+            logger.error(
+                f"Could not parse metadata from calibration metadata file: {layer}"
             )
-        versioned_cal_file = datastore_finder.find_matching_file(
-            path_handler=cal_layer_handler,
+            raise ValueError(
+                f"Could not parse metadata from calibration metadata file: {layer}"
+            )
+
+        versioned_layer_file: Path = datastore_finder.find_matching_file(
+            path_handler=cal_handler,
             throw_if_not_found=True,
         )
 
         work_layers.append(
             fetch_file_for_work(
-                versioned_cal_file, appSettings.work_folder, throw_if_not_found=True
+                versioned_layer_file,
+                appSettings.work_folder,
+                throw_if_not_found=True,
             )
         )
+
+        # Get data file
+        cal_layer = CalibrationLayer.from_file(versioned_layer_file)
+
+        if cal_layer.metadata.data_filename:
+            fetch_file_for_work(
+                versioned_layer_file.parent / cal_layer.metadata.data_filename,
+                appSettings.work_folder,
+                throw_if_not_found=True,
+            )
+
     return work_layers
 
 
@@ -118,6 +135,8 @@ def apply(
         throw_if_not_found=True,
     )
 
+    logger.info(f"Applying layers to input file {versioned_file}")
+
     workDataFile: Path = fetch_file_for_work(
         versioned_file, app_settings.work_folder, throw_if_not_found=True
     )
@@ -153,15 +172,18 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    (L2_file, cal_file) = applier.apply(
-        workLayers, workRotationFile, workDataFile, workCalFile, workL2File
-    )
-
     outputManager = OutputManager(app_settings.data_store)
 
-    outputManager.add_file(L2_file, l2_path_handler)
-    outputManager.add_file(cal_file, cal_path_handler)
+    if layers:
+        (L2_file, cal_file) = applier.apply(
+            workLayers, workRotationFile, workDataFile, workCalFile, workL2File
+        )
 
-
-def publish():
-    pass
+        outputManager.add_file(L2_file, l2_path_handler)
+        outputManager.add_file(cal_file, cal_path_handler)
+    elif workRotationFile:
+        L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
+        outputManager.add_file(L2_file, l2_path_handler)
+    else:
+        logger.error("No calibration layers or rotation file provided.")
+        raise ValueError("No calibration layers or rotation file provided.")

@@ -82,7 +82,7 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
+# pyenv/uv
 .python-version
 
 # pipenv
@@ -132,7 +132,11 @@ dmypy.json
 # mkdocs build dir
 site/
 
+# Windows
+*:Zone.Identifier
+
 .work
 /output
+src/matlab
 dev.env
 debug

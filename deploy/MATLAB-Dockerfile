@@ -19,9 +19,6 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 
 ARG ADDITIONAL_PRODUCTS="Statistics_and_Machine_Learning_Toolbox Control_System_Toolbox Mapping_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox Communications_Toolbox"
 
-ARG MATLAB_CDF_PATCH="https://spdf.gsfc.nasa.gov/pub/software/cdf/dist/latest/matlab/matlab_cdf391_lin64.tar.gz"
-ARG MATLAB_MICE="https://naif.jpl.nasa.gov/pub/naif/toolkit//MATLAB/PC_Linux_GCC_MATLAB9.x_64bit/packages/mice.tar.Z"
-
 # Change matlab user id to chosen id so it has the specified access
 RUN usermod -u ${IMAP_USERID} matlab
 
@@ -38,20 +35,6 @@ RUN wget -q https://www.mathworks.com/mpm/glnxa64/mpm \
     && sudo rm -rf mpm /tmp/mathworks_root.log
 
 RUN dirname $(dirname $(readlink -f $(which matlab)))
-
-RUN mkdir -p /home/matlab/Documents/MATLAB/Libraries/CDFPatch \
-    && wget -q ${MATLAB_CDF_PATCH} -O cdfpatch.tar.gz \
-    && tar zxvf cdfpatch.tar.gz -C /home/matlab/Documents/MATLAB/Libraries/CDFPatch \
-    && rm cdfpatch.tar.gz
-
-RUN mkdir -p /home/matlab/Documents/MATLAB/Libraries/MICE \
-    && wget -q ${MATLAB_MICE} -O mice.tar.gz \
-    && tar zxvf mice.tar.gz -C /home/matlab/Documents/MATLAB/Libraries/MICE \
-    && rm mice.tar.gz
-
-ARG SRC_DIR="src/matlab"
-
-COPY ${SRC_DIR}/ /home/matlab/Documents/MATLAB/
 
 # For more information, please refer to https://aka.ms/vscode-docker-python
 
@@ -79,11 +62,11 @@ USER ${IMAP_USERNAME}
 
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
-RUN python3 -m pip install --user --no-deps -r requirements.txt
+RUN python -m pip install --user --no-deps -r requirements.txt
 
 # now install the imap-mag package as the user
 COPY dist/python${PYTHON_VERSION}/${TOOL_PACKAGE} python${PYTHON_VERSION}/
-RUN python3 -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
+RUN python -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
 
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
@@ -92,12 +75,11 @@ ARG IMAP_USERNAME="imap_pipeline"
 ARG IMAP_USERID=5679
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
-COPY --from=matlab_install /home/matlab/Documents/MATLAB /home/matlab/Documents/MATLAB
 
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
 
-RUN apt-get update && apt-get install -y libxt6 libgdk-pixbuf2.0-0
+RUN apt-get update && apt-get install -y libxt6 libgdk-pixbuf-2.0-0
 
 RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} && \
     chown -R ${IMAP_USERNAME} /app && \

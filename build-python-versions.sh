@@ -9,16 +9,16 @@ rm -rf $OUTPUT_DIR
 mkdir "$OUTPUT_DIR"
 
 # iterate over an array of python versions and build each one
-for version in 3.10 3.11 3.12
+for version in 3.10 3.11 3.12 3.13
 do
     PACK_OUTPUT_FOLDER="$OUTPUT_DIR/python$version"
     # apply the version to the current shell
-    pyenv local $version
+    uv python pin $version
     poetry env use python$version
     mkdir $PACK_OUTPUT_FOLDER
 
     # build it
-    bash build.sh
+    bash build.sh "$@"
     bash pack.sh
 
     # copy output to a child folder for this version

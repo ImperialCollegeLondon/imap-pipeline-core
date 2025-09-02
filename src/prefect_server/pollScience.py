@@ -6,6 +6,7 @@ from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
 from pydantic import Field
 
+from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
@@ -17,7 +18,6 @@ from imap_mag.util import (
     ReferenceFrame,
     ScienceLevel,
     ScienceMode,
-    get_dates_for_download,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
@@ -138,22 +138,21 @@ async def poll_science_flow(
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     for mode in modes:
-        packet_name = mode.packet
         packet_start_timestamp = DatetimeProvider.now()
-        database_name = f"{packet_name}_{level.value.upper()}"
+        progress_item_id = f"{mode.packet}_{level.value.upper()}"
 
-        logger.info(f"---------- Downloading Packet {packet_name} ----------")
+        logger.info(f"---------- Downloading Packet {mode.packet} ----------")
 
-        packet_dates = get_dates_for_download(
-            packet_name=database_name,
-            database=database,
+        date_manager = DownloadDateManager(progress_item_id, database)
+
+        packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
             original_end_date=end_date,
             validate_with_database=use_database,
-            logger=logger,
         )
 
         if packet_dates is None:
+            logger.info(f"No dates for download of {progress_item_id} - skipping")
             continue
         else:
             (packet_start_date, packet_end_date) = packet_dates
@@ -172,7 +171,7 @@ async def poll_science_flow(
 
         if not downloaded_science:
             logger.info(
-                f"No data downloaded for packet {packet_name} from {packet_start_date} to {packet_end_date}."
+                f"No data downloaded for packet {mode.packet} from {packet_start_date} to {packet_end_date}."
             )
 
         # Update database with latest ingestion date as progress (for science)
@@ -187,13 +186,16 @@ async def poll_science_flow(
             )
 
             update_database_with_progress(
-                packet_name=database_name,
+                progress_item_id=progress_item_id,
                 database=database,
                 checked_timestamp=packet_start_timestamp,
                 latest_timestamp=latest_ingestion_date,
-                logger=logger,
             )
         else:
-            logger.info(f"Database not updated for {packet_name}.")
+            logger.info(f"Database not updated for {progress_item_id}.")
+
+        logger.info(
+            f"---------- Finished downloading Packet {progress_item_id} ----------"
+        )
 
     logger.info("---------- Finished ----------")

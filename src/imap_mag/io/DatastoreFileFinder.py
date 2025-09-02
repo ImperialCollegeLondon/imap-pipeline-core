@@ -3,10 +3,12 @@ import logging
 from pathlib import Path
 from typing import Literal, overload
 
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
-from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
-from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
-from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.io.file import (
+    IFilePathHandler,
+    PartitionedPathHandler,
+    SequenceablePathHandler,
+    VersionedPathHandler,
+)
 
 logger = logging.getLogger(__name__)
 

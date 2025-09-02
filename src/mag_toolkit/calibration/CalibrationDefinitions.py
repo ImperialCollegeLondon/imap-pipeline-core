@@ -1,5 +1,6 @@
 from abc import ABC
 from enum import Enum
+from pathlib import Path
 from typing import Annotated
 
 import numpy as np
@@ -44,13 +45,17 @@ class CONSTANTS:
         IS_MAGO = "is_mago"
 
     class CSV_VARS:
-        EPOCH = "epoch"
+        EPOCH = "time"
         X = "x"
         Y = "y"
         Z = "z"
+        OFFSET_X = "offset_x"
+        OFFSET_Y = "offset_y"
+        OFFSET_Z = "offset_z"
         MAGNITUDE = "magnitude"
         RANGE = "range"
-        QUALITY_FLAGS = "quality_flags"
+        TIMEDELTA = "timedelta"
+        QUALITY_FLAG = "quality_flag"
         QUALITY_BITMASK = "quality_bitmask"
 
 
@@ -58,12 +63,31 @@ class ArbitraryTypesAllowedBaseModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class CalibrationMethod(str, Enum):
-    KEPKO = "Kepko"
-    LEINWEBER = "Leinweber"
-    IMAPLO_PIVOT = "IMAP-Lo Pivot Platform Interference"
-    NOOP = "noop"
-    SUM = "Sum of other calibrations"
+class CalibrationMethod(Enum):
+    def __init__(self, short_name: str, long_name: str) -> None:
+        super().__init__()
+
+        # Typer does not support Enums with tuple values,
+        # so we need to overwrite the value with a string name
+        self._value_ = short_name
+
+        self.short_name = short_name
+        self.long_name = long_name
+
+    KEPKO = "kepko", "Kepko"
+    LEINWEBER = "leinweber", "Leinweber"
+    IMAPLO_PIVOT = "imaplo", "IMAP-Lo Pivot Platform Interference"
+    GRADIOMETER = "gradiometer", "Gradiometer"
+    NOOP = "noop", "noop"
+    SUM = "sum", "Sum of other calibrations"
+
+    @classmethod
+    def from_string(cls, name: str) -> "CalibrationMethod":
+        for method in cls:
+            if method.short_name == name or method.long_name == name:
+                return method
+
+        raise ValueError(f"Unknown calibration method: {name}")
 
 
 class Sensor(str, Enum):
@@ -73,6 +97,7 @@ class Sensor(str, Enum):
 
 class ValueType(str, Enum):
     VECTOR = "vector"
+    INTERPOLATION_POINTS = "interpolation_points"
 
 
 class Mission(str, Enum):
@@ -88,6 +113,7 @@ def serialize_dt(dt: np.datetime64, _info):
 
 
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
+    data_filename: Path | None = None
     dependencies: list[str]
     science: list[str]
     creation_timestamp: Annotated[

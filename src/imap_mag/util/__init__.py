@@ -1,11 +1,6 @@
 from imap_mag.util.CCSDSBinaryPacketFile import CCSDSBinaryPacketFile
 from imap_mag.util.constants import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from imap_mag.util.DownloadDateManager import (
-    DownloadDateManager,
-    force_utc_timezone,
-    get_dates_for_download,
-)
 from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket, ILOPacket, MAGPacket, SpacecraftPacket
 from imap_mag.util.IMAPInstrument import IMAPInstrument
@@ -19,7 +14,6 @@ __all__ = [
     "CONSTANTS",
     "CCSDSBinaryPacketFile",
     "DatetimeProvider",
-    "DownloadDateManager",
     "Environment",
     "HKLevel",
     "HKPacket",
@@ -32,6 +26,4 @@ __all__ = [
     "ScienceMode",
     "SpacecraftPacket",
     "TimeConversion",
-    "force_utc_timezone",
-    "get_dates_for_download",
 ]

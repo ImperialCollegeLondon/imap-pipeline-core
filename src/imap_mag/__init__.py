@@ -1,6 +1,9 @@
 """The main module for project."""
 
+import logging
 from importlib.metadata import PackageNotFoundError, version
+
+logging.getLogger("imap-mag").setLevel(logging.INFO)
 
 
 def get_version() -> str:

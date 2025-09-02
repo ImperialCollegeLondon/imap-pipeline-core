@@ -1,7 +1,9 @@
-from .Calibrator import Calibrator
-from .EmptyCalibrator import EmptyCalibrator
+from .CalibrationJob import CalibrationJob
+from .EmptyCalibration import EmptyCalibrationJob
+from .GradiometerCalibration import GradiometerCalibrationJob
 
 __all__ = [
-    "Calibrator",
-    "EmptyCalibrator",
+    "CalibrationJob",
+    "EmptyCalibrationJob",
+    "GradiometerCalibrationJob",
 ]

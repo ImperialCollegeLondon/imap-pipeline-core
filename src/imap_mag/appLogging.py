@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # -------------------------------------------------------------------------------
 #                                                                               -
@@ -77,6 +77,16 @@ class AppLogging:
         # for logging throughout the script. An alternative would be exporting
         # the logger, i.e. 'global logger; logger = logging.getLogger("<name>")'
         logger = logging.getLogger()
+
+        # only want to reconfigure logging if we are on the CLI not in tests or under prefect
+        handler_types = [
+            type(handler).__module__ + "." + type(handler).__name__
+            for handler in logger.handlers
+        ]
+        if any(
+            "prefect.logging" in handler_type for handler_type in handler_types
+        ) or any("_pytest.logging" in handler_type for handler_type in handler_types):
+            return True
 
         # Set global log level to 'debug' (required for handler levels to work)
         logger.setLevel(logging.DEBUG)

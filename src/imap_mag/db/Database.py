@@ -3,10 +3,10 @@ import logging
 import os
 from datetime import datetime
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from imap_db.model import Base, DownloadProgress, File
+from imap_db.model import Base, File, WorkflowProgress
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +44,12 @@ class Database:
                     value = func(self, *args, **kwargs)
 
                     session.commit()
+                    logger.info("Database session committed.")
 
                     return value
                 except Exception as e:
                     session.rollback()
+                    logger.error(f"Database session rolled back due to error: {e}")
                     raise e
                 finally:
                     session.close()
@@ -90,17 +92,43 @@ class Database:
         session = self.__get_active_session()
         return session.query(File).filter(*args).filter_by(**kwargs).all()
 
-    @__session_manager(expire_on_commit=False)
-    def get_download_progress(self, item_name: str) -> DownloadProgress:
-        session = self.__get_active_session()
-        download_progress = (
-            session.query(DownloadProgress).filter_by(item_name=item_name).first()
+    def get_files_since(
+        self, last_modified_date: datetime, how_many: int | None = None
+    ) -> list[File]:
+        statement = (
+            select(File)
+            .where(
+                File.last_modified_date > last_modified_date,
+                File.deletion_date.is_(None),
+            )
+            .order_by(File.last_modified_date)
         )
 
-        if download_progress is None:
-            download_progress = DownloadProgress(item_name=item_name)
+        if how_many is not None:
+            statement = statement.limit(how_many)
 
-        return download_progress
+        logger.debug(f"Executing SQL statement: {statement}")
+
+        return list(self.session().execute(statement).scalars().all())
+
+    @__session_manager(expire_on_commit=False)
+    def get_workflow_progress(self, item_name: str) -> WorkflowProgress:
+        session = self.__get_active_session()
+        workflow_progress = (
+            session.query(WorkflowProgress).filter_by(item_name=item_name).first()
+        )
+
+        if workflow_progress is None:
+            workflow_progress = WorkflowProgress(item_name=item_name)
+
+        return workflow_progress
+
+    def get_all_workflow_progress(self) -> list[WorkflowProgress]:
+        statement = select(WorkflowProgress).order_by(
+            WorkflowProgress.progress_timestamp.desc()
+        )
+
+        return list(self.session().execute(statement).scalars().all())
 
     @__session_manager()
     def save(self, model: Base) -> None:
@@ -109,26 +137,27 @@ class Database:
 
 
 def update_database_with_progress(
-    packet_name: str,
+    progress_item_id: str,
     database: Database,
     checked_timestamp: datetime,
     latest_timestamp: datetime | None,
-    logger: logging.Logger | logging.LoggerAdapter,
 ) -> None:
-    download_progress = database.get_download_progress(packet_name)
+    workflow_progress = database.get_workflow_progress(progress_item_id)
 
     logger.debug(
-        f"Latest downloaded timestamp for packet {packet_name} is {latest_timestamp}."
+        f"Latest downloaded timestamp for packet {progress_item_id} is {latest_timestamp}."
     )
 
-    download_progress.record_checked_download(checked_timestamp)
+    workflow_progress.record_checked_download(checked_timestamp)
 
     if latest_timestamp and (
-        (download_progress.progress_timestamp is None)
-        or (latest_timestamp > download_progress.progress_timestamp)
+        (workflow_progress.progress_timestamp is None)
+        or (latest_timestamp > workflow_progress.progress_timestamp)
     ):
-        download_progress.record_successful_download(latest_timestamp)
+        workflow_progress.record_successful_download(latest_timestamp)
     else:
-        logger.info(f"Database not updated for {packet_name} as no new data available.")
+        logger.info(
+            f"Database not updated for {progress_item_id} as no new data available."
+        )
 
-    database.save(download_progress)
+    database.save(workflow_progress)

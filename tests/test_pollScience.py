@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.util import Environment, ScienceMode
 from prefect_server.pollScience import poll_science_flow
@@ -19,9 +20,8 @@ from tests.util.miscellaneous import (
     YESTERDAY,
     create_test_file,
     mock_datetime_provider,  # noqa: F401
-    tidyDataFolders,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 
 
 def get_database_id_from_mode(mode: ScienceMode) -> str:
@@ -94,22 +94,22 @@ def define_unavailable_data_sdc_mappings(wiremock_manager):
 
 def verify_not_requested_modes(database, not_requested_modes: list[ScienceMode]):
     for mode in not_requested_modes:
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() is None
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() is None
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_not_available_modes(database, not_available_modes: list[ScienceMode]):
     for mode in not_available_modes:
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() is None
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() is None
 
 
 def verify_available_modes(
@@ -120,21 +120,22 @@ def verify_available_modes(
 ):
     for mode in available_modes:
         # Database.
-        download_progress = database.get_download_progress(
+        workflow_progress = database.get_workflow_progress(
             get_database_id_from_mode(mode)
         )
 
-        assert download_progress.get_last_checked_date() == NOW
-        assert download_progress.get_progress_timestamp() == ingestion_timestamp
+        assert workflow_progress.get_last_checked_date() == NOW
+        assert workflow_progress.get_progress_timestamp() == ingestion_timestamp
 
     # Files.
     check_file_existence(available_modes, actual_timestamp)
 
 
 def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: datetime):
+    datastore = AppSettings().data_store
     for mode in modes_to_check:
         data_folder = os.path.join(
-            "output/science/mag/l1c", actual_timestamp.strftime("%Y/%m")
+            datastore, "science/mag/l1c", actual_timestamp.strftime("%Y/%m")
         )
         cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_v000.cdf"
 
@@ -150,6 +151,7 @@ async def test_poll_science_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    clean_datastore,
 ):
     # Set up.
     ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
@@ -195,6 +197,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    clean_datastore,
 ):
     # Set up.
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -203,11 +206,11 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager.reset()
 
     # Some data is available for "today" for Normal mode.
-    download_progress = test_database.get_download_progress(
+    workflow_progress = test_database.get_workflow_progress(
         get_database_id_from_mode(ScienceMode.Normal)
     )
-    download_progress.record_successful_download(progress_timestamp)
-    test_database.save(download_progress)
+    workflow_progress.record_successful_download(progress_timestamp)
+    test_database.save(workflow_progress)
 
     define_available_data_sdc_mappings(
         wiremock_manager,
@@ -250,6 +253,8 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     mock_datetime_provider,  # noqa: F811
     force_database_update,
     capture_cli_logs,
+    clean_datastore,
+    dynamic_work_folder,
 ):
     # Set up.
     start_date = datetime(2025, 4, 1)
