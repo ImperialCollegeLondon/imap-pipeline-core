@@ -83,9 +83,8 @@ class HKProcessor(FileProcessor):
         # Load data for each ApID.
         datastore_data = self.__load_datastore_data(input_data)
 
-        # If original files are not in the datastore, load them.
-        # This data is loaded last, such that it overrides existing data with same APID-SHCOARSE-SEQCNT
-        # triplet, in case any new data is received.
+        # The new (input) data is added last, such that it overrides existing data with same
+        # APID-SHCOARSE-SEQCNT triplet, in case any new data is received.
         combined_data = datastore_data
 
         for apid, data in input_data.items():

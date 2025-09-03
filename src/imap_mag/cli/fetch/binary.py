@@ -35,7 +35,7 @@ def fetch_binary(
     ] = None,
     packet: Annotated[
         HKPacket | None,
-        typer.Option("--packet", help="Packet to download, e.g., SID1"),
+        typer.Option(case_sensitive=False, help="Packet to download, e.g., SID1"),
     ] = None,
     fetch_mode: Annotated[
         FetchMode,
