@@ -11,6 +11,7 @@ from mag_toolkit.calibration import (
     CalibrationValue,
     ScienceValue,
 )
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import TEST_DATA, copy_test_file
 
 
@@ -42,7 +43,10 @@ def verify_noop_20251017_results(datastore):
 
 
 def test_apply_produces_output_science_file_and_offsets_file_with_data(
-    temp_datastore, capture_cli_logs, dynamic_work_folder
+    temp_datastore,
+    capture_cli_logs,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
 ):
     apply(
         layers=["imap_mag_noop-layer_20251017_v001.json"],
@@ -58,7 +62,10 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
 
 
 def test_apply_works_with_metadata_files_containing_values(
-    temp_datastore, capture_cli_logs, dynamic_work_folder
+    temp_datastore,
+    capture_cli_logs,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
 ):
     # Set up.
     calibration_layer = "imap_mag_noop-layer_20251017_v002.json"
@@ -134,7 +141,9 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
 
 
 def test_apply_errors_on_metadata_incorrect_data_filename_format(
-    temp_datastore, dynamic_work_folder
+    temp_datastore,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
 ):
     # Set up.
     invalid_metadata_file = TEST_DATA / "metadata_file_no_metadata.json"
@@ -158,7 +167,11 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
         )
 
 
-def test_apply_performs_correct_rotation(dynamic_work_folder, temp_datastore):
+def test_apply_performs_correct_rotation(
+    dynamic_work_folder,
+    temp_datastore,
+    test_database,  # noqa: F811
+):
     copy_test_file(
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         temp_datastore / "science/mag/l1c/2025/10",
@@ -194,7 +207,11 @@ def test_apply_performs_correct_rotation(dynamic_work_folder, temp_datastore):
             assert vec == pytest.approx(correct_vec, rel=1e-6)
 
 
-def test_apply_adds_offsets_together_correctly(dynamic_work_folder, temp_datastore):
+def test_apply_adds_offsets_together_correctly(
+    dynamic_work_folder,
+    temp_datastore,
+    test_database,  # noqa: F811
+):
     for f in [
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
@@ -263,7 +280,11 @@ def test_simple_interpolation_calibration_values_apply_correctly():
     assert resulting_science[0].value == [1, 0, 0]
 
 
-def test_apply_writes_magnitudes_correctly(temp_datastore, dynamic_work_folder):
+def test_apply_writes_magnitudes_correctly(
+    temp_datastore,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
+):
     for f in [
         "imap_mag_four-vector-offsets-layer_20251017_v001.json",
         "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",

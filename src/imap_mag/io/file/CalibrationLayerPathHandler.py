@@ -31,6 +31,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
+    def get_date_for_indexing(self):
+        return self.content_date
+
     def get_filename(self) -> str:
         super()._check_property_values("file name", ["descriptor", "content_date"])
         assert self.content_date
