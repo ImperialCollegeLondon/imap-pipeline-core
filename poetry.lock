@@ -2697,23 +2697,20 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-docker"
-version = "0.6.2"
+version = "0.6.3"
 description = "Prefect integrations for interacting with Docker."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_docker-0.6.2-py3-none-any.whl", hash = "sha256:bae500ff0c18e3e1c55f2e79ec154bc1f8c8329fbe6a3726052dfb0fe38d7d4c"},
-    {file = "prefect_docker-0.6.2.tar.gz", hash = "sha256:405cdf2b266c7e1ffcb61f5b80c710401bc2eb5f25dcbccc195b0e5c86f5a421"},
+    {file = "prefect_docker-0.6.3-py3-none-any.whl", hash = "sha256:ceeabbc090a7bd3463696e9c707b92a9e15e37b6b49c7984b1abbb6bba37eb03"},
+    {file = "prefect_docker-0.6.3.tar.gz", hash = "sha256:1d06c9311f5860ea4eee2854e56565d7c56ae608d0b68d0b6ce0519863ab7e40"},
 ]
 
 [package.dependencies]
 docker = ">=6.1.1"
 exceptiongroup = "*"
-prefect = ">=3.0.0"
-
-[package.extras]
-dev = ["coverage", "interrogate", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "mypy", "pillow", "pre-commit", "pytest (>=8.3)", "pytest-asyncio", "pytest-env", "pytest-xdist"]
+prefect = ">=3.1.1"
 
 [[package]]
 name = "prefect-managedfiletransfer"
@@ -4673,4 +4670,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "d7ca69df164f81fd693759fa5d948045ce96164b91a274dca8f05e6c770ceb6f"
+content-hash = "1e313ea48e1c5d6b13000ee7c77ac2c16023bdfecccf5f42db3d11ee5bcec6f7"
