@@ -2,7 +2,7 @@ from imap_mag.util.CCSDSBinaryPacketFile import CCSDSBinaryPacketFile
 from imap_mag.util.constants import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Environment import Environment
-from imap_mag.util.HKPacket import HKPacket, ILOPacket, MAGPacket, SpacecraftPacket
+from imap_mag.util.HKPacket import HKPacket
 from imap_mag.util.IMAPInstrument import IMAPInstrument
 from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
@@ -17,13 +17,10 @@ __all__ = [
     "Environment",
     "HKLevel",
     "HKPacket",
-    "ILOPacket",
     "IMAPInstrument",
-    "MAGPacket",
     "MAGSensor",
     "ReferenceFrame",
     "ScienceLevel",
     "ScienceMode",
-    "SpacecraftPacket",
     "TimeConversion",
 ]

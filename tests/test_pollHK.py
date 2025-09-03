@@ -190,7 +190,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         HKPacket.SID11_PROCSTAT,
     ]
     not_available_hk: list[HKPacket] = list(
-        {p for p in HKPacket.all()}.difference(available_hk)
+        {p for p in HKPacket}.difference(available_hk)
     )
 
     wiremock_manager.reset()
@@ -367,7 +367,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
         )
 
     # Database should not be updated when non-ERT start and end dates are provided.
-    verify_not_requested_hk(test_database, [p for p in HKPacket.all()])
+    verify_not_requested_hk(test_database, [p for p in HKPacket])
 
 
 @pytest.mark.skipif(
@@ -403,7 +403,7 @@ async def test_poll_hk_specify_ert_start_end_dates(
 
     requested_hk: list[HKPacket] = available_hk + not_available_hk
     not_requested_hk: list[HKPacket] = list(
-        {p for p in HKPacket.all()}.difference(requested_hk)
+        {p for p in HKPacket}.difference(requested_hk)
     )
 
     wiremock_manager.reset()
@@ -521,7 +521,7 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 
     # Verify.
     progress_items = test_database.get_all_workflow_progress()
-    for hk in [p for p in HKPacket.all()]:
+    for hk in [p for p in HKPacket]:
         # find the matching progress item
         workflow_progress = next(
             (item for item in progress_items if item.item_name == hk.packet),

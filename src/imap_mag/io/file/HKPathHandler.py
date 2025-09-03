@@ -49,7 +49,7 @@ class HKPathHandler(IFilePathHandler):
 
         return {
             HKPathHandler.convert_packet_to_descriptor(hk.packet).partition("-")[0]
-            for hk in HKPacket.all()
+            for hk in HKPacket
         }
 
     @staticmethod
@@ -60,11 +60,16 @@ class HKPathHandler(IFilePathHandler):
         Steps:
             1. Convert to lowercase (MAG_HSK_PW -> mag_hsk_pw)
             2. Replace underscores with hyphens (mag_hsk_pw -> mag-hsk-pw)
-            3. Remove the prefix (mag-hsk-pw -> hsk-pw)
+            3. Remove the prefix, if present (mag-hsk-pw -> hsk-pw)
 
         Example:
             Input: 'MAG_HSK_PW'
             Output: 'hsk-pw'
         """
 
-        return packet.lower().replace("_", "-").partition("-")[2]
+        descriptor: str = packet.lower().replace("_", "-")
+
+        if descriptor.count("-") > 0:
+            return packet.lower().replace("_", "-").partition("-")[2]
+        else:
+            return descriptor

@@ -29,8 +29,23 @@ class CCSDSBinaryPacketFile:
             ]
         )
 
+    def get_apids(self) -> set[int]:
+        """Retrieve all ApIDs."""
+
+        apids: set[int] = set()
+
+        for packet_bytes in iter_packet_bytes(self.file, include_primary_header=True):
+            packet: dict | None = self.__load_bytes_with_definition(packet_bytes)
+
+            if packet is None:
+                continue
+
+            apids.update(packet["CCSDS_APID"])
+
+        return apids
+
     def get_days_by_apid(self) -> dict[int, set[date]]:
-        """Retrieve SCLK days for each APID."""
+        """Retrieve SCLK days for each ApID."""
 
         days_by_apid: dict[int, set[date]] = dict()
 

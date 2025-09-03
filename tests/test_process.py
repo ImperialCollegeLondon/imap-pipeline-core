@@ -23,7 +23,7 @@ def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
     work_folder = Path(tempfile.gettempdir())
 
     processor = HKProcessor(work_folder, DatastoreFileFinder(test_datastore))
-    processor.initialize(Path("xtce/tlm_20250804.xml"))
+    processor.initialize(Path("xtce"))
 
     return processor
 
@@ -295,10 +295,6 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     )
     assert (
         f"Found 1 ApIDs (1063) in {Path('tests/datastore/hk/mag/l0/hsk-pw/2025/10/imap_mag_l0_hsk-pw_20251017_001.pkts')}."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"Loading 1 new files that are not in the datastore:\n{Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
         in capture_cli_logs.text
     )
 

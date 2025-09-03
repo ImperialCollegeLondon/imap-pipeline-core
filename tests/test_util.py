@@ -5,16 +5,14 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from imap_mag.cli.fetch.DownloadDateManager import force_utc_timezone
-from imap_mag.util import (
-    HKPacket,
-)
+from imap_mag.util import HKPacket
 
 
 def test_name_all_packets() -> None:
     """Test listing all HK packets."""
     packets_list = HKPacket.names()
 
-    assert len(packets_list) == 43
+    assert len(packets_list) == 49
 
 
 def test_get_packet_from_apid_success() -> None:

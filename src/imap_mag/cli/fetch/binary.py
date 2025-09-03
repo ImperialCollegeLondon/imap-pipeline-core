@@ -33,8 +33,8 @@ def fetch_binary(
         int | None,
         typer.Option("--apid", help="ApID to download"),
     ] = None,
-    packet_name: Annotated[
-        str | None,
+    packet: Annotated[
+        HKPacket | None,
         typer.Option("--packet", help="Packet to download, e.g., SID1"),
     ] = None,
     fetch_mode: Annotated[
@@ -48,7 +48,7 @@ def fetch_binary(
     """Download binary data from WebPODA."""
 
     # Must provide a apid or a packet.
-    if (not apid and not packet_name) or (apid and packet_name):
+    if (not apid and not packet) or (apid and packet):
         raise ValueError("Must provide either --apid or --packet, and not both")
 
     app_settings = AppSettings()  # type: ignore
@@ -59,10 +59,9 @@ def fetch_binary(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     if apid is not None:
-        packet: HKPacket = HKPacket.from_any_apid(apid)
+        packet = HKPacket.from_apid(apid)
     else:
-        assert packet_name is not None
-        packet = HKPacket.from_any_name(packet_name)
+        assert packet is not None
 
     packet_name = packet.packet
 

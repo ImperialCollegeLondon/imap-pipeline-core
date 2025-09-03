@@ -12,7 +12,13 @@ from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import HKBinaryPathHandler
-from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, HKPacket, MAGPacket
+from imap_mag.util import (
+    CONSTANTS,
+    DatetimeProvider,
+    Environment,
+    HKPacket,
+    IMAPInstrument,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
@@ -32,8 +38,8 @@ def generate_flow_run_name() -> str:
 
     packet_names: list[str] = [hk.name for hk in hk_packets]
 
-    if packet_names == MAGPacket.names():
-        packet_text: str = "all-MAG-HK"
+    if packet_names == HKPacket.names():
+        packet_text: str = "all-HK"
     else:
         packet_text = f"{','.join(packet_names)}-Packets"
 
@@ -54,10 +60,9 @@ async def poll_hk_flow(
             json_schema_extra={
                 "title": "HK packets to download",
                 "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
-                "options": ", ".join(HKPacket.names()),
             },
         ),
-    ] = MAGPacket.all(),  # type: ignore
+    ] = [hk for hk in HKPacket if hk.instrument == IMAPInstrument.MAG],
     start_date: Annotated[
         datetime | None,
         Field(

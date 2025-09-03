@@ -82,7 +82,7 @@ class FetchBinary:
                 f.write(packet_bytes)
 
             downloaded[day_file] = HKBinaryPathHandler(
-                instrument=packet.instrument.value,
+                instrument=packet.instrument.short_name,
                 descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(
                     packet.packet
                 ),
