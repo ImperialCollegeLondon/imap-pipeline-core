@@ -30,6 +30,9 @@ class StandardSPDFPathHandler(VersionedPathHandler):
 
         return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
 
+    def get_content_date_for_indexing(self):
+        return self.content_date
+
     def get_unsequenced_pattern(self) -> re.Pattern:
         super()._check_property_values(
             "pattern", ["descriptor", "level", "content_date", "extension"]

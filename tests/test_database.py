@@ -17,7 +17,11 @@ from imap_mag.io import (
     DatabaseFileOutputManager,
     IOutputManager,
 )
-from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler
+from imap_mag.io.file import (
+    AncillaryPathHandler,
+    HKBinaryPathHandler,
+    HKDecodedPathHandler,
+)
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
@@ -650,3 +654,52 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
 
     assert actual_file == test_file
     assert actual_path_handler == unique_path_handler
+
+
+@pytest.mark.parametrize(
+    "ancillary_file_name,expected_date",
+    [
+        ("imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf", datetime(2025, 10, 17)),
+        ("imap_mag_l2-calibration_20251017_v001.cdf", None),
+        ("imap_mag_l2-calibration_20251017_20251021_v001.cdf", None),
+    ],
+)
+def test_add_ancillary_files_to_database_uses_correct_dates(
+    mock_output_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    ancillary_file_name: str,
+    expected_date: datetime,
+) -> None:
+    # Set Up
+    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / ancillary_file_name, "some content"
+    )
+    path_handler = AncillaryPathHandler.from_filename(ancillary_file_name)
+
+    assert path_handler is not None
+
+    test_file = Path(tempfile.gettempdir()) / ancillary_file_name
+    unique_path_handler = AncillaryPathHandler.from_filename(ancillary_file_name)
+
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        unique_path_handler,
+    )
+
+    # Exercise
+
+    database_manager.add_file(original_file, path_handler)
+
+    database_files = test_database.get_files()
+
+    # Verify
+
+    assert f"Inserting {original_file} into database." in capture_cli_logs.text
+
+    assert len(database_files) == 1
+    assert database_files[0].name == ancillary_file_name
+    assert database_files[0].version == 1
+    assert database_files[0].content_date == expected_date

@@ -2,6 +2,7 @@ import abc
 import logging
 import typing
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,11 @@ class IFilePathHandler(abc.ABC):
     def get_full_path(self, parent: Path = Path()) -> Path:
         """Get the full path of the file."""
         return parent / self.get_folder_structure() / self.get_filename()
+
+    @abc.abstractmethod
+    def get_content_date_for_indexing(self) -> datetime | None:
+        """Get the date of the file for indexing purposes."""
+        pass
 
     @abc.abstractmethod
     def get_folder_structure(self) -> str:
