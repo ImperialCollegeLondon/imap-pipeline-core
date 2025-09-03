@@ -1,5 +1,7 @@
+import logging
 from pathlib import Path
 
+import numpy as np
 from sammi.cdf_attribute_manager import CdfAttributeManager
 from spacepy import pycdf
 
@@ -11,6 +13,67 @@ variable_layers = [
     Path("utils/calibration_generation/cdf/imap_mag_calibration_cdf_attrs.yaml"),
     Path("utils/calibration_generation/cdf/imap_constant_attrs.yaml"),
 ]
+
+
+def get_one_sensor_stacked_offsets(x_offset, y_offset, z_offset):
+    offsets = np.array([x_offset, y_offset, z_offset])
+    one_sensor = np.stack([offsets, offsets, offsets, offsets], axis=0)
+    return one_sensor
+
+
+def get_correctly_arranged_offsets(mago_offsets, magi_offsets):
+    if mago_offsets.shape != (4, 3) or magi_offsets.shape != (4, 3):
+        raise ValueError("Offsets must be of shape (4, 3)")
+    return np.stack([mago_offsets, magi_offsets], axis=0)
+
+
+def get_stacked_identity_matrices():
+    i = np.eye(3, 3)
+    return np.stack([i, i, i, i], axis=2)
+
+
+def verify_frame_transforms(cdf: pycdf.CDF):
+    mago_transform = cdf["URFTOORFO"][:]
+    magi_transform = cdf["URFTOORFI"][:]
+    if mago_transform is None or magi_transform is None:
+        raise ValueError("Frame transform data is empty in the CDF file.")
+    assert mago_transform.shape == (
+        3,
+        3,
+        4,
+    ), "MAGo frame transform shape is incorrect, expected (3, 3, 4)"
+    assert magi_transform.shape == (
+        3,
+        3,
+        4,
+    ), "MAGi frame transform shape is incorrect, expected (3, 3, 4)"
+    return True
+
+
+def verify_offsets(cdf: pycdf.CDF):
+    offsets = cdf["offsets"][:]
+    if offsets is None:
+        logging.error("Offsets data is empty in the CDF file.")
+        return False
+
+    if offsets.shape != (2, 4, 3):
+        logging.error(
+            f"Offsets data shape is incorrect, expected (2, 4, 3), got {offsets.shape}"
+        )
+        return False
+
+    mago_offsets = offsets[0, :, :]
+    magi_offsets = offsets[1, :, :]
+    offsets_valid = True
+    for r in range(4):
+        magnitude_mago_offsets = np.linalg.norm(mago_offsets[r, :])
+        magnitude_magi_offsets = np.linalg.norm(magi_offsets[r, :])
+        if magnitude_mago_offsets >= magnitude_magi_offsets:
+            offsets_valid = False
+            logging.error(
+                f"MAGo offsets magnitude {magnitude_mago_offsets} is greater than or equal to MAGi offsets magnitude {magnitude_magi_offsets} for range {r}"
+            )
+    return offsets_valid
 
 
 def get_cdf_attribute_manager():
@@ -42,6 +105,31 @@ def setup_variable(
     )
     for key in variable_attrs:
         cdf[name].attrs[key] = variable_attrs[key]
+
+
+def generate_l2_file(
+    version,
+    valid_start_date,
+    frame_transform_mago,
+    frame_transform_magi,
+):
+    filename = f"imap_mag_l2-calibration_{valid_start_date.strftime('%Y%m%d')}_v{version:03d}.cdf"
+    if Path(filename).exists():
+        raise FileExistsError(
+            f"File {filename} already exists. Please choose a different version or date."
+        )
+    cdf = pycdf.CDF(
+        filename,
+        "",
+    )
+    cdf_manager = get_cdf_attribute_manager()
+
+    set_default_cdf_attrs(cdf, cdf_manager, "imap_mag_l2-calibration")
+    setup_variable(cdf, cdf_manager, "range", [0, 1, 2, 3])
+    setup_variable(cdf, cdf_manager, "URFTOORFO", frame_transform_mago)
+    setup_variable(cdf, cdf_manager, "URFTOORFI", frame_transform_magi)
+    cdf.close()
+    return filename
 
 
 def generate_ialirt_file(
@@ -179,7 +267,7 @@ def generate_l1d_file(
     return filename
 
 
-def set_default_cdf_attrs(cdf, cdf_manager: CdfAttributeManager, source_id):
+def set_default_cdf_attrs(cdf: pycdf.CDF, cdf_manager: CdfAttributeManager, source_id):
     global_attrs = cdf_manager.get_global_attributes(source_id)
     for key in global_attrs:
         if global_attrs[key] is not None:

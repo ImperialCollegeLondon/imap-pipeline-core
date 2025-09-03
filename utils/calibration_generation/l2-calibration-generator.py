@@ -14,7 +14,7 @@ example_offsets = -1 * (12 + (np.random.random_sample((len(time), 3)) - 0.5) * 2
 
 example_magi_offsets = example_offsets - 10
 
-cdf = pycdf.CDF("imap_mag_l2_calibration_20260102_v000.cdf", "")
+cdf = pycdf.CDF("imap_mag_l2-calibration_20260102_v000.cdf", "")
 
 frame_transform_magi = np.ones((3, 3))
 
@@ -29,14 +29,14 @@ cdf.attrs["Data_type"] = "L2-calibration>Level-2 calibration parameters"
 cdf.attrs["Descriptor"] = "MAG>Magnetometer"
 cdf.attrs["Data_version"] = "v000"
 cdf.attrs["Generation_date"] = current_date
-cdf.attrs["Logical_file_id"] = "imap_mag_l2_calibration_20260102"
-cdf.attrs["Logical_source"] = "imap_mag_l2_calibration"
+cdf.attrs["Logical_file_id"] = "imap_mag_l2-calibration_20260102"
+cdf.attrs["Logical_source"] = "imap_mag_l2-calibration"
 cdf.attrs["Logical_source_description"] = "Level 2 Calibration Data"
 cdf.attrs["Mission_group"] = "IMAP"
 cdf.attrs["PI_affiliation"] = "Imperial College London"
 cdf.attrs["Parents"] = []
 cdf.attrs["TEXT"] = (
-    "The IMAP magnetometer requires dynamic calibration to remove the magnetic field of the spacecraft. The calibration parameters should be applied to each vector according to its sensor."
+    "The IMAP magnetometer requires dynamic calibration to remove the magnetic field of the spacecraft. The calibration parameters in this file rotate MAGo and MAGi from the unit reference frame (URF) to the orthogonal reference frame (ORF) to account for any misalignment of the sensors."
 )
 
 

@@ -15,7 +15,7 @@ range:
     VAR_TYPE: support_data
 
 valid_start_datetime:
-    CATDESC: The start time of the validity of this calibration File_naming_convention
+    CATDESC: The start time of the validity of this calibration file
     VALIDMIN: -9223372036854775808
     VALIDMAX: 9223372036854775807
     UNITS: ns

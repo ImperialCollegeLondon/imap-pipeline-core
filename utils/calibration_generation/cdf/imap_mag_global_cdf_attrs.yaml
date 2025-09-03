@@ -43,6 +43,11 @@ imap_mag_l2-calibration:
     Data_type: L2-Calibration>L2 Calibration Data
     Logical_source: imap_mag_l2-calibration
     Logical_source_description: IMAP Mission MAG L2 Calibration Data
+    TEXT: >
+      The IMAP magnetometer requires dynamic calibration to remove the magnetic
+      field of the spacecraft. The calibration matrices are used to transform from
+      the unit reference frame (URF) to the orthogonal reference frame (ORF). They
+      should be applied based on sensor and range.
 
 imap_mag_norm-offsets:
     <<: *default

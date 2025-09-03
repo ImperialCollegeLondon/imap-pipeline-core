@@ -80,6 +80,7 @@ docker run -it --rm \
     --entrypoint /bin/bash \
     ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev \
     -c "python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows()'"
+
 ```
 
 ## Get the prefect server running in a local dev env
@@ -140,4 +141,18 @@ imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.
 ```bash
 export SDC_AUTH_CODE=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
+```
+
+### Generating Calibration Files
+
+```bash
+imap-cal-gen l1d
+imap-cal-gen l2
+imap-cal-gen ialirt
+```
+
+### Verifying Calibration Files
+
+```bash
+imap-cal-gen verify --filename imap_mag_l2-calibration_20250923_v001.cdf
 ```
