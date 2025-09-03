@@ -22,7 +22,7 @@ class AncillaryPathHandler(VersionedPathHandler):
     end_date: datetime | None = None  # end date of validity
     extension: str | None = None
 
-    def get_date_for_indexing(self) -> datetime | None:
+    def get_content_date_for_indexing(self) -> datetime | None:
         """Get the current date."""
         return self.start_date if self._is_offsets_file() else None
 

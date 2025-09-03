@@ -76,7 +76,7 @@ class DatabaseFileOutputManager(IOutputManager):
                         file=destination_file,
                         version=path_handler.get_sequence(),
                         hash=original_hash,
-                        content_date=path_handler.get_date_for_indexing(),
+                        content_date=path_handler.get_content_date_for_indexing(),
                         settings=self.__settings,
                     )
                 )

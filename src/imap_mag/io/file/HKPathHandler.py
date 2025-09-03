@@ -29,7 +29,7 @@ class HKPathHandler(IFilePathHandler):
         """HK level for the handler. It cannot be set."""
         pass
 
-    def get_date_for_indexing(self):
+    def get_content_date_for_indexing(self):
         return self.content_date
 
     def get_folder_structure(self) -> str:

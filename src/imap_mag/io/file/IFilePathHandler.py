@@ -30,7 +30,7 @@ class IFilePathHandler(abc.ABC):
         return parent / self.get_folder_structure() / self.get_filename()
 
     @abc.abstractmethod
-    def get_date_for_indexing(self) -> datetime | None:
+    def get_content_date_for_indexing(self) -> datetime | None:
         """Get the date of the file for indexing purposes."""
         pass
 
