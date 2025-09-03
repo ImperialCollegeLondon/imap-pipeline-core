@@ -319,14 +319,14 @@ docs = ["graphviz (>=0.20.1)", "numpydoc", "sphinx (>=5.2.3)", "sphinx-automodap
 
 [[package]]
 name = "cdflib"
-version = "1.3.4"
+version = "1.3.6"
 description = "A python CDF reader toolkit"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "cdflib-1.3.4-py3-none-any.whl", hash = "sha256:de59d7e878762ca2f4d537d6e4ff50abbfdc1e1ea38cdf3d23a9a61a7678a903"},
-    {file = "cdflib-1.3.4.tar.gz", hash = "sha256:f32f679624982cbfd7677ffb8741c087071c03df5650e3148259a387b67e3110"},
+    {file = "cdflib-1.3.6-py3-none-any.whl", hash = "sha256:ed343840b6cd0b5f32281405823c9b7b01360bc0480b5939e9abec1e9c0c2e60"},
+    {file = "cdflib-1.3.6.tar.gz", hash = "sha256:61084895f68c7a127305bcec3e4178e123db97fca6aff3824bd08b014e4ff1f2"},
 ]
 
 [package.dependencies]
@@ -4671,4 +4671,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "380657b6e325cea572b33bc1035c36ce0ee9ac1c41477b062c5ed53e2908472a"
+content-hash = "ecd0e06ff6031d7d8871fcaa976f530541dc2efd7ea3121b9a75972128362b91"
