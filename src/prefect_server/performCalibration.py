@@ -6,6 +6,7 @@ from prefect.runtime import flow_run
 
 from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
+from imap_mag.config import SaveMode
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
@@ -145,4 +146,5 @@ def apply_flow(
         input=str(file),
         calibration_output_type=calibration_output_type.value,
         l2_output_type=L2_output_type.value,
+        save_mode=SaveMode.LocalAndDatabase,
     )
