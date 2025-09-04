@@ -42,8 +42,9 @@ def test_hk_binary_path_handler_supports_all_hk_packets(packet: HKPacket):
 @pytest.mark.parametrize("packet", [p for p in HKPacket])
 def test_hk_decoded_path_handler_supports_all_hk_packets(packet: HKPacket):
     # Set up.
-    filename = f"imap_mag_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_v003.pkts"
+    filename = f"imap_{packet.instrument.short_name}_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_v003.pkts"
     expected_handler = HKDecodedPathHandler(
+        instrument=packet.instrument.short_name,
         descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet),
         content_date=datetime(2024, 12, 10),
         version=3,
