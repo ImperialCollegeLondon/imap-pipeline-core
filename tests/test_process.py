@@ -375,7 +375,7 @@ def test_hk_processor_throws_error_on_corrupt_hk_packet(
     assert re.search(
         rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
     )
-    assert "Filtering out non-MAG ApIDs:" in capture_cli_logs.text
+    assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
 
 
 def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
@@ -423,4 +423,4 @@ def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
         assert processed_lines[-1] == expected_lines[2]
         assert len(processed_lines) == 361
 
-    assert "Filtering out non-MAG ApIDs: 16, 1290" in capture_cli_logs.text
+    assert "Unrecognized ApIDs will be ignored: 16, 1290" in capture_cli_logs.text

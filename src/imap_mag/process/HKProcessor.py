@@ -219,6 +219,8 @@ class HKProcessor(FileProcessor):
         data_dict: dict[int, dict] = dict()
 
         apids: set[int] = CCSDSBinaryPacketFile(file).get_apids()
+        apids = self.__filter_unknown_apids(apids)
+
         instruments: set[IMAPInstrument] = {
             HKPacket.from_apid(apid).instrument for apid in apids
         }
@@ -228,8 +230,12 @@ class HKProcessor(FileProcessor):
 
             logger.error(msg)
             raise RuntimeError(msg)
+        else:
+            instrument = instruments.pop()
+            logger.debug(
+                f"ApIDs {', '.join([str(apid) for apid in apids])} belong to {instrument.name} instrument."
+            )
 
-        instrument = instruments.pop()
         packet_definition = definitions.XtcePacketDefinition(
             self.__xtcePacketDefinitionFolder
             / f"{instrument.value}_{instrument.version}.xml"
@@ -272,6 +278,22 @@ class HKProcessor(FileProcessor):
             dataset_dict[apid] = ds
 
         return dataset_dict
+
+    def __filter_unknown_apids(self, apids: set[int]) -> set[int]:
+        """Filter out unknown ApIDs."""
+
+        non_mag_apids: set[int] = {
+            apid for apid in apids if apid not in HKPacket.apids()
+        }
+
+        if non_mag_apids:
+            logger.warning(
+                f"Unrecognized ApIDs will be ignored: {', '.join(str(apid) for apid in sorted(non_mag_apids))}"
+            )
+
+            apids = apids - non_mag_apids
+
+        return apids
 
     def __save_daily_data(
         self,

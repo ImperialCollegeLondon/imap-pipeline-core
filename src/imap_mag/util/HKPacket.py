@@ -82,6 +82,11 @@ class HKPacket(Enum):
         return [hk.name for hk in HKPacket]
 
     @classmethod
+    def apids(cls) -> list[int]:
+        """List all HK packet APIDs."""
+        return [hk.apid for hk in HKPacket]
+
+    @classmethod
     def from_apid(cls, apid: int) -> "HKPacket":
         """Get HKPacket from ApID."""
 
