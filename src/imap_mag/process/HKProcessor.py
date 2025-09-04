@@ -225,7 +225,10 @@ class HKProcessor(FileProcessor):
             HKPacket.from_apid(apid).instrument for apid in apids
         }
 
-        if len(instruments) > 1:
+        if not instruments:
+            logger.debug(f"No valid data found in {file!s}.")
+            return {}
+        elif len(instruments) > 1:
             msg = f"File {file} contains ApIDs for {', '.join([i.name for i in instruments])}. Binary files with hybrid instrument data are not supported."
 
             logger.error(msg)

@@ -339,23 +339,9 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     assert processed_path.name == "imap_mag_l1_hsk-status_20250331_v001.csv"
 
 
-@pytest.mark.parametrize(
-    "start_idx, end_idx, replace_bytes",
-    [
-        (0, 9, b"CORRUPTED"),
-        (10, 19, b""),
-        (10, 20, b"CORRUPTED"),
-    ],
-)
-def test_hk_processor_throws_error_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
-):
-    """Test that HKProcessor throws an error on corrupt HK packet."""
-
-    # Set up.
-    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
-    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
-
+def write_corrupt_packet(
+    original_path, packet_path, start_idx, end_idx, replace_bytes
+) -> None:
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
 
@@ -366,16 +352,69 @@ def test_hk_processor_throws_error_on_corrupt_hk_packet(
     with open(packet_path, "wb") as corrupt_file:
         corrupt_file.write(corrupt_data)
 
+
+@pytest.mark.parametrize(
+    "start_idx, end_idx, replace_bytes",
+    [
+        (0, 9, b"CORRUPTED"),
+    ],
+)
+def test_hk_processor_ignores_corrupt_hk_packet_with_bad_apid(
+    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
+):
+    """Test that HKProcessor throws an error on corrupt HK packet."""
+
+    # Set up.
+    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    write_corrupt_packet(original_path, packet_path, start_idx, end_idx, replace_bytes)
+
     processor = instantiate_hk_processor()
 
     # Exercise.
-    with pytest.raises(ValueError, match="negative shift count"):
-        processor.process(packet_path)
+    processed_path = processor.process(packet_path)
+
+    assert len(processed_path) == 0
 
     assert re.search(
         rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
     )
     assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
+    assert f"No valid data found in {packet_path!s}." in capture_cli_logs.text
+
+
+@pytest.mark.parametrize(
+    "start_idx, end_idx, replace_bytes",
+    [
+        (10, 19, b""),
+        (10, 20, b"CORRUPTED"),
+    ],
+)
+def test_hk_processor_fails_gracefully_on_corrupt_hk_packet(
+    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
+):
+    """Test that HKProcessor throws an error on corrupt HK packet."""
+
+    # Set up.
+    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    write_corrupt_packet(original_path, packet_path, start_idx, end_idx, replace_bytes)
+
+    processor = instantiate_hk_processor()
+
+    # Exercise.
+    processed_path = processor.process(packet_path)
+
+    assert len(processed_path) == 0
+
+    assert re.search(
+        rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
+    )
+    assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
+    assert (
+        f"Failed to decommutate packets from {packet_path!s}:\nnegative shift count"
+        in capture_cli_logs.text
+    )
 
 
 def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
@@ -387,15 +426,9 @@ def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
     original_path = TEST_DATA / "MAG_HSK_PW.pkts"
     expected_path = TEST_TRUTH / "MAG_HSK_PW.csv"
 
-    with open(original_path, "rb") as original_file:
-        original_data = original_file.read()
-
-        # Change a few bytes to corrupt the data.
-        corrupt_data = bytearray(original_data)
-        corrupt_data[0:9] = b""  # skips the first corrupted packet
-
-    with open(packet_path, "wb") as corrupt_file:
-        corrupt_file.write(corrupt_data)
+    write_corrupt_packet(
+        original_path, packet_path, 0, 9, b""
+    )  # should skip the first corrupted packet
 
     processor = instantiate_hk_processor(
         Path(tempfile.gettempdir())
