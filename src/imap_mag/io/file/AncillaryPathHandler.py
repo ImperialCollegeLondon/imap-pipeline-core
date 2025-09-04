@@ -22,6 +22,14 @@ class AncillaryPathHandler(VersionedPathHandler):
     end_date: datetime | None = None  # end date of validity
     extension: str | None = None
 
+    def get_content_date_for_indexing(self) -> datetime | None:
+        """Get the current date."""
+        return self.start_date if self._is_offsets_file() else None
+
+    def _is_offsets_file(self) -> bool:
+        """Check if the file is an offsets file."""
+        return self.descriptor is not None and self.descriptor.endswith("-offsets")
+
     def get_sub_folder(self) -> Path:
         """Get the subfolder for ancillary files."""
 
@@ -38,7 +46,7 @@ class AncillaryPathHandler(VersionedPathHandler):
             case "l1b-calibration":
                 return Path("l1b")
             case _:
-                if self.descriptor.endswith("-offsets"):
+                if self._is_offsets_file():
                     return Path("l2-offsets") / self.start_date.strftime("%Y/%m")
                 else:
                     logger.error(

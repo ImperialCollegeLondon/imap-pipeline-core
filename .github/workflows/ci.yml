@@ -32,7 +32,7 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: "3.12"
-  CALIBRATION_TAG: "task/split-layer-csv"
+  CALIBRATION_TAG: "v0.2.0"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
   PYTEST_XDIST_AUTO_NUM_WORKERS : "2"
@@ -40,7 +40,7 @@ jobs:
   qa:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pre-commit/action@v3.0.1
 
   build:
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-versions }}
@@ -172,12 +172,12 @@ jobs:
         python-versions: ["3.10", "3.11", "3.12", "3.13"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-versions }}
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         with:
           path: ${{ env.CALIBRATION_CODE_LOCATION}}
@@ -247,7 +247,7 @@ jobs:
             docker-images: false
             swap-storage: false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-versions }}
@@ -286,7 +286,7 @@ jobs:
         shell: bash
 
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         with:
           path: ${{ env.CALIBRATION_CODE_LOCATION}}

@@ -6,12 +6,13 @@ from typing import Annotated
 
 import typer
 
+from imap_mag import appUtils
 from imap_mag.cli.cliUtils import (
     fetch_file_for_work,
     initialiseLoggingForCommand,
 )
-from imap_mag.config import AppSettings
-from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.config import AppSettings, SaveMode
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
@@ -110,6 +111,10 @@ def apply(
     ] = FileType.CDF.value,
     rotation: Annotated[Path | None, typer.Option()] = None,
     input: str = typer.Argument(help="The file name for the input file"),
+    save_mode: Annotated[
+        SaveMode,
+        typer.Option(help="Whether to save locally only or to also save to database"),
+    ] = SaveMode.LocalOnly,
 ):
     """
     Apply calibration rotation and layers to an input science file.
@@ -172,7 +177,9 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    outputManager = OutputManager(app_settings.data_store)
+    outputManager = appUtils.getOutputManagerByMode(
+        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+    )
 
     if layers:
         (L2_file, cal_file) = applier.apply(

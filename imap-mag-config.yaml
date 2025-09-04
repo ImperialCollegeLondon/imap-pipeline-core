@@ -40,4 +40,6 @@ upload:
         - "*science/mag/l1d/*"
         - "*science/mag/l2/*"
         - "*science/mag/l2-pre/*"
+        - "*science/mag/l2-norm-offsets/*"
+        - "*science/mag/l2-burst-offsets/*"
         - "*hk/mag/l1/*"

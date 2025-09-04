@@ -319,14 +319,14 @@ docs = ["graphviz (>=0.20.1)", "numpydoc", "sphinx (>=5.2.3)", "sphinx-automodap
 
 [[package]]
 name = "cdflib"
-version = "1.3.4"
+version = "1.3.6"
 description = "A python CDF reader toolkit"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "cdflib-1.3.4-py3-none-any.whl", hash = "sha256:de59d7e878762ca2f4d537d6e4ff50abbfdc1e1ea38cdf3d23a9a61a7678a903"},
-    {file = "cdflib-1.3.4.tar.gz", hash = "sha256:f32f679624982cbfd7677ffb8741c087071c03df5650e3148259a387b67e3110"},
+    {file = "cdflib-1.3.6-py3-none-any.whl", hash = "sha256:ed343840b6cd0b5f32281405823c9b7b01360bc0480b5939e9abec1e9c0c2e60"},
+    {file = "cdflib-1.3.6.tar.gz", hash = "sha256:61084895f68c7a127305bcec3e4178e123db97fca6aff3824bd08b014e4ff1f2"},
 ]
 
 [package.dependencies]
@@ -2652,23 +2652,20 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-docker"
-version = "0.6.2"
+version = "0.6.3"
 description = "Prefect integrations for interacting with Docker."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_docker-0.6.2-py3-none-any.whl", hash = "sha256:bae500ff0c18e3e1c55f2e79ec154bc1f8c8329fbe6a3726052dfb0fe38d7d4c"},
-    {file = "prefect_docker-0.6.2.tar.gz", hash = "sha256:405cdf2b266c7e1ffcb61f5b80c710401bc2eb5f25dcbccc195b0e5c86f5a421"},
+    {file = "prefect_docker-0.6.3-py3-none-any.whl", hash = "sha256:ceeabbc090a7bd3463696e9c707b92a9e15e37b6b49c7984b1abbb6bba37eb03"},
+    {file = "prefect_docker-0.6.3.tar.gz", hash = "sha256:1d06c9311f5860ea4eee2854e56565d7c56ae608d0b68d0b6ce0519863ab7e40"},
 ]
 
 [package.dependencies]
 docker = ">=6.1.1"
 exceptiongroup = "*"
-prefect = ">=3.0.0"
-
-[package.extras]
-dev = ["coverage", "interrogate", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "mypy", "pillow", "pre-commit", "pytest (>=8.3)", "pytest-asyncio", "pytest-env", "pytest-xdist"]
+prefect = ">=3.1.1"
 
 [[package]]
 name = "prefect-managedfiletransfer"
@@ -3154,14 +3151,14 @@ testing = ["covdefaults (>=2.3)", "coverage (>=7.6.1)", "pytest-mock (>=3.14)"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.14.0"
+version = "3.14.1"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pytest-mock-3.14.0.tar.gz", hash = "sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0"},
-    {file = "pytest_mock-3.14.0-py3-none-any.whl", hash = "sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f"},
+    {file = "pytest_mock-3.14.1-py3-none-any.whl", hash = "sha256:178aefcd11307d874b4cd3100344e7e2d888d9791a6a1d9bfe90fbc1b74fd1d0"},
+    {file = "pytest_mock-3.14.1.tar.gz", hash = "sha256:159e9edac4c451ce77a5cdb9fc5d1100708d2dd4ba3c3df572f14097351af80e"},
 ]
 
 [package.dependencies]
@@ -4026,18 +4023,18 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "sqlalchemy-utils"
-version = "0.41.2"
+version = "0.42.0"
 description = "Various utility functions for SQLAlchemy."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "SQLAlchemy-Utils-0.41.2.tar.gz", hash = "sha256:bc599c8c3b3319e53ce6c5c3c471120bd325d0071fb6f38a10e924e3d07b9990"},
-    {file = "SQLAlchemy_Utils-0.41.2-py3-none-any.whl", hash = "sha256:85cf3842da2bf060760f955f8467b87983fb2e30f1764fd0e24a48307dc8ec6e"},
+    {file = "sqlalchemy_utils-0.42.0-py3-none-any.whl", hash = "sha256:c8c0b7f00f4734f6f20e9a4d06b39d79d58c8629cba50924fcaeb20e28eb4f48"},
+    {file = "sqlalchemy_utils-0.42.0.tar.gz", hash = "sha256:6d1ecd3eed8b941f0faf8a531f5d5cee7cffa2598fcf8163de8c31c7a417a5e0"},
 ]
 
 [package.dependencies]
-SQLAlchemy = ">=1.3"
+SQLAlchemy = ">=1.4"
 
 [package.extras]
 arrow = ["arrow (>=0.3.4)"]
@@ -4048,8 +4045,8 @@ intervals = ["intervals (>=0.7.1)"]
 password = ["passlib (>=1.6,<2.0)"]
 pendulum = ["pendulum (>=2.0.5)"]
 phone = ["phonenumbers (>=5.9.2)"]
-test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "backports.zoneinfo ; python_version < \"3.9\"", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "isort (>=4.2.2)", "pg8000 (>=1.12.4)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "backports.zoneinfo ; python_version < \"3.9\"", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
+test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "isort (>=4.2.2)", "pg8000 (>=1.12.4)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
+test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
 timezone = ["python-dateutil"]
 url = ["furl (>=0.4.1)"]
 
@@ -4073,14 +4070,14 @@ full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart 
 
 [[package]]
 name = "testcontainers"
-version = "4.10.0"
+version = "4.12.0"
 description = "Python library for throwaway instances of anything that can run in a Docker container"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["dev"]
 files = [
-    {file = "testcontainers-4.10.0-py3-none-any.whl", hash = "sha256:31ed1a81238c7e131a2a29df6db8f23717d892b592fa5a1977fd0dcd0c23fc23"},
-    {file = "testcontainers-4.10.0.tar.gz", hash = "sha256:03f85c3e505d8b4edeb192c72a961cebbcba0dd94344ae778b4a159cb6dcf8d3"},
+    {file = "testcontainers-4.12.0-py3-none-any.whl", hash = "sha256:26caef57e642d5e8c5fcc593881cf7df3ab0f0dc9170fad22765b184e226ab15"},
+    {file = "testcontainers-4.12.0.tar.gz", hash = "sha256:13ee89cae995e643f225665aad8b200b25c4f219944a6f9c0b03249ec3f31b8d"},
 ]
 
 [package.dependencies]
@@ -4094,10 +4091,10 @@ wrapt = "*"
 arangodb = ["python-arango (>=7.8,<8.0)"]
 aws = ["boto3", "httpx"]
 azurite = ["azure-storage-blob (>=12.19,<13.0)"]
-chroma = ["chromadb-client"]
+chroma = ["chromadb-client (>=1.0.0,<2.0.0)"]
 clickhouse = ["clickhouse-driver"]
 cosmosdb = ["azure-cosmos"]
-db2 = ["ibm_db_sa", "sqlalchemy"]
+db2 = ["ibm_db_sa ; platform_machine != \"aarch64\" and platform_machine != \"arm64\"", "sqlalchemy"]
 generic = ["httpx", "redis"]
 google = ["google-cloud-datastore (>=2)", "google-cloud-pubsub (>=2)"]
 influxdb = ["influxdb", "influxdb-client"]
@@ -4107,10 +4104,11 @@ localstack = ["boto3"]
 mailpit = ["cryptography"]
 minio = ["minio"]
 mongodb = ["pymongo"]
-mssql = ["pymssql", "sqlalchemy"]
+mssql = ["pymssql ; platform_machine != \"arm64\" or python_version >= \"3.10\"", "sqlalchemy"]
 mysql = ["pymysql[rsa]", "sqlalchemy"]
 nats = ["nats-py"]
 neo4j = ["neo4j"]
+openfga = ["openfga-sdk ; python_version >= \"3.10\""]
 opensearch = ["opensearch-py"]
 oracle = ["oracledb", "sqlalchemy"]
 oracle-free = ["oracledb", "sqlalchemy"]
@@ -4581,28 +4579,29 @@ files = [
 
 [[package]]
 name = "xarray"
-version = "2024.9.0"
+version = "2025.6.1"
 description = "N-D labeled arrays and datasets in Python"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "xarray-2024.9.0-py3-none-any.whl", hash = "sha256:4fd534abdf12d5fa75dd566c56483d5081f77864462cf3d6ad53e13f9db48222"},
-    {file = "xarray-2024.9.0.tar.gz", hash = "sha256:e796a6b3eaec11da24f33e4bb14af41897011660a0516fa4037d3ae4bbd1d378"},
+    {file = "xarray-2025.6.1-py3-none-any.whl", hash = "sha256:8b988b47f67a383bdc3b04c5db475cd165e580134c1f1943d52aee4a9c97651b"},
+    {file = "xarray-2025.6.1.tar.gz", hash = "sha256:a84f3f07544634a130d7dc615ae44175419f4c77957a7255161ed99c69c7c8b0"},
 ]
 
 [package.dependencies]
 numpy = ">=1.24"
-packaging = ">=23.1"
+packaging = ">=23.2"
 pandas = ">=2.1"
 
 [package.extras]
-accel = ["bottleneck", "flox", "numbagg", "opt-einsum", "scipy"]
-complete = ["xarray[accel,dev,io,parallel,viz]"]
-dev = ["hypothesis", "mypy", "pre-commit", "pytest", "pytest-cov", "pytest-env", "pytest-timeout", "pytest-xdist", "ruff", "xarray[complete]"]
+accel = ["bottleneck", "flox", "numba (>=0.54)", "numbagg", "opt_einsum", "scipy"]
+complete = ["xarray[accel,etc,io,parallel,viz]"]
+etc = ["sparse"]
 io = ["cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap ; python_version < \"3.10\"", "scipy", "zarr"]
 parallel = ["dask[complete]"]
-viz = ["matplotlib", "nc-time-axis", "seaborn"]
+types = ["pandas-stubs", "scipy-stubs", "types-PyYAML", "types-Pygments", "types-colorama", "types-decorator", "types-defusedxml", "types-docutils", "types-networkx", "types-openpyxl", "types-pexpect", "types-psutil", "types-pycurl", "types-python-dateutil", "types-pytz", "types-setuptools"]
+viz = ["cartopy", "matplotlib", "nc-time-axis", "seaborn"]
 
 [[package]]
 name = "zipp"
@@ -4627,4 +4626,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "593194f965c01f9917ffadae1827e6318440520fecae18b944da22895cf958a8"
+content-hash = "bab6d7c378ddcc6960fb777572edf32bdea15eb3801eaa9c2a798fda7fef11b5"

@@ -26,7 +26,7 @@ class File(Base):
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer())
-    content_date: Mapped[datetime] = mapped_column(DateTime())
+    content_date: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
     creation_date: Mapped[datetime] = mapped_column(
         DateTime(), server_default=func.now()
     )
@@ -45,7 +45,7 @@ class File(Base):
         file: Path,
         version: int,
         hash: str | None,
-        content_date: datetime,
+        content_date: datetime | None,
         settings: AppSettings,
     ) -> "File":
         if not file.exists():
