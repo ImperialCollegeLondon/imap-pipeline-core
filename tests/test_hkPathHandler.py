@@ -22,9 +22,11 @@ def test_hk_decoded_path_handler_is_l1_only():
 @pytest.mark.parametrize("packet", [p for p in HKPacket])
 def test_hk_binary_path_handler_supports_all_hk_packets(packet: HKPacket):
     # Set up.
-    filename = f"imap_mag_l0_{HKBinaryPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_003.pkts"
+    filename = f"imap_{packet.instrument.short_name}_l0_{HKBinaryPathHandler.convert_packet_to_descriptor(packet.packet_name)}_20241210_003.pkts"
+
     expected_handler = HKBinaryPathHandler(
-        descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(packet.packet),
+        instrument=packet.instrument.short_name,
+        descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(packet.packet_name),
         content_date=datetime(2024, 12, 10),
         part=3,
         extension="pkts",
@@ -40,9 +42,12 @@ def test_hk_binary_path_handler_supports_all_hk_packets(packet: HKPacket):
 @pytest.mark.parametrize("packet", [p for p in HKPacket])
 def test_hk_decoded_path_handler_supports_all_hk_packets(packet: HKPacket):
     # Set up.
-    filename = f"imap_mag_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet)}_20241210_v003.pkts"
+    filename = f"imap_{packet.instrument.short_name}_l1_{HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet_name)}_20241210_v003.pkts"
     expected_handler = HKDecodedPathHandler(
-        descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(packet.packet),
+        instrument=packet.instrument.short_name,
+        descriptor=HKDecodedPathHandler.convert_packet_to_descriptor(
+            packet.packet_name
+        ),
         content_date=datetime(2024, 12, 10),
         version=3,
         extension="pkts",

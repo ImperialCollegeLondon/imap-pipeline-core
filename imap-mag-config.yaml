@@ -6,7 +6,7 @@
 # General application conifguration:
 work_folder: '.work'
 data_store:  'output/'
-packet_definition: 'xtce/tlm_20241024.xml'
+packet_definition: 'xtce/'
 
 # Command specific configuration:
 fetch_binary:
@@ -43,4 +43,3 @@ upload:
         - "*science/mag/l2-norm-offsets/*"
         - "*science/mag/l2-burst-offsets/*"
         - "*hk/mag/l1/*"
-

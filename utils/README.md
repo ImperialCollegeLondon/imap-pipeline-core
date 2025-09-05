@@ -5,8 +5,12 @@
 To generate XML file with XTCE tool (from [`imap_processing`](https://github.com/IMAP-Science-Operations-Center/imap_processing)):
 
 ``` shell
-imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.3.037/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/xtce/tlm_YYYYMMDD.xml
+imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/imap_mag/xtce/mag_17.9.xml
 ```
+
+> [!TIP]
+> For generating S/C HK XTCE files, use the `../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/MOC/TLM_SC.xls`, after removing any page that is not needed.
+> Also make sure to remove any field including the type `STRING`, which is not supported by `imap_xtce`.
 
 ## L2 Offset Skeleton
 

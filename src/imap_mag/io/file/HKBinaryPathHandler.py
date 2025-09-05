@@ -47,7 +47,7 @@ class HKBinaryPathHandler(PartitionedPathHandler, HKPathHandler):
         logger.debug(f"Allowed HK descriptors: {', '.join(allowed_hk_descriptors)}")
 
         match = re.match(
-            rf"imap_mag_{HKLevel.l0.value}_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_(?P<part>\d+)\.(?P<ext>\w+)",
+            rf"imap_(?P<instrument>[^_]+)_{HKLevel.l0.value}_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-?[^_]*)_(?P<date>\d{{8}})_(?P<part>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -58,6 +58,7 @@ class HKBinaryPathHandler(PartitionedPathHandler, HKPathHandler):
             return None
         else:
             return cls(
+                instrument=match["instrument"],
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 part=int(match["part"]),

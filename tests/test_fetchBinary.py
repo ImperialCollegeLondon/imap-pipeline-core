@@ -10,6 +10,7 @@ import pytest
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.io.file import HKBinaryPathHandler
+from imap_mag.util import HKPacket
 from tests.util.miscellaneous import (
     TEST_DATA,
     create_test_file,
@@ -31,7 +32,7 @@ def test_fetch_binary_empty_download_not_added_to_output(mock_poda: mock.Mock) -
 
     # Exercise.
     actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
+        packet=HKPacket.SID3_PW,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
     )
@@ -59,7 +60,7 @@ def test_fetch_binary_hk_added_to_output(mock_poda: mock.Mock) -> None:
 
     # Exercise.
     actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
+        packet=HKPacket.SID3_PW,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
     )
@@ -141,7 +142,7 @@ def test_fetch_binary_different_start_end_dates(
 
     # Exercise.
     actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
+        packet=HKPacket.SID3_PW,
         start_date=start_date,
         end_date=end_date,
     )
@@ -169,7 +170,7 @@ def test_fetch_binary_with_ert_start_end_date(mock_poda: mock.Mock) -> None:
 
     # Exercise.
     actual_downloaded: dict[Path, HKBinaryPathHandler] = fetchBinary.download_binaries(
-        packet="MAG_HSK_PW",
+        packet=HKPacket.SID3_PW,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
         use_ert=True,

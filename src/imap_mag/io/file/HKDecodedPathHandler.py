@@ -45,7 +45,7 @@ class HKDecodedPathHandler(VersionedPathHandler, HKPathHandler):
         logger.debug(f"Allowed HK descriptors: {', '.join(allowed_hk_descriptors)}")
 
         match = re.match(
-            rf"imap_mag_{HKLevel.l1.value}_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-[^_]+)_(?P<date>\d{{8}})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            rf"imap_(?P<instrument>[^_]+)_{HKLevel.l1.value}_(?P<descr>(?:{'|'.join(allowed_hk_descriptors)})-?[^_]*)_(?P<date>\d{{8}})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -56,6 +56,7 @@ class HKDecodedPathHandler(VersionedPathHandler, HKPathHandler):
             return None
         else:
             return cls(
+                instrument=match["instrument"],
                 descriptor=match["descr"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 version=int(match["version"]),

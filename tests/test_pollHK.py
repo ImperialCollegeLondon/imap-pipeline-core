@@ -95,8 +95,8 @@ def verify_not_requested_hk(database, not_requested_hk: list[HKPacket]):
     for hk in not_requested_hk:
         # find the matching progress item
         workflow_progress = next(
-            (item for item in progress_items if item.item_name == hk.packet),
-            WorkflowProgress(item_name=hk.packet),
+            (item for item in progress_items if item.item_name == hk.packet_name),
+            WorkflowProgress(item_name=hk.packet_name),
         )
 
         assert workflow_progress.get_last_checked_date() is None
@@ -108,8 +108,8 @@ def verify_not_available_hk(database, not_available_hk: list[HKPacket]):
     for hk in not_available_hk:
         # find the matching progress item
         workflow_progress = next(
-            (item for item in progress_items if item.item_name == hk.packet),
-            WorkflowProgress(item_name=hk.packet),
+            (item for item in progress_items if item.item_name == hk.packet_name),
+            WorkflowProgress(item_name=hk.packet_name),
         )
 
         assert workflow_progress.get_last_checked_date() == NOW
@@ -124,7 +124,7 @@ def verify_available_hk(
 ):
     for hk in available_hk:
         # Database.
-        workflow_progress = database.get_workflow_progress(hk.packet)
+        workflow_progress = database.get_workflow_progress(hk.packet_name)
 
         assert workflow_progress.get_last_checked_date() == NOW
         assert workflow_progress.get_progress_timestamp() == ert_timestamp
@@ -139,7 +139,7 @@ def check_file_existence(
 ):
     datastore = AppSettings().data_store
     for hk in hk_to_check:
-        descriptor = hk.packet.lstrip("MAG_").lower().replace("_", "-")
+        descriptor = hk.packet_name.lstrip("MAG_").lower().replace("_", "-")
 
         bin_folder = os.path.join(
             datastore, "hk/mag/l0", f"{descriptor}", actual_timestamp.strftime("%Y/%m")
@@ -199,10 +199,10 @@ async def test_poll_hk_autoflow_first_ever_run(
     for hk in available_hk:
         define_available_data_webpoda_mappings(
             wiremock_manager,
-            packet=hk.packet,
+            packet=hk.packet_name,
             start_date=beginning_of_imap,
             end_date=end_of_today,
-            binary_file=binary_files[hk.packet],
+            binary_file=binary_files[hk.packet_name],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
         )
@@ -258,16 +258,16 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 
     # Some data is available only for specific packets.
     for hk in available_hk:
-        workflow_progress = test_database.get_workflow_progress(hk.packet)
+        workflow_progress = test_database.get_workflow_progress(hk.packet_name)
         workflow_progress.record_successful_download(progress_timestamp)
         test_database.save(workflow_progress)
 
         define_available_data_webpoda_mappings(
             wiremock_manager,
-            packet=hk.packet,
+            packet=hk.packet_name,
             start_date=progress_timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
             end_date=end_of_today,
-            binary_file=binary_files[hk.packet],
+            binary_file=binary_files[hk.packet_name],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
         )
@@ -333,10 +333,10 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     for hk in available_hk:
         define_available_data_webpoda_mappings(
             wiremock_manager,
-            packet=hk.packet,
+            packet=hk.packet_name,
             start_date=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
             end_date=actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
-            binary_file=binary_files[hk.packet],
+            binary_file=binary_files[hk.packet_name],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
             use_ert=False,
@@ -412,10 +412,10 @@ async def test_poll_hk_specify_ert_start_end_dates(
     for hk in available_hk:
         define_available_data_webpoda_mappings(
             wiremock_manager,
-            packet=hk.packet,
+            packet=hk.packet_name,
             start_date=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
             end_date=actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
-            binary_file=binary_files[hk.packet],
+            binary_file=binary_files[hk.packet_name],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
         )
@@ -494,10 +494,10 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
     for hk in hk_to_poll:
         define_available_data_webpoda_mappings(
             wiremock_manager,
-            packet=hk.packet,
+            packet=hk.packet_name,
             start_date=beginning_of_imap,
             end_date=end_of_today,
-            binary_file=binary_files[hk.packet],
+            binary_file=binary_files[hk.packet_name],
             ert_timestamp=ert_timestamp,
             actual_timestamp=actual_timestamp,
         )
@@ -524,8 +524,8 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
     for hk in [p for p in HKPacket]:
         # find the matching progress item
         workflow_progress = next(
-            (item for item in progress_items if item.item_name == hk.packet),
-            WorkflowProgress(item_name=hk.packet),
+            (item for item in progress_items if item.item_name == hk.packet_name),
+            WorkflowProgress(item_name=hk.packet_name),
         )
 
         assert workflow_progress.get_last_checked_date() is None
