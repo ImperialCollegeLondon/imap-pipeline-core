@@ -262,7 +262,8 @@ class HKProcessor(FileProcessor):
                     elif hasattr(value, "decode"):
                         value = int.from_bytes(value, byteorder="big")
 
-                    updated_key = re.sub(r"^\w+?_\w+?\.", "", key.lower())
+                    match_packet_name_prefix_regex = r"^\w+?_\w+?\."
+                    packet_field_name = re.sub(match_packet_name_prefix_regex , "", key.lower())
                     data_dict[apid][updated_key].append(value)
 
         # Convert data to xarray datasets.
