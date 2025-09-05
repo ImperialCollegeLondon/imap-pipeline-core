@@ -63,7 +63,7 @@ def fetch_binary(
     else:
         assert packet is not None
 
-    packet_name = packet.packet
+    packet_name = packet.packet_name
 
     logger.info(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."

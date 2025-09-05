@@ -18,7 +18,7 @@ from imap_mag.process.HKProcessSettings import HKProcessSettings
 from imap_mag.util import (
     CCSDSBinaryPacketFile,
     HKPacket,
-    IMAPInstrument,
+    Subsystem,
     TimeConversion,
 )
 
@@ -97,7 +97,7 @@ class HKProcessor(FileProcessor):
 
         for apid, data in combined_data.items():
             packet: HKPacket = HKPacket.from_apid(apid)
-            packet_name: str = packet.packet
+            packet_name: str = packet.packet_name
 
             path_handler = HKDecodedPathHandler(
                 instrument=packet.instrument.short_name,
@@ -145,7 +145,7 @@ class HKProcessor(FileProcessor):
 
         for apid, days in days_by_apid.items():
             packet: HKPacket = HKPacket.from_apid(apid)
-            packet_name: str = packet.packet
+            packet_name: str = packet.packet_name
 
             logger.info(
                 f"Processing ApID {apid} ({packet_name}) for days:\n{', '.join(d.strftime('%Y-%m-%d') for d in sorted(days))}"
@@ -221,7 +221,7 @@ class HKProcessor(FileProcessor):
         apids: set[int] = CCSDSBinaryPacketFile(file).get_apids()
         apids = self.__filter_unknown_apids(apids)
 
-        instruments: set[IMAPInstrument] = {
+        instruments: set[Subsystem] = {
             HKPacket.from_apid(apid).instrument for apid in apids
         }
 
@@ -241,7 +241,7 @@ class HKProcessor(FileProcessor):
 
         packet_definition = definitions.XtcePacketDefinition(
             self.__xtcePacketDefinitionFolder
-            / f"{instrument.value}_{instrument.version}.xml"
+            / f"{instrument.value}_{instrument.tlm_db_version}.xml"
         )
 
         with open(file, "rb") as binary_data:

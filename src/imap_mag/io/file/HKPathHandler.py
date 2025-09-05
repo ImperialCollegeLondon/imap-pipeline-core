@@ -51,7 +51,7 @@ class HKPathHandler(IFilePathHandler):
         """Get allowed HK descriptors based on the HKPacket enumeration."""
 
         return {
-            HKPathHandler.convert_packet_to_descriptor(hk.packet).partition("-")[0]
+            HKPathHandler.convert_packet_to_descriptor(hk.packet_name).partition("-")[0]
             for hk in HKPacket
         }
 

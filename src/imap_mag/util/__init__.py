@@ -3,11 +3,11 @@ from imap_mag.util.constants import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket
-from imap_mag.util.IMAPInstrument import IMAPInstrument
 from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from imap_mag.util.ScienceMode import ScienceMode
+from imap_mag.util.Subsystem import Subsystem
 from imap_mag.util.TimeConversion import TimeConversion
 
 __all__ = [
@@ -17,10 +17,10 @@ __all__ = [
     "Environment",
     "HKLevel",
     "HKPacket",
-    "IMAPInstrument",
     "MAGSensor",
     "ReferenceFrame",
     "ScienceLevel",
     "ScienceMode",
+    "Subsystem",
     "TimeConversion",
 ]

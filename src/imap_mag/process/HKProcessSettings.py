@@ -1,18 +1,18 @@
 import abc
 
-from imap_mag.util import CONSTANTS, IMAPInstrument
+from imap_mag.util import CONSTANTS, Subsystem
 
 
 class HKProcessSettings(abc.ABC):
     """Base class for process settings."""
 
     @staticmethod
-    def from_instrument(instrument: IMAPInstrument):
+    def from_instrument(instrument: Subsystem):
         """Create settings instance from instrument."""
         match instrument:
-            case IMAPInstrument.MAG:
+            case Subsystem.MAG:
                 return MAGHKSettings()
-            case IMAPInstrument.SC:
+            case Subsystem.SC:
                 return SCHKSettings()
             case _:
                 raise ValueError(f"Unsupported instrument: {instrument.value}")

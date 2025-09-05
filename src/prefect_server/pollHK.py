@@ -17,7 +17,7 @@ from imap_mag.util import (
     DatetimeProvider,
     Environment,
     HKPacket,
-    IMAPInstrument,
+    Subsystem,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
@@ -62,7 +62,7 @@ async def poll_hk_flow(
                 "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
             },
         ),
-    ] = [hk for hk in HKPacket if hk.instrument == IMAPInstrument.MAG],
+    ] = [hk for hk in HKPacket if hk.instrument == Subsystem.MAG],
     start_date: Annotated[
         datetime | None,
         Field(
@@ -124,7 +124,7 @@ async def poll_hk_flow(
     use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:
-        progress_item_id = packet.packet
+        progress_item_id = packet.packet_name
         packet_start_timestamp = DatetimeProvider.now()
 
         logger.info(f"---------- Downloading Packet {progress_item_id} ----------")

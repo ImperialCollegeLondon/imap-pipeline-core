@@ -46,7 +46,7 @@ class FetchBinary:
 
         # Download data as a whole.
         file = self.__web_poda.download(
-            packet=packet.packet,
+            packet=packet.packet_name,
             start_date=start_date,
             end_date=end_date,
             ert=use_ert,
@@ -59,7 +59,7 @@ class FetchBinary:
         logger.info(f"Downloaded file from WebPODA: {file}")
 
         max_ert: datetime | None = self.__web_poda.get_max_ert(
-            packet=packet.packet,
+            packet=packet.packet_name,
             start_date=start_date,
             end_date=end_date,
             ert=use_ert,
@@ -76,7 +76,7 @@ class FetchBinary:
             )
 
             day_file = (
-                file.parent / f"{packet.packet}_{day.strftime('%Y%m%d')}_sclk.bin"
+                file.parent / f"{packet.packet_name}_{day.strftime('%Y%m%d')}_sclk.bin"
             )
             with open(day_file, "wb") as f:
                 f.write(packet_bytes)
@@ -84,7 +84,7 @@ class FetchBinary:
             downloaded[day_file] = HKBinaryPathHandler(
                 instrument=packet.instrument.short_name,
                 descriptor=HKBinaryPathHandler.convert_packet_to_descriptor(
-                    packet.packet
+                    packet.packet_name
                 ),
                 content_date=datetime.combine(day, datetime.min.time()),
                 ert=max_ert,
