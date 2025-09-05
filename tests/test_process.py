@@ -99,8 +99,8 @@ def test_dispatch_unsupported_file(capture_cli_logs):
 )
 def test_decode_hk_packet(packet_type):
     # Set up.
-    packet_path = TEST_DATA / (packet_type.packet + ".pkts")
-    expected_path = TEST_TRUTH / (packet_type.packet + ".csv")
+    packet_path = TEST_DATA / (packet_type.packet_name + ".pkts")
+    expected_path = TEST_TRUTH / (packet_type.packet_name + ".csv")
 
     processor = instantiate_hk_processor()
 
@@ -131,7 +131,7 @@ def test_decode_hk_packet(packet_type):
 
     assert processed_handler.level == "l1"
     assert processed_handler.descriptor == (
-        packet_type.packet.lower().strip("mag_").replace("_", "-")
+        packet_type.packet_name.lower().strip("mag_").replace("_", "-")
     )
 
 
