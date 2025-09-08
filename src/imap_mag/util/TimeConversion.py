@@ -35,6 +35,19 @@ class TimeConversion:
         ]
 
     @staticmethod
+    def convert_j2000ns_to_isostring(
+        j2000ns: npt.ArrayLike,
+    ) -> list[str]:
+        """Convert nanoseconds from J2000 to ISO 8601 string."""
+        return [
+            datetime.fromtimestamp(j).isoformat()
+            for j in (
+                np.asarray(j2000ns, dtype=float).astype(np.int64) / 1e9
+                + CONSTANTS.J2000_EPOCH_POSIX
+            )
+        ]
+
+    @staticmethod
     def convert_j2000ns_to_date(
         j2000ns: npt.ArrayLike,
     ) -> list[date]:
