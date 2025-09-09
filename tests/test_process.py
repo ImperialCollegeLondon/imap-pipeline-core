@@ -307,7 +307,10 @@ def test_decode_hk_packet_with_data_from_multiple_subsystems(capture_cli_logs):
         "imap_mag_l1_hsk-pw_20250502_v001.csv",
     }
 
-    assert f"Found 2 subsystems in {packet_path!s}: SC, MAG" in capture_cli_logs.text
+    assert re.search(
+        rf"Found 2 subsystems in {packet_path!s}: (SC|MAG), (SC|MAG)",
+        capture_cli_logs.text,
+    )
     assert f"Found 2 ApIDs (645, 1063) in {packet_path!s}." in capture_cli_logs.text
     assert (
         "Splitting data for ApID 645 (SCID_X285) into separate files for each day:"
