@@ -302,8 +302,10 @@ def test_decode_hk_packet_with_data_from_multiple_subsystems(capture_cli_logs):
     assert processed_path1.exists()
     assert processed_path2.exists()
 
-    assert processed_path1.name == "imap_sc_l1_x285_20100101_v001.csv"
-    assert processed_path2.name == "imap_mag_l1_hsk-pw_20250502_v001.csv"
+    assert {processed_path1.name, processed_path2.name} == {
+        "imap_sc_l1_x285_20100101_v001.csv",
+        "imap_mag_l1_hsk-pw_20250502_v001.csv",
+    }
 
     assert f"Found 2 subsystems in {packet_path!s}: SC, MAG" in capture_cli_logs.text
     assert f"Found 2 ApIDs (645, 1063) in {packet_path!s}." in capture_cli_logs.text
