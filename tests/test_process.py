@@ -1,5 +1,4 @@
 import re
-import shutil
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -113,9 +112,6 @@ def test_decode_hk_packet(packet_type):
 
     processed_path: Path = next(iter(processed_files))
     assert processed_path.exists()
-
-    # copy processed path to expected path
-    # shutil.copy(processed_path, expected_path)  # For updating truth data when needed
 
     with (
         open(expected_path) as expected_file,
