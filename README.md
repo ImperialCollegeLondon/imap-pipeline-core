@@ -55,7 +55,7 @@ You can also build a docker image with `./build-docker.sh`
 ## Using the CLI inside the docker container
 
 ```bash
-# Using the so-mag CLI:
+# Using imap-mag CLI:
 docker run --entrypoint /bin/sh ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev -c "imap-mag hello world"
 
 # Using the prefect CLI:
