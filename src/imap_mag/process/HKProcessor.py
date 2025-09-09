@@ -16,6 +16,7 @@ from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePat
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.HKProcessSettings import HKProcessSettings
 from imap_mag.util import (
+    CONSTANTS,
     CCSDSBinaryPacketFile,
     HKPacket,
     Subsystem,
@@ -131,6 +132,9 @@ class HKProcessor(FileProcessor):
 
                 # Create an empty column for SPICE based time in human readable format - TBD
                 daily_data["epoch_iso"] = pd.NA
+
+                # Treat "epoch" as a variable, not an index
+                daily_data.reset_index(inplace=True, names=CONSTANTS.CCSDS_FIELD.EPOCH)
 
                 path, handler = self.__save_daily_data(
                     day,
@@ -331,7 +335,7 @@ class HKProcessor(FileProcessor):
             by=process_settings.sort_variables,
             inplace=True,
         )
-        daily_data.to_csv(file_path)
+        daily_data.to_csv(file_path, index=False)
 
         # Use a deep-copy, otherwise the same handle will be used for all files.
         return file_path, deepcopy(path_handler)

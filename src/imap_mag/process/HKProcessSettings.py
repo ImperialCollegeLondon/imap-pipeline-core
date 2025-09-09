@@ -56,15 +56,13 @@ class SCHKSettings(HKProcessSettings):
     def drop_duplicate_variables(self) -> list[str]:
         return [
             CONSTANTS.CCSDS_FIELD.APID,
-            CONSTANTS.CCSDS_FIELD.HK_LOW_TPSH_MET_SEC,
-            CONSTANTS.CCSDS_FIELD.HK_LOW_TPSH_MET_SUBSEC,
+            CONSTANTS.CCSDS_FIELD.EPOCH,
             CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
         ]
 
     @property
     def sort_variables(self) -> list[str]:
         return [
-            CONSTANTS.CCSDS_FIELD.HK_LOW_TPSH_MET_SEC,
-            CONSTANTS.CCSDS_FIELD.HK_LOW_TPSH_MET_SUBSEC,
+            CONSTANTS.CCSDS_FIELD.EPOCH,
             CONSTANTS.CCSDS_FIELD.SEQ_COUNTER,
         ]
