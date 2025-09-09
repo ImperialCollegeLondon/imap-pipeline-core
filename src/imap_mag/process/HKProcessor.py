@@ -215,74 +215,67 @@ class HKProcessor(FileProcessor):
     def __decommutate_packets(self, file: Path) -> dict[int, xr.Dataset]:
         """Decommutate packets from a binary file by using the XTCE definitions."""
 
+        dataset_dict: dict[int, xr.Dataset] = {}
+
         # Extract data from binary file.
         data_dict: dict[int, dict] = dict()
 
         apids: set[int] = CCSDSBinaryPacketFile(file).get_apids()
         apids = self.__filter_unknown_apids(apids)
 
-        instruments: set[Subsystem] = {
+        subsystems: set[Subsystem] = {
             HKPacket.from_apid(apid).instrument for apid in apids
         }
 
-        if not instruments:
-            logger.debug(f"No valid data found in {file!s}.")
-            return {}
-        elif len(instruments) > 1:
-            msg = f"File {file} contains ApIDs for {', '.join([i.name for i in instruments])}. Binary files with hybrid instrument data are not supported."
-
-            logger.error(msg)
-            raise RuntimeError(msg)
-        else:
-            instrument = instruments.pop()
-            logger.debug(
-                f"ApIDs {', '.join([str(apid) for apid in apids])} belong to {instrument.name} instrument."
-            )
-
-        packet_definition = definitions.XtcePacketDefinition(
-            self.__xtcePacketDefinitionFolder
-            / f"{instrument.value}_{instrument.tlm_db_version}.xml"
+        logger.info(
+            f"Found {len(subsystems)} subsystems in {file!s}: {', '.join(s.name for s in subsystems)}"
         )
 
-        with open(file, "rb") as binary_data:
-            packet_generator = packet_definition.packet_generator(
-                binary_data,
-                show_progress=False,  # Prefect will log this every 0.001 seconds, which is insane
+        for subsystem in subsystems:
+            logger.debug(f"Processing subsystem: {subsystem.name}")
+
+            packet_definition = definitions.XtcePacketDefinition(
+                self.__xtcePacketDefinitionFolder
+                / f"{subsystem.value}_{subsystem.tlm_db_version}.xml"
             )
 
-            for packet in packet_generator:
-                apid = packet.header["PKT_APID"].raw_value
-                data_dict.setdefault(apid, collections.defaultdict(list))
+            with open(file, "rb") as binary_data:
+                packet_generator = packet_definition.packet_generator(
+                    binary_data,
+                    show_progress=False,  # Prefect will log this every 0.001 seconds, which is insane
+                )
 
-                packet_content = packet.user_data | packet.header
+                for packet in packet_generator:
+                    apid = packet.header["PKT_APID"].raw_value
+                    data_dict.setdefault(apid, collections.defaultdict(list))
 
-                for key, value in packet_content.items():
-                    if value is None:
-                        value = value.raw_value
-                    elif hasattr(value, "decode"):
-                        value = int.from_bytes(value, byteorder="big")
+                    packet_content = packet.user_data | packet.header
 
-                    match_packet_name_prefix_regex = r"^\w+?_\w+?\."
-                    packet_field_name = re.sub(
-                        match_packet_name_prefix_regex, "", key.lower()
-                    )
+                    for key, value in packet_content.items():
+                        if value is None:
+                            value = value.raw_value
+                        elif hasattr(value, "decode"):
+                            value = int.from_bytes(value, byteorder="big")
 
-                    data_dict[apid][packet_field_name].append(value)
+                        match_packet_name_prefix_regex = r"^\w+?_\w+?\."
+                        packet_field_name = re.sub(
+                            match_packet_name_prefix_regex, "", key.lower()
+                        )
 
-        # Convert data to xarray datasets.
-        dataset_dict: dict[int, xr.Dataset] = {}
+                        data_dict[apid][packet_field_name].append(value)
 
-        for apid, data in data_dict.items():
-            time_key = next(iter(data.keys()))
-            time_data = TimeConversion.convert_met_to_j2000ns(data[time_key])
+            # Convert data to xarray datasets.
+            for apid, data in data_dict.items():
+                time_key = next(iter(data.keys()))
+                time_data = TimeConversion.convert_met_to_j2000ns(data[time_key])
 
-            ds = xr.Dataset(
-                {key: ("epoch", value) for key, value in data.items()},
-                coords={"epoch": time_data},
-            )
-            ds = ds.sortby("epoch")
+                ds = xr.Dataset(
+                    {key: ("epoch", value) for key, value in data.items()},
+                    coords={"epoch": time_data},
+                )
+                ds = ds.sortby("epoch")
 
-            dataset_dict[apid] = ds
+                dataset_dict[apid] = ds
 
         return dataset_dict
 
