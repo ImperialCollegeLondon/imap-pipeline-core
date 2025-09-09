@@ -120,6 +120,18 @@ class HKProcessor(FileProcessor):
             for day_info, daily_data in data.groupby(dates):
                 day: date = day_info[0] if isinstance(day_info, tuple) else day_info  # type: ignore
 
+                # Add a new column for the date in ISO format
+                daily_data["time_met_iso"] = pd.Series(
+                    data=TimeConversion.convert_j2000ns_to_isostring(
+                        daily_data.index.values
+                    ),
+                    index=daily_data.index,
+                    dtype=str,
+                )
+
+                # Create an empty column for SPICE based time in human readable format - TBD
+                daily_data["epoch_iso"] = pd.NA
+
                 path, handler = self.__save_daily_data(
                     day,
                     daily_data,
