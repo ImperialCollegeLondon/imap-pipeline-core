@@ -22,26 +22,26 @@ valid_start_datetime:
     VAR_TYPE: metadata
 
 gradiometer_factor:
-    CATDESC: The gradiometer factor to be used for calibration
+    CATDESC: The number to multiply by the delta between the MAGo and MAGi vectors. This value will then be subtracted from the MAGo vector.
     VALIDMIN: -1
     VALIDMAX: 1
     VAR_TYPE: data
 
 spin_average_application_factor:
-    CATDESC: The factor to be applied to the spin average of the magnetometer data
+    CATDESC: The amount of the the spin average offset to subtract from the data in the spin plane.
     VALIDMIN: -1
     VALIDMAX: 1
     VAR_TYPE: data
 
 number_of_spins:
-    CATDESC: The number of spins used in the spin average
+    CATDESC: The number of spins to be averaged across to acquire the spin average values
     VALIDMIN: 1
     VALIDMAX: 65535
     UNITS: ""
     VAR_TYPE: data
 
 quality_flag_threshold:
-    CATDESC: The gradiometer threshold for indicating through the quality flag that low quality data is present
+    CATDESC: The threshold delta between MAGo and MAGi over which to indicate through the quality flag that low quality data is present
     VALIDMIN: 0
     VALIDMAX: 65535
     UNITS: nT
