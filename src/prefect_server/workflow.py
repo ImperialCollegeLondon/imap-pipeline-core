@@ -228,7 +228,7 @@ def deploy_flows(local_debug: bool = False):
     if local_debug:
         for deployable in deployables:
             deployable.work_queue_name = None
-            deployable.job_variables = None
+            deployable.job_variables = {}
 
         serve(
             *deployables,
