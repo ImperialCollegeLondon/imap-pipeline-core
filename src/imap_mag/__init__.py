@@ -3,7 +3,7 @@
 import logging
 from importlib.metadata import PackageNotFoundError, version
 
-logging.getLogger("imap-mag").setLevel(logging.INFO)
+logging.getLogger("imap_mag").setLevel(logging.INFO)
 
 
 def get_version() -> str:
