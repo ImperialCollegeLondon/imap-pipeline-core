@@ -23,7 +23,7 @@ pydantic = "^2.10.2"
 space-packet-parser = "^5.0.1"
 xarray = "^2025.6.1"
 numpy = "^2.2.6"
-typer = "^0.15.4"
+typer = "^0.13.0"
 sqlalchemy = "^2.0.41"
 alembic = "^1.13.2"
 sqlalchemy-utils = "^0.42.0"
@@ -32,7 +32,7 @@ pandas = "^2.2.2"
 imap-data-access = "^0.34.1"
 cdflib = "^1.3.6"
 psycopg = {extras = ["binary"], version = "^3.2.9"}
-prefect = {extras = ["shell"], version = "^3.1.7"}
+prefect = {extras = ["shell"], version = "3.1.7"}
 prefect-docker = "^0.6.3"
 spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
