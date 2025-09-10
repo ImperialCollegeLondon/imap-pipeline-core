@@ -12,7 +12,12 @@ from imap_mag.cli.process import process
 from imap_mag.config import FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import HKBinaryPathHandler
-from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, HKPacket
+from imap_mag.util import (
+    CONSTANTS,
+    DatetimeProvider,
+    Environment,
+    HKPacket,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
@@ -30,12 +35,12 @@ def generate_flow_run_name() -> str:
     )
     end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
 
-    packet_names = [hk.name for hk in hk_packets]
-    packet_text = (
-        f"{','.join(packet_names)}-Packets"
-        if packet_names != HKPacket.names()
-        else "all-HK"
-    )
+    packet_names: list[str] = [hk.name for hk in hk_packets]
+
+    if packet_names == HKPacket.names():
+        packet_text: str = "all-HK"
+    else:
+        packet_text = f"{','.join(packet_names)}-Packets"
 
     return (
         f"Download-{packet_text}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
@@ -53,10 +58,10 @@ async def poll_hk_flow(
         Field(
             json_schema_extra={
                 "title": "HK packets to download",
-                "description": "List of HK packets to download from WebPODA. Default is all HK packets.",
-            }
+                "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
+            },
         ),
-    ] = [hk for hk in HKPacket],  # type: ignore
+    ] = [hk for hk in HKPacket],
     start_date: Annotated[
         datetime | None,
         Field(
@@ -118,7 +123,7 @@ async def poll_hk_flow(
     use_ert: bool = force_ert or automated_flow_run
 
     for packet in hk_packets:
-        progress_item_id = packet.packet
+        progress_item_id = packet.packet_name
         packet_start_timestamp = DatetimeProvider.now()
 
         logger.info(f"---------- Downloading Packet {progress_item_id} ----------")

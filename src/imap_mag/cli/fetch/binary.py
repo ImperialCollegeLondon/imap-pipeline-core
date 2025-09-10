@@ -35,9 +35,7 @@ def fetch_binary(
     ] = None,
     packet: Annotated[
         HKPacket | None,
-        typer.Option(
-            "--packet", case_sensitive=False, help="Packet to download, e.g., SID1"
-        ),
+        typer.Option(case_sensitive=False, help="Packet to download, e.g., SID1"),
     ] = None,
     fetch_mode: Annotated[
         FetchMode,
@@ -61,10 +59,11 @@ def fetch_binary(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     if apid is not None:
-        packet_name: str = HKPacket.from_apid(apid).packet
+        packet = HKPacket.from_apid(apid)
     else:
         assert packet is not None
-        packet_name = packet.packet
+
+    packet_name = packet.packet_name
 
     logger.info(
         f"Downloading raw packet {packet_name} from {start_date} to {end_date}."
@@ -79,7 +78,7 @@ def fetch_binary(
     fetch_binary = FetchBinary(poda)
     downloaded_binaries: dict[Path, HKBinaryPathHandler] = (
         fetch_binary.download_binaries(
-            packet=packet_name,
+            packet=packet,
             start_date=start_date,
             end_date=end_date,
             use_ert=use_ert,

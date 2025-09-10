@@ -14,6 +14,7 @@ class CONSTANTS:
         APID = "pkt_apid"
         SEQ_COUNTER = "src_seq_ctr"
         SHCOARSE = "shcoarse"
+        EPOCH = "epoch"
 
     class ENV_VAR_NAMES:
         WEBPODA_AUTH_CODE = "IMAP_WEBPODA_TOKEN"

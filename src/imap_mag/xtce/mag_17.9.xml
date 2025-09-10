@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/space/xtce" name="MAG">
-    <xtce:Header date="2023-09-01 00:00:00" version="1" author="IMAP SDC" />
+    <xtce:Header date="2023-09-01 00:00:00" version="1" author="IMAP SDC" source_file="TLM_MAG.xls" />
     <xtce:TelemetryMetaData>
         <xtce:ParameterTypeSet>
             <xtce:IntegerParameterType name="VERSION" signed="false">
@@ -205,43 +205,43 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGOSATFLAGX" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGOSATFLAGY" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGOSATFLAGZ" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGISATFLAGX" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGISATFLAGY" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_PW.MAGISATFLAGZ" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_PW.SPARE1" signed="false">
@@ -295,9 +295,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_STATUS.MAGMODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="5" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -503,18 +503,14 @@
             <xtce:EnumeratedParameterType name="MAG_PROG_MTRAN.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -527,24 +523,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -552,8 +530,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -617,15 +593,39 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_PROG_MTRAN.PREVM_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -635,9 +635,9 @@
             <xtce:EnumeratedParameterType name="MAG_PROG_MTRAN.CURRM_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -808,12 +808,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -880,18 +880,13 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_SWPCKDROP.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
-                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -904,24 +899,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -929,8 +906,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -994,6 +969,31 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -1200,9 +1200,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID1.MAG_M" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="5" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -1309,15 +1309,15 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID1.FIB_SAT_STAT" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID1.FOB_SAT_STAT" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID1.FIB_ARSTAT" signed="false">
@@ -1398,10 +1398,10 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_BTFAIL.HW_MODEL" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="7" label="DEV" />
                     <xtce:Enumeration value="1" label="FM" />
                     <xtce:Enumeration value="3" label="EM" />
                     <xtce:Enumeration value="5" label="LM" />
-                    <xtce:Enumeration value="7" label="DEV" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_EHS_BTFAIL.BUILD_ID" signed="false">
@@ -1431,18 +1431,13 @@
             <xtce:EnumeratedParameterType name="MAG_PROG_BTSUCC.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
-                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -1455,24 +1450,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -1480,8 +1457,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -1545,6 +1520,31 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -1577,10 +1577,10 @@
             <xtce:EnumeratedParameterType name="MAG_PROG_BTSUCC.HW_MODEL" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="7" label="DEV" />
                     <xtce:Enumeration value="1" label="FM" />
                     <xtce:Enumeration value="3" label="EM" />
                     <xtce:Enumeration value="5" label="LM" />
-                    <xtce:Enumeration value="7" label="DEV" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_PROG_BTSUCC.BUILD_ID" signed="false">
@@ -1649,48 +1649,19 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_CRSHREP.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
-                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
-                    <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
-                    <xtce:Enumeration value="21538" label="fibAutoRst" />
                     <xtce:Enumeration value="21539" label="feeCmdNotExec" />
                     <xtce:Enumeration value="21552" label="fobComsTimeout" />
                     <xtce:Enumeration value="21553" label="fobCmdErr" />
-                    <xtce:Enumeration value="21554" label="fobAutoRst" />
                     <xtce:Enumeration value="21568" label="mramBotCkFail" />
                     <xtce:Enumeration value="21569" label="mramISVCkFail" />
-                    <xtce:Enumeration value="21600" label="spwPriChange" />
-                    <xtce:Enumeration value="21601" label="spwWriteFail" />
-                    <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -1698,8 +1669,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -1762,7 +1731,38 @@
                     <xtce:Enumeration value="54447" label="hkadcDngrFIBTemp" />
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21538" label="fibAutoRst" />
+                    <xtce:Enumeration value="21554" label="fobAutoRst" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="16391" label="icvDfltLoaded" />
+                    <xtce:Enumeration value="16392" label="swTskRestart" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="21600" label="spwPriChange" />
+                    <xtce:Enumeration value="21601" label="spwWriteFail" />
+                    <xtce:Enumeration value="21602" label="spwWriteFailEn" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -1850,9 +1850,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P1V5V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P1V8V_DANGERUP" signed="false">
@@ -1894,9 +1894,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P1V8V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P3V3V_DANGERUP" signed="false">
@@ -1938,9 +1938,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P3V3V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P2V5V_DANGERUP" signed="false">
@@ -1982,9 +1982,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P2V5V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P8V_DANGERUP" signed="false">
@@ -2026,9 +2026,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P8V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.N8V_DANGERUP" signed="false">
@@ -2070,9 +2070,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_N8V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.TEMP_DANGERUP" signed="false">
@@ -2118,9 +2118,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_TEMP" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P2V4_DANGERUP" signed="false">
@@ -2162,9 +2162,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P2V4V" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P1V5CUR_DANGERUP" signed="false">
@@ -2206,9 +2206,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P1V5I" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P1V8CUR_DANGERUP" signed="false">
@@ -2250,9 +2250,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P1V8I" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P3V3CUR_DANGERUP" signed="false">
@@ -2294,9 +2294,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P3V3I" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P2V5CUR_DANGERUP" signed="false">
@@ -2338,9 +2338,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P2V5I" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.P8VCUR_DANGERUP" signed="false">
@@ -2382,9 +2382,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_P8VI" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.N8VCUR_DANGERUP" signed="false">
@@ -2426,9 +2426,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_N8VI" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.FOBTEMP_DANGERUP" signed="false">
@@ -2482,9 +2482,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_FOBTEMP" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.FIBTEMP_DANGERUP" signed="false">
@@ -2538,9 +2538,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_HKADCPRMLIM.AUTOACTION_FIBTEMP" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_HKADCPRMLIM.FILL" signed="false">
@@ -2591,9 +2591,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID20.M_IIC" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="5" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -2760,7 +2760,6 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_PROCSTAT.TM_QFAILCODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="SUCCESSFUL" />
                     <xtce:Enumeration value="1" label="TASKEXITED" />
                     <xtce:Enumeration value="255" label="FAILED" />
                     <xtce:Enumeration value="10" label="INVALIDNUMBER" />
@@ -2791,6 +2790,7 @@
                     <xtce:Enumeration value="7" label="OBJDELETED" />
                     <xtce:Enumeration value="8" label="INVALIDSIZE" />
                     <xtce:Enumeration value="9" label="INVALIDADDRES" />
+                    <xtce:Enumeration value="0" label="SUCCESSFUL" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_PROCSTAT.SRAM_SINGBITERRCNT" signed="false">
@@ -2898,9 +2898,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_MODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -3168,9 +3168,9 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_AUTO_PWRREQ" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_SW_VERPTCH" signed="false">
@@ -3571,11 +3571,11 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_MODECHNG_RSN" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="ModeTranNotAuto" />
                     <xtce:Enumeration value="1" label="AutoInternal" />
-                    <xtce:Enumeration value="2" label="Telecommand" />
                     <xtce:Enumeration value="3" label="AutoExternal" />
                     <xtce:Enumeration value="4" label="AutoExternalUntrig" />
+                    <xtce:Enumeration value="0" label="ModeTranNotAuto" />
+                    <xtce:Enumeration value="2" label="Telecommand" />
                     <xtce:Enumeration value="5" label="ModeTranAutoBrst" />
                     <xtce:Enumeration value="6" label="ModeTranDataRate" />
                 </xtce:EnumerationList>
@@ -3590,8 +3590,8 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_DATARATEIGNORED" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotIgnored" />
                     <xtce:Enumeration value="1" label="Ignored" />
+                    <xtce:Enumeration value="0" label="NotIgnored" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_SID15.SPARE13" signed="false">
@@ -3739,8 +3739,8 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID15.ISV_WDTINIT" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="SUCCESS" />
                     <xtce:Enumeration value="255" label="FAILED" />
+                    <xtce:Enumeration value="0" label="SUCCESS" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_SID15.SPARE16" signed="false">
@@ -6406,22 +6406,22 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FIB_STAT_ZOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FIB_STAT_YOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FIB_STAT_XOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FIB_STAT_ADCZOF" signed="false">
@@ -6537,43 +6537,43 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_ZOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_YOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_XOUFLG" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NotSaturated" />
                     <xtce:Enumeration value="1" label="Saturated" />
+                    <xtce:Enumeration value="0" label="NotSaturated" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_ADCZOF" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoOverflow" />
                     <xtce:Enumeration value="1" label="Overflow" />
+                    <xtce:Enumeration value="0" label="NoOverflow" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_ADCYOF" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoOverflow" />
                     <xtce:Enumeration value="1" label="Overflow" />
+                    <xtce:Enumeration value="0" label="NoOverflow" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_HSK_SID2.FOB_STAT_ADCXOF" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoOverflow" />
                     <xtce:Enumeration value="1" label="Overflow" />
+                    <xtce:Enumeration value="0" label="NoOverflow" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_HSK_SID2.FOB_STAT_GAINZ" signed="false">
@@ -6886,13 +6886,13 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="41134" label="CompressWidthTooBig" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -6908,9 +6908,9 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_FAIL.MAGMODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -7027,12 +7027,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -7048,9 +7048,9 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_FAILMEM.MAGMODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -7098,18 +7098,15 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_SWTRAP.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
                     <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -7122,23 +7119,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
                     <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
@@ -7147,7 +7127,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -7212,6 +7191,27 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -7347,12 +7347,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -7399,18 +7399,14 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_HKADC.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -7423,23 +7419,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
                     <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
@@ -7448,7 +7427,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -7513,6 +7491,28 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -7697,18 +7697,15 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_AUTONOMY.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
                     <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -7721,23 +7718,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
                     <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
@@ -7746,7 +7726,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -7812,15 +7791,36 @@
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
                     <xtce:Enumeration value="54450" label="DangTrigAuto" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_EHS_AUTONOMY.AUTOACTION" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="NoAction" />
                     <xtce:Enumeration value="1" label="PowerDown" />
                     <xtce:Enumeration value="2" label="PowerCycle" />
+                    <xtce:Enumeration value="0" label="NoAction" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_EHS_AUTONOMY.TRIGGERCHANNEL" signed="false">
@@ -7850,18 +7850,15 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_GENEVNT.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
                     <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -7874,23 +7871,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
                     <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
@@ -7899,7 +7879,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -7964,13 +7943,33 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_EHS_GENEVNT.EVENT_ID_SUPL" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="RPW_TRIG_RX" />
                     <xtce:Enumeration value="48" label="FeeSpiInitFail" />
                     <xtce:Enumeration value="50" label="FiltrTskIDInva" />
                     <xtce:Enumeration value="49" label="FeeSpiStrtFail" />
@@ -7978,6 +7977,7 @@
                     <xtce:Enumeration value="32" label="E_RECV_UNEXP" />
                     <xtce:Enumeration value="33" label="B_SEND_OVERWRI" />
                     <xtce:Enumeration value="34" label="SCI_UNKWN_MODE" />
+                    <xtce:Enumeration value="1" label="RPW_TRIG_RX" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -8050,12 +8050,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />
@@ -8069,7 +8069,6 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_OSERR.STATUS" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                     <xtce:Enumeration value="1" label="RTEMSTaskExited" />
                     <xtce:Enumeration value="2" label="RTEMSMpNotConfig" />
                     <xtce:Enumeration value="3" label="RTEMSInvName" />
@@ -8098,6 +8097,7 @@
                     <xtce:Enumeration value="26" label="RTEMSNoMem" />
                     <xtce:Enumeration value="27" label="RTEMSIOErr" />
                     <xtce:Enumeration value="28" label="RTEMSProxyBLK" />
+                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_EHS_OSERR.FILL" signed="false">
@@ -8133,7 +8133,6 @@
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID0" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8214,20 +8213,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID1" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8308,20 +8307,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID2" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8402,20 +8401,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID3" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8496,20 +8495,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID4" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8590,20 +8589,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID5" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8684,20 +8683,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID6" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8778,20 +8777,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID7" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8872,20 +8871,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID8" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -8966,20 +8965,20 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="MAG_ELS_ITF.FAILURE_ID9" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="25" label="apidIllgl" />
                     <xtce:Enumeration value="1" label="lengthInv" />
                     <xtce:Enumeration value="10" label="pusVIlgl" />
                     <xtce:Enumeration value="11" label="pktIDPktTpIlgl" />
@@ -9060,13 +9059,14 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="41215" label="InvAutoAct" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="25" label="apidIllgl" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="nan" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9181,12 +9181,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9316,12 +9316,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9337,9 +9337,9 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_FEEFAIL.MODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
+                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="6" label="Burst" />
-                    <xtce:Enumeration value="2" label="Safe" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -9466,12 +9466,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9487,8 +9487,8 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_OSFAIL.MODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="2" label="Safe" />
+                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -9500,12 +9500,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />
@@ -9519,7 +9519,6 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_OSFAIL.STATUS" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                     <xtce:Enumeration value="1" label="RTEMSTaskExited" />
                     <xtce:Enumeration value="2" label="RTEMSMpNotConfig" />
                     <xtce:Enumeration value="3" label="RTEMSInvName" />
@@ -9548,6 +9547,7 @@
                     <xtce:Enumeration value="26" label="RTEMSNoMem" />
                     <xtce:Enumeration value="27" label="RTEMSIOErr" />
                     <xtce:Enumeration value="28" label="RTEMSProxyBLK" />
+                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_TCC_OSFAIL.FILL" signed="false">
@@ -9661,12 +9661,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9682,8 +9682,8 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_PARAMFAIL.MODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="2" label="Safe" />
+                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -9803,12 +9803,12 @@
                     <xtce:Enumeration value="21" label="UARTOverrun" />
                     <xtce:Enumeration value="22" label="UARTparityErr" />
                     <xtce:Enumeration value="23" label="UARTframingErr" />
-                    <xtce:Enumeration value="255" label="FIDuninitialised" />
-                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
-                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
                     <xtce:Enumeration value="41132" label="InvParamSciRate" />
                     <xtce:Enumeration value="41133" label="ModeBlockDataRate" />
                     <xtce:Enumeration value="54359" label="IRQCatchEDACFailed" />
+                    <xtce:Enumeration value="41130" label="CompressAlreadyEN" />
+                    <xtce:Enumeration value="41131" label="CompressAlreadyDS" />
+                    <xtce:Enumeration value="255" label="FIDuninitialised" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9824,8 +9824,8 @@
             <xtce:EnumeratedParameterType name="MAG_TCC_FILEFAIL.MODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="2" label="Safe" />
+                    <xtce:Enumeration value="6" label="Burst" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />
@@ -9864,18 +9864,15 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_SEMAPH.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
                     <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -9888,23 +9885,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
                     <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
@@ -9913,7 +9893,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -9978,6 +9957,27 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -9987,12 +9987,12 @@
                     <xtce:Enumeration value="0" label="IDLETSK_TMPQ_HKTMER" />
                     <xtce:Enumeration value="1" label="SPIRTSK_TCPQ_CLKTMER" />
                     <xtce:Enumeration value="2" label="IBBTTSK_DBGQ" />
-                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ  " />
-                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ " />
-                    <xtce:Enumeration value="5" label="OBNT_TSK " />
+                    <xtce:Enumeration value="3" label="IBNTTSK_OBNQ" />
+                    <xtce:Enumeration value="4" label="OBBTTSK_IBNQ" />
+                    <xtce:Enumeration value="5" label="OBNT_TSK" />
                     <xtce:Enumeration value="6" label="SCIT_TSK" />
                     <xtce:Enumeration value="7" label="TCIM_TSK" />
-                    <xtce:Enumeration value="9" label="TMOT_TSK " />
+                    <xtce:Enumeration value="9" label="TMOT_TSK" />
                     <xtce:Enumeration value="10" label="SRMT_TSK" />
                     <xtce:Enumeration value="11" label="MONT_TSK" />
                     <xtce:Enumeration value="12" label="MSCR_TSK" />
@@ -10016,7 +10016,6 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_SEMAPH.STATUS" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                     <xtce:Enumeration value="1" label="RTEMSTaskExited" />
                     <xtce:Enumeration value="2" label="RTEMSMpNotConfig" />
                     <xtce:Enumeration value="3" label="RTEMSInvName" />
@@ -10045,6 +10044,7 @@
                     <xtce:Enumeration value="26" label="RTEMSNoMem" />
                     <xtce:Enumeration value="27" label="RTEMSIOErr" />
                     <xtce:Enumeration value="28" label="RTEMSProxyBLK" />
+                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_EHS_BUFF.SHCOARSE" signed="false">
@@ -10068,18 +10068,14 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_BUFF.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -10092,24 +10088,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -10117,7 +10095,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
@@ -10182,6 +10159,29 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -10197,7 +10197,6 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_BUFF.STATUS" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                     <xtce:Enumeration value="1" label="RTEMSTaskExited" />
                     <xtce:Enumeration value="2" label="RTEMSMpNotConfig" />
                     <xtce:Enumeration value="3" label="RTEMSInvName" />
@@ -10226,6 +10225,7 @@
                     <xtce:Enumeration value="26" label="RTEMSNoMem" />
                     <xtce:Enumeration value="27" label="RTEMSIOErr" />
                     <xtce:Enumeration value="28" label="RTEMSProxyBLK" />
+                    <xtce:Enumeration value="0" label="RTEMSSuccessful" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:IntegerParameterType name="MAG_EHS_BUFF.FILL" signed="false">
@@ -10252,18 +10252,15 @@
             <xtce:EnumeratedParameterType name="MAG_EHS_FEE.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
                     <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -10276,24 +10273,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -10301,8 +10280,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -10366,6 +10343,29 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -10403,18 +10403,14 @@
             <xtce:EnumeratedParameterType name="MAG_ELS_CONFLD.EVENT_ID" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="bswBootSuccess" />
-                    <xtce:Enumeration value="16384" label="generalEvent2" />
                     <xtce:Enumeration value="16385" label="mramTblCRCInv" />
                     <xtce:Enumeration value="16386" label="mramTblEmpty" />
                     <xtce:Enumeration value="16387" label="icvMramFail" />
-                    <xtce:Enumeration value="16388" label="icvCRCInv" />
                     <xtce:Enumeration value="16389" label="icvSizeInv" />
                     <xtce:Enumeration value="16390" label="icvStrctVerInv" />
                     <xtce:Enumeration value="16391" label="icvDfltLoaded" />
                     <xtce:Enumeration value="16392" label="swTskRestart" />
                     <xtce:Enumeration value="16393" label="EEcrashReport" />
-                    <xtce:Enumeration value="2" label="modeTransition" />
                     <xtce:Enumeration value="21536" label="fibComsTimeout" />
                     <xtce:Enumeration value="21537" label="fibCmdErr" />
                     <xtce:Enumeration value="21538" label="fibAutoRst" />
@@ -10427,24 +10423,6 @@
                     <xtce:Enumeration value="21600" label="spwPriChange" />
                     <xtce:Enumeration value="21601" label="spwWriteFail" />
                     <xtce:Enumeration value="21602" label="spwWriteFailEn" />
-                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
-                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
-                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
-                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
-                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
-                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
-                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
-                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
-                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
-                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
-                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
-                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
-                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
-                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
-                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
-                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
-                    <xtce:Enumeration value="3" label="icvMramLoaded" />
-                    <xtce:Enumeration value="32768" label="generalEvent3" />
                     <xtce:Enumeration value="36865" label="spwWriteFailE" />
                     <xtce:Enumeration value="36866" label="spwReadFailE" />
                     <xtce:Enumeration value="36867" label="spwWriteFailB" />
@@ -10452,8 +10430,6 @@
                     <xtce:Enumeration value="37952" label="mramMltCkFail" />
                     <xtce:Enumeration value="37953" label="mramWriteErr" />
                     <xtce:Enumeration value="37954" label="wdogDisFailed" />
-                    <xtce:Enumeration value="4" label="aswBootSuccess" />
-                    <xtce:Enumeration value="4096" label="generalEvent1" />
                     <xtce:Enumeration value="49152" label="swTrap" />
                     <xtce:Enumeration value="49153" label="swTskCreatFail" />
                     <xtce:Enumeration value="49154" label="swTskStrtFail" />
@@ -10517,6 +10493,30 @@
                     <xtce:Enumeration value="54448" label="idleCPULimRech" />
                     <xtce:Enumeration value="54449" label="taskStackBlown" />
                     <xtce:Enumeration value="61440" label="generalEvent4" />
+                    <xtce:Enumeration value="16384" label="generalEvent2" />
+                    <xtce:Enumeration value="16388" label="icvCRCInv" />
+                    <xtce:Enumeration value="21664" label="hkadcWarn1v5" />
+                    <xtce:Enumeration value="21665" label="hkadcWarn1v8" />
+                    <xtce:Enumeration value="21667" label="hkadcWarn2v5" />
+                    <xtce:Enumeration value="21666" label="hkadcWarn3v3" />
+                    <xtce:Enumeration value="21668" label="hkadcWarnP8V" />
+                    <xtce:Enumeration value="21669" label="hkadcWarnN8V" />
+                    <xtce:Enumeration value="21670" label="hkadcWarnTemp" />
+                    <xtce:Enumeration value="21671" label="hkadcWarn2v4" />
+                    <xtce:Enumeration value="21672" label="hkadcWarn1v5Cur" />
+                    <xtce:Enumeration value="21673" label="hkadcWarn1v8Cur" />
+                    <xtce:Enumeration value="21674" label="hkadcWarn3v3Cur" />
+                    <xtce:Enumeration value="21675" label="hkadcWarn2v5Cur" />
+                    <xtce:Enumeration value="21676" label="hkadcWarnP8VCur" />
+                    <xtce:Enumeration value="21677" label="hkadcWarnN8VCur" />
+                    <xtce:Enumeration value="21678" label="hkadcWarnFOBTemp" />
+                    <xtce:Enumeration value="21679" label="hkadcWarnFIBTemp" />
+                    <xtce:Enumeration value="32768" label="generalEvent3" />
+                    <xtce:Enumeration value="4096" label="generalEvent1" />
+                    <xtce:Enumeration value="1" label="bswBootSuccess" />
+                    <xtce:Enumeration value="2" label="modeTransition" />
+                    <xtce:Enumeration value="3" label="icvMramLoaded" />
+                    <xtce:Enumeration value="4" label="aswBootSuccess" />
                     <xtce:Enumeration value="65535" label="Cleared" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
@@ -10562,8 +10562,8 @@
             <xtce:EnumeratedParameterType name="MAG_HSK_SCI.MAGMODE" signed="false">
                 <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned" />
                 <xtce:EnumerationList>
-                    <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="2" label="Safe" />
+                    <xtce:Enumeration value="1" label="Standby" />
                     <xtce:Enumeration value="3" label="Config" />
                     <xtce:Enumeration value="4" label="Debug" />
                     <xtce:Enumeration value="5" label="Normal" />

@@ -7,6 +7,7 @@ from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGSensor import MAGSensor
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from imap_mag.util.ScienceMode import ScienceMode
+from imap_mag.util.Subsystem import Subsystem
 from imap_mag.util.TimeConversion import TimeConversion
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "ReferenceFrame",
     "ScienceLevel",
     "ScienceMode",
+    "Subsystem",
     "TimeConversion",
 ]

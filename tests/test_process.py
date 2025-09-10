@@ -23,7 +23,7 @@ def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
     work_folder = Path(tempfile.gettempdir())
 
     processor = HKProcessor(work_folder, DatastoreFileFinder(test_datastore))
-    processor.initialize(Path("xtce/tlm_20241024.xml"))
+    processor.initialize(Path("xtce"))
 
     return processor
 
@@ -99,8 +99,8 @@ def test_dispatch_unsupported_file(capture_cli_logs):
 )
 def test_decode_hk_packet(packet_type):
     # Set up.
-    packet_path = TEST_DATA / (packet_type.packet + ".pkts")
-    expected_path = TEST_TRUTH / (packet_type.packet + ".csv")
+    packet_path = TEST_DATA / (packet_type.packet_name + ".pkts")
+    expected_path = TEST_TRUTH / (packet_type.packet_name + ".csv")
 
     processor = instantiate_hk_processor()
 
@@ -131,7 +131,7 @@ def test_decode_hk_packet(packet_type):
 
     assert processed_handler.level == "l1"
     assert processed_handler.descriptor == (
-        packet_type.packet.lower().strip("mag_").replace("_", "-")
+        packet_type.packet_name.lower().strip("mag_").replace("_", "-")
     )
 
 
@@ -271,6 +271,60 @@ def test_decode_hk_packet_with_data_from_multiple_apids(capture_cli_logs):
     )
 
 
+def test_decode_hk_packet_with_data_from_multiple_subsystems(capture_cli_logs):
+    """Test that HKProcessor splits data into separate files for each day, for each ApID, for each subsystem."""
+
+    # Set up.
+    packet_path = Path(tempfile.gettempdir()) / "SUBSYSTEM_COMBINED.pkts"
+
+    mag_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    sc_path = TEST_DATA / "SCID_X285.pkts"
+
+    with open(mag_path, "rb") as power_file, open(sc_path, "rb") as status_file:
+        power_data = power_file.read()
+        status_data = status_file.read()
+
+        combined_data = power_data + status_data
+
+    with open(packet_path, "wb") as combined_file:
+        combined_file.write(combined_data)
+
+    processor = instantiate_hk_processor()
+
+    # Exercise.
+    processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
+
+    # Verify.
+    assert len(processed_files) == 2
+
+    processed_path1, processed_path2 = processed_files.keys()
+
+    assert processed_path1.exists()
+    assert processed_path2.exists()
+
+    assert {processed_path1.name, processed_path2.name} == {
+        "imap_sc_l1_x285_20100101_v001.csv",
+        "imap_mag_l1_hsk-pw_20250502_v001.csv",
+    }
+
+    assert re.search(
+        rf"Found 2 subsystems in {packet_path!s}: (SC|MAG), (SC|MAG)",
+        capture_cli_logs.text,
+    )
+    assert re.search(
+        rf"Found 2 ApIDs \((645|1063), (645|1063)\) in {packet_path!s}.",
+        capture_cli_logs.text,
+    )
+    assert (
+        "Splitting data for ApID 645 (SCID_X285) into separate files for each day:"
+        in capture_cli_logs.text
+    )
+    assert (
+        "Splitting data for ApID 1063 (MAG_HSK_PW) into separate files for each day:"
+        in capture_cli_logs.text
+    )
+
+
 def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     """Test that HKProcessor loads existing data and includes it in the output file (without duplicates)."""
 
@@ -295,10 +349,6 @@ def test_decode_hk_packet_data_already_exists_in_datastore(capture_cli_logs):
     )
     assert (
         f"Found 1 ApIDs (1063) in {Path('tests/datastore/hk/mag/l0/hsk-pw/2025/10/imap_mag_l0_hsk-pw_20251017_001.pkts')}."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"Loading 1 new files that are not in the datastore:\n{Path('tests/test_data/MAG_HSK_PW_20251017_sclk.pkts')}"
         in capture_cli_logs.text
     )
 
@@ -343,23 +393,9 @@ def test_decode_hk_packet_groupby_returns_tuple_for_day():
     assert processed_path.name == "imap_mag_l1_hsk-status_20250331_v001.csv"
 
 
-@pytest.mark.parametrize(
-    "start_idx, end_idx, replace_bytes",
-    [
-        (0, 9, b"CORRUPTED"),
-        (10, 19, b""),
-        (10, 20, b"CORRUPTED"),
-    ],
-)
-def test_hk_processor_throws_error_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
-):
-    """Test that HKProcessor throws an error on corrupt HK packet."""
-
-    # Set up.
-    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
-    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
-
+def write_corrupt_packet(
+    original_path, packet_path, start_idx, end_idx, replace_bytes
+) -> None:
     with open(original_path, "rb") as original_file:
         original_data = original_file.read()
 
@@ -370,16 +406,70 @@ def test_hk_processor_throws_error_on_corrupt_hk_packet(
     with open(packet_path, "wb") as corrupt_file:
         corrupt_file.write(corrupt_data)
 
+
+@pytest.mark.parametrize(
+    "start_idx, end_idx, replace_bytes",
+    [
+        (0, 9, b"CORRUPTED"),
+    ],
+)
+def test_hk_processor_ignores_corrupt_hk_packet_with_bad_apid(
+    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
+):
+    """Test that HKProcessor throws an error on corrupt HK packet."""
+
+    # Set up.
+    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    write_corrupt_packet(original_path, packet_path, start_idx, end_idx, replace_bytes)
+
     processor = instantiate_hk_processor()
 
     # Exercise.
-    with pytest.raises(ValueError, match="negative shift count"):
-        processor.process(packet_path)
+    processed_path = processor.process(packet_path)
+
+    assert len(processed_path) == 0
 
     assert re.search(
         rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
     )
-    assert "Filtering out non-MAG ApIDs:" in capture_cli_logs.text
+    assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
+    assert f"Found 0 subsystems in {packet_path!s}:" in capture_cli_logs.text
+    assert f"Found 0 ApIDs () in {packet_path!s}." in capture_cli_logs.text
+
+
+@pytest.mark.parametrize(
+    "start_idx, end_idx, replace_bytes",
+    [
+        (10, 19, b""),
+        (10, 20, b"CORRUPTED"),
+    ],
+)
+def test_hk_processor_fails_gracefully_on_corrupt_hk_packet(
+    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
+):
+    """Test that HKProcessor throws an error on corrupt HK packet."""
+
+    # Set up.
+    packet_path = Path(temp_folder_path) / "MAG_HSK_CORRUPT.pkts"
+    original_path = TEST_DATA / "MAG_HSK_PW.pkts"
+    write_corrupt_packet(original_path, packet_path, start_idx, end_idx, replace_bytes)
+
+    processor = instantiate_hk_processor()
+
+    # Exercise.
+    processed_path = processor.process(packet_path)
+
+    assert len(processed_path) == 0
+
+    assert re.search(
+        rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
+    )
+    assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
+    assert (
+        f"Failed to decommutate packets from {packet_path!s}:\nnegative shift count"
+        in capture_cli_logs.text
+    )
 
 
 def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
@@ -391,15 +481,9 @@ def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
     original_path = TEST_DATA / "MAG_HSK_PW.pkts"
     expected_path = TEST_TRUTH / "MAG_HSK_PW.csv"
 
-    with open(original_path, "rb") as original_file:
-        original_data = original_file.read()
-
-        # Change a few bytes to corrupt the data.
-        corrupt_data = bytearray(original_data)
-        corrupt_data[0:9] = b""  # skips the first corrupted packet
-
-    with open(packet_path, "wb") as corrupt_file:
-        corrupt_file.write(corrupt_data)
+    write_corrupt_packet(
+        original_path, packet_path, 0, 9, b""
+    )  # should skip the first corrupted packet
 
     processor = instantiate_hk_processor(
         Path(tempfile.gettempdir())
@@ -427,4 +511,4 @@ def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):
         assert processed_lines[-1] == expected_lines[2]
         assert len(processed_lines) == 361
 
-    assert "Filtering out non-MAG ApIDs: 16, 1290" in capture_cli_logs.text
+    assert "Unrecognized ApIDs will be ignored: 16, 1290" in capture_cli_logs.text
