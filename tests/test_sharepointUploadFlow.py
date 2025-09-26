@@ -35,7 +35,7 @@ async def test_upload_new_files_to_sharepoint_does_upload_a_file_locally(
 
         expected_path = (
             sharepoint
-            / "Flight Data (dev)"
+            / "Flight Data"
             / upload_file.absolute().relative_to(DATASTORE.absolute())
         )
         expected_path.unlink(missing_ok=True)
