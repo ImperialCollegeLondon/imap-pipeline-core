@@ -10,6 +10,7 @@ from prefect.client.schemas.objects import (
 from prefect.events import DeploymentEventTrigger
 from prefect.variables import Variable
 
+from imap_mag.util import CONSTANTS
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     apply_flow,
@@ -72,6 +73,7 @@ def deploy_flows(local_debug: bool = False):
     shared_job_env_variables = dict(
         {
             PREFECT_CONSTANTS.ENV_VAR_NAMES.DATA_STORE_OVERRIDE: "/data/",
+            CONSTANTS.ENV_VAR_NAMES.SDC_URL: os.getenv(CONSTANTS.ENV_VAR_NAMES.SDC_URL),
             PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL: os.getenv(
                 PREFECT_CONSTANTS.ENV_VAR_NAMES.SQLALCHEMY_URL
             ),
@@ -80,11 +82,9 @@ def deploy_flows(local_debug: bool = False):
         }
     )
 
-    # Any MAG_SOME_ENV_VAL or IMAP_OTHER_ENV_VAL env variables will get propagated to the jobs, overriding shared_job_env_variables
+    # Any MAG_SOME_ENV_VAL  env variables will get propagated to the jobs, overriding shared_job_env_variables
     mag_env_vars = {
-        key: value
-        for key, value in os.environ.items()
-        if key.startswith("MAG_") or key.startswith("IMAP_")
+        key: value for key, value in os.environ.items() if key.startswith("MAG_")
     }
 
     # Merge dictionaries with mag_env_vars overriding shared_job_env_variables
