@@ -73,7 +73,9 @@ def test_dispatch_unsupported_file(capture_cli_logs):
     # Exercise and verify.
     with pytest.raises(
         NotImplementedError,
-        match=f"File {packet_path} is not supported and cannot be processed.",
+        match=re.escape(
+            f"File {packet_path} is not supported and cannot be processed."
+        ),
     ):
         dispatch(
             packet_path,

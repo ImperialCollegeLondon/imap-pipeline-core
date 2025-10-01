@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def test_get_filename_of_ancillary_path_handler_without_content_date_fails():
 
     with pytest.raises(
         ValueError,
-        match="No 'start_date' defined. Cannot generate file name.",
+        match=re.escape("No 'start_date' defined. Cannot generate file name."),
     ):
         provider.get_filename()
 
@@ -106,7 +107,7 @@ def test_get_unsequenced_pattern_of_ancillary_path_handler_without_content_date_
 
     with pytest.raises(
         ValueError,
-        match="No 'start_date' defined. Cannot generate pattern.",
+        match=re.escape("No 'start_date' defined. Cannot generate pattern."),
     ):
         provider.get_unsequenced_pattern()
 
@@ -224,7 +225,9 @@ def test_get_folder_structure(provider, expected_folder_structure):
 def test_get_folder_structure_error_on_no_date_and_level():
     with pytest.raises(
         ValueError,
-        match="No 'content_date', 'level' defined. Cannot generate folder structure.",
+        match=re.escape(
+            "No 'content_date', 'level' defined. Cannot generate folder structure."
+        ),
     ):
         SciencePathHandler().get_folder_structure()
 
@@ -386,7 +389,7 @@ def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
     if throw_error:
         with pytest.raises(
             NoProviderFoundError,
-            match=f"No suitable path handler found for file {path}.",
+            match=re.escape(f"No suitable path handler found for file {path}."),
         ):
             FilePathHandlerSelector.find_by_path(path, throw_if_not_found=True)
     else:

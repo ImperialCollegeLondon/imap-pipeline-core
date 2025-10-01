@@ -508,7 +508,8 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
     # Exercise.
     with (
         pytest.raises(
-            RuntimeError, match="FetchBinary download failed for testing purposes."
+            RuntimeError,
+            match=re.escape("FetchBinary download failed for testing purposes."),
         ),
         Environment(
             MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
