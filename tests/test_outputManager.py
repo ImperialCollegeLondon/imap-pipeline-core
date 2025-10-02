@@ -205,7 +205,7 @@ def test_error_on_file_not_found(capture_cli_logs):
 
     # Exercise and verify.
     with pytest.raises(
-        FileNotFoundError, match=f"File {re.escape(str(original_file))} does not exist."
+        FileNotFoundError, match=re.escape(f"File {original_file!s} does not exist.")
     ):
         manager.add_file(original_file, HKDecodedPathHandler())
 

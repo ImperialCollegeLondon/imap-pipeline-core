@@ -396,7 +396,8 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
     # Exercise.
     with (
         pytest.raises(
-            RuntimeError, match="FetchScience download failed for testing purposes."
+            RuntimeError,
+            match=re.escape("FetchScience download failed for testing purposes."),
         ),
         Environment(
             IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),

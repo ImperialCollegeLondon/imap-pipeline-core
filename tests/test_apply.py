@@ -100,7 +100,9 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
             temp_datastore / "calibration/layers/2025/10",
         )
 
-    with pytest.raises(Exception, match="Layer and data timestamps do not align"):
+    with pytest.raises(
+        Exception, match=re.escape("Layer and data timestamps do not align")
+    ):
         apply(
             layers=["imap_mag_misaligned-timestamps-layer_20251017_v001.json"],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
@@ -120,7 +122,8 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
 def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder):
     # No layers provided, should raise ValueError
     with pytest.raises(
-        ValueError, match="No calibration layers or rotation file provided."
+        ValueError,
+        match=re.escape("No calibration layers or rotation file provided."),
     ):
         apply(
             layers=[],
@@ -155,7 +158,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
     # Exercise and verify.
     with pytest.raises(
         Exception,
-        match="Field required",
+        match=re.escape("Field required"),
     ):
         apply(
             layers=[calibration_layer],

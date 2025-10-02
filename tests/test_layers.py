@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 
 import numpy as np
@@ -203,6 +204,6 @@ def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
 
     # Exercise and verify.
     with pytest.raises(
-        ValueError, match="CSV file is empty or does not contain valid data"
+        ValueError, match=re.escape("CSV file is empty or does not contain valid data")
     ):
         CalibrationLayer._from_csv(empty_csv)

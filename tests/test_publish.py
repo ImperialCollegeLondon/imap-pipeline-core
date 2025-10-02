@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -102,7 +103,7 @@ def test_failed_sdc_file_publish(
     with (
         pytest.raises(
             RuntimeError,
-            match="Failed to publish 1 files.",
+            match=re.escape("Failed to publish 1 files."),
         ),
         Environment(
             MAG_DATA_STORE=str(DATASTORE),
