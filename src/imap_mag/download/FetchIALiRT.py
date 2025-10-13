@@ -62,7 +62,9 @@ class FetchIALiRT:
                     day_info[0] if isinstance(day_info, tuple) else day_info
                 )  # type: ignore
 
-                path_handler = IALiRTPathHandler(content_date=date)
+                path_handler = IALiRTPathHandler(
+                    content_date=max(daily_data["met_in_utc"])
+                )
 
                 # Find file in datastore
                 file_path: Path | None = self.__datastore_finder.find_matching_file(

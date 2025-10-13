@@ -10,6 +10,9 @@ class PREFECT_CONSTANTS:
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
 
+    class POLL_IALIRT:
+        IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
+
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
@@ -20,6 +23,7 @@ class PREFECT_CONSTANTS:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
         IMAP_PIPELINE_CRON = "IMAP_CRON_HEALTHCHECK"
+        POLL_IALIRT_CRON = "IMAP_CRON_POLL_IALIRT"
         POLL_HK_CRON = "IMAP_CRON_POLL_HK"
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1C_NORM"
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1B_BURST"
@@ -38,6 +42,7 @@ class PREFECT_CONSTANTS:
         LOW = "low"
 
     class FLOW_NAMES:
+        POLL_IALIRT = "poll-ialirt"
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
         CALIBRATE = "calibrate"
@@ -48,6 +53,7 @@ class PREFECT_CONSTANTS:
         SHAREPOINT_UPLOAD = "sharepoint-upload"
 
     class DEPLOYMENT_NAMES:
+        POLL_IALIRT = "poll_ialirt"
         POLL_HK = "poll_hk"
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"

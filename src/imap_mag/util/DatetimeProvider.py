@@ -29,6 +29,14 @@ class DatetimeProvider:
         return cls.today(date_type) - timedelta(days=1)
 
     @staticmethod
+    def start_of_hour() -> datetime:
+        return datetime.now().replace(minute=0, second=0, microsecond=0)
+
+    @staticmethod
+    def end_of_hour() -> datetime:
+        return datetime.now().replace(minute=59, second=59, microsecond=999999)
+
+    @staticmethod
     def end_of_today() -> datetime:
         return datetime.today().replace(
             hour=23, minute=59, second=59, microsecond=999999
@@ -36,4 +44,4 @@ class DatetimeProvider:
 
     @classmethod
     def beginning_of_imap(cls, date_type: type[T] = datetime) -> T:
-        return cls.today(date_type).replace(year=2025, month=1, day=1)
+        return cls.today(date_type).replace(year=2025, month=9, day=24)

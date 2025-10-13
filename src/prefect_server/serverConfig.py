@@ -93,6 +93,10 @@ class ServerConfig:
     async def _create_blocks(client):
         default_blocks = [
             (
+                PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
+                prefect.blocks.system.Secret(value=SecretStr("")),
+            ),
+            (
                 PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,
                 prefect.blocks.system.Secret(value=SecretStr("")),
             ),

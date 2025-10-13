@@ -19,6 +19,7 @@ from prefect_server.performCalibration import (
     gradiometry_flow,
 )
 from prefect_server.pollHK import poll_hk_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
@@ -103,6 +104,13 @@ def deploy_flows(local_debug: bool = False):
         print(
             f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
         )
+
+    poll_ialirt_deployable = poll_ialirt_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
@@ -225,6 +233,7 @@ def deploy_flows(local_debug: bool = False):
     )
 
     deployables = (
+        poll_ialirt_deployable,
         poll_hk_deployable,
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,

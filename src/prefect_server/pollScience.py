@@ -113,7 +113,7 @@ async def poll_science_flow(
     ] = False,
 ):
     """
-    Poll housekeeping data from WebPODA.
+    Poll science data from SDC.
     """
 
     logger = get_run_logger()
