@@ -1,8 +1,11 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
 from prefect import flow, get_run_logger
+from prefect.runtime import flow_run
+from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.ialirt import fetch_ialirt
@@ -19,7 +22,20 @@ def convert_ints_to_string(apids: list[int]) -> str:
 
 
 def generate_flow_run_name() -> str:
-    return f"Poll-IALiRT-for-{DatetimeProvider.start_of_hour().strftime('%Y-%m-%dT%H:%M:%S')}"
+    parameters = flow_run.parameters
+
+    start_date: datetime = (
+        parameters["start_date"]
+        if parameters["start_date"]
+        else DatetimeProvider.start_of_hour()
+    )
+    end_date: datetime = (
+        parameters["end_date"]
+        if parameters["end_date"]
+        else DatetimeProvider.end_of_hour()
+    )
+
+    return f"Poll-IALiRT-from-{start_date.strftime('%d-%m-%YT%H:%M:%S')}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
 
 
 @flow(
@@ -27,7 +43,26 @@ def generate_flow_run_name() -> str:
     log_prints=True,
     flow_run_name=generate_flow_run_name,
 )
-async def poll_ialirt_flow() -> None:
+async def poll_ialirt_flow(
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the mode (ingestion date).",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today (ingestion date).",
+            }
+        ),
+    ] = None,
+) -> None:
     """
     Poll I-ALiRT data from SDC.
     """
@@ -43,11 +78,10 @@ async def poll_ialirt_flow() -> None:
     logger.info("---------- Start I-ALiRT Poll ----------")
 
     # With I-ALiRT we poll for 1 hour, every hour.
-    start_date = DatetimeProvider.start_of_hour()
+    start_date = start_date or DatetimeProvider.start_of_hour()
+    end_date = end_date or DatetimeProvider.end_of_hour()
 
-    while (
-        DatetimeProvider.end_of_hour() - DatetimeProvider.now()
-    ).total_seconds() > 30:
+    while (end_date - DatetimeProvider.now()).total_seconds() > 30:
         logger.debug("Wait 30 seconds before polling for new data...")
         time.sleep(30)
 
@@ -60,7 +94,7 @@ async def poll_ialirt_flow() -> None:
 
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
-            original_end_date=DatetimeProvider.end_of_hour(),
+            original_end_date=end_date,
             validate_with_database=True,
         )
 
