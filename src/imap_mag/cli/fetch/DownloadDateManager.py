@@ -13,7 +13,7 @@ class DownloadDateManager:
         packet_name: str,
         database: Database,
         *,
-        earliest_date: datetime = DatetimeProvider.beginning_of_imap(),
+        earliest_date: datetime | None = None,
     ):
         self.__packet_name = packet_name
         self.__database = database
@@ -49,10 +49,12 @@ class DownloadDateManager:
 
         else:
             # If this is the first time the packet is downloaded, use the beginning of IMAP as the start date.
+            earliest_date = self.__earliest_date or DatetimeProvider.beginning_of_imap()
+
             logger.info(
-                f"Start date not provided. Using {self.__earliest_date} as default download date for {self.__packet_name}, as this is the first time it is downloaded."
+                f"Start date not provided. Using {earliest_date} as default download date for {self.__packet_name}, as this is the first time it is downloaded."
             )
-            return self.__earliest_date
+            return earliest_date
 
     def _get_end_date(self, original_end_date: datetime | None) -> datetime:
         if original_end_date is None:
