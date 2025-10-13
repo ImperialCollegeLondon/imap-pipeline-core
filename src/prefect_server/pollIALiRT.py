@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from prefect import flow, get_run_logger, pause_flow_run
@@ -44,9 +44,11 @@ async def poll_ialirt_flow() -> None:
     # With I-ALiRT we poll for 1 hour, every hour.
     start_date = DatetimeProvider.start_of_hour()
 
-    while (DatetimeProvider.end_of_hour() - DatetimeProvider.now()) > timedelta(
-        seconds=30
-    ):
+    while (
+        DatetimeProvider.end_of_hour() - DatetimeProvider.now()
+    ).total_seconds() > 30:
+        await pause_flow_run(timeout=30)
+
         start_timestamp = DatetimeProvider.now()
         progress_item_id = "MAG_IALIRT"
 
@@ -62,7 +64,7 @@ async def poll_ialirt_flow() -> None:
 
         if packet_dates is None:
             logger.info("No dates for download - skipping")
-            return
+            continue
         else:
             (packet_start_date, packet_end_date) = packet_dates
 
@@ -78,7 +80,7 @@ async def poll_ialirt_flow() -> None:
             logger.info(
                 f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
             )
-            return
+            continue
 
         # Update database with latest downloaded date as progress (for I-ALiRT)
         content_dates: list[datetime] = [
@@ -94,7 +96,5 @@ async def poll_ialirt_flow() -> None:
             checked_timestamp=start_timestamp,
             latest_timestamp=latest_date,
         )
-
-        await pause_flow_run(timeout=10)
 
     logger.info("---------- End I-ALiRT Poll ----------")
