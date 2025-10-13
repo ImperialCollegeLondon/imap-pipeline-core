@@ -7,15 +7,12 @@
     },
     "features": {
         "ghcr.io/gvatsal60/dev-container-features/pre-commit:1": {},
-
         // allow access to the HOST docker socker for docker desktop
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-
         "ghcr.io/mathworks/devcontainer-features/matlab:0": {
             "release": "r2024a",
             "products": "MATLAB Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox"
         }
-
         // uncommment act if you want to be able to run github actions locally. This needs "docker in docker" setup for devcontainer
         //"ghcr.io/dhoeric/features/act:1": {}
     },
@@ -24,7 +21,9 @@
         "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
         "IMAP_WEBPODA_TOKEN": "${localEnv:IMAP_WEBPODA_TOKEN}",
         "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
+        "IALIRT_API_KEY": "${localEnv:IALIRT_API_KEY}",
         "IMAP_DATA_ACCESS_URL": "${localEnv:IMAP_DATA_ACCESS_URL}",
+        "IALIRT_DATA_ACCESS_URL": "${localEnv:IALIRT_DATA_ACCESS_URL}",
         "SQLALCHEMY_URL": "${localEnv:SQLALCHEMY_URL}",
         "MLM_LICENSE_FILE": "${localEnv:MLM_LICENSE_FILE}",
         // Define WireMock variables to connect Docker outside of Docker.
@@ -34,7 +33,6 @@
     "postCreateCommand": "pip install --user -U pre-commit && pre-commit install-hooks && pre-commit autoupdate",
     // install poetry in first startup in vscode
     "postStartCommand": "poetry install",
-
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.
@@ -43,10 +41,8 @@
             "settings": {
                 // not using venvs? uncomment this
                 //"python.defaultInterpreterPath": "/usr/local/bin/python"
-
                 // use the active venv
                 "python.defaultInterpreterPath": ".venv/bin/python",
-
                 // change to zsh default shell
                 "terminal.integrated.defaultProfile.linux": "zsh",
                 "terminal.integrated.profiles.linux": {
@@ -69,13 +65,10 @@
             ]
         }
     },
-
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
-
     // Configure tool-specific properties.
     // "customizations": {},
-
     // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
     "remoteUser": "vscode"
 }

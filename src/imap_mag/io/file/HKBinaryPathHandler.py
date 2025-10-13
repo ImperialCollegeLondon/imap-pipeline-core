@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HKBinaryPathHandler(PartitionedPathHandler, HKPathHandler):
     """
-    Path handler for HK files.
+    Path handler for binary (L0) HK files.
     """
 
     ert: datetime | None = None  # date data was received by WebPODA

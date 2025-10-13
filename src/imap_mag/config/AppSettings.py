@@ -10,7 +10,11 @@ from pydantic_settings import (
 )
 
 from imap_mag.config.CommandConfig import CommandConfig
-from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
+from imap_mag.config.FetchConfig import (
+    FetchBinaryConfig,
+    FetchIALiRTConfig,
+    FetchScienceConfig,
+)
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
 from imap_mag.config.UploadConfig import UploadConfig
@@ -40,6 +44,7 @@ class AppSettings(BaseSettings):
 
     # Command settings
     fetch_binary: FetchBinaryConfig
+    fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig
     process: CommandConfig
     publish: PublishConfig

@@ -16,6 +16,13 @@ fetch_binary:
     work_sub_folder:
     publish_to_data_store: true
 
+fetch_ialirt:
+    api:
+        url_base: 'https://ialirt.dev.imap-mission.com'
+        auth_code:
+    work_sub_folder:
+    publish_to_data_store: true
+
 fetch_science:
     api:
         url_base: 'https://api.dev.imap-mission.com'
@@ -44,4 +51,3 @@ upload:
         - "*science/mag/l2-burst-offsets/*"
         - "*hk/mag/l1/*"
         - "*hk/sc/l1/*"
-

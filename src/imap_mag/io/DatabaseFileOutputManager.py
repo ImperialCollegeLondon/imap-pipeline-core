@@ -7,7 +7,7 @@ from sqlalchemy.sql import text
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.io.file import SequenceablePathHandler
+from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 from imap_mag.io.OutputManager import generate_hash
 
@@ -41,11 +41,10 @@ class DatabaseFileOutputManager(IOutputManager):
         # Check if the version needs to be increased
         original_hash: str = generate_hash(original_file)
 
-        (file_version, skip_database_insertion) = self.__get_next_available_version(
+        skip_database_insertion: bool = self.__get_next_available_version(
             path_handler,
             original_hash=original_hash,
         )
-        path_handler.set_sequence(file_version)
 
         # Add file locally
         (destination_file, path_handler) = self.__output_manager.add_file(
@@ -70,11 +69,18 @@ class DatabaseFileOutputManager(IOutputManager):
             )
         else:
             logger.info(f"Inserting {destination_file} into database.")
+
+            version: int = (
+                path_handler.get_sequence()
+                if isinstance(path_handler, SequenceablePathHandler)
+                else 0
+            )
+
             try:
                 self.__database.insert_file(
                     File.from_file(
                         file=destination_file,
-                        version=path_handler.get_sequence(),
+                        version=version,
                         hash=original_hash,
                         content_date=path_handler.get_content_date_for_indexing(),
                         settings=self.__settings,
@@ -114,16 +120,18 @@ class DatabaseFileOutputManager(IOutputManager):
 
     def __get_next_available_version(
         self,
-        path_handler: SequenceablePathHandler,
+        path_handler: IFilePathHandler,
         original_hash: str,
-    ) -> tuple[int, bool]:
+    ) -> bool:
         """Find a viable version for a file."""
 
         if not path_handler.supports_sequencing():
             logger.warning(
-                "Versioning not supported. File may be overwritten if it already exists."
+                "Versioning not supported. File may be overwritten if it already exists and is different."
             )
-            return (path_handler.get_sequence(), False)
+            return False
+        else:
+            assert isinstance(path_handler, SequenceablePathHandler)
 
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
@@ -137,21 +145,21 @@ class DatabaseFileOutputManager(IOutputManager):
 
         if matching_files:
             path_handler.set_sequence(matching_files[0].version)
-            preliminary_file = self.assemble_full_path(Path(""), path_handler)
+            preliminary_file = path_handler.get_full_path(Path(""))
 
-            return (matching_files[0].version, True)
+            return True
 
         # Find first available version (note that this might not be the sequential next version)
         existing_versions: set[int] = set(file.version for file in database_files)
 
         while path_handler.get_sequence() in existing_versions:
-            preliminary_file = self.assemble_full_path(Path(""), path_handler)
+            preliminary_file = path_handler.get_full_path(Path(""))
             logger.debug(
                 f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
             path_handler.increase_sequence()
 
-            updated_file: Path = self.assemble_full_path(Path(""), path_handler)
+            updated_file: Path = path_handler.get_full_path(Path(""))
             preliminary_file = updated_file
 
-        return (path_handler.get_sequence(), False)
+        return False

@@ -10,6 +10,13 @@ class ApiSource(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class IALiRTApiSource(ApiSource):
+    url_base: str = Field(validation_alias=CONSTANTS.ENV_VAR_NAMES.IALIRT_URL)
+    auth_code: SecretStr | None = Field(
+        validation_alias=CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE, default=None
+    )
+
+
 class WebPodaApiSource(ApiSource):
     auth_code: SecretStr | None = Field(
         validation_alias=CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE, default=None

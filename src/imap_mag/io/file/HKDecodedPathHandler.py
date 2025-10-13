@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HKDecodedPathHandler(VersionedPathHandler, HKPathHandler):
     """
-    Path handler for HK files.
+    Path handler for decoded (L1) HK files.
     """
 
     @property

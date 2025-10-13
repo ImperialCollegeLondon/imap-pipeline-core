@@ -3,7 +3,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
+from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 
 logger = logging.getLogger(__name__)
@@ -32,12 +32,11 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        (file_version, skip_file_copy) = self.__get_next_available_version(
+        skip_file_copy: bool = self.__get_next_available_version(
             path_handler,
             original_hash=generate_hash(original_file),
         )
-        path_handler.set_sequence(file_version)
-        destination_file: Path = self.assemble_full_path(self.location, path_handler)
+        destination_file: Path = path_handler.get_full_path(self.location)
 
         if skip_file_copy:
             logger.info(
@@ -59,28 +58,37 @@ class OutputManager(IOutputManager):
 
     def __get_next_available_version(
         self,
-        path_handler: SequenceablePathHandler,
+        path_handler: IFilePathHandler,
         original_hash: str,
-    ) -> tuple[int, bool]:
+    ) -> bool:
         """Find a viable version for a file."""
 
         if not path_handler.supports_sequencing():
             logger.warning(
-                "Versioning not supported. File may be overwritten if it already exists."
+                "Versioning not supported. File may be overwritten if it already exists and is different."
             )
-            return (path_handler.get_sequence(), False)
 
-        destination_file: Path = self.assemble_full_path(self.location, path_handler)
+            destination_file: Path = path_handler.get_full_path(self.location)
+
+            return (
+                original_hash == generate_hash(destination_file)
+                if destination_file.exists()
+                else False
+            )
+        else:
+            assert isinstance(path_handler, SequenceablePathHandler)
+
+        destination_file = path_handler.get_full_path(self.location)
 
         while destination_file.exists():
             if generate_hash(destination_file) == original_hash:
-                return (path_handler.get_sequence(), True)
+                return True
 
             logger.debug(
                 f"File {destination_file} already exists and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
             path_handler.increase_sequence()
-            updated_file = self.assemble_full_path(self.location, path_handler)
+            updated_file = path_handler.get_full_path(self.location)
 
             # Make sure file has changed, otherwise this in an infinite loop
             if destination_file == updated_file:
@@ -93,4 +101,4 @@ class OutputManager(IOutputManager):
 
             destination_file = updated_file
 
-        return (path_handler.get_sequence(), False)
+        return False
