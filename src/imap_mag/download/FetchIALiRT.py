@@ -63,7 +63,12 @@ class FetchIALiRT:
                 )  # type: ignore
 
                 path_handler = IALiRTPathHandler(
-                    content_date=max(daily_data["met_in_utc"])
+                    content_date=max(
+                        [
+                            datetime.strptime(d, "%Y-%m-%dT%H:%M:%S")
+                            for d in daily_data["met_in_utc"]
+                        ]
+                    )
                 )
 
                 # Find file in datastore
