@@ -82,7 +82,7 @@ async def poll_ialirt_flow(
     end_date = end_date or DatetimeProvider.end_of_hour()
 
     while (end_date - DatetimeProvider.now()).total_seconds() > 30:
-        logger.debug("Wait 30 seconds before polling for new data...")
+        logger.info("--- Waiting 30 seconds before polling for new data ---")
         time.sleep(30)
 
         start_timestamp = DatetimeProvider.now()

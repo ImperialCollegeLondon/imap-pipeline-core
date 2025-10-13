@@ -41,12 +41,12 @@ class IALiRTDataAccess:
                     for d in data_chunk
                 )
 
-                logger.info(
+                logger.debug(
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
                 )
                 latest_date = max_chunk_date + timedelta(seconds=1)
             else:
-                logger.info(
+                logger.debug(
                     f"No more data to download between {latest_date} and {end_date}."
                 )
                 break

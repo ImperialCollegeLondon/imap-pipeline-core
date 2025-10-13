@@ -44,7 +44,7 @@ class Database:
                     value = func(self, *args, **kwargs)
 
                     session.commit()
-                    logger.info("Database session committed.")
+                    logger.debug("Database session committed.")
 
                     return value
                 except Exception as e:
