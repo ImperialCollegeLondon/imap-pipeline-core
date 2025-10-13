@@ -49,7 +49,7 @@ async def poll_ialirt_flow(
         Field(
             json_schema_extra={
                 "title": "Start date",
-                "description": "Start date for the download. Default is the last progress date for the mode (ingestion date).",
+                "description": "Start date for the download. Default is the start of the hour.",
             }
         ),
     ] = None,
@@ -58,7 +58,7 @@ async def poll_ialirt_flow(
         Field(
             json_schema_extra={
                 "title": "End date",
-                "description": "End date for the download. Default is the end of today (ingestion date).",
+                "description": "End date for the download. Default is the end of the hour.",
             }
         ),
     ] = None,
