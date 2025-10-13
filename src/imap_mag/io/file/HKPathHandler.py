@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HKPathHandler(IFilePathHandler):
     """
-    Path handler for HK path handlers.
+    Metadata for HK path handlers.
     """
 
     root_folder: str = "hk"

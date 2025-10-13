@@ -9,10 +9,6 @@ from pydantic import SecretStr
 logger = logging.getLogger(__name__)
 
 
-class SDCUploadError(Exception):
-    """Custom exception for upload errors."""
-
-
 class IALiRTDataAccess:
     """Class for downloading MAG data via ialirt-data-access."""
 
