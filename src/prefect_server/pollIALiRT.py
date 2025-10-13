@@ -18,7 +18,7 @@ def convert_ints_to_string(apids: list[int]) -> str:
 
 
 def generate_flow_run_name() -> str:
-    return f"Polling-IALiRT-for-{DatetimeProvider.start_of_hour().strftime('%Y-%m-%dT%H:%M:%S')}"
+    return f"Poll-IALiRT-for-{DatetimeProvider.start_of_hour().strftime('%Y-%m-%dT%H:%M:%S')}"
 
 
 @flow(
