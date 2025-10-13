@@ -1,5 +1,5 @@
 class PREFECT_CONSTANTS:
-    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access"
+    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access,ialirt_data_access"
     DEFAULT_WORKPOOL = "default-pool"
 
     PREFECT_TAG = "NASA-IMAP"

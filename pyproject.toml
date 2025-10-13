@@ -68,7 +68,7 @@ testpaths = [
     "tests/**/*.py",
 ]
 env = [
-    "PREFECT_LOGGING_EXTRA_LOGGERS=imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access",
+    "PREFECT_LOGGING_EXTRA_LOGGERS=imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access,ialirt_data_access",
     "PREFECT_LOGGING_LEVEL=INFO"
 ]
 
