@@ -1,7 +1,8 @@
+import time
 from datetime import datetime
 from pathlib import Path
 
-from prefect import flow, get_run_logger, pause_flow_run
+from prefect import flow, get_run_logger
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.ialirt import fetch_ialirt
@@ -47,7 +48,8 @@ async def poll_ialirt_flow() -> None:
     while (
         DatetimeProvider.end_of_hour() - DatetimeProvider.now()
     ).total_seconds() > 30:
-        await pause_flow_run(timeout=30)
+        logger.debug("Wait 30 seconds before polling for new data...")
+        time.sleep(30)
 
         start_timestamp = DatetimeProvider.now()
         progress_item_id = "MAG_IALIRT"
