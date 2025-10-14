@@ -1,9 +1,11 @@
 """Tests for `IALiRTDataAccess` class."""
 
 import json
+import os
 from datetime import datetime
 
 import ialirt_data_access
+import pytest
 from pydantic import SecretStr
 
 from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
@@ -23,6 +25,10 @@ def test_ialirt_data_access_constructor_sets_config() -> None:
     assert ialirt_data_access.config["DATA_ACCESS_URL"] == data_access_url
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
 def test_download_ialirt_data_in_chunks(
     wiremock_manager,
     capture_cli_logs,
