@@ -111,6 +111,13 @@ This is a the same as the above but instead of calling prefect_server.workflow.d
 
 All core functionality and logic should be available as simnple CLI commands as well as the usual prefect based flows.
 
+### Fetch I-ALiRT
+
+```bash
+export IALIRT_API_KEY=[YOUR_SECRET_HERE!]
+imap-mag fetch ialirt --start-date 2025-10-02 --end-date '2025-10-03 23:59:59'
+```
+
 ### Fetch Binary HK from WebPODA
 
 ```bash
