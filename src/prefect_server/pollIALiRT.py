@@ -78,14 +78,16 @@ async def poll_ialirt_flow(
     logger.info("---------- Start I-ALiRT Poll ----------")
 
     # With I-ALiRT we poll for 1 hour, every hour.
+    timeout = 90  # seconds
+
     start_date = (
         start_date or None  # use None to force download from last progress date
     )
     end_date = end_date or DatetimeProvider.end_of_hour()
 
-    while (end_date - DatetimeProvider.now()).total_seconds() > 30:
-        logger.info("--- Waiting 30 seconds before polling for new data ---")
-        time.sleep(30)
+    while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
+        logger.info(f"--- Waiting {timeout} seconds before polling for new data ---")
+        time.sleep(timeout)
 
         start_timestamp = DatetimeProvider.now()
         progress_item_id = "MAG_IALIRT"
