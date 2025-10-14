@@ -79,7 +79,7 @@ class FetchIALiRT:
                 if file_path is not None and file_path.exists():
                     # Copy file to work folder
                     logger.debug(
-                        f"File for {date} already exists: {file_path}. Appending new data."
+                        f"File for {date.strftime('%Y-%m-%d')} already exists: {file_path.as_posix()}. Appending new data."
                     )
 
                     file_path = fetch_file_for_work(
@@ -88,7 +88,7 @@ class FetchIALiRT:
                     existing_data = pd.read_csv(file_path)
                 else:
                     # Create file
-                    logger.debug(f"Creating new file for {date}.")
+                    logger.debug(f"Creating new file for {date.strftime('%Y-%m-%d')}.")
 
                     file_path = self.__work_folder / path_handler.get_filename()
                     existing_data = pd.DataFrame()
@@ -109,7 +109,7 @@ class FetchIALiRT:
                 downloaded_files[file_path] = path_handler
 
         else:
-            logger.debug("No data downloaded from from I-ALiRT Data Access.")
+            logger.debug("No data downloaded from I-ALiRT Data Access.")
 
         return downloaded_files
 
