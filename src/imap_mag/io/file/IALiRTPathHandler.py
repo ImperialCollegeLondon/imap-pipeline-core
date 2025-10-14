@@ -31,9 +31,7 @@ class IALiRTPathHandler(IFilePathHandler):
         super()._check_property_values("folder structure", ["content_date"])
         assert self.content_date
 
-        return (
-            Path(self.root_folder) / self.mission / self.content_date.strftime("%Y/%m")
-        ).as_posix()
+        return (Path(self.root_folder) / self.content_date.strftime("%Y/%m")).as_posix()
 
     def get_filename(self) -> str:
         super()._check_property_values("file name", ["content_date"])
