@@ -8,6 +8,7 @@ from imap_mag.io.file.CalibrationLayerPathHandler import (
 )
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 
@@ -51,6 +52,7 @@ class FilePathHandlerSelector:
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,
             HKDecodedPathHandler,
+            IALiRTPathHandler,
             SciencePathHandler,
         ]
 

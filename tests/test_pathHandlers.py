@@ -13,6 +13,7 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     HKBinaryPathHandler,
     HKDecodedPathHandler,
+    IALiRTPathHandler,
     SciencePathHandler,
 )
 
@@ -314,6 +315,12 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 content_date=datetime(2025, 11, 11),
                 version=2,
                 extension="pkts",
+            ),
+        ),
+        (
+            "imap_ialirt_20251014.csv",
+            IALiRTPathHandler(
+                content_date=datetime(2025, 10, 14),
             ),
         ),
         (
