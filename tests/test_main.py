@@ -236,6 +236,90 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
+def test_fetch_ialirt_downloads_data_from_sdc(
+    wiremock_manager,
+    temp_datastore,  # noqa: F811
+) -> None:
+    # Set up.
+    query_response: list[dict] = [
+        {
+            "mag_B_GSE": [-1.53, -3.033, 0.539],
+            "mag_hk_status": {
+                "fib_temp": 2464,
+                "mode": 6,
+                "hk1v5c_warn": False,
+                "hk3v3": 2880,
+                "fob_range": 2,
+            },
+            "mag_theta_B_GSM": 25.017,
+            "met_in_utc": "2025-10-14T03:00:00",
+            "last_modified": "2025-10-14T03:01:02",
+            "extra_field1": "extra_value1",
+        },
+        {
+            "mag_B_GSE": [4.187, 0.687, 0.757],
+            "mag_hk_status": {
+                "fib_temp": 2464,
+                "mode": 5,
+                "hk1v5c_warn": False,
+                "hk3v3": 2880,
+                "fob_range": 2,
+            },
+            "mag_theta_B_GSM": 6.732,
+            "met_in_utc": "2025-10-14T03:01:00",
+            "last_modified": "2025-10-14T03:02:03",
+            "extra_field2": "extra_value2",
+        },
+    ]
+    wiremock_manager.add_string_mapping(
+        "/ialirt-db-query?met_in_utc_start=2025-10-14T03%3A00%3A00&met_in_utc_end=2025-10-14T03%3A01%3A00",
+        json.dumps(query_response),
+        priority=1,
+    )
+
+    expected_data_file = TEST_DATA / "imap_ialirt_20251014.csv"
+    expected_output_file: Path = (
+        temp_datastore / "ialirt/2025/10/imap_ialirt_20251014.csv"
+    )
+
+    settings_overrides_for_env: Mapping[str, str] = {
+        "IALIRT_DATA_ACCESS_URL": wiremock_manager.get_url().rstrip("/"),
+        "IALIRT_API_KEY": "12345",
+        "MAG_DATA_STORE": str(temp_datastore),
+    }
+
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "--verbose",
+            "fetch",
+            "ialirt",
+            "--start-date",
+            "2025-10-14 03:00:00",
+            "--end-date",
+            "2025-10-14 03:01:00",
+        ],
+        env=settings_overrides_for_env,
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert expected_output_file.exists()
+
+    with (
+        open(expected_output_file, "rb") as output,
+        open(expected_data_file, "rb") as input,
+    ):
+        assert output.read() == input.read()
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
 def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     # Set up.
     query_response: list[dict[str, str]] = [
