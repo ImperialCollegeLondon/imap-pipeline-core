@@ -78,7 +78,9 @@ async def poll_ialirt_flow(
     logger.info("---------- Start I-ALiRT Poll ----------")
 
     # With I-ALiRT we poll for 1 hour, every hour.
-    start_date = start_date or DatetimeProvider.start_of_hour()
+    start_date = (
+        start_date or None  # use None to force download from last progress date
+    )
     end_date = end_date or DatetimeProvider.end_of_hour()
 
     while (end_date - DatetimeProvider.now()).total_seconds() > 30:
@@ -89,7 +91,7 @@ async def poll_ialirt_flow(
         progress_item_id = "MAG_IALIRT"
 
         date_manager = DownloadDateManager(
-            progress_item_id, database, earliest_date=DatetimeProvider.today()
+            progress_item_id, database, earliest_date=DatetimeProvider.yesterday()
         )
 
         packet_dates = date_manager.get_dates_for_download(
