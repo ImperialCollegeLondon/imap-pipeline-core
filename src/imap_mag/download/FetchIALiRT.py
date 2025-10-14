@@ -10,12 +10,13 @@ from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
+from imap_mag.util import MAGMode
 
 logger = logging.getLogger(__name__)
 
 
 class FetchIALiRT:
-    """Manage SOC data."""
+    """Manage I-ALiRT data."""
 
     def __init__(
         self,
@@ -23,7 +24,7 @@ class FetchIALiRT:
         work_folder: Path,
         datastore_finder: DatastoreFileFinder,
     ) -> None:
-        """Initialize SDC interface."""
+        """Initialize I-ALiRT interface."""
 
         self.__data_access = data_access
         self.__work_folder = work_folder
@@ -34,7 +35,7 @@ class FetchIALiRT:
         start_date: datetime,
         end_date: datetime,
     ) -> dict[Path, IALiRTPathHandler]:
-        """Retrieve SDC data."""
+        """Retrieve I-ALiRT data."""
 
         downloaded_files: dict[Path, IALiRTPathHandler] = dict()
 
@@ -107,7 +108,6 @@ class FetchIALiRT:
                 logger.debug(f"I-ALiRT data written to {file_path}.")
 
                 downloaded_files[file_path] = path_handler
-
         else:
             logger.debug("No data downloaded from I-ALiRT Data Access.")
 
@@ -147,15 +147,6 @@ def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.drop(columns=[column])
 
     # Extract MAG HK
-    mode_mapping: dict[int, str] = {
-        1: "Standby",
-        2: "Safe",
-        3: "Config",
-        4: "Debug",
-        5: "Normal",
-        6: "Burst",
-    }
-
     eng_unit_mapping: dict = {
         "mag_hk_icu_temp": lambda x: (0.1235727 * x) - 273.15,
         "mag_hk_fib_temp": lambda x: (
@@ -171,7 +162,7 @@ def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
         "mag_hk_hk3v3_current": lambda x: 0.07964502 * x - 13.655,
         "mag_hk_hkn8v5": lambda x: -0.0025910408 * x,
         "mag_hk_hkn8v5_current": lambda x: 0.1178 * x - 8.3906,
-        "mag_hk_mode": lambda x: mode_mapping[x],
+        "mag_hk_mode": lambda x: MAGMode(x).name,
     }
 
     if "mag_hk_status" in df.columns:

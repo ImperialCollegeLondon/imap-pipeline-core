@@ -4,6 +4,7 @@ from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket
 from imap_mag.util.Level import HKLevel, ScienceLevel
+from imap_mag.util.MAGMode import MAGMode
 from imap_mag.util.MAGSensor import MAGSensor
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from imap_mag.util.ScienceMode import ScienceMode
@@ -17,6 +18,7 @@ __all__ = [
     "Environment",
     "HKLevel",
     "HKPacket",
+    "MAGMode",
     "MAGSensor",
     "ReferenceFrame",
     "ScienceLevel",
