@@ -10,7 +10,7 @@ from unittest import mock
 import pandas as pd
 import pytest
 
-from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
+from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.download.FetchIALiRT import FetchIALiRT, process_ialirt_data
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
@@ -20,7 +20,7 @@ from tests.util.miscellaneous import temp_datastore  # noqa: F401
 @pytest.fixture
 def mock_ialirt_data_access() -> mock.Mock:
     """Fixture for a mock IALiRTDataAccess instance."""
-    return mock.create_autospec(IALiRTDataAccess, spec_set=True)
+    return mock.create_autospec(IALiRTApiClient, spec_set=True)
 
 
 def test_fetch_ialirt_no_data(
@@ -37,9 +37,11 @@ def test_fetch_ialirt_no_data(
     mock_ialirt_data_access.download.side_effect = lambda **_: []  # return empty list
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_ialirt(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -71,9 +73,11 @@ def test_fetch_ialirt_single_day_no_existing_data(
     ]
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_ialirt(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -122,9 +126,11 @@ def test_fetch_ialirt_multiple_days_no_existing_data(
     ]
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_ialirt(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -183,9 +189,11 @@ def test_fetch_ialirt_single_day_existing_data_in_datastore(
         f.write("2025-05-02T04:00:00,13,14,15\n")
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_ialirt(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.

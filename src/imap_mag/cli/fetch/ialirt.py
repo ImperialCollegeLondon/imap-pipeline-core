@@ -7,7 +7,7 @@ import typer
 
 from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
+from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchIALiRT import FetchIALiRT
 from imap_mag.io import DatastoreFileFinder
@@ -40,16 +40,18 @@ def fetch_ialirt(
 
     logger.info(f"Downloading I-ALiRT from {start_date} to {end_date}.")
 
-    data_access = IALiRTDataAccess(
+    data_access = IALiRTApiClient(
         app_settings.fetch_ialirt.api.auth_code,
         app_settings.fetch_ialirt.api.url_base,
     )
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
     fetch_ialirt = FetchIALiRT(data_access, work_folder, datastore_finder)
-    downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_ialirt(
-        start_date=start_date,
-        end_date=end_date,
+    downloaded_ialirt: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=start_date,
+            end_date=end_date,
+        )
     )
 
     if not downloaded_ialirt:
@@ -59,7 +61,7 @@ def fetch_ialirt(
             f"Downloaded {len(downloaded_ialirt)} files:\n{', '.join(str(f) for f in downloaded_ialirt.keys())}"
         )
 
-    output_ialirt: dict[Path, IALiRTPathHandler] = dict()
+    ialirt_files_and_handlers: dict[Path, IALiRTPathHandler] = dict()
 
     if app_settings.fetch_ialirt.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
@@ -69,8 +71,9 @@ def fetch_ialirt(
 
         for file, path_handler in downloaded_ialirt.items():
             (output_file, output_handler) = output_manager.add_file(file, path_handler)
-            output_ialirt[output_file] = output_handler
+            ialirt_files_and_handlers[output_file] = output_handler
     else:
+        ialirt_files_and_handlers = downloaded_ialirt
         logger.info("Files not published to data store based on config.")
 
-    return output_ialirt
+    return ialirt_files_and_handlers

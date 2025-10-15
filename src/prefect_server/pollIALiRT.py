@@ -1,4 +1,4 @@
-import time
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -62,6 +62,24 @@ async def poll_ialirt_flow(
             }
         ),
     ] = None,
+    wait_for_new_data_to_arrive: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Wait for new data to arrive",
+                "description": "If true, the flow will poll for new data until the `end_date`.",
+            }
+        ),
+    ] = True,
+    timeout: Annotated[
+        int,
+        Field(
+            json_schema_extra={
+                "title": "Timeout",
+                "description": "Time in seconds to wait between polling for new data.",
+            }
+        ),
+    ] = 5 * 60,  # 5 minutes
 ) -> None:
     """
     Poll I-ALiRT data from SDC.
@@ -77,64 +95,76 @@ async def poll_ialirt_flow(
 
     logger.info("---------- Start I-ALiRT Poll ----------")
 
-    # With I-ALiRT we poll for 1 hour, every hour.
-    timeout = 90  # seconds
-
     start_date = (
         start_date or None  # use None to force download from last progress date
     )
     end_date = end_date or DatetimeProvider.end_of_hour()
 
-    while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
-        logger.info(f"--- Waiting {timeout} seconds before polling for new data ---")
-        time.sleep(timeout)
+    if wait_for_new_data_to_arrive:
+        while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
+            do_poll_ialirt(database, auth_code, start_date, end_date, logger)
 
-        start_timestamp = DatetimeProvider.now()
-        progress_item_id = "MAG_IALIRT"
-
-        date_manager = DownloadDateManager(
-            progress_item_id, database, earliest_date=DatetimeProvider.yesterday()
-        )
-
-        packet_dates = date_manager.get_dates_for_download(
-            original_start_date=start_date,
-            original_end_date=end_date,
-            validate_with_database=True,
-        )
-
-        if packet_dates is None:
-            logger.info("No dates for download - skipping")
-            continue
-        else:
-            (packet_start_date, packet_end_date) = packet_dates
-
-        # Download files from SDC
-        with Environment(CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE, auth_code):
-            downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch_ialirt(
-                start_date=packet_start_date,
-                end_date=packet_end_date,
-                fetch_mode=FetchMode.DownloadAndUpdateProgress,
-            )
-
-        if not downloaded_ialirt:
             logger.info(
-                f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
+                f"--- Waiting {timeout} seconds before polling for new data ---"
             )
-            continue
-
-        # Update database with latest downloaded date as progress (for I-ALiRT)
-        content_dates: list[datetime] = [
-            metadata.content_date
-            for metadata in downloaded_ialirt.values()
-            if metadata.content_date
-        ]
-        latest_date: datetime | None = max(content_dates) if content_dates else None
-
-        update_database_with_progress(
-            progress_item_id=progress_item_id,
-            database=database,
-            checked_timestamp=start_timestamp,
-            latest_timestamp=latest_date,
-        )
+            await asyncio.sleep(timeout)
+    else:
+        do_poll_ialirt(database, auth_code, start_date, end_date, logger)
 
     logger.info("---------- End I-ALiRT Poll ----------")
+
+
+def do_poll_ialirt(
+    database: Database,
+    auth_code: str,
+    start_date: datetime | None,
+    end_date: datetime | None,
+    logger,
+) -> None:
+    start_timestamp = DatetimeProvider.now()
+    progress_item_id = "MAG_IALIRT"
+
+    date_manager = DownloadDateManager(
+        progress_item_id, database, earliest_date=DatetimeProvider.yesterday()
+    )
+
+    packet_dates = date_manager.get_dates_for_download(
+        original_start_date=start_date,
+        original_end_date=end_date,
+        validate_with_database=True,
+    )
+
+    if packet_dates is None:
+        logger.info("No dates for download - skipping")
+        return
+    else:
+        (packet_start_date, packet_end_date) = packet_dates
+
+    # Download files from SDC
+    with Environment(CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE, auth_code):
+        downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch_ialirt(
+            start_date=packet_start_date,
+            end_date=packet_end_date,
+            fetch_mode=FetchMode.DownloadAndUpdateProgress,
+        )
+
+    if not downloaded_ialirt:
+        logger.info(
+            f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
+        )
+        return
+
+    # Update database with latest downloaded date as progress (for I-ALiRT)
+    content_dates: list[datetime] = [
+        metadata.content_date
+        for metadata in downloaded_ialirt.values()
+        if metadata.content_date
+    ]
+    latest_date: datetime | None = max(content_dates) if content_dates else None
+
+    update_database_with_progress(
+        progress_item_id=progress_item_id,
+        database=database,
+        checked_timestamp=start_timestamp,
+        latest_timestamp=latest_date,
+    )

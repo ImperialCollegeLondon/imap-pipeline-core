@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
-from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
+from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.util import MAGMode
@@ -20,7 +20,7 @@ class FetchIALiRT:
 
     def __init__(
         self,
-        data_access: IALiRTDataAccess,
+        data_access: IALiRTApiClient,
         work_folder: Path,
         datastore_finder: DatastoreFileFinder,
     ) -> None:
@@ -30,7 +30,7 @@ class FetchIALiRT:
         self.__work_folder = work_folder
         self.__datastore_finder = datastore_finder
 
-    def download_ialirt(
+    def download_ialirt_to_csv(
         self,
         start_date: datetime,
         end_date: datetime,
@@ -39,7 +39,7 @@ class FetchIALiRT:
 
         downloaded_files: dict[Path, IALiRTPathHandler] = dict()
 
-        downloaded: list[dict] = self.__data_access.download(
+        downloaded: list[dict] = self.__data_access.get_all_by_dates(
             start_date=start_date, end_date=end_date
         )
 
@@ -97,7 +97,9 @@ class FetchIALiRT:
                 # Add data to file
                 combined_data = pd.concat([existing_data, daily_data])
                 combined_data.sort_values(by="met_in_utc", inplace=True)
-                combined_data.drop_duplicates(subset="met_in_utc", inplace=True)
+                combined_data.drop_duplicates(
+                    subset="met_in_utc", keep="last", inplace=True
+                )
                 combined_data.dropna(axis="index", subset=["met_in_utc"], inplace=True)
                 combined_data.set_index("met_in_utc", inplace=True, drop=True)
                 combined_data = combined_data.reindex(

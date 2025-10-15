@@ -8,7 +8,7 @@ import ialirt_data_access
 import pytest
 from pydantic import SecretStr
 
-from imap_mag.client.IALiRTDataAccess import IALiRTDataAccess
+from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
 
 
@@ -18,7 +18,7 @@ def test_ialirt_data_access_constructor_sets_config() -> None:
     data_access_url = "https://some_test_url"
 
     # Exercise.
-    _ = IALiRTDataAccess(auth_code, data_access_url)
+    _ = IALiRTApiClient(auth_code, data_access_url)
 
     # Verify.
     assert ialirt_data_access.config["API_KEY"] == auth_code.get_secret_value()
@@ -97,12 +97,12 @@ def test_download_ialirt_data_in_chunks(
         json.dumps({}),  # empty response means no more data
     )
 
-    ialirt_data_access = IALiRTDataAccess(
+    ialirt_data_access = IALiRTApiClient(
         auth_code=None, sdc_url=wiremock_manager.get_url().rstrip("/")
     )
 
     # Exercise.
-    downloaded_data: list[dict] = ialirt_data_access.download(
+    downloaded_data: list[dict] = ialirt_data_access.get_all_by_dates(
         start_date=datetime(2025, 10, 14, 3, 0, 0),
         end_date=datetime(2025, 10, 14, 3, 3, 0),
     )

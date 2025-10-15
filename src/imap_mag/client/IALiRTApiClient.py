@@ -1,7 +1,7 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import ialirt_data_access
 from pydantic import SecretStr
@@ -9,8 +9,15 @@ from pydantic import SecretStr
 logger = logging.getLogger(__name__)
 
 
-class IALiRTDataAccess:
-    """Class for downloading MAG data via ialirt-data-access."""
+class IALiRTApiClient:
+    """
+    Download all data from I-ALiRT API between dates.
+    Will paginate results over API as needed to get all data.
+    Returns when no more data available or end_date is reached.
+    Uses ialirt-data-access to issue HTTP requests.
+    """
+
+    __DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
     def __init__(self, auth_code: SecretStr | None, sdc_url: str | None = None) -> None:
         """Initialize SDC API client."""
@@ -20,7 +27,7 @@ class IALiRTDataAccess:
         if sdc_url:
             ialirt_data_access.config["DATA_ACCESS_URL"] = sdc_url
 
-    def download(
+    def get_all_by_dates(
         self,
         *,
         start_date: datetime,
@@ -37,7 +44,7 @@ class IALiRTDataAccess:
 
             if data_chunk:
                 max_chunk_date = max(
-                    datetime.strptime(d["met_in_utc"], "%Y-%m-%dT%H:%M:%S")
+                    datetime.strptime(d["met_in_utc"], self.__DATE_FORMAT)
                     for d in data_chunk
                 )
 
@@ -55,6 +62,10 @@ class IALiRTDataAccess:
 
     def __do_download(self, start_date: datetime, end_date: datetime) -> list[dict]:
         return ialirt_data_access.data_product_query(
-            met_in_utc_start=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-            met_in_utc_end=end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            met_in_utc_start=start_date.astimezone(timezone.utc).strftime(
+                self.__DATE_FORMAT
+            ),
+            met_in_utc_end=end_date.astimezone(timezone.utc).strftime(
+                self.__DATE_FORMAT
+            ),
         )
