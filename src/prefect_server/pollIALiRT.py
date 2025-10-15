@@ -62,6 +62,15 @@ async def poll_ialirt_flow(
             }
         ),
     ] = None,
+    force_download: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force download",
+                "description": "If true, the flow will download data even if it has already been downloaded before.",
+            }
+        ),
+    ] = False,
     wait_for_new_data_to_arrive: Annotated[
         bool,
         Field(
@@ -76,7 +85,7 @@ async def poll_ialirt_flow(
         Field(
             json_schema_extra={
                 "title": "Timeout",
-                "description": "Time in seconds to wait between polling for new data.",
+                "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
             }
         ),
     ] = 5 * 60,  # 5 minutes
@@ -102,14 +111,18 @@ async def poll_ialirt_flow(
 
     if wait_for_new_data_to_arrive:
         while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
-            do_poll_ialirt(database, auth_code, start_date, end_date, logger)
+            do_poll_ialirt(
+                database, auth_code, start_date, end_date, force_download, logger
+            )
 
             logger.info(
                 f"--- Waiting {timeout} seconds before polling for new data ---"
             )
             await asyncio.sleep(timeout)
     else:
-        do_poll_ialirt(database, auth_code, start_date, end_date, logger)
+        do_poll_ialirt(
+            database, auth_code, start_date, end_date, force_download, logger
+        )
 
     logger.info("---------- End I-ALiRT Poll ----------")
 
@@ -119,6 +132,7 @@ def do_poll_ialirt(
     auth_code: str,
     start_date: datetime | None,
     end_date: datetime | None,
+    force_download: bool,
     logger,
 ) -> None:
     start_timestamp = DatetimeProvider.now()
@@ -131,11 +145,11 @@ def do_poll_ialirt(
     packet_dates = date_manager.get_dates_for_download(
         original_start_date=start_date,
         original_end_date=end_date,
-        validate_with_database=True,
+        validate_with_database=(not force_download),
     )
 
     if packet_dates is None:
-        logger.info("No dates for download - skipping")
+        logger.info("No dates to download - skipping")
         return
     else:
         (packet_start_date, packet_end_date) = packet_dates
