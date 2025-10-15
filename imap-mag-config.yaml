@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  'output/'
+data_store:  'test_data_store/'
 packet_definition: 'xtce/'
 
 # Command specific configuration:

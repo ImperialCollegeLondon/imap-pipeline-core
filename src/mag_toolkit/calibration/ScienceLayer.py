@@ -1,5 +1,4 @@
 import logging
-from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -12,8 +11,6 @@ from pydantic import TypeAdapter
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
-    Mission,
-    ScienceValue,
     Sensor,
     Validity,
     ValueType,
@@ -26,33 +23,36 @@ logger = logging.getLogger(__name__)
 class ScienceLayer(Layer):
     science_file: str
     value_type: ValueType
-    values: list[ScienceValue] = []  # noqa: RUF012
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False):
         l2_skeleton = cdf_to_xarray(str(CONSTANTS.L2_SKELETON_CDF), to_datetime=False)
+        if self._contents is None:
+            raise ValueError("No science data available to write to CDF.")
         vectors_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH, CONSTANTS.CDF_COORDS.DIRECTION],
-            data=[science.value for science in self.values],
+            data=self._contents[
+                [CONSTANTS.CSV_VARS.X, CONSTANTS.CSV_VARS.Y, CONSTANTS.CSV_VARS.Z]
+            ],
             attrs=l2_skeleton[CONSTANTS.CDF_VARS.VECTORS].attrs,
         )
         epoch_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=[science.time for science in self.values],
+            data=self._contents[CONSTANTS.CSV_VARS.EPOCH],
             attrs=l2_skeleton[CONSTANTS.CDF_VARS.EPOCH].attrs,
         )
         magnitude_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=[science.magnitude for science in self.values],
+            data=self._contents[CONSTANTS.CSV_VARS.MAGNITUDE],
             attrs=l2_skeleton[CONSTANTS.CDF_VARS.MAGNITUDE].attrs,
         )
         qf_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=[science.quality_flag for science in self.values],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
             attrs=l2_skeleton[CONSTANTS.CDF_VARS.QUALITY_FLAGS].attrs,
         )
         qb_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=[science.quality_bitmask for science in self.values],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
             attrs=l2_skeleton[CONSTANTS.CDF_VARS.QUALITY_BITMASK].attrs,
         )
         del l2_skeleton.coords[CONSTANTS.CDF_VARS.EPOCH]
@@ -72,29 +72,10 @@ class ScienceLayer(Layer):
         return filepath
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
-        epoch = [science.time for science in self.values]
-        x = [science.value[0] for science in self.values]
-        y = [science.value[1] for science in self.values]
-        z = [science.value[2] for science in self.values]
-        magnitude = [science.magnitude for science in self.values]
-        range = [science.range for science in self.values]
-        quality_flags = [science.quality_flag for science in self.values]
-        quality_bitmask = [science.quality_bitmask for science in self.values]
-
-        df = pd.DataFrame(
-            {
-                CONSTANTS.CSV_VARS.EPOCH: epoch,
-                CONSTANTS.CSV_VARS.X: x,
-                CONSTANTS.CSV_VARS.Y: y,
-                CONSTANTS.CSV_VARS.Z: z,
-                CONSTANTS.CSV_VARS.MAGNITUDE: magnitude,
-                CONSTANTS.CSV_VARS.RANGE: range,
-                CONSTANTS.CSV_VARS.QUALITY_FLAG: quality_flags,
-                CONSTANTS.CSV_VARS.QUALITY_BITMASK: quality_bitmask,
-            }
-        )
         # Before writing values, transofrm NaNs into CDF fill vals
-        df.fillna(
+        if self._contents is None:
+            raise ValueError("No science data available to write to CSV.")
+        self._contents.fillna(
             value={
                 CONSTANTS.CSV_VARS.X: CONSTANTS.CDF_FLOAT_FILLVAL,
                 CONSTANTS.CSV_VARS.Y: CONSTANTS.CDF_FLOAT_FILLVAL,
@@ -103,77 +84,63 @@ class ScienceLayer(Layer):
             },
             inplace=True,
         )
-        df.to_csv(filepath)
+        self._contents.to_csv(filepath)
         return filepath
 
     @classmethod
-    def from_file(cls, path: Path):
+    def from_file(cls, path: Path, load_contents=False) -> "ScienceLayer":
         if path.suffix == ".cdf":
-            return cls._from_cdf(path)
-        elif path.suffix == ".csv":
-            return cls._from_csv(path)
+            return cls._from_cdf(path, load_contents=load_contents)
         else:
             return super().from_file(path)
 
-    @classmethod
-    def _load_data_file(cls, path: Path, existing_model) -> "ScienceLayer":
-        if existing_model.values:
+    def _load_data_file(self, path: Path) -> "ScienceLayer":
+        if self._contents is not None:
             logger.warning(
                 f"Existing science values will be overwritten with data in {path!s}."
             )
 
-        science_only_layer = cls.from_file(path)
-        existing_model.values = deepcopy(science_only_layer.values)
+        dataset = cdf_to_xarray(str(path), to_datetime=False)
 
-        return existing_model
+        data = dataset[CONSTANTS.CDF_VARS.VECTORS].values
+        raw_epoch = dataset[CONSTANTS.CDF_VARS.EPOCH].values
+        epoch = cdfepoch.to_datetime(raw_epoch)
 
-    @classmethod
-    def _from_csv(cls, path: Path):
-        df = pd.read_csv(path)
-        if df.empty:
-            raise ValueError("CSV file is empty or does not contain valid data")
+        if data is None or epoch is None:
+            raise ValueError("CDF does not contain valid data")
 
-        epoch = df[CONSTANTS.CSV_VARS.EPOCH].to_numpy(dtype=np.datetime64)
-        x = df[CONSTANTS.CSV_VARS.X].to_numpy()
-        y = df[CONSTANTS.CSV_VARS.Y].to_numpy()
-        z = df[CONSTANTS.CSV_VARS.Z].to_numpy()
-        range = df[CONSTANTS.CSV_VARS.RANGE].to_numpy()
-        validity = Validity(start=epoch[0], end=epoch[-1])
-
-        values = [
-            ScienceValue(
-                time=epoch_val,
-                value=[x_val, y_val, z_val],
-                range=range_val,
-            )
-            for epoch_val, x_val, y_val, z_val, range_val in zip(epoch, x, y, z, range)
-        ]
-
-        return cls(
-            id="",
-            mission=Mission.IMAP,
-            validity=validity,
-            sensor=Sensor.MAGO,
-            version=0,
-            metadata=CalibrationMetadata(
-                dependencies=[],
-                science=[],
-                data_filename=path,
-                creation_timestamp=np.datetime64("now"),
-            ),
-            value_type=ValueType.VECTOR,
-            science_file=str(path),
-            values=values,
+        self._contents = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: epoch,
+                CONSTANTS.CSV_VARS.X: data[:, 0],
+                CONSTANTS.CSV_VARS.Y: data[:, 1],
+                CONSTANTS.CSV_VARS.Z: data[:, 2],
+                CONSTANTS.CSV_VARS.RANGE: data[:, 3],
+            }
         )
 
+        return self
+
     def calculate_magnitudes(self):
-        for i, datapoint in enumerate(self.values):
-            magnitude = np.linalg.norm(datapoint.value)
-            self.values[i].magnitude = float(magnitude)
+        if self._contents is None:
+            raise ValueError("Science layer contents not loaded")
+        self._contents[CONSTANTS.CSV_VARS.MAGNITUDE] = np.linalg.norm(
+            self._contents[
+                [CONSTANTS.CSV_VARS.X, CONSTANTS.CSV_VARS.Y, CONSTANTS.CSV_VARS.Z]
+            ]
+        )
+        return self
+
+    def _set_data_path(self, path: Path) -> "ScienceLayer":
+        self._data_path = path
+        return self
+
+    def _set_contents(self, contents: pd.DataFrame) -> "ScienceLayer":
+        self._contents = contents
         return self
 
     @classmethod
-    def _from_cdf(cls, path: Path):
+    def _from_cdf(cls, path: Path, load_contents=False):
         dataset = cdf_to_xarray(str(path), to_datetime=False)
 
         data = dataset[CONSTANTS.CDF_VARS.VECTORS].values
@@ -202,16 +169,19 @@ class ScienceLayer(Layer):
             creation_timestamp=np.datetime64("now"),
         )
 
-        values = [
-            ScienceValue(
-                time=epoch_val,
-                value=datapoint[0:3],
-                range=datapoint[3],
+        contents = None
+        if load_contents:
+            contents = pd.DataFrame(
+                {
+                    CONSTANTS.CSV_VARS.EPOCH: epoch,
+                    CONSTANTS.CSV_VARS.X: data[:, 0],
+                    CONSTANTS.CSV_VARS.Y: data[:, 1],
+                    CONSTANTS.CSV_VARS.Z: data[:, 2],
+                    CONSTANTS.CSV_VARS.RANGE: data[:, 3],
+                }
             )
-            for raw_epoch_val, epoch_val, datapoint in zip(raw_epoch, epoch, data)
-        ]
 
-        return cls(
+        science_layer = cls(
             id=dataset.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID][0],
             mission=dataset.attrs[CONSTANTS.CDF_ATTRS.MISSION_GROUP][0],
             validity=validity,
@@ -220,5 +190,9 @@ class ScienceLayer(Layer):
             metadata=metadata,
             value_type=ValueType.VECTOR,
             science_file=str(path),
-            values=values,
         )
+        science_layer._set_data_path(path)
+        if load_contents and contents is not None:
+            science_layer._set_contents(contents)
+
+        return science_layer

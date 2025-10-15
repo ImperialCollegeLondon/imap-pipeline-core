@@ -46,6 +46,7 @@ class CONSTANTS:
 
     class CSV_VARS:
         EPOCH = "time"
+        RAW_EPOCH = "epoch"
         X = "x"
         Y = "y"
         Z = "z"
@@ -80,6 +81,7 @@ class CalibrationMethod(Enum):
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
+    MANUAL = "manual", "Manual offsets"
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":

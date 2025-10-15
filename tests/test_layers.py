@@ -15,13 +15,29 @@ from mag_toolkit.calibration import (
     ScienceLayer,
     ScienceValue,
 )
-from mag_toolkit.calibration.CalibrationDefinitions import Sensor, Validity, ValueType
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CONSTANTS,
+    Sensor,
+    Validity,
+    ValueType,
+)
 from tests.util.miscellaneous import DATASTORE, TEST_DATA
 
 
 def test_science_layer_calculates_magnitude_correctly():
     science_value = ScienceValue(
         time=np.datetime64("2025-01-01T12:00"), value=[1, 1, 1], range=3
+    )
+    contents = pd.DataFrame(
+        {
+            CONSTANTS.CSV_VARS.EPOCH: [science_value.time],
+            CONSTANTS.CSV_VARS.X: [science_value.value[0]],
+            CONSTANTS.CSV_VARS.Y: [science_value.value[1]],
+            CONSTANTS.CSV_VARS.Z: [science_value.value[2]],
+            CONSTANTS.CSV_VARS.RANGE: [science_value.range],
+            CONSTANTS.CSV_VARS.QUALITY_FLAG: [science_value.quality_flag],
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK: [science_value.quality_bitmask],
+        }
     )
     science_layer = ScienceLayer(
         id="",
@@ -39,24 +55,32 @@ def test_science_layer_calculates_magnitude_correctly():
         ),
         value_type=ValueType.VECTOR,
         science_file="imap_mag_l1c_mago-norm_v000.cdf",
-        values=[science_value],
     )
+    science_layer._contents = contents
     new_layer = science_layer.calculate_magnitudes()
-    assert new_layer.values[0].magnitude == np.linalg.norm(science_value.value)
-    assert len(new_layer.values) == 1
+    assert new_layer._contents is not None
+    assert new_layer._contents["magnitude"][0] == np.linalg.norm(science_value.value)
+    assert len(new_layer._contents) == 1
 
 
 def test_layer_loads_science_to_full_specificity():
     sl = ScienceLayer.from_file(
-        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf",
+        load_contents=True,
     )
-    assert sl.values[0].time == np.datetime64("2025-04-21T12:16:05.569359872", "ns")
-    assert sl.values[1].time == np.datetime64("2025-04-21T12:16:06.069359872", "ns")
+    assert sl._contents is not None
+    assert sl._contents[CONSTANTS.CSV_VARS.EPOCH][0] == np.datetime64(
+        "2025-04-21T12:16:05.569359872", "ns"
+    )
+    assert sl._contents[CONSTANTS.CSV_VARS.EPOCH][1] == np.datetime64(
+        "2025-04-21T12:16:06.069359872", "ns"
+    )
 
 
 def test_layer_writes_science_to_full_specificity(tmp_path):
     sl = ScienceLayer.from_file(
-        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf",
+        load_contents=True,
     )
     test_science_layer_path = tmp_path / "test-science-layer.json"
     sl._write_to_json(test_science_layer_path)
@@ -70,8 +94,15 @@ def test_layer_writes_science_to_full_specificity(tmp_path):
 
 def test_science_layer_writes_to_cdf_correctly(tmp_path):
     # Create a sample ScienceLayer
-    science_value = ScienceValue(
-        time=np.datetime64("2025-01-01T12:00"), value=[1, 1, 1], range=3
+
+    contents = pd.DataFrame(
+        {
+            CONSTANTS.CSV_VARS.EPOCH: [np.datetime64("2025-01-01T12:00")],
+            CONSTANTS.CSV_VARS.X: [1],
+            CONSTANTS.CSV_VARS.Y: [1],
+            CONSTANTS.CSV_VARS.Z: [1],
+            CONSTANTS.CSV_VARS.RANGE: [3],
+        }
     )
     science_layer = ScienceLayer(
         id="test_layer",
@@ -89,8 +120,8 @@ def test_science_layer_writes_to_cdf_correctly(tmp_path):
         ),
         value_type=ValueType.VECTOR,
         science_file="imap_mag_l1c_mago-norm_v000.cdf",
-        values=[science_value],
     )
+    science_layer._contents = contents
     cdf_path = tmp_path / "test_layer.cdf"
     science_layer.calculate_magnitudes()  # Ensure magnitudes are calculated
     science_layer.writeToFile(cdf_path)
@@ -98,16 +129,22 @@ def test_science_layer_writes_to_cdf_correctly(tmp_path):
     with pycdf.CDF(str(cdf_path)) as cdf_file:
         vecs = cdf_file["vectors"][...]
         assert vecs is not None
-        assert vecs[0][0] == science_layer.values[0].value[0]
-        assert vecs[0][1] == science_layer.values[0].value[1]
-        assert vecs[0][2] == science_layer.values[0].value[2]
-        assert np.datetime64(cdf_file["epoch"][0]) == science_layer.values[0].time  # type: ignore
+        assert vecs[0][0] == science_layer._contents["x"][0]
+        assert vecs[0][1] == science_layer._contents["y"][0]
+        assert vecs[0][2] == science_layer._contents["z"][0]
+        assert np.datetime64(cdf_file["epoch"][0]) == science_layer._contents.time[0]  # type: ignore
         assert cdf_file.attrs["Mission_group"][0] == science_layer.mission.value
 
 
 def test_science_layer_writes_to_csv(tmp_path):
-    science_value = ScienceValue(
-        time=np.datetime64("2025-01-01T12:00:00.056789"), value=[1, 1, 1], range=3
+    contents = pd.DataFrame(
+        {
+            CONSTANTS.CSV_VARS.EPOCH: [np.datetime64("2025-01-01T12:00")],
+            CONSTANTS.CSV_VARS.X: [1],
+            CONSTANTS.CSV_VARS.Y: [1],
+            CONSTANTS.CSV_VARS.Z: [1],
+            CONSTANTS.CSV_VARS.RANGE: [3],
+        }
     )
     science_layer = ScienceLayer(
         id="test_layer",
@@ -125,18 +162,20 @@ def test_science_layer_writes_to_csv(tmp_path):
         ),
         value_type=ValueType.VECTOR,
         science_file="imap_mag_l1c_mago-norm_v000.cdf",
-        values=[science_value],
     )
+    science_layer._contents = contents
     csv_path = tmp_path / "test_layer.csv"
     science_layer.calculate_magnitudes()
     science_layer.writeToFile(csv_path)
 
     df = pd.read_csv(csv_path, parse_dates=["time"])
-    assert df.x.iloc[0] == science_layer.values[0].value[0]
-    assert df.y.iloc[0] == science_layer.values[0].value[1]
-    assert df.z.iloc[0] == science_layer.values[0].value[2]
-    assert df.magnitude.iloc[0] == np.linalg.norm(science_layer.values[0].value)
-    assert df.time.iloc[0] == science_layer.values[0].time
+    assert df.x.iloc[0] == science_layer._contents.x.iloc[0]
+    assert df.y.iloc[0] == science_layer._contents.y.iloc[0]
+    assert df.z.iloc[0] == science_layer._contents.z.iloc[0]
+    assert df.magnitude.iloc[0] == np.linalg.norm(
+        science_layer._contents[["x", "y", "z"]].iloc[0]
+    )
+    assert df.time.iloc[0] == science_layer._contents.time[0]
 
 
 def test_calibration_layer_loads_csv_correctly():
@@ -161,11 +200,12 @@ def test_calibration_layer_loads_csv_correctly():
     assert cl.metadata.creation_timestamp is not None
     assert cl.value_type == ValueType.VECTOR
     assert cl.method == CalibrationMethod.NOOP
+    assert cl._contents is not None
 
     # Verify values.
-    assert len(cl.values) == 16
-    assert cl.values[0].time == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
-    assert cl.values[-1].time == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
+    assert len(cl._contents) == 16
+    assert cl._contents.time[0] == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
+    assert cl._contents.time[-1] == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
 
 
 def test_calibration_layer_warning_on_overwriting_existing_data(
