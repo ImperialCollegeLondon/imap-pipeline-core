@@ -24,10 +24,10 @@ def convert_ints_to_string(apids: list[int]) -> str:
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
-    start_date: datetime = (
-        parameters["start_date"]
+    start_date: str = (
+        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
         if parameters["start_date"]
-        else DatetimeProvider.start_of_hour()
+        else "last-update"
     )
     end_date: datetime = (
         parameters["end_date"]
@@ -35,7 +35,7 @@ def generate_flow_run_name() -> str:
         else DatetimeProvider.end_of_hour()
     )
 
-    return f"Poll-IALiRT-from-{start_date.strftime('%d-%m-%YT%H:%M:%S')}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
 
 
 @flow(
@@ -49,7 +49,7 @@ async def poll_ialirt_flow(
         Field(
             json_schema_extra={
                 "title": "Start date",
-                "description": "Start date for the download. Default is the start of the hour.",
+                "description": "Start date for the download. Default is the last update.",
             }
         ),
     ] = None,
