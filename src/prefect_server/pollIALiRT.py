@@ -101,13 +101,9 @@ async def poll_ialirt_flow(
         PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
+    end_date = end_date or DatetimeProvider.end_of_hour()
 
     logger.info("---------- Start I-ALiRT Poll ----------")
-
-    start_date = (
-        start_date or None  # use None to force download from last progress date
-    )
-    end_date = end_date or DatetimeProvider.end_of_hour()
 
     if wait_for_new_data_to_arrive:
         while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
