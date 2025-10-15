@@ -95,11 +95,13 @@ class FetchIALiRT:
                     existing_data = pd.DataFrame()
 
                 # Add data to file
+                # Sort data by MET and remove any duplicates (by keeping the latest entries)
+                # Use MET as index and reorder the columns alphabetically
                 combined_data = pd.concat([existing_data, daily_data])
-                combined_data.sort_values(by="met_in_utc", inplace=True)
                 combined_data.drop_duplicates(
                     subset="met_in_utc", keep="last", inplace=True
                 )
+                combined_data.sort_values(by="met_in_utc", inplace=True)
                 combined_data.dropna(axis="index", subset=["met_in_utc"], inplace=True)
                 combined_data.set_index("met_in_utc", inplace=True, drop=True)
                 combined_data = combined_data.reindex(
