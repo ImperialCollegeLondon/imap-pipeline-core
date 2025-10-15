@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 class FetchIALiRT:
     """Manage I-ALiRT data."""
 
+    __DATE_INDEX = "met_in_utc"
+
     def __init__(
         self,
         data_access: IALiRTApiClient,
@@ -51,7 +53,9 @@ class FetchIALiRT:
             downloaded_data = pd.DataFrame(downloaded)
             downloaded_data = process_ialirt_data(downloaded_data)
 
-            downloaded_dates = pd.to_datetime(downloaded_data["met_in_utc"]).dt.date
+            downloaded_dates = pd.to_datetime(
+                downloaded_data[self.__DATE_INDEX]
+            ).dt.date
             unique_dates = downloaded_dates.unique()
 
             logger.info(
@@ -63,14 +67,11 @@ class FetchIALiRT:
                     day_info[0] if isinstance(day_info, tuple) else day_info
                 )  # type: ignore
 
-                path_handler = IALiRTPathHandler(
-                    content_date=max(
-                        [
-                            datetime.strptime(d, "%Y-%m-%dT%H:%M:%S")
-                            for d in daily_data["met_in_utc"]
-                        ]
-                    )
-                )
+                daily_dates = self.__get_index_as_datetime(daily_data)
+                min_daily_date = min(daily_dates)
+                max_daily_date = max(daily_dates)
+
+                path_handler = IALiRTPathHandler(content_date=max_daily_date)
 
                 # Find file in datastore
                 file_path: Path | None = self.__datastore_finder.find_matching_file(
@@ -95,27 +96,46 @@ class FetchIALiRT:
                     existing_data = pd.DataFrame()
 
                 # Add data to file
+                # If data is completely new, just append new data.
+                # Otherwise read existing data and merge it.
+                if not existing_data.empty and (
+                    max(self.__get_index_as_datetime(existing_data)) < min_daily_date
+                ):
+                    combined_data = daily_data
+                    write_mode = "a"
+                else:
+                    combined_data = pd.concat([existing_data, daily_data])
+                    write_mode = "w"
+
                 # Sort data by MET and remove any duplicates (by keeping the latest entries)
                 # Use MET as index and reorder the columns alphabetically
-                combined_data = pd.concat([existing_data, daily_data])
                 combined_data.drop_duplicates(
-                    subset="met_in_utc", keep="last", inplace=True
+                    subset=self.__DATE_INDEX, keep="last", inplace=True
                 )
-                combined_data.sort_values(by="met_in_utc", inplace=True)
-                combined_data.dropna(axis="index", subset=["met_in_utc"], inplace=True)
-                combined_data.set_index("met_in_utc", inplace=True, drop=True)
+                combined_data.sort_values(by=self.__DATE_INDEX, inplace=True)
+                combined_data.dropna(
+                    axis="index", subset=[self.__DATE_INDEX], inplace=True
+                )
+                combined_data.set_index(self.__DATE_INDEX, inplace=True, drop=True)
                 combined_data = combined_data.reindex(
                     sorted(combined_data.columns), axis="columns"
                 )
 
-                combined_data.to_csv(file_path, mode="w", header=True, index=True)
-                logger.debug(f"I-ALiRT data written to {file_path}.")
+                combined_data.to_csv(
+                    file_path, mode=write_mode, header=True, index=True
+                )
+                logger.debug(
+                    f"I-ALiRT data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
+                )
 
                 downloaded_files[file_path] = path_handler
         else:
             logger.debug("No data downloaded from I-ALiRT Data Access.")
 
         return downloaded_files
+
+    def __get_index_as_datetime(self, data: pd.DataFrame):
+        return pd.to_datetime(data[self.__DATE_INDEX]).dt.to_pydatetime()
 
 
 def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
