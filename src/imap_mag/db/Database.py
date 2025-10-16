@@ -79,11 +79,17 @@ class Database:
             existing_file = (
                 session.query(File).filter_by(name=file.name, path=file.path).first()
             )
-            if existing_file is not None:
+            if (existing_file is not None) and (existing_file.hash == file.hash):
                 logger.warning(
                     f"File {file.path} already exists in database. Skipping."
                 )
                 continue
+            elif (existing_file is not None) and (existing_file.hash != file.hash):
+                logger.info(
+                    f"File {file.path} already exists in database with different hash. Replacing."
+                )
+                session.delete(existing_file)
+                session.commit()
 
             session.add(file)
 

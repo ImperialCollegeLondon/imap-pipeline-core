@@ -656,6 +656,61 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     assert actual_path_handler == unique_path_handler
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_database_insert_file_same_name_different_hash(
+    test_database,  # noqa: F811
+    capture_cli_logs,
+) -> None:
+    # Set up.
+    test_file1 = create_test_file(
+        Path(tempfile.gettempdir()) / "test_file.txt", "some content"
+    )
+    file1 = File(
+        name="test_file.txt",
+        path=test_file1.absolute().as_posix(),
+        version=1,
+        hash=hashlib.md5(b"some content").hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        creation_date=datetime.fromtimestamp(test_file1.stat().st_ctime),
+        last_modified_date=datetime.fromtimestamp(test_file1.stat().st_mtime),
+        software_version=__version__,
+    )
+
+    test_database.insert_file(file1)
+
+    test_file2 = create_test_file(
+        Path(tempfile.gettempdir()) / "test_file.txt", "some other content"
+    )
+    file2 = File(
+        name="test_file.txt",
+        path=test_file2.absolute().as_posix(),
+        version=1,
+        hash=hashlib.md5(b"some other content").hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        creation_date=datetime.fromtimestamp(test_file2.stat().st_ctime),
+        last_modified_date=datetime.fromtimestamp(test_file2.stat().st_mtime),
+        software_version=__version__,
+    )
+
+    # Exercise.
+    test_database.insert_file(file2)
+
+    # Verify.
+    database_files = test_database.get_files(name="test_file.txt")
+    assert len(database_files) == 1
+    assert database_files[0].hash == hashlib.md5(b"some other content").hexdigest()
+
+    assert (
+        f"File {test_file2!s} already exists in database with different hash. Replacing."
+        in capture_cli_logs.text
+    )
+
+
 @pytest.mark.parametrize(
     "ancillary_file_name,expected_date",
     [
