@@ -126,7 +126,7 @@ class DatabaseFileOutputManager(IOutputManager):
         """Find a viable version for a file."""
 
         if not path_handler.supports_sequencing():
-            logger.warning(
+            logger.debug(
                 "Versioning not supported. File may be overwritten if it already exists and is different."
             )
             return False

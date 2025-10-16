@@ -14,8 +14,10 @@ NOW = datetime(2025, 6, 2, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
 TOMORROW = TODAY + timedelta(days=1)
 YESTERDAY = TODAY - timedelta(days=1)
-BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
+START_OF_HOUR = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=999999)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
+BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
 
 
 DATASTORE = Path("tests/datastore")
@@ -72,6 +74,8 @@ def mock_datetime_provider(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "today", lambda: TODAY)
     monkeypatch.setattr(DatetimeProvider, "tomorrow", lambda: TOMORROW)
     monkeypatch.setattr(DatetimeProvider, "yesterday", lambda: YESTERDAY)
+    monkeypatch.setattr(DatetimeProvider, "start_of_hour", lambda: START_OF_HOUR)
+    monkeypatch.setattr(DatetimeProvider, "end_of_hour", lambda: END_OF_HOUR)
     monkeypatch.setattr(DatetimeProvider, "end_of_today", lambda: END_OF_TODAY)
     monkeypatch.setattr(
         DatetimeProvider, "beginning_of_imap", lambda: BEGINNING_OF_IMAP
