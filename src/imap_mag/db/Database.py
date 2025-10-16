@@ -88,8 +88,8 @@ class Database:
                 logger.info(
                     f"File {file.path} already exists in database with different hash. Replacing."
                 )
-                session.delete(existing_file)
-                session.commit()
+                existing_file.hash = file.hash
+                continue
 
             session.add(file)
 
