@@ -173,6 +173,13 @@ def deploy_flows(local_debug: bool = False):
                 },
             ),
             DeploymentEventTrigger(
+                name="Trigger upload after I-ALiRT poll",
+                expect={"prefect.flow-run.Completed"},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
+                },
+            ),
+            DeploymentEventTrigger(
                 name="Trigger upload after science poll",
                 expect={"prefect.flow-run.Completed"},
                 match_related={
