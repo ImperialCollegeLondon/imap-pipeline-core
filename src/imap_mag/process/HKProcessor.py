@@ -1,6 +1,5 @@
 import collections
 import logging
-import os
 import re
 from copy import deepcopy
 from datetime import date, datetime
@@ -14,6 +13,7 @@ from space_packet_parser import definitions
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
+from imap_mag.process.getPacketDefinitionFolder import getPacketDefinitionFolder
 from imap_mag.process.HKProcessSettings import HKProcessSettings
 from imap_mag.util import (
     CONSTANTS,
@@ -48,29 +48,7 @@ class HKProcessor(FileProcessor):
         return file.suffix in [".pkts", ".bin"]
 
     def initialize(self, packet_definition: Path) -> None:
-        paths_to_try: dict[str, Path] = {
-            "relative": packet_definition,
-            "module": Path(os.path.dirname(__file__)).parent / packet_definition,
-        }
-
-        paths_to_try_string: str = "\n".join(
-            [f"    {source}: {path}" for source, path in paths_to_try.items()]
-        )
-        logger.debug(
-            f"Trying XTCE packet definition folder from these paths in turn:\n{paths_to_try_string}"
-        )
-
-        for source, path in paths_to_try.items():
-            if path and path.exists():
-                logger.debug(
-                    f"Using XTCE packet definition folder from {source} path: {path}"
-                )
-                self.__xtcePacketDefinitionFolder = path
-                break
-        else:
-            raise FileNotFoundError(
-                f"XTCE packet definition folder not found: {packet_definition}"
-            )
+        self.__xtcePacketDefinitionFolder = getPacketDefinitionFolder(packet_definition)
 
     def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
         """Process HK with XTCE tools and create CSV file."""

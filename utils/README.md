@@ -5,7 +5,7 @@
 To generate XML file with XTCE tool (from [`imap_processing`](https://github.com/IMAP-Science-Operations-Center/imap_processing)):
 
 ``` shell
-imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/imap_mag/xtce/mag_17.9.xml
+imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/imap_mag/packet_def/mag_17.9.xml
 ```
 
 > [!TIP]

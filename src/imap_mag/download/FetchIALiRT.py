@@ -5,12 +5,13 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
-from imap_mag.util import MAGMode
+from imap_mag.process import getPacketDefinitionFolder
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +20,21 @@ class FetchIALiRT:
     """Manage I-ALiRT data."""
 
     __DATE_INDEX = "met_in_utc"
+    __IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05.yaml"
 
     def __init__(
         self,
         data_access: IALiRTApiClient,
         work_folder: Path,
         datastore_finder: DatastoreFileFinder,
+        packet_definition: Path,
     ) -> None:
         """Initialize I-ALiRT interface."""
 
         self.__data_access = data_access
         self.__work_folder = work_folder
         self.__datastore_finder = datastore_finder
+        self.__packetDefinitionFolder = getPacketDefinitionFolder(packet_definition)
 
     def download_ialirt_to_csv(
         self,
@@ -51,7 +55,10 @@ class FetchIALiRT:
             )
 
             downloaded_data = pd.DataFrame(downloaded)
-            downloaded_data = process_ialirt_data(downloaded_data)
+            downloaded_data = process_ialirt_data(
+                downloaded_data,
+                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
+            )
 
             downloaded_dates = pd.to_datetime(
                 downloaded_data[self.__DATE_INDEX]
@@ -138,7 +145,7 @@ class FetchIALiRT:
         return pd.to_datetime(data[self.__DATE_INDEX]).dt.to_pydatetime()
 
 
-def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
+def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.DataFrame:
     """Process I-ALiRT file to expand list columns."""
 
     df.columns = df.columns.str.strip()
@@ -171,22 +178,10 @@ def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.drop(columns=[column])
 
     # Extract MAG HK
-    eng_unit_mapping: dict = {
-        "mag_hk_icu_temp": lambda x: (0.1235727 * x) - 273.15,
-        "mag_hk_fib_temp": lambda x: (
-            (1.910344879e-08 * x**3)
-            + (-0.000121404793 * x**2)
-            + (0.360584507 * x)
-            - 442.261486
-        ),
-        "mag_hk_fob_temp": lambda x: (
-            (1.373157e-08 * x**3) + (-8.7790356e-05 * x**2) + (0.2892792 * x) - 391.2388
-        ),
-        "mag_hk_hk3v3": lambda x: 0.001164028 * x,
-        "mag_hk_hk3v3_current": lambda x: 0.07964502 * x - 13.655,
-        "mag_hk_hkn8v5": lambda x: -0.0025910408 * x,
-        "mag_hk_hkn8v5_current": lambda x: 0.1178 * x - 8.3906,
-        "mag_hk_mode": lambda x: MAGMode(x).name,
+    packet_definition: dict = yaml.safe_load(packet_definition_file.read_text())
+    ialirt_packet_definition: dict = {
+        col["name"]: col
+        for col in packet_definition["ialirt_csv_conversion"]["columns"]
     }
 
     if "mag_hk_status" in df.columns:
@@ -197,9 +192,27 @@ def process_ialirt_data(df: pd.DataFrame) -> pd.DataFrame:
         dict_df.columns = [f"mag_hk_{field}" for field in dict_df.columns]
 
         # Convert from engineering units
-        for col, func in eng_unit_mapping.items():
+        for col, conversion in ialirt_packet_definition.items():
             if col in dict_df.columns:
-                dict_df[col] = dict_df[col].apply(func)
+                match conversion["type"]:
+                    case "polynomial":
+                        coeffs = conversion["coefficients"]
+
+                        def polynomial_conversion(x):
+                            return sum(c * (x**i) for i, c in enumerate(coeffs))
+
+                        dict_df[col] = dict_df[col].apply(polynomial_conversion)
+                    case "mapping":
+                        mapping = conversion["lookup"]
+
+                        def mapping_conversion(x):
+                            return mapping[x]
+
+                        dict_df[col] = dict_df[col].apply(mapping_conversion)
+                    case _:
+                        raise ValueError(
+                            f"Unknown conversion type '{conversion['type']}' for column '{col}'."
+                        )
 
         # Drop original column and concatenate new columns
         df = df.drop(columns=["mag_hk_status"])

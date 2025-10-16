@@ -16,6 +16,10 @@ from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
 
+IALIRT_PACKET_DEFINITION = (
+    Path(__file__).parent.parent / "src" / "imap_mag" / "packet_def"
+)
+
 
 @pytest.fixture
 def mock_ialirt_data_access() -> mock.Mock:
@@ -32,6 +36,7 @@ def test_fetch_ialirt_no_data(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
         DatastoreFileFinder(Path(tempfile.mkdtemp())),
+        IALIRT_PACKET_DEFINITION,
     )
 
     mock_ialirt_data_access.get_all_by_dates.side_effect = (
@@ -66,6 +71,7 @@ def test_fetch_ialirt_single_day_no_existing_data(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
         DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
     )
 
     mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
@@ -120,6 +126,7 @@ def test_fetch_ialirt_multiple_days_no_existing_data(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
         DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
     )
 
     mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
@@ -174,6 +181,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
         DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
     )
 
     mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
@@ -243,6 +251,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
         DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
     )
 
     mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
@@ -316,7 +325,9 @@ def test_split_gse_gsm_to_xyz_components() -> None:
     df = pd.DataFrame(raw_data)
 
     # Exercise.
-    processed_df = process_ialirt_data(df)
+    processed_df = process_ialirt_data(
+        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+    )
 
     # Verify.
     assert "data_gse_x" in processed_df.columns
@@ -351,7 +362,9 @@ def test_split_rtn_to_rtn_components() -> None:
     df = pd.DataFrame(raw_data)
 
     # Exercise.
-    processed_df = process_ialirt_data(df)
+    processed_df = process_ialirt_data(
+        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+    )
 
     # Verify.
     assert "data_rtn_r" in processed_df.columns
@@ -388,7 +401,9 @@ def test_process_mag_hk() -> None:
     df = pd.DataFrame(raw_data)
 
     # Exercise.
-    processed_df = process_ialirt_data(df)
+    processed_df = process_ialirt_data(
+        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+    )
 
     # Verify.
     assert math.isclose(processed_df.at[0, "mag_hk_icu_temp"], 97.5681, rel_tol=1e-5)  # type: ignore

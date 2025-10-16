@@ -46,7 +46,9 @@ def fetch_ialirt(
     )
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
-    fetch_ialirt = FetchIALiRT(data_access, work_folder, datastore_finder)
+    fetch_ialirt = FetchIALiRT(
+        data_access, work_folder, datastore_finder, app_settings.packet_definition
+    )
     downloaded_ialirt: dict[Path, IALiRTPathHandler] = (
         fetch_ialirt.download_ialirt_to_csv(
             start_date=start_date,

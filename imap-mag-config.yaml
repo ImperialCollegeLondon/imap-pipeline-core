@@ -6,7 +6,7 @@
 # General application conifguration:
 work_folder: '.work'
 data_store:  'output/'
-packet_definition: 'xtce/'
+packet_definition: 'packet_def/'
 
 # Command specific configuration:
 fetch_binary:
