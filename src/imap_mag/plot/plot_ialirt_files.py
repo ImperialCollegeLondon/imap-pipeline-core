@@ -2,8 +2,10 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import FuncFormatter
 
 from imap_mag.io.file import IALiRTQuicklookPathHandler
 
@@ -213,6 +215,8 @@ def plot_ialirt_files(
             save_folder / f"ialirt_quicklook_{min_date.strftime('%Y%m%d')}.png"
         )
 
+        set_time_format(fig)
+
         fig.set_size_inches(27, 17)
         fig.tight_layout()
         fig.savefig(output_file, dpi=150)
@@ -223,3 +227,35 @@ def plot_ialirt_files(
         )
 
     return generated_files
+
+
+def set_time_format(fig: plt.Figure) -> None:
+    for ax in fig.get_axes():
+        x_lim = ax.get_xlim()
+        time_span_hours = (x_lim[1] - x_lim[0]) * 24
+
+        # Show major ticks every 15, 30, or 60 minutes
+        if time_span_hours < 1:
+            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
+        elif time_span_hours < 3:
+            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=30))
+        elif time_span_hours < 12:
+            ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+        else:
+            ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
+
+        def format_time_with_date(x, _):
+            date = mdates.num2date(x)
+            if date.hour == 0 and date.minute == 0:
+                return date.strftime("%Y-%m-%d")
+            else:
+                return date.strftime("%H:%M")
+
+        ax.xaxis.set_major_formatter(FuncFormatter(format_time_with_date))
+
+        # Make minor tick labels visible and styled
+        ax.tick_params(which="minor", labelbottom=True, labelsize=7, length=10)
+        ax.tick_params(which="major", labelsize=8, length=5)
+
+        # Rotate labels for readability
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
