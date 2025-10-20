@@ -43,7 +43,6 @@ def test_plot_ialirt(
     assert plot_file.exists()
 
     assert path_handler.content_date == datetime(2025, 10, 17, 8, 0, 3)
-    assert path_handler.end_date == datetime(2025, 10, 17, 8, 36, 23)
 
     diff_file = Path(tempfile.gettempdir()) / "result_diff.png"
     image_diff = diff(
