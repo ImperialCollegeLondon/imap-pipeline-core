@@ -38,23 +38,25 @@ def plot_ialirt_files(
     # HK dangers
     ax00 = fig.add_subplot(gs[0, 0:2])
 
-    for hk in [
-        "mag_hk_hk1v5_danger",
-        "mag_hk_hk1v5c_danger",
-        "mag_hk_hk1v8_danger",
-        "mag_hk_hk1v8c_danger",
-        "mag_hk_hk2v5_danger",
-        "mag_hk_hk2v5c_danger",
-        "mag_hk_hkp8v5_danger",
-        "mag_hk_hkp8v5c_danger",
-    ]:
+    for i, hk in enumerate(
+        [
+            "mag_hk_hk1v5_danger",
+            "mag_hk_hk1v5c_danger",
+            "mag_hk_hk1v8_danger",
+            "mag_hk_hk1v8c_danger",
+            "mag_hk_hk2v5_danger",
+            "mag_hk_hk2v5c_danger",
+            "mag_hk_hkp8v5_danger",
+            "mag_hk_hkp8v5c_danger",
+        ]
+    ):
         ax00.plot(
             ialirt_data.index,
-            ialirt_data[hk],
+            ialirt_data[hk] * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_danger"),
         )
 
-    ax00.set_ylabel("[-]")
+    ax00.set_ylabel("0 == OK")
     ax00.legend(loc="upper right", fontsize="small", ncol=4)
     ax00.grid()
     ax00.set_title("Danger Limits")
@@ -98,23 +100,25 @@ def plot_ialirt_files(
     # HK warnings
     ax10 = fig.add_subplot(gs[1, 0:2], sharex=ax00)
 
-    for hk in [
-        "mag_hk_hk1v5_warn",
-        "mag_hk_hk1v5c_warn",
-        "mag_hk_hk1v8_warn",
-        "mag_hk_hk1v8c_warn",
-        "mag_hk_hk2v5_warn",
-        "mag_hk_hk2v5c_warn",
-        "mag_hk_hkp8v5_warn",
-        "mag_hk_hkp8v5c_warn",
-    ]:
+    for i, hk in enumerate(
+        [
+            "mag_hk_hk1v5_warn",
+            "mag_hk_hk1v5c_warn",
+            "mag_hk_hk1v8_warn",
+            "mag_hk_hk1v8c_warn",
+            "mag_hk_hk2v5_warn",
+            "mag_hk_hk2v5c_warn",
+            "mag_hk_hkp8v5_warn",
+            "mag_hk_hkp8v5c_warn",
+        ]
+    ):
         ax10.plot(
             ialirt_data.index,
-            ialirt_data[hk],
+            ialirt_data[hk] * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_warn"),
         )
 
-    ax10.set_ylabel("[-]")
+    ax10.set_ylabel("0 == OK")
     ax10.legend(loc="upper right", fontsize="small", ncol=4)
     ax10.grid()
     ax10.set_title("Warning Limits")

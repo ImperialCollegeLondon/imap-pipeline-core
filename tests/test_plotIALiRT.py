@@ -20,7 +20,7 @@ def test_plot_ialirt(
     capture_cli_logs,
 ) -> None:
     # Set up.
-    test_data = TEST_DATA / "imap_ialirt_20251017.csv"
+    test_data = TEST_DATA / "ialirt_plot_data.csv"
 
     (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
     shutil.copy(
