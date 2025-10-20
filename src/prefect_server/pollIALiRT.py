@@ -90,6 +90,15 @@ async def poll_ialirt_flow(
             }
         ),
     ] = 5 * 60,  # 5 minutes
+    plot_data: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Plot data",
+                "description": "If true, the flow will generate a quicklook plot of the downloaded data.",
+            }
+        ),
+    ] = True,
 ) -> None:
     """
     Poll I-ALiRT data from SDC.
@@ -103,27 +112,31 @@ async def poll_ialirt_flow(
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
     end_date = end_date or DatetimeProvider.end_of_hour()
+    updated_files: list[Path] = []
 
     logger.info("---------- Start I-ALiRT Poll ----------")
 
     if wait_for_new_data_to_arrive:
         while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
-            do_poll_ialirt(
+            files = do_poll_ialirt(
                 database, auth_code, start_date, end_date, force_download, logger
             )
+            updated_files.extend(files)
 
             logger.info(
                 f"--- Waiting {timeout} seconds before polling for new data ---"
             )
             await asyncio.sleep(timeout)
     else:
-        do_poll_ialirt(
+        files = do_poll_ialirt(
             database, auth_code, start_date, end_date, force_download, logger
         )
+        updated_files.extend(files)
 
     logger.info("---------- End I-ALiRT Poll ----------")
 
-    plot_ialirt(start_date=start_date, end_date=end_date)
+    if plot_data:
+        plot_ialirt(files=updated_files)
 
 
 def do_poll_ialirt(
@@ -133,7 +146,7 @@ def do_poll_ialirt(
     end_date: datetime | None,
     force_download: bool,
     logger,
-) -> None:
+) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
     progress_item_id = "MAG_IALIRT"
 
@@ -149,7 +162,7 @@ def do_poll_ialirt(
 
     if packet_dates is None:
         logger.info("No dates to download - skipping")
-        return
+        return []
     else:
         (packet_start_date, packet_end_date) = packet_dates
 
@@ -165,7 +178,7 @@ def do_poll_ialirt(
         logger.info(
             f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
         )
-        return
+        return []
 
     # Update database with latest downloaded date as progress (for I-ALiRT)
     content_dates: list[datetime] = [
@@ -181,3 +194,5 @@ def do_poll_ialirt(
         checked_timestamp=start_timestamp,
         latest_timestamp=latest_date,
     )
+
+    return [k for k in downloaded_ialirt.keys()]

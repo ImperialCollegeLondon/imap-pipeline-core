@@ -109,7 +109,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(wait_for_new_data_to_arrive=False)
+        await poll_ialirt_flow(wait_for_new_data_to_arrive=False, plot_data=False)
 
     # Verify.
     verify_available_ialirt(
@@ -146,7 +146,7 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(wait_for_new_data_to_arrive=False)
+        await poll_ialirt_flow(wait_for_new_data_to_arrive=False, plot_data=False)
 
     # Verify.
     verify_available_ialirt(
@@ -181,7 +181,10 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
         IALIRT_API_KEY="12345",
     ):
         await poll_ialirt_flow(
-            wait_for_new_data_to_arrive=False, start_date=start_date, end_date=end_date
+            wait_for_new_data_to_arrive=False,
+            plot_data=False,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     # Verify.
