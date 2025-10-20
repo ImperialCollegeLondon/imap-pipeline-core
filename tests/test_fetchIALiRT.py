@@ -422,3 +422,48 @@ def test_process_mag_hk() -> None:
         rel_tol=1e-5,
     )
     assert processed_df.at[0, "mag_hk_mode"] == "Normal"
+
+
+def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
+    # Set up.
+    raw_data = [
+        {
+            "met_in_utc": "2025-05-02T00:00:00",
+            "mag_hk_status": {
+                "icu_temp": 3000,
+                "fib_temp": 3000,
+                "fob_temp": 3000,
+                "hk3v3": 3000,
+                "hk3v3_current": 3000,
+                "hkn8v5": 3000,
+                "hkn8v5_current": 3000,
+                "mode": 5,
+            },
+        },
+        {
+            "met": 498689725,
+            "ttj2000ns": 814265793369384064,
+            "apid": 478,
+            "met_in_utc": "2025-10-20T20:55:24",
+            "spice_kernels": {
+                "planetary_constants": "pck00011.tpc",
+                "science_frames": "imap_science_100.tf",
+                "leapseconds": "naif0012.tls",
+                "imap_frames": "imap_100.tf",
+                "ephemeris_predicted": "imap_pred_od004_20251002_20251113_v01.bsp",
+                "spacecraft_clock": "imap_sclk_0021.tsc",
+                "planetary_ephemeris": "de440.bsp",
+            },
+            "last_modified": "2025-10-20T20:55:24.185384+00:00",
+        },
+    ]
+
+    df = pd.DataFrame(raw_data)
+
+    # Exercise.
+    processed_df = process_ialirt_data(
+        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+    )
+
+    # Verify.
+    assert processed_df.at[0, "mag_hk_mode"] == "Normal"
