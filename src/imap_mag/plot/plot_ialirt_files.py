@@ -27,9 +27,6 @@ def plot_ialirt_files(
             logger.info(f"No I-ALiRT data available in {file}.")
             continue
 
-        min_date: datetime = ialirt_data.index.min().to_pydatetime()
-        max_date: datetime = ialirt_data.index.max().to_pydatetime()
-
         # Plot data
         fig = plt.figure()
         gs = fig.add_gridspec(3, 4)
@@ -211,9 +208,9 @@ def plot_ialirt_files(
         ax23.set_title("Temperatures")
 
         # Save figure
+        min_date: datetime = ialirt_data.index.min().to_pydatetime()
         output_file = (
-            save_folder
-            / f"ialirt_quicklook_{min_date.strftime('%Y%m%d-%H%M%S')}_{max_date.strftime('%Y%m%d-%H%M%S')}.png"
+            save_folder / f"ialirt_quicklook_{min_date.strftime('%Y%m%d')}.png"
         )
 
         fig.set_size_inches(27, 17)
@@ -222,8 +219,7 @@ def plot_ialirt_files(
         plt.close()
 
         generated_files[output_file] = IALiRTQuicklookPathHandler(
-            start_date=min_date,
-            end_date=max_date,
+            content_date=min_date,
         )
 
     return generated_files

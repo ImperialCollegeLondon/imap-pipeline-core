@@ -22,8 +22,7 @@ class QuicklookPathHandler(IFilePathHandler):
     root_folder: str = "quicklook"
 
     mission: str = "imap"
-    start_date: datetime | None = None
-    end_date: datetime | None = None
+    content_date: datetime | None = None
     extension: str = "png"
 
     @property
@@ -36,27 +35,29 @@ class QuicklookPathHandler(IFilePathHandler):
         return False
 
     def get_content_date_for_indexing(self) -> datetime | None:
-        return self.start_date
+        return self.content_date
 
     def get_folder_structure(self) -> str:
-        super()._check_property_values("folder structure", ["start_date"])
-        assert self.start_date
+        super()._check_property_values("folder structure", ["content_date"])
+        assert self.content_date
 
         return (
-            Path(self.root_folder) / self.plot_type / self.start_date.strftime("%Y/%m")
+            Path(self.root_folder)
+            / self.plot_type
+            / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
     def get_filename(self) -> str:
-        super()._check_property_values("file name", ["start_date", "end_date"])
-        assert self.start_date and self.end_date
+        super()._check_property_values("file name", ["content_date"])
+        assert self.content_date
 
-        return f"{self.mission}_quicklook_{self.plot_type}_{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}.{self.extension}"
+        return f"{self.mission}_quicklook_{self.plot_type}_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
 
     @classmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
         dummy = cls()
         match = re.match(
-            rf"imap_quicklook_{dummy.plot_type}_(?P<start_date>\d{{8}})_(?P<end_date>\d{{8}})\.(?P<ext>\w+)",
+            rf"imap_quicklook_{dummy.plot_type}_(?P<date>\d{{8}})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -67,7 +68,6 @@ class QuicklookPathHandler(IFilePathHandler):
             return None
         else:
             return cls(
-                start_date=datetime.strptime(match["start_date"], "%Y%m%d"),
-                end_date=datetime.strptime(match["end_date"], "%Y%m%d"),
+                content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 extension=match["ext"],
             )
