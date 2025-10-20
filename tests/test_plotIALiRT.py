@@ -31,12 +31,15 @@ def test_plot_ialirt(
     expected_figure = TEST_TRUTH / "ialirt_quicklook.png"
 
     # Execute.
-    plot_file, path_handler = plot_ialirt(
+    generated_plots = plot_ialirt(
         start_date=datetime(2025, 10, 17, 0, 0, 0),
         end_date=datetime(2025, 10, 17, 23, 59, 59),
     )
 
     # Verify.
+    assert len(generated_plots) == 1
+
+    ((plot_file, path_handler),) = generated_plots.items()
     assert plot_file.exists()
 
     assert path_handler.start_date == datetime(2025, 10, 17, 8, 0, 3)

@@ -38,7 +38,7 @@ def plot_ialirt(
             writable=False,
         ),
     ] = None,
-) -> tuple[Path, IALiRTQuicklookPathHandler]:
+) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
     app_settings = AppSettings()  # type: ignore
@@ -92,11 +92,11 @@ def plot_ialirt(
     )
 
     # Generate plots
-    generated_figure: tuple[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
+    generated_figure: dict[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
         work_files, save_folder=work_folder
     )
 
-    ialirt_file_and_handler: tuple[Path, IALiRTQuicklookPathHandler] = ()
+    ialirt_file_and_handler: dict[Path, IALiRTQuicklookPathHandler] = {}
 
     if app_settings.plot_ialirt.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
@@ -104,10 +104,9 @@ def plot_ialirt(
             use_database=False,
         )
 
-        (file, path_handler) = generated_figure
-
-        (output_file, output_handler) = output_manager.add_file(file, path_handler)
-        ialirt_file_and_handler = (output_file, output_handler)
+        for file, path_handler in generated_figure.items():
+            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            ialirt_file_and_handler[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")
         ialirt_file_and_handler = generated_figure
