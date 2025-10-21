@@ -49,8 +49,8 @@ def plot_ialirt_files(
             ]
         ):
             ax00.plot(
-                ialirt_data.index,
-                ialirt_data[hk] * (1 + i * 0.1),
+                ialirt_data[ialirt_data[hk].notna()].index,
+                ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
                 label=hk.lstrip("mag_hk_").rstrip("_danger"),
             )
 
@@ -63,15 +63,17 @@ def plot_ialirt_files(
         ax02 = fig.add_subplot(gs[0, 2])
 
         ax02.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_hk3v3"],
+            ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()]["mag_hk_hk3v3"],
             linestyle="--",
             label="Voltage",
         )
         ax02_left = ax02.twinx()
         ax02_left.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_hk3v3_current"],
+            ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()][
+                "mag_hk_hk3v3_current"
+            ],
             color="orange",
             label="Current",
         )
@@ -85,15 +87,17 @@ def plot_ialirt_files(
         ax03 = fig.add_subplot(gs[0, 3])
 
         ax03.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_hkn8v5"],
+            ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()]["mag_hk_hkn8v5"],
             linestyle="--",
             label="Voltage",
         )
         ax03_left = ax03.twinx()
         ax03_left.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_hkn8v5_current"],
+            ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()][
+                "mag_hk_hkn8v5_current"
+            ],
             color="orange",
             label="Current",
         )
@@ -119,8 +123,8 @@ def plot_ialirt_files(
             ]
         ):
             ax10.plot(
-                ialirt_data.index,
-                ialirt_data[hk] * (1 + i * 0.1),
+                ialirt_data[ialirt_data[hk].notna()].index,
+                ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
                 label=hk.lstrip("mag_hk_").rstrip("_warn"),
             )
 
@@ -132,7 +136,12 @@ def plot_ialirt_files(
         # Bit errors
         ax12 = fig.add_subplot(gs[1, 2], sharex=ax02)
 
-        ax12.plot(ialirt_data.index, ialirt_data["mag_hk_multbit_errs"])
+        ax12.plot(
+            ialirt_data[ialirt_data["mag_hk_multbit_errs"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_multbit_errs"].notna()][
+                "mag_hk_multbit_errs"
+            ],
+        )
         ax12.set_ylabel("[-]")
         ax12.grid()
         ax12.set_title("Multibit Errors")
@@ -140,17 +149,29 @@ def plot_ialirt_files(
         # Mode
         ax13 = fig.add_subplot(gs[1, 3])
 
-        ax13.plot(ialirt_data.index, ialirt_data["mag_hk_mode"], label="ICU")
+        ax13.plot(
+            ialirt_data[ialirt_data["mag_hk_mode"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_mode"].notna()]["mag_hk_mode"],
+            label="ICU",
+        )
         ax13.grid()
         ax13.set_title("Mode")
 
         # Saturation
         ax20 = fig.add_subplot(gs[2, 0])
 
-        ax20.plot(ialirt_data.index, ialirt_data["mag_hk_fob_saturated"], label="FOB")
         ax20.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_fib_saturated"],
+            ialirt_data[ialirt_data["mag_hk_fob_saturated"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fob_saturated"].notna()][
+                "mag_hk_fob_saturated"
+            ],
+            label="FOB",
+        )
+        ax20.plot(
+            ialirt_data[ialirt_data["mag_hk_fib_saturated"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fib_saturated"].notna()][
+                "mag_hk_fib_saturated"
+            ],
             label="FIB",
             linestyle="--",
         )
@@ -162,10 +183,14 @@ def plot_ialirt_files(
         # Ranges
         ax21 = fig.add_subplot(gs[2, 1])
 
-        ax21.plot(ialirt_data.index, ialirt_data["mag_hk_fob_range"], label="FOB")
         ax21.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_fib_range"],
+            ialirt_data[ialirt_data["mag_hk_fob_range"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fob_range"].notna()]["mag_hk_fob_range"],
+            label="FOB",
+        )
+        ax21.plot(
+            ialirt_data[ialirt_data["mag_hk_fib_range"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fib_range"].notna()]["mag_hk_fib_range"],
             label="FIB",
             linestyle="--",
         )
@@ -177,30 +202,42 @@ def plot_ialirt_files(
         # Active
         ax22 = fig.add_subplot(gs[2, 2], sharex=ax02)
 
-        ax22.plot(ialirt_data.index, ialirt_data["mag_hk_pri_isvalid"], label="FOB")
         ax22.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_sec_isvalid"],
+            ialirt_data[ialirt_data["mag_hk_pri_isvalid"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_pri_isvalid"].notna()][
+                "mag_hk_pri_isvalid"
+            ],
+            label="FOB",
+        )
+        ax22.plot(
+            ialirt_data[ialirt_data["mag_hk_sec_isvalid"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_sec_isvalid"].notna()][
+                "mag_hk_sec_isvalid"
+            ],
             label="FIB",
             linestyle="--",
         )
         ax22.legend(loc="upper right", fontsize="small")
         ax22.grid()
-        ax22.set_title("Validity")
+        ax22.set_title("Status")
 
         # Temperatures
         ax23 = fig.add_subplot(gs[2, 3], sharex=ax03)
 
-        ax23.plot(ialirt_data.index, ialirt_data["mag_hk_fob_temp"], label="FOB")
         ax23.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_fib_temp"],
+            ialirt_data[ialirt_data["mag_hk_fob_temp"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fob_temp"].notna()]["mag_hk_fob_temp"],
+            label="FOB",
+        )
+        ax23.plot(
+            ialirt_data[ialirt_data["mag_hk_fib_temp"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_fib_temp"].notna()]["mag_hk_fib_temp"],
             label="FIB",
             linestyle="--",
         )
         ax23.plot(
-            ialirt_data.index,
-            ialirt_data["mag_hk_icu_temp"],
+            ialirt_data[ialirt_data["mag_hk_icu_temp"].notna()].index,
+            ialirt_data[ialirt_data["mag_hk_icu_temp"].notna()]["mag_hk_icu_temp"],
             label="ICU",
             linestyle=":",
         )
