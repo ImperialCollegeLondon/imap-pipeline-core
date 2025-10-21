@@ -25,9 +25,9 @@ class QuicklookPathHandler(IFilePathHandler):
     content_date: datetime | None = None
     extension: str = "png"
 
-    @property
+    @staticmethod
     @abc.abstractmethod
-    def plot_type(self) -> str:
+    def get_plot_type() -> str:
         """The type of plot (e.g., "ialirt", "hk", etc.)."""
         pass
 
@@ -43,7 +43,7 @@ class QuicklookPathHandler(IFilePathHandler):
 
         return (
             Path(self.root_folder)
-            / self.plot_type
+            / self.get_plot_type()
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
@@ -51,13 +51,12 @@ class QuicklookPathHandler(IFilePathHandler):
         super()._check_property_values("file name", ["content_date"])
         assert self.content_date
 
-        return f"{self.mission}_quicklook_{self.plot_type}_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
+        return f"{self.mission}_quicklook_{self.get_plot_type()}_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
 
     @classmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
-        dummy = cls()
         match = re.match(
-            rf"imap_quicklook_{dummy.plot_type}_(?P<date>\d{{8}})\.(?P<ext>\w+)",
+            rf"imap_quicklook_{cls.get_plot_type()}_(?P<date>\d{{8}})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
