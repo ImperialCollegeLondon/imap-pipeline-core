@@ -303,7 +303,7 @@ def set_time_format(fig: plt.Figure) -> None:
 
         def format_time_with_date(x, pos):
             date = mdates.num2date(x)
-            if (date.hour <= 2) or (pos == 0):
+            if (date.hour <= 3) or (pos == 0):
                 return date.strftime("%d/%m %H:%M")
             else:
                 return date.strftime("%H:%M")
