@@ -25,15 +25,15 @@ def test_plot_ialirt(
     (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
     shutil.copy(
         test_data,
-        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251017.csv",
+        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
     )
 
     expected_figure = TEST_TRUTH / "ialirt_quicklook.png"
 
     # Execute.
     generated_plots = plot_ialirt(
-        start_date=datetime(2025, 10, 17, 0, 0, 0),
-        end_date=datetime(2025, 10, 17, 23, 59, 59),
+        start_date=datetime(2025, 10, 21, 0, 0, 0),
+        end_date=datetime(2025, 10, 21, 23, 59, 59),
     )
 
     # Verify.
