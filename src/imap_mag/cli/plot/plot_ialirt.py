@@ -42,7 +42,7 @@ def plot_ialirt(
     """Plot I-ALiRT data."""
 
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.plot_ialirt)
 
     initialiseLoggingForCommand(
         work_folder
