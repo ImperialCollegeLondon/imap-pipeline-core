@@ -155,12 +155,12 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
     columns_to_split = []
     for column in df.columns:
-        if df[column].apply(is_3element_list).all():
+        if df[df[column].notna()][column].apply(is_3element_list).all():
             columns_to_split.append(column)
 
     for column in columns_to_split:
         # Parse the string representation of lists
-        column_data = df[column]
+        column_data = df[df[column].notna()][column]
 
         # Determine which suffixes to use based on the original column name
         if column.lower().endswith("_gse") or column.lower().endswith("_gsm"):
