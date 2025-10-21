@@ -439,6 +439,8 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
                 "hkn8v5_current": 3000,
                 "mode": 5,
             },
+            "mag_B_GSM": [1, 2, 3],
+            "mag_B_RTN": [4, 5, 6],
         },
         {
             "met": 498689725,
@@ -467,3 +469,9 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
 
     # Verify.
     assert processed_df.at[0, "mag_hk_mode"] == "Normal"
+    assert processed_df.at[0, "mag_B_GSM_x"] == 1
+    assert processed_df.at[0, "mag_B_GSM_y"] == 2
+    assert processed_df.at[0, "mag_B_GSM_z"] == 3
+    assert processed_df.at[0, "mag_B_RTN_r"] == 4
+    assert processed_df.at[0, "mag_B_RTN_t"] == 5
+    assert processed_df.at[0, "mag_B_RTN_n"] == 6
