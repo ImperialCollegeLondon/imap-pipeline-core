@@ -254,9 +254,9 @@ def plot_ialirt_files(
 
         set_time_format(fig)
 
-        fig.set_size_inches(27, 17)
+        fig.set_size_inches(22, 12)
         fig.tight_layout()
-        fig.savefig(output_file, dpi=150)
+        fig.savefig(output_file, dpi=100)
         plt.close()
 
         generated_files[output_file] = IALiRTQuicklookPathHandler(
