@@ -38,6 +38,13 @@ def plot_ialirt(
             writable=False,
         ),
     ] = None,
+    combined_plot: Annotated[
+        bool,
+        typer.Option(
+            "--combined",
+            help="Whether to combine all I-ALiRT data into a single figure",
+        ),
+    ] = False,
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
@@ -93,7 +100,7 @@ def plot_ialirt(
 
     # Generate plots
     generated_figure: dict[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
-        work_files, save_folder=work_folder
+        work_files, save_folder=work_folder, combine_plots=combined_plot
     )
 
     ialirt_file_and_handler: dict[Path, IALiRTQuicklookPathHandler] = {}

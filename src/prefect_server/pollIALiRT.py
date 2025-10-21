@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -136,7 +136,11 @@ async def poll_ialirt_flow(
     logger.info("---------- End I-ALiRT Poll ----------")
 
     if plot_data:
-        plot_ialirt(files=updated_files)
+        plot_ialirt(
+            start_date=DatetimeProvider.today() - timedelta(days=2),
+            end_date=DatetimeProvider.end_of_today(),
+            combined_plot=True,
+        )
 
 
 def do_poll_ialirt(
