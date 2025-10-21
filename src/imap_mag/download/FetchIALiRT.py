@@ -185,7 +185,8 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
     }
 
     if "mag_hk_status" in df.columns:
-        column_hk = df["mag_hk_status"]
+        # drop rows without the status
+        column_hk = df[df["mag_hk_status"].notna()]["mag_hk_status"]
 
         # Convert to DataFrame and add prefix to column names
         dict_df = pd.DataFrame(column_hk.tolist())
