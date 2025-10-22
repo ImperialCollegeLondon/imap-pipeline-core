@@ -40,10 +40,10 @@ def check_ialirt(
             writable=False,
         ),
     ] = None,
-    error_on_failure: Annotated[
+    error_on_anomaly: Annotated[
         bool,
         typer.Option(
-            "--error-on-failure",
+            "--error-on-anomaly",
             help="Error if any data contains anomalies",
             show_default=True,
         ),
@@ -84,7 +84,7 @@ def check_ialirt(
         for anomaly in anomalies:
             anomaly.log()
 
-        if error_on_failure:
+        if error_on_anomaly:
             raise IALiRTAnomalyError("I-ALiRT data contains anomalies.")
     else:
         logger.info("No anomalies detected in I-ALiRT data.")

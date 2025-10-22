@@ -78,7 +78,7 @@ async def poll_ialirt_flow(
         Field(
             json_schema_extra={
                 "title": "Wait for new data to arrive",
-                "description": "If true, the flow will poll for new data until the `end_date`.",
+                "description": "If true, the flow will poll for new data until the end date is reached.",
             }
         ),
     ] = True,

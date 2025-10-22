@@ -50,7 +50,7 @@ async def check_ialirt_flow(
     Check I-ALiRT data store data for anomalies.
     """
 
-    anomalies: list[IALiRTAnomaly] = check_ialirt(files=files, error_on_failure=False)
+    anomalies: list[IALiRTAnomaly] = check_ialirt(files=files, error_on_anomaly=False)
 
     if not anomalies:
         return Completed(message="No anomalies detected in I-ALiRT data.")
