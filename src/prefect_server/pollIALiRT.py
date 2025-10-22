@@ -10,13 +10,13 @@ from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.ialirt import fetch_ialirt
-from imap_mag.cli.plot.plot_ialirt import plot_ialirt
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
+from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 
 
 def convert_ints_to_string(apids: list[int]) -> str:
@@ -137,7 +137,7 @@ async def poll_ialirt_flow(
     logger.info("---------- End I-ALiRT Poll ----------")
 
     if plot_data:
-        plot_ialirt(
+        await quicklook_ialirt_flow(
             start_date=DatetimeProvider.today() - timedelta(days=2),
             end_date=DatetimeProvider.end_of_today(),
             combined_plot=True,
