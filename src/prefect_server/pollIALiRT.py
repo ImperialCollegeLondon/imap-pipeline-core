@@ -138,7 +138,7 @@ async def poll_ialirt_flow(
     if plot_data:
         plot_ialirt(
             start_date=DatetimeProvider.today() - timedelta(days=2),
-            end_date=DatetimeProvider.end_of_today(),
+            end_date=DatetimeProvider.now(),
             combined_plot=True,
         )
 
