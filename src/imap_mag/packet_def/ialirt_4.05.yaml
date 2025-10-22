@@ -75,10 +75,6 @@ ialirt_validation:
     type: limit
     warning_min: 80
     warning_max: 180
-  - name: mag_hk_multbit_errs
-    type: limit
-    danger_min: 0
-    danger_max: 0
   - name: mag_hk_icu_temp
     type: limit
     danger_min: -30
@@ -146,6 +142,9 @@ ialirt_validation:
   - name: mag_hk_hkp8v5c_warn
     type: flag
     severity: warning
+  - name: mag_hk_multbit_errs
+    type: flag
+    severity: danger
   - name: mag_hk_fib_saturated
     type: flag
     severity: danger
