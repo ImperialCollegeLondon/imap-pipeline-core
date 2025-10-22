@@ -2,16 +2,10 @@ import abc
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+
+from imap_mag.check.SeverityLevel import SeverityLevel
 
 logger = logging.getLogger(__name__)
-
-
-class SeverityLevel(Enum):
-    """Enumeration of severity levels for I-ALiRT failures."""
-
-    Danger = "danger"
-    Warning = "warning"
 
 
 @dataclass

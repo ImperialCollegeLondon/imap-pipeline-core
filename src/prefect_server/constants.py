@@ -14,7 +14,8 @@ class PREFECT_CONSTANTS:
         IALIRT_UPDATED = "ialirt.updated"
 
     class CHECK_IALIRT:
-        WEBHOOK_NAME = "ialirt-anomaly-notifications"
+        DANGER_WEBHOOK_NAME = "ialirt-danger-notification"
+        WARNING_WEBHOOK_NAME = "ialirt-warning-notification"
 
     class POLL_IALIRT:
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"

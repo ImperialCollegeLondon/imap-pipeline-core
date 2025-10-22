@@ -9,8 +9,8 @@ from imap_mag.check.IALiRTAnomaly import (
     IALiRTFlagAnomaly,
     IALiRTForbiddenValueAnomaly,
     IALiRTOutOfBoundsAnomaly,
-    SeverityLevel,
 )
+from imap_mag.check.SeverityLevel import SeverityLevel
 from imap_mag.process import get_packet_definition_folder
 
 logger = logging.getLogger(__name__)
