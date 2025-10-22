@@ -155,7 +155,7 @@ async def poll_ialirt_flow(
         )
 
         # If this is the 6 AM polling job, send the latest figure to Teams
-        if True:  # (end_date.hour == 6) and wait_for_new_data_to_arrive:
+        if (end_date.hour == 6) and wait_for_new_data_to_arrive:
             info_webhook_block = await MicrosoftTeamsWebhook.aload(
                 info_notification_webhook_name
             )
@@ -164,8 +164,8 @@ async def poll_ialirt_flow(
                 PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
             )
             message_body: str = (
-                f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp} UTC) is now on Sharepoint:\n\n"
-                f"[I-ALiRT Latest Data]({PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_QUICKLOOK_SHAREPOINT_URL})"
+                f"View the [latest I-ALiRT data on Sharepoint]({PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_QUICKLOOK_SHAREPOINT_URL}).\n\n"
+                f"Updated to {latest_ialirt_date.progress_timestamp} UTC."
             )
 
             await info_webhook_block.notify(
