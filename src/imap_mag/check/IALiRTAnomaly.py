@@ -40,14 +40,14 @@ class IALiRTAnomaly(abc.ABC):
 class IALiRTOutOfBoundsAnomaly(IALiRTAnomaly):
     """Represents an out-of-bounds anomaly in I-ALiRT data."""
 
-    values: tuple[float, float]
+    value: float
     limits: tuple[float, float]
 
     def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} out of bounds "
-            f"at least once from {self.time_range[0]} to {self.time_range[1]}: "
-            f"values {self.values} outside limits {self.limits}."
+            f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}: "
+            f"value {self.value} outside {self.severity.value.lower()} limits {self.limits}."
         )
 
 
@@ -58,7 +58,7 @@ class IALiRTFlagAnomaly(IALiRTAnomaly):
     def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} {self.severity.value.lower()} flag is high "
-            f"at least once from {self.time_range[0]} to {self.time_range[1]}."
+            f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}."
         )
 
 
@@ -71,5 +71,5 @@ class IALiRTForbiddenValueAnomaly(IALiRTAnomaly):
     def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} has forbidden value {self.value} "
-            f"at least once from {self.time_range[0]} to {self.time_range[1]}."
+            f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}."
         )
