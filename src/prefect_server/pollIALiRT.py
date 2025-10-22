@@ -206,8 +206,8 @@ def do_poll_ialirt(
     event: Event | None = emit_event(
         event=PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED,
         resource={
+            "prefect.resource.id": flow_run.id,
             "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
-            "prefect.resource.flow_run_id": flow_run.id,
         },
         payload={"files": list(downloaded_ialirt.keys())},
     )
