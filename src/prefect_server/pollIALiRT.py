@@ -155,24 +155,23 @@ async def poll_ialirt_flow(
         )
 
         # If this is the 6 AM polling job, send the latest figure to Teams
-        # if (end_date.hour == 6) and wait_for_new_data_to_arrive:
-        info_webhook_block = await MicrosoftTeamsWebhook.aload(
-            info_notification_webhook_name
-        )
+        if True:  # (end_date.hour == 6) and wait_for_new_data_to_arrive:
+            info_webhook_block = await MicrosoftTeamsWebhook.aload(
+                info_notification_webhook_name
+            )
 
-        latest_ialirt_date = database.get_workflow_progress(
-            PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_NAME
-        )
-        latest_ialirt_figure_path: Path = Path("/data/quicklook/ialirt/latest.png")
-        message_body: str = (
-            f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp} UTC):\n\n"
-            f"![I-ALiRT Latest Data]({latest_ialirt_figure_path.as_uri()})"
-        )
+            latest_ialirt_date = database.get_workflow_progress(
+                PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
+            )
+            message_body: str = (
+                f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp} UTC) is now on Sharepoint:\n\n"
+                f"[I-ALiRT Latest Data]({PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_QUICKLOOK_SHAREPOINT_URL})"
+            )
 
-        await info_webhook_block.notify(
-            body=message_body,
-            subject="I-ALiRT Latest Quicklook",
-        )  # type: ignore
+            await info_webhook_block.notify(
+                body=message_body,
+                subject="I-ALiRT Latest Quicklook",
+            )  # type: ignore
 
 
 def do_poll_ialirt(
@@ -184,7 +183,7 @@ def do_poll_ialirt(
     logger,
 ) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
-    progress_item_id = PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_NAME
+    progress_item_id = PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
 
     date_manager = DownloadDateManager(
         progress_item_id, database, earliest_date=DatetimeProvider.yesterday()

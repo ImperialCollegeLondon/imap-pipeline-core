@@ -20,8 +20,9 @@ class PREFECT_CONSTANTS:
         INFO_WEBHOOK_NAME = "ialirt-info-notification"
 
     class POLL_IALIRT:
-        IALIRT_DATABASE_NAME = "MAG_IALIRT"
+        IALIRT_DATABASE_WORKFLOW_NAME = "MAG_IALIRT"
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
+        IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
