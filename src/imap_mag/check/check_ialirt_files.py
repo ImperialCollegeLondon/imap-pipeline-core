@@ -2,22 +2,26 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
-from imap_mag.check.IALiRTFailure import (
-    IALiRTFailure,
-    IALiRTFlagFailure,
-    IALiRTForbiddenValueFailure,
-    IALiRTOutOfBoundsFailure,
+from imap_mag.check.IALiRTAnomaly import (
+    IALiRTAnomaly,
+    IALiRTFlagAnomaly,
+    IALiRTForbiddenValueAnomaly,
+    IALiRTOutOfBoundsAnomaly,
     SeverityLevel,
 )
+from imap_mag.process import get_packet_definition_folder
 
 logger = logging.getLogger(__name__)
 
 
-def check_ialirt_files(files: list[Path]) -> list[IALiRTFailure]:
+def check_ialirt_files(
+    files: list[Path], packet_definition_folder: Path
+) -> list[IALiRTAnomaly]:
     """Check I-ALiRT data for anomalies."""
 
-    failures: list[IALiRTFailure] = []
+    anomalies: list[IALiRTAnomaly] = []
 
     # Load data.
     ialirt_data = pd.DataFrame()
@@ -30,208 +34,177 @@ def check_ialirt_files(files: list[Path]) -> list[IALiRTFailure]:
 
     if ialirt_data.empty:
         logger.info("No I-ALiRT data present in files.")
-        return failures
+        return anomalies
 
-    # Set limits and mappings.
-    limits_warn_danger: dict[str, tuple[tuple[float, float], tuple[float, float]]] = {
-        "mag_hk_hk3v3": ((3.35, 3.38), (3.0, 3.6)),
-        "mag_hk_hkn8v5": ((-9.8, -9.46), (-10.61, -8.25)),
-    }
+    # Load packet definition
+    packet_definition_file: Path = (
+        get_packet_definition_folder(packet_definition_folder) / "ialirt_4.05.yaml"
+    )
+    packet_definition: dict = yaml.safe_load(packet_definition_file.read_text())
 
-    limits_nominal: dict[str, tuple[float, float]] = {
-        "mag_hk_hk3v3_current": (110, 130),
-        "mag_hk_hkn8v5_current": (80, 100),
-    }
-
+    human_readabale_names: list[dict] = packet_definition["ialirt_human_readable_names"]
     mappings: dict[str, str] = {
-        "hk3v3": "3.3 V Voltage",
-        "hk3v3_current": "3.3 V Current",
-        "hkn8v5": "-8 V Voltage",
-        "hkn8v5_current": "-8 V Current",
-        "hk1v5": "1.5 V Voltage",
-        "hk1v5c": "1.5 V Current",
-        "hk1v8": "1.8 V Voltage",
-        "hk1v8c": "1.8 V Current",
-        "hk2v5": "2.5 V Voltage",
-        "hk2v5c": "2.5 V Current",
-        "hkp8v5": "+8 V Voltage",
-        "hkp8v5c": "+8 V Current",
-        "multbit_errs": "Multibit Errors",
-        "mode": "Mode",
-        "fob_saturated": "FOB Saturated",
-        "fib_saturated": "FIB Saturated",
+        k: v for d in human_readabale_names for k, v in d.items()
     }
+    validation: dict = packet_definition["ialirt_validation"]
 
-    # Validate 3.3 V and -8 V voltages.
-    for col, (
-        (min_warn, max_warn),
-        (min_danger, max_danger),
-    ) in limits_warn_danger.items():
-        if col not in ialirt_data.columns:
+    # Check parameters according to validation rules
+    for parameter in validation:
+        name = parameter["name"]
+        type = parameter["type"]
+
+        if name not in ialirt_data.columns:
+            logger.warning(f"Parameter {name} not found in I-ALiRT data columns.")
             continue
 
-        danger_failure: IALiRTFailure | None = check_data_is_between_limits(
-            ialirt_data,
-            col,
-            min_danger,
-            max_danger,
-            SeverityLevel.Danger,
-            mappings[col],
-        )
+        match type:
+            case "limit":  # ------- Check for out-of-bounds values -------
+                danger_min = parameter.get("danger_min", None)
+                danger_max = parameter.get("danger_max", None)
+                warn_min = parameter.get("warning_min", None)
+                warn_max = parameter.get("warning_max", None)
 
-        if danger_failure:
-            failures.append(danger_failure)
-            continue
+                if danger_min and danger_max:
+                    danger_anomaly: IALiRTAnomaly | None = check_data_is_between_limits(
+                        ialirt_data,
+                        name,
+                        danger_min,
+                        danger_max,
+                        SeverityLevel.Danger,
+                        mappings[name],
+                    )
 
-        warning_failure: IALiRTFailure | None = check_data_is_between_limits(
-            ialirt_data,
-            col,
-            min_warn,
-            max_warn,
-            SeverityLevel.Warning,
-            mappings[col],
-        )
+                    if danger_anomaly:
+                        anomalies.append(danger_anomaly)
+                        continue  # skip warning check if danger found
 
-        if warning_failure:
-            failures.append(warning_failure)
+                if warn_min and warn_max:
+                    warning_anomaly: IALiRTAnomaly | None = (
+                        check_data_is_between_limits(
+                            ialirt_data,
+                            name,
+                            warn_min,
+                            warn_max,
+                            SeverityLevel.Warning,
+                            mappings[name],
+                        )
+                    )
 
-    # Validate 3.3 V and -8 V currents.
-    for col, (min_nominal, max_nominal) in limits_nominal.items():
-        if col not in ialirt_data.columns:
-            continue
+                    if warning_anomaly:
+                        anomalies.append(warning_anomaly)
 
-        warning_failure = check_data_is_between_limits(
-            ialirt_data,
-            col,
-            min_nominal,
-            max_nominal,
-            SeverityLevel.Warning,
-            mappings[col],
-        )
+            case "forbidden":  # ------- Check for forbidden values -------
+                forbidden_values = parameter.get("values", [])
+                severity = parameter.get("severity", "danger")
+                lookup = parameter.get("lookup", None)
 
-        if warning_failure:
-            failures.append(warning_failure)
-
-    # Validate other voltages and currents.
-    for col in ialirt_data.columns:
-        if col.endswith("_danger"):
-            danger_failure = check_data_is_false(
-                ialirt_data,
-                col,
-                SeverityLevel.Danger,
-                mappings[col.lstrip("mag_hk_").rstrip("_danger")],
-            )
-
-            if danger_failure:
-                failures.append(danger_failure)
-                continue
-
-        if col.endswith("_warn"):
-            warning_failure = check_data_is_false(
-                ialirt_data,
-                col,
-                SeverityLevel.Warning,
-                mappings[col.lstrip("mag_hk_").rstrip("_warn")],
-            )
-
-            if warning_failure:
-                failures.append(warning_failure)
-
-    # Mode.
-    if "mag_hk_mode" in ialirt_data.columns:
-        invalid_data = ialirt_data[
-            ialirt_data["mag_hk_mode"].notna() & ialirt_data["mag_hk_mode"].ne(2)
-        ]
-
-        if not invalid_data.empty:
-            failures.append(
-                IALiRTForbiddenValueFailure(
-                    time_range=(
-                        invalid_data.index.min().to_pydatetime(),
-                        invalid_data.index.max().to_pydatetime(),
-                    ),
-                    value="Safe",
-                    parameter="Mode",
-                    severity=SeverityLevel.Warning,
+                forbidden_anomalies: list[IALiRTAnomaly] = check_data_not_equal_to(
+                    ialirt_data,
+                    name,
+                    forbidden_values,
+                    SeverityLevel(severity),
+                    mappings[name],
+                    lookup,
                 )
-            )
 
-    # Multibit errors.
-    if "mag_hk_multbit_errs" in ialirt_data.columns:
-        multibit_failure = check_data_is_between_limits(
-            ialirt_data,
-            "mag_hk_multbit_errs",
-            0,
-            0,
-            SeverityLevel.Danger,
-            mappings["multbit_errs"],
-        )
+                if forbidden_anomalies:
+                    anomalies.extend(forbidden_anomalies)
 
-        if multibit_failure:
-            failures.append(multibit_failure)
+            case "flag":  # ------- Check for flag values -------
+                severity = parameter.get("severity", "danger")
 
-    # Saturation flags.
-    for col in ["mag_hk_fob_saturated", "mag_hk_fib_saturated"]:
-        if col not in ialirt_data.columns:
-            continue
+                flag_anomaly: IALiRTAnomaly | None = check_data_is_false(
+                    ialirt_data,
+                    name,
+                    SeverityLevel(severity),
+                    mappings[name.removesuffix("_warn").removesuffix("_danger")],
+                )
 
-        warning_failure = check_data_is_false(
-            ialirt_data,
-            col,
-            SeverityLevel.Warning,
-            mappings[col.lstrip("mag_hk_")],
-        )
+                if flag_anomaly:
+                    anomalies.append(flag_anomaly)
 
-        if warning_failure:
-            failures.append(warning_failure)
+            case _:  # ------- Unknown check -------
+                logger.error(f"Unknown validation type {type} for parameter {name}.")
 
-    return failures
+    return anomalies
 
 
 def check_data_is_between_limits(
     ialirt_data: pd.DataFrame,
-    col: str,
+    name: str,
     min_value: float,
     max_value: float,
     severity: SeverityLevel,
     pretty_name: str,
-) -> IALiRTFailure | None:
+) -> IALiRTAnomaly | None:
     out_of_bounds_data = ialirt_data[
-        ialirt_data[col].notna()
-        & (ialirt_data[col].lt(min_value) | ialirt_data[col].gt(max_value))
+        ialirt_data[name].notna()
+        & (ialirt_data[name].lt(min_value) | ialirt_data[name].gt(max_value))
     ]
 
     if not out_of_bounds_data.empty:
-        return IALiRTOutOfBoundsFailure(
+        return IALiRTOutOfBoundsAnomaly(
             time_range=(
                 out_of_bounds_data.index.min().to_pydatetime(),
                 out_of_bounds_data.index.max().to_pydatetime(),
             ),
             parameter=pretty_name,
             severity=severity,
-            values=(out_of_bounds_data[col].min(), out_of_bounds_data[col].max()),
+            count=len(out_of_bounds_data),
+            values=(out_of_bounds_data[name].min(), out_of_bounds_data[name].max()),
             limits=(min_value, max_value),
         )
 
     return None
 
 
-def check_data_is_false(
+def check_data_not_equal_to(
     ialirt_data: pd.DataFrame,
-    col: str,
+    name: str,
+    values: list[float | str],
     severity: SeverityLevel,
     pretty_name: str,
-) -> IALiRTFailure | None:
-    true_data = ialirt_data[ialirt_data[col].notna() & ialirt_data[col]]
+    lookup: dict[float | str, str] | None = None,
+) -> list[IALiRTAnomaly]:
+    forbidden_anomalies: list[IALiRTAnomaly] = []
+
+    for v in values:
+        invalid_data = ialirt_data[ialirt_data[name].notna() & ialirt_data[name].eq(v)]
+
+        if not invalid_data.empty:
+            forbidden_anomalies.append(
+                IALiRTForbiddenValueAnomaly(
+                    time_range=(
+                        invalid_data.index.min().to_pydatetime(),
+                        invalid_data.index.max().to_pydatetime(),
+                    ),
+                    value=lookup[v] if lookup else v,
+                    parameter=pretty_name,
+                    severity=severity,
+                    count=len(invalid_data),
+                )
+            )
+
+    return forbidden_anomalies
+
+
+def check_data_is_false(
+    ialirt_data: pd.DataFrame,
+    name: str,
+    severity: SeverityLevel,
+    pretty_name: str,
+) -> IALiRTAnomaly | None:
+    true_data = ialirt_data[ialirt_data[name].notna() & ialirt_data[name]]
 
     if not true_data.empty:
-        return IALiRTFlagFailure(
+        return IALiRTFlagAnomaly(
             time_range=(
                 true_data.index.min().to_pydatetime(),
                 true_data.index.max().to_pydatetime(),
             ),
             parameter=pretty_name,
             severity=severity,
+            count=len(true_data),
         )
 
     return None

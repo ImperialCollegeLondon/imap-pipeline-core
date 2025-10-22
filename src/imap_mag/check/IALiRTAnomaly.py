@@ -15,34 +15,35 @@ class SeverityLevel(Enum):
 
 
 @dataclass
-class IALiRTFailure(abc.ABC):
-    """Represents a failure found in I-ALiRT data."""
+class IALiRTAnomaly(abc.ABC):
+    """Represents an anomaly found in I-ALiRT data."""
 
     time_range: tuple[datetime, datetime]
     parameter: str
     severity: SeverityLevel
+    count: int
 
     @abc.abstractmethod
-    def __str__(self) -> str:
+    def get_anomaly_description(self) -> str:
         pass
 
-    def print(self) -> None:
-        """Prints a summary of the failure."""
+    def log(self) -> None:
+        """Logs a summary of the anomaly."""
 
         if self.severity == SeverityLevel.Danger:
-            logger.error(str(self))
+            logger.error(self.get_anomaly_description())
         else:
-            logger.warning(str(self))
+            logger.warning(self.get_anomaly_description())
 
 
 @dataclass
-class IALiRTOutOfBoundsFailure(IALiRTFailure):
-    """Represents an out-of-bounds failure in I-ALiRT data."""
+class IALiRTOutOfBoundsAnomaly(IALiRTAnomaly):
+    """Represents an out-of-bounds anomaly in I-ALiRT data."""
 
     values: tuple[float, float]
     limits: tuple[float, float]
 
-    def __str__(self) -> str:
+    def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} out of bounds "
             f"at least once from {self.time_range[0]} to {self.time_range[1]}: "
@@ -51,10 +52,10 @@ class IALiRTOutOfBoundsFailure(IALiRTFailure):
 
 
 @dataclass
-class IALiRTFlagFailure(IALiRTFailure):
-    """Represents a flag failure in I-ALiRT data."""
+class IALiRTFlagAnomaly(IALiRTAnomaly):
+    """Represents a flag anomaly in I-ALiRT data."""
 
-    def __str__(self) -> str:
+    def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} {self.severity.value.lower()} flag is high "
             f"at least once from {self.time_range[0]} to {self.time_range[1]}."
@@ -62,12 +63,12 @@ class IALiRTFlagFailure(IALiRTFailure):
 
 
 @dataclass
-class IALiRTForbiddenValueFailure(IALiRTFailure):
-    """Represents a forbidden value failure in I-ALiRT data."""
+class IALiRTForbiddenValueAnomaly(IALiRTAnomaly):
+    """Represents a forbidden value anomaly in I-ALiRT data."""
 
     value: float | str
 
-    def __str__(self) -> str:
+    def get_anomaly_description(self) -> str:
         return (
             f"[{self.severity.value.upper()}] {self.parameter} has forbidden value {self.value} "
             f"at least once from {self.time_range[0]} to {self.time_range[1]}."

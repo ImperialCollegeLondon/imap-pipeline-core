@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.check.IALiRTFailure import IALiRTFailure
+from imap_mag.check import IALiRTAnomaly, check_ialirt_files
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
 from imap_mag.config import AppSettings
@@ -37,11 +37,12 @@ def check_ialirt(
     error_on_failure: Annotated[
         bool,
         typer.Option(
+            "--error-on-failure",
             help="Error if any data contains anomalies",
             show_default=True,
         ),
     ] = True,
-) -> list[IALiRTFailure]:
+) -> list[IALiRTAnomaly]:
     """Check I-ALiRT data for anomalies."""
 
     app_settings = AppSettings()  # type: ignore
@@ -66,4 +67,20 @@ def check_ialirt(
         f"Checking I-ALiRT data from {len(work_files)} files:\n{', '.join(f.as_posix() for f in work_files)}"
     )
 
-    return []
+    anomalies: list[IALiRTAnomaly] = check_ialirt_files(
+        work_files,
+        app_settings.packet_definition,
+    )
+
+    if anomalies:
+        logger.error(f"Detected {len(anomalies)} anomalies in I-ALiRT data.")
+
+        for anomaly in anomalies:
+            anomaly.log
+
+        if error_on_failure:
+            raise RuntimeError("I-ALiRT data contains anomalies.")
+    else:
+        logger.info("No anomalies detected in I-ALiRT data.")
+
+    return anomalies

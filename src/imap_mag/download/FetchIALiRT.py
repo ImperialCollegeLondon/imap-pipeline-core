@@ -11,7 +11,7 @@ from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
-from imap_mag.process import getPacketDefinitionFolder
+from imap_mag.process import get_packet_definition_folder
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class FetchIALiRT:
         self.__data_access = data_access
         self.__work_folder = work_folder
         self.__datastore_finder = datastore_finder
-        self.__packetDefinitionFolder = getPacketDefinitionFolder(packet_definition)
+        self.__packetDefinitionFolder = get_packet_definition_folder(packet_definition)
 
     def download_ialirt_to_csv(
         self,
