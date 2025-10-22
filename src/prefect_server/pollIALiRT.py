@@ -165,8 +165,8 @@ async def poll_ialirt_flow(
         )
         latest_ialirt_figure_path: Path = Path("/data/quicklook/ialirt/latest.png")
         message_body: str = (
-            f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp}):\n"
-            f"<img src='{latest_ialirt_figure_path.as_posix()}' width='300'>"
+            f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp}):\n\n"
+            f"![I-ALiRT Latest Data]({latest_ialirt_figure_path.as_uri()})"
         )
 
         await info_webhook_block.notify(
