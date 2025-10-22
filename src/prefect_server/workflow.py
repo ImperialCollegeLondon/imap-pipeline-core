@@ -191,28 +191,28 @@ def deploy_flows(local_debug: bool = False):
         triggers=[
             DeploymentEventTrigger(
                 name="Trigger upload after HK poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after I-ALiRT poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after science poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after APPLY_CALIBRATION",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
                 },

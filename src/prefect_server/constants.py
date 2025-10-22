@@ -11,6 +11,7 @@ class PREFECT_CONSTANTS:
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
 
     class EVENT:
+        FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
 
     class CHECK_IALIRT:
