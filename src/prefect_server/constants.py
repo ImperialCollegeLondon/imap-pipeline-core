@@ -10,6 +10,9 @@ class PREFECT_CONSTANTS:
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
 
+    class EVENT:
+        IALIRT_UPDATED = "ialirt.updated"
+
     class POLL_IALIRT:
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
 
@@ -52,6 +55,7 @@ class PREFECT_CONSTANTS:
         PUBLISH = "publish"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
+        CHECK_IALIRT = "check-ialirt"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
@@ -62,3 +66,4 @@ class PREFECT_CONSTANTS:
         PUBLISH = "publish"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
+        CHECK_IALIRT = "check_ialirt"
