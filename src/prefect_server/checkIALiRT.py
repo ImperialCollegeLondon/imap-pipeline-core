@@ -3,6 +3,7 @@ from typing import Annotated
 
 from prefect import flow
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
+from prefect.states import Completed, Failed, State
 from pydantic import Field
 
 from imap_mag.check import IALiRTAnomaly, SeverityLevel
@@ -44,29 +45,34 @@ async def check_ialirt_flow(
             },
         ),
     ] = PREFECT_CONSTANTS.CHECK_IALIRT.WARNING_WEBHOOK_NAME,
-) -> None:
+) -> State:
     """
     Check I-ALiRT data store data for anomalies.
     """
 
     anomalies: list[IALiRTAnomaly] = check_ialirt(files=files, error_on_failure=False)
 
-    # Report anomalies via Microsoft Teams
-    danger_webhook_block = await MicrosoftTeamsWebhook.aload(
-        danger_notification_webhook_name
-    )
-    warning_webhook_block = await MicrosoftTeamsWebhook.aload(
-        warning_notification_webhook_name
-    )
+    if not anomalies:
+        return Completed(message="No anomalies detected in I-ALiRT data.")
+    else:
+        # Report anomalies via Microsoft Teams
+        danger_webhook_block = await MicrosoftTeamsWebhook.aload(
+            danger_notification_webhook_name
+        )
+        warning_webhook_block = await MicrosoftTeamsWebhook.aload(
+            warning_notification_webhook_name
+        )
 
-    for anomaly in anomalies:
-        if anomaly.severity == SeverityLevel.Danger:
-            await danger_webhook_block.notify(
-                body=anomaly.get_anomaly_description(),
-                subject="I-ALiRT Danger Anomaly Detected",
-            )
-        else:
-            await warning_webhook_block.notify(
-                body=anomaly.get_anomaly_description(),
-                subject="I-ALiRT Warning Anomaly Detected",
-            )
+        for anomaly in anomalies:
+            if anomaly.severity == SeverityLevel.Danger:
+                await danger_webhook_block.notify(
+                    body=anomaly.get_anomaly_description(),
+                    subject="I-ALiRT Danger Anomaly Detected",
+                )
+            else:
+                await warning_webhook_block.notify(
+                    body=anomaly.get_anomaly_description(),
+                    subject="I-ALiRT Warning Anomaly Detected",
+                )
+
+        return Failed(message="Anomalies detected in I-ALiRT data.")
