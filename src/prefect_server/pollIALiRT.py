@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 from prefect import flow, get_run_logger
+from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.events import Event, emit_event
 from prefect.runtime import flow_run
 from pydantic import Field
@@ -100,6 +101,16 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
+    info_notification_webhook_name: Annotated[
+        str,
+        Field(
+            default=None,
+            json_schema_extra={
+                "title": "I-ALiRT Info Webhook Name",
+                "description": "Name of the notification webhook to use for info alerts.",
+            },
+        ),
+    ] = PREFECT_CONSTANTS.CHECK_IALIRT.INFO_WEBHOOK_NAME,
 ) -> None:
     """
     Poll I-ALiRT data from SDC.
@@ -143,6 +154,26 @@ async def poll_ialirt_flow(
             combined_plot=True,
         )
 
+        # If this is the 6 AM polling job, send the latest figure to Teams
+        # if (end_date.hour == 6) and wait_for_new_data_to_arrive:
+        info_webhook_block = await MicrosoftTeamsWebhook.aload(
+            info_notification_webhook_name
+        )
+
+        latest_ialirt_date = database.get_workflow_progress(
+            PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_NAME
+        )
+        latest_ialirt_figure_path: Path = Path("/data/quicklook/ialirt/latest.png")
+        message_body: str = (
+            f"Latest I-ALiRT quicklook (updated to {latest_ialirt_date.progress_timestamp}):\n"
+            f"<img src='{latest_ialirt_figure_path.as_posix()}' width='300'>"
+        )
+
+        await info_webhook_block.notify(
+            body=message_body,
+            subject="I-ALiRT Latest Quicklook",
+        )  # type: ignore
+
 
 def do_poll_ialirt(
     database: Database,
@@ -153,7 +184,7 @@ def do_poll_ialirt(
     logger,
 ) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
-    progress_item_id = "MAG_IALIRT"
+    progress_item_id = PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_NAME
 
     date_manager = DownloadDateManager(
         progress_item_id, database, earliest_date=DatetimeProvider.yesterday()

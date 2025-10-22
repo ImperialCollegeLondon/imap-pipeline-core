@@ -17,8 +17,10 @@ class PREFECT_CONSTANTS:
     class CHECK_IALIRT:
         DANGER_WEBHOOK_NAME = "ialirt-danger-notification"
         WARNING_WEBHOOK_NAME = "ialirt-warning-notification"
+        INFO_WEBHOOK_NAME = "ialirt-info-notification"
 
     class POLL_IALIRT:
+        IALIRT_DATABASE_NAME = "MAG_IALIRT"
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
 
     class POLL_HK:

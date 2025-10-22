@@ -68,11 +68,11 @@ async def check_ialirt_flow(
                 await danger_webhook_block.notify(
                     body=anomaly.get_anomaly_description(),
                     subject="I-ALiRT Danger Anomaly Detected",
-                )
+                )  # type: ignore
             else:
                 await warning_webhook_block.notify(
                     body=anomaly.get_anomaly_description(),
                     subject="I-ALiRT Warning Anomaly Detected",
-                )
+                )  # type: ignore
 
         return Failed(message="Anomalies detected in I-ALiRT data.")
