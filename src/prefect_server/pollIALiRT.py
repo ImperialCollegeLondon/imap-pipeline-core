@@ -201,6 +201,8 @@ def do_poll_ialirt(
     )
 
     # Trigger event to notify updated I-ALiRT data
+    logger.debug(f"Emitting {PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED} event")
+
     emit_event(
         event=PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED,
         resource={"prefect.resource.flow_run_id": flow_run.id},
