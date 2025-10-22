@@ -11,7 +11,7 @@ class PREFECT_CONSTANTS:
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
 
     class EVENT:
-        IALIRT_UPDATED = "ialirt.updated"
+        IALIRT_UPDATED = "imap_mag.ialirt.updated"
 
     class CHECK_IALIRT:
         DANGER_WEBHOOK_NAME = "ialirt-danger-notification"

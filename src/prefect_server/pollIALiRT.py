@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 from prefect import flow, get_run_logger
-from prefect.events import emit_event
+from prefect.events import Event, emit_event
 from prefect.runtime import flow_run
 from pydantic import Field
 
@@ -203,10 +203,16 @@ def do_poll_ialirt(
     # Trigger event to notify updated I-ALiRT data
     logger.debug(f"Emitting {PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED} event")
 
-    emit_event(
+    event: Event | None = emit_event(
         event=PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED,
-        resource={"prefect.resource.flow_run_id": flow_run.id},
+        resource={
+            "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
+            "prefect.resource.flow_run_id": flow_run.id,
+        },
         payload={"files": list(downloaded_ialirt.keys())},
     )
+
+    if event is None:
+        logger.warning("Failed to emit I-ALiRT updated event")
 
     return list(downloaded_ialirt.keys())
