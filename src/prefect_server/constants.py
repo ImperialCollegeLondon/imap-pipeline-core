@@ -57,9 +57,9 @@ class PREFECT_CONSTANTS:
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
         GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
+        CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
-        CHECK_IALIRT = "check-ialirt"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
@@ -68,6 +68,6 @@ class PREFECT_CONSTANTS:
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
         PUBLISH = "publish"
+        CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
-        CHECK_IALIRT = "check_ialirt"
