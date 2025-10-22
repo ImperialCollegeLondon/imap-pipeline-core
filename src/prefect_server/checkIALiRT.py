@@ -66,6 +66,9 @@ async def check_ialirt_flow(
 
         for anomaly in anomalies:
             message_body: str = anomaly.get_anomaly_description()
+            message_body += (
+                f"\nAffected file: {', '.join([f.as_posix() for f in files])}"
+            )
             message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
 
             if anomaly.severity == SeverityLevel.Danger:
