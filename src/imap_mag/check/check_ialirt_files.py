@@ -65,21 +65,23 @@ def check_ialirt_files(
                 warn_max = parameter.get("warning_max", None)
 
                 if danger_min and danger_max:
-                    danger_anomaly: IALiRTAnomaly | None = check_data_is_between_limits(
-                        ialirt_data,
-                        name,
-                        danger_min,
-                        danger_max,
-                        SeverityLevel.Danger,
-                        mappings[name],
+                    danger_anomalies: list[IALiRTAnomaly] = (
+                        check_data_is_between_limits(
+                            ialirt_data,
+                            name,
+                            danger_min,
+                            danger_max,
+                            SeverityLevel.Danger,
+                            mappings[name],
+                        )
                     )
 
-                    if danger_anomaly:
-                        anomalies.append(danger_anomaly)
+                    if danger_anomalies:
+                        anomalies.extend(danger_anomalies)
                         continue  # skip warning check if danger found
 
                 if warn_min and warn_max:
-                    warning_anomaly: IALiRTAnomaly | None = (
+                    anomalies.extend(
                         check_data_is_between_limits(
                             ialirt_data,
                             name,
@@ -90,25 +92,21 @@ def check_ialirt_files(
                         )
                     )
 
-                    if warning_anomaly:
-                        anomalies.append(warning_anomaly)
-
             case "forbidden":  # ------- Check for forbidden values -------
                 forbidden_values = parameter.get("values", [])
                 severity = parameter.get("severity", "danger")
                 lookup = parameter.get("lookup", None)
 
-                forbidden_anomalies: list[IALiRTAnomaly] = check_data_not_equal_to(
-                    ialirt_data,
-                    name,
-                    forbidden_values,
-                    SeverityLevel(severity),
-                    mappings[name],
-                    lookup,
+                anomalies.extend(
+                    check_data_not_equal_to(
+                        ialirt_data,
+                        name,
+                        forbidden_values,
+                        SeverityLevel(severity),
+                        mappings[name],
+                        lookup,
+                    )
                 )
-
-                if forbidden_anomalies:
-                    anomalies.extend(forbidden_anomalies)
 
             case "flag":  # ------- Check for flag values -------
                 severity = parameter.get("severity", "danger")
@@ -136,26 +134,48 @@ def check_data_is_between_limits(
     max_value: float,
     severity: SeverityLevel,
     pretty_name: str,
-) -> IALiRTAnomaly | None:
-    out_of_bounds_data = ialirt_data[
-        ialirt_data[name].notna()
-        & (ialirt_data[name].lt(min_value) | ialirt_data[name].gt(max_value))
+) -> list[IALiRTAnomaly]:
+    out_of_bounds_anomalies: list[IALiRTAnomaly] = []
+
+    out_of_upper_bound_data = ialirt_data[
+        ialirt_data[name].notna() & ialirt_data[name].gt(max_value)
     ]
 
-    if not out_of_bounds_data.empty:
-        return IALiRTOutOfBoundsAnomaly(
-            time_range=(
-                out_of_bounds_data.index.min().to_pydatetime(),
-                out_of_bounds_data.index.max().to_pydatetime(),
-            ),
-            parameter=pretty_name,
-            severity=severity,
-            count=len(out_of_bounds_data),
-            values=(out_of_bounds_data[name].min(), out_of_bounds_data[name].max()),
-            limits=(min_value, max_value),
+    if not out_of_upper_bound_data.empty:
+        out_of_bounds_anomalies.append(
+            IALiRTOutOfBoundsAnomaly(
+                time_range=(
+                    out_of_upper_bound_data.index.min().to_pydatetime(),
+                    out_of_upper_bound_data.index.max().to_pydatetime(),
+                ),
+                parameter=pretty_name,
+                severity=severity,
+                count=len(out_of_upper_bound_data),
+                value=float(out_of_upper_bound_data[name].max()),
+                limits=(min_value, max_value),
+            )
         )
 
-    return None
+    out_of_lower_bound_data = ialirt_data[
+        ialirt_data[name].notna() & ialirt_data[name].lt(min_value)
+    ]
+
+    if not out_of_lower_bound_data.empty:
+        out_of_bounds_anomalies.append(
+            IALiRTOutOfBoundsAnomaly(
+                time_range=(
+                    out_of_lower_bound_data.index.min().to_pydatetime(),
+                    out_of_lower_bound_data.index.max().to_pydatetime(),
+                ),
+                parameter=pretty_name,
+                severity=severity,
+                count=len(out_of_lower_bound_data),
+                value=float(out_of_lower_bound_data[name].max()),
+                limits=(min_value, max_value),
+            )
+        )
+
+    return out_of_bounds_anomalies
 
 
 def check_data_not_equal_to(
