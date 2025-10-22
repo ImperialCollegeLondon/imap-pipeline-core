@@ -3,6 +3,7 @@ from typing import Annotated
 
 from prefect import flow
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
+from prefect.runtime import flow_run
 from prefect.states import Completed, Failed, State
 from pydantic import Field
 
@@ -64,14 +65,17 @@ async def check_ialirt_flow(
         )
 
         for anomaly in anomalies:
+            message_body: str = anomaly.get_anomaly_description()
+            message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
+
             if anomaly.severity == SeverityLevel.Danger:
                 await danger_webhook_block.notify(
-                    body=anomaly.get_anomaly_description(),
+                    body=message_body,
                     subject="I-ALiRT Danger Anomaly Detected",
                 )  # type: ignore
             else:
                 await warning_webhook_block.notify(
-                    body=anomaly.get_anomaly_description(),
+                    body=message_body,
                     subject="I-ALiRT Warning Anomaly Detected",
                 )  # type: ignore
 
