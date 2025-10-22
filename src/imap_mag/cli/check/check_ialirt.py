@@ -13,6 +13,12 @@ from imap_mag.config import AppSettings
 logger = logging.getLogger(__name__)
 
 
+class IALiRTAnomalyError(Exception):
+    """Custom exception for I-ALiRT anomaly errors."""
+
+    pass
+
+
 # E.g.,
 # imap-mag check ialirt --start-date 2025-01-02 --end-date 2025-01-03
 # imap-mag check ialirt --files /path/to/file1 --files /path/to/file2
@@ -73,13 +79,13 @@ def check_ialirt(
     )
 
     if anomalies:
-        logger.error(f"Detected {len(anomalies)} anomalies in I-ALiRT data.")
+        logger.error(f"Detected {len(anomalies)} anomalies in I-ALiRT data:")
 
         for anomaly in anomalies:
-            anomaly.log
+            anomaly.log()
 
         if error_on_failure:
-            raise RuntimeError("I-ALiRT data contains anomalies.")
+            raise IALiRTAnomalyError("I-ALiRT data contains anomalies.")
     else:
         logger.info("No anomalies detected in I-ALiRT data.")
 
