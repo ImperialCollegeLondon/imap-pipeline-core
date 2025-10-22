@@ -51,6 +51,7 @@ async def check_ialirt_flow(
 
     anomalies: list[IALiRTAnomaly] = check_ialirt(files=files, error_on_failure=False)
 
+    # Report anomalies via Microsoft Teams
     danger_webhook_block = await MicrosoftTeamsWebhook.aload(
         danger_notification_webhook_name
     )
@@ -59,13 +60,13 @@ async def check_ialirt_flow(
     )
 
     for anomaly in anomalies:
-        if anomaly.severity == SeverityLevel.Warning:
+        if anomaly.severity == SeverityLevel.Danger:
             await danger_webhook_block.notify(
                 body=anomaly.get_anomaly_description(),
-                subject="I-ALiRT Anomaly Detected",
+                subject="I-ALiRT Danger Anomaly Detected",
             )
         else:
             await warning_webhook_block.notify(
                 body=anomaly.get_anomaly_description(),
-                subject="I-ALiRT Anomaly Detected",
+                subject="I-ALiRT Warning Anomaly Detected",
             )
