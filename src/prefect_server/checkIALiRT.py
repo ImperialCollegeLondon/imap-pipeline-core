@@ -26,26 +26,16 @@ async def check_ialirt_flow(
             }
         ),
     ],
-    danger_notification_webhook_name: Annotated[
+    imap_notification_webhook_name: Annotated[
         str,
         Field(
             default=None,
             json_schema_extra={
-                "title": "Danger Anomaly Webhook Name",
-                "description": "Name of the notification webhook to use for danger alerts.",
+                "title": "IMAP Webhook Name",
+                "description": "Name of the notification webhook to use for IMAP alerts.",
             },
         ),
-    ] = PREFECT_CONSTANTS.CHECK_IALIRT.DANGER_WEBHOOK_NAME,
-    warning_notification_webhook_name: Annotated[
-        str,
-        Field(
-            default=None,
-            json_schema_extra={
-                "title": "Warning Anomaly Webhook Name",
-                "description": "Name of the notification webhook to use for warning alerts.",
-            },
-        ),
-    ] = PREFECT_CONSTANTS.CHECK_IALIRT.WARNING_WEBHOOK_NAME,
+    ] = PREFECT_CONSTANTS.CHECK_IALIRT.IMAP_WEBHOOK_NAME,
 ) -> State:
     """
     Check I-ALiRT data store data for anomalies.
@@ -57,11 +47,8 @@ async def check_ialirt_flow(
         return Completed(message="No anomalies detected in I-ALiRT data.")
     else:
         # Report anomalies via Microsoft Teams
-        danger_webhook_block = await MicrosoftTeamsWebhook.aload(
-            danger_notification_webhook_name
-        )
-        warning_webhook_block = await MicrosoftTeamsWebhook.aload(
-            warning_notification_webhook_name
+        imap_webhook_block = await MicrosoftTeamsWebhook.aload(
+            imap_notification_webhook_name
         )
 
         for anomaly in anomalies:
@@ -72,12 +59,14 @@ async def check_ialirt_flow(
             message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
 
             if anomaly.severity == SeverityLevel.Danger:
-                await danger_webhook_block.notify(
+                imap_webhook_block.notify_type = "failure"
+                await imap_webhook_block.notify(
                     body=message_body,
                     subject="I-ALiRT Danger Anomaly Detected",
                 )  # type: ignore
             else:
-                await warning_webhook_block.notify(
+                imap_webhook_block.notify_type = "warning"
+                await imap_webhook_block.notify(
                     body=message_body,
                     subject="I-ALiRT Warning Anomaly Detected",
                 )  # type: ignore

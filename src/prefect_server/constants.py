@@ -15,9 +15,7 @@ class PREFECT_CONSTANTS:
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
 
     class CHECK_IALIRT:
-        DANGER_WEBHOOK_NAME = "ialirt-danger-notification"
-        WARNING_WEBHOOK_NAME = "ialirt-warning-notification"
-        INFO_WEBHOOK_NAME = "ialirt-info-notification"
+        IMAP_WEBHOOK_NAME = "ialirt-danger-notification"
 
     class POLL_IALIRT:
         IALIRT_DATABASE_WORKFLOW_NAME = "MAG_IALIRT"

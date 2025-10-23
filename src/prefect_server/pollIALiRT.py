@@ -101,16 +101,16 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
-    info_notification_webhook_name: Annotated[
+    imap_notification_webhook_name: Annotated[
         str,
         Field(
             default=None,
             json_schema_extra={
-                "title": "I-ALiRT Info Webhook Name",
-                "description": "Name of the notification webhook to use for info alerts.",
+                "title": "IMAP Webhook Name",
+                "description": "Name of the notification webhook to use for IMAP alerts.",
             },
         ),
-    ] = PREFECT_CONSTANTS.CHECK_IALIRT.INFO_WEBHOOK_NAME,
+    ] = PREFECT_CONSTANTS.CHECK_IALIRT.IMAP_WEBHOOK_NAME,
 ) -> None:
     """
     Poll I-ALiRT data from SDC.
@@ -156,8 +156,8 @@ async def poll_ialirt_flow(
 
         # If this is the 6 AM polling job, send the latest figure to Teams
         if (end_date.hour == 6) and wait_for_new_data_to_arrive:
-            info_webhook_block = await MicrosoftTeamsWebhook.aload(
-                info_notification_webhook_name
+            imap_webhook_block = await MicrosoftTeamsWebhook.aload(
+                imap_notification_webhook_name
             )
 
             latest_ialirt_date = database.get_workflow_progress(
@@ -168,7 +168,8 @@ async def poll_ialirt_flow(
                 f"Updated to {latest_ialirt_date.progress_timestamp} UTC."
             )
 
-            await info_webhook_block.notify(
+            imap_webhook_block.notify_type = "info"
+            await imap_webhook_block.notify(
                 body=message_body,
                 subject="I-ALiRT Latest Quicklook",
             )  # type: ignore
