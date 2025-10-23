@@ -43,6 +43,7 @@ def generate_flow_run_name() -> str:
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
+    retries=1,
 )
 async def poll_ialirt_flow(
     start_date: Annotated[
