@@ -15,6 +15,8 @@ export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.interna
 export IMAP_DATA_FOLDER=tests/datastore
 export IMAP_WEBSITE_HOST=localhost
 
+export PREFECT_SERVER_LOGGING_LEVEL="INFO"
+
 echo "Configure prefect server to run at http://$DEV_SERVER:$DEV_SERVER_PORT"
 prefect config set PREFECT_API_URL="http://$DEV_SERVER:$DEV_SERVER_PORT/api"
 prefect config set PREFECT_UI_API_URL="http://$DEV_SERVER:$DEV_SERVER_PORT/api"
@@ -44,8 +46,8 @@ deployToServer() {
     PREFECT_LOGGING_ROOT_LEVEL="INFO" \
         PREFECT_LOGGING_EXTRA_LOGGERS="imap_mag,imap_db,mag_toolkit,prefect_server" \
         PREFECT_LOGGING_LEVEL=DEBUG \
-        PREFECT_SERVER_LOGGING_LEVEL=DEBUG \
-        PREFECT_INTERNAL_LOGGING_LEVEL=DEBUG \
+        PREFECT_SERVER_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
+        PREFECT_INTERNAL_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
             python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
 
     echo "Deployment complete"
