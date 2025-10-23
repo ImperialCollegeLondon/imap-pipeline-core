@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
@@ -86,17 +85,11 @@ class FetchIALiRT:
                 )
 
                 if file_path is not None and file_path.exists():
-                    # Copy file to work folder
                     logger.debug(
                         f"File for {date.strftime('%Y-%m-%d')} already exists: {file_path.as_posix()}. Appending new data."
                     )
-
-                    file_path = fetch_file_for_work(
-                        file_path, self.__work_folder, throw_if_not_found=True
-                    )
                     existing_data = pd.read_csv(file_path)
                 else:
-                    # Create file
                     logger.debug(f"Creating new file for {date.strftime('%Y-%m-%d')}.")
 
                     file_path = self.__work_folder / path_handler.get_filename()
