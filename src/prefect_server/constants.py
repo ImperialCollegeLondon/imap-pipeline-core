@@ -9,7 +9,7 @@ class PREFECT_CONSTANTS:
     SHAREPOINT_BLOCK_NAME = "imap-sharepoint"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
-    IMAP_WEBHOOK_NAME = "imap-teams-notification-webhook"
+    IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"

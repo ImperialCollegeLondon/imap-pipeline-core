@@ -35,7 +35,7 @@ async def check_ialirt_flow(
                 "description": "Name of the notification webhook to use for IMAP alerts.",
             },
         ),
-    ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_NAME,
+    ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
 ) -> State:
     """
     Check I-ALiRT data store data for anomalies.
