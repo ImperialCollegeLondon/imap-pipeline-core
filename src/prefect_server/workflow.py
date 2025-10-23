@@ -170,7 +170,15 @@ def deploy_flows(local_debug: bool = False):
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
                 },  # type: ignore
-                parameters={"files": "{{ event.payload.files }}"},
+                parameters={
+                    "files": {
+                        "__prefect_kind": "json",
+                        "value": {
+                            "__prefect_kind": "jinja",
+                            "template": "{{ event.payload.files | tojson }}",
+                        },
+                    },
+                },
             ),
         ],
     )
