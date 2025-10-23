@@ -139,7 +139,9 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     test_database.save(workflow_progress)
     wiremock_manager.reset()
 
-    define_available_ialirt_mappings(wiremock_manager, progress_timestamp, END_OF_HOUR)
+    define_available_ialirt_mappings(
+        wiremock_manager, progress_timestamp + timedelta(seconds=1), END_OF_HOUR
+    )
 
     # Exercise.
     with Environment(
