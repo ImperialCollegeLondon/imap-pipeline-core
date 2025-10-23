@@ -219,7 +219,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
     ((file_path, path_handler),) = actual_downloaded.items()
 
     assert file_path.exists()
-    assert file_path.name == "imap_ialirt_20250502.csv"
+    assert file_path == datastore_file
     assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
 
     with open(file_path) as f:
@@ -289,7 +289,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
     ((file_path, path_handler),) = actual_downloaded.items()
 
     assert file_path.exists()
-    assert file_path.name == "imap_ialirt_20250502.csv"
+    assert file_path == datastore_file
     assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
 
     with open(file_path) as f:
