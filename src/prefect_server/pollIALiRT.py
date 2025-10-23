@@ -186,7 +186,12 @@ def do_poll_ialirt(
     progress_item_id = PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
 
     date_manager = DownloadDateManager(
-        progress_item_id, database, earliest_date=DatetimeProvider.yesterday()
+        progress_item_id,
+        database,
+        earliest_date=DatetimeProvider.yesterday(),
+        progress_time_buffer=timedelta(
+            seconds=1  # do not download the last packet again
+        ),
     )
 
     packet_dates = date_manager.get_dates_for_download(
