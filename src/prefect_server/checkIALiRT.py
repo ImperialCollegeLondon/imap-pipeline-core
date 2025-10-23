@@ -35,7 +35,7 @@ async def check_ialirt_flow(
                 "description": "Name of the notification webhook to use for IMAP alerts.",
             },
         ),
-    ] = PREFECT_CONSTANTS.CHECK_IALIRT.IMAP_WEBHOOK_NAME,
+    ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_NAME,
 ) -> State:
     """
     Check I-ALiRT data store data for anomalies.
@@ -59,13 +59,13 @@ async def check_ialirt_flow(
             message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
 
             if anomaly.severity == SeverityLevel.Danger:
-                imap_webhook_block.notify_type = "failure"
+                imap_webhook_block.notify_type = "failure"  # type: ignore
                 await imap_webhook_block.notify(
                     body=message_body,
                     subject="I-ALiRT Danger Anomaly Detected",
                 )  # type: ignore
             else:
-                imap_webhook_block.notify_type = "warning"
+                imap_webhook_block.notify_type = "warning"  # type: ignore
                 await imap_webhook_block.notify(
                     body=message_body,
                     subject="I-ALiRT Warning Anomaly Detected",

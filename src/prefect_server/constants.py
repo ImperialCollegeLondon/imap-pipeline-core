@@ -9,13 +9,11 @@ class PREFECT_CONSTANTS:
     SHAREPOINT_BLOCK_NAME = "imap-sharepoint"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
+    IMAP_WEBHOOK_NAME = "imap-teams-notification-webhook"
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
-
-    class CHECK_IALIRT:
-        IMAP_WEBHOOK_NAME = "ialirt-danger-notification"
 
     class POLL_IALIRT:
         IALIRT_DATABASE_WORKFLOW_NAME = "MAG_IALIRT"
