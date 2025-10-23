@@ -24,10 +24,14 @@ class IALiRTAnomaly(abc.ABC):
     def log(self) -> None:
         """Logs a summary of the anomaly."""
 
+        message: str = (
+            f"[{self.severity.value.upper()}] {self.get_anomaly_description()}"
+        )
+
         if self.severity == SeverityLevel.Danger:
-            logger.error(self.get_anomaly_description())
+            logger.error(message)
         else:
-            logger.warning(self.get_anomaly_description())
+            logger.warning(message)
 
 
 @dataclass
@@ -39,7 +43,7 @@ class IALiRTOutOfBoundsAnomaly(IALiRTAnomaly):
 
     def get_anomaly_description(self) -> str:
         return (
-            f"[{self.severity.value.upper()}] {self.parameter} out of bounds "
+            f"{self.parameter} out of bounds "
             f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}: "
             f"value {self.value} outside {self.severity.value.lower()} limits {self.limits}."
         )
@@ -51,7 +55,7 @@ class IALiRTFlagAnomaly(IALiRTAnomaly):
 
     def get_anomaly_description(self) -> str:
         return (
-            f"[{self.severity.value.upper()}] {self.parameter} {self.severity.value.lower()} flag is high "
+            f"{self.parameter} {self.severity.value.lower()} flag is high "
             f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}."
         )
 
@@ -64,6 +68,6 @@ class IALiRTForbiddenValueAnomaly(IALiRTAnomaly):
 
     def get_anomaly_description(self) -> str:
         return (
-            f"[{self.severity.value.upper()}] {self.parameter} has forbidden value {self.value} "
+            f"{self.parameter} has forbidden value {self.value} "
             f"{self.count} time(s) from {self.time_range[0]} to {self.time_range[1]}."
         )
