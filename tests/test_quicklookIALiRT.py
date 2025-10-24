@@ -20,6 +20,7 @@ from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 async def test_poll_ialirt_autoflow_first_ever_run(
     wiremock_manager,
     temp_datastore,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
 ):
     # Set up.
     wiremock_manager.reset()
