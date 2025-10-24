@@ -21,10 +21,6 @@ from prefect_server.prefectUtils import get_secret_or_env_var
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 
 
-def convert_ints_to_string(apids: list[int]) -> str:
-    return ",".join(str(apid) for apid in apids)
-
-
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
