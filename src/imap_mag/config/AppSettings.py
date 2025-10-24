@@ -44,6 +44,7 @@ class AppSettings(BaseSettings):
     packet_definition: Path
 
     # Command settings
+    check_ialirt: CommandConfig
     fetch_binary: FetchBinaryConfig
     fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig

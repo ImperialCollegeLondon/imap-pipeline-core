@@ -38,13 +38,19 @@ class OutputManager(IOutputManager):
         )
         destination_file: Path = path_handler.get_full_path(self.location)
 
-        if skip_file_copy:
+        if destination_file.exists() and destination_file.samefile(original_file):
+            logger.info(
+                f"Source and destination files are the same ({original_file}). Skipping update."
+            )
+            return (destination_file, path_handler)
+
+        elif skip_file_copy:
             logger.info(
                 f"File {destination_file} already exists and is the same. Skipping update."
             )
             return (destination_file, path_handler)
 
-        if not destination_file.parent.exists():
+        elif not destination_file.parent.exists():
             logger.debug(
                 f"Output folder structure does not exist. Creating {destination_file.parent}."
             )

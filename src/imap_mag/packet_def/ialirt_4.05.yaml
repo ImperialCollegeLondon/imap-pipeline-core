@@ -1,3 +1,26 @@
+ialirt_human_readable_names:
+  - mag_hk_icu_temp: ICU Temperature
+  - mag_hk_fib_temp: FIB Temperature
+  - mag_hk_fob_temp: FOB Temperature
+  - mag_hk_hk3v3: 3.3 V Voltage
+  - mag_hk_hk3v3_current: 3.3 V Current
+  - mag_hk_hkn8v5: -8 V Voltage
+  - mag_hk_hkn8v5_current: -8 V Current
+  - mag_hk_hk1v5: 1.5 V Voltage
+  - mag_hk_hk1v5c: 1.5 V Current
+  - mag_hk_hk1v8: 1.8 V Voltage
+  - mag_hk_hk1v8c: 1.8 V Current
+  - mag_hk_hk2v5: 2.5 V Voltage
+  - mag_hk_hk2v5c: 2.5 V Current
+  - mag_hk_hkp8v5: +8 V Voltage
+  - mag_hk_hkp8v5c: +8 V Current
+  - mag_hk_mode: Mode
+  - mag_hk_multbit_errs: Multi-bit Errors
+  - mag_hk_fib_saturated: FIB Saturation
+  - mag_hk_fob_saturated: FOB Saturation
+  - mag_hk_fib_isvalid: FIB Status
+  - mag_hk_fob_isvalid: FOB Status
+
 ialirt_csv_conversion:
   columns:
     - name: mag_hk_icu_temp
@@ -30,3 +53,101 @@ ialirt_csv_conversion:
         4: Debug
         5: Normal
         6: Burst
+
+ialirt_validation:
+  - name: mag_hk_hk3v3
+    type: limit
+    danger_min: 3.0
+    danger_max: 3.6
+    warning_min: 3.35
+    warning_max: 3.38
+  - name: mag_hk_hk3v3_current
+    type: limit
+    warning_min: 110
+    warning_max: 141
+  - name: mag_hk_hkn8v5
+    type: limit
+    danger_min: -10.61
+    danger_max: -8.25
+    warning_min: -9.8
+    warning_max: -9.46
+  - name: mag_hk_hkn8v5_current
+    type: limit
+    warning_min: 80
+    warning_max: 180
+  - name: mag_hk_icu_temp
+    type: limit
+    danger_min: -30
+    danger_max: 50
+  - name: mag_hk_fib_temp
+    type: limit
+    danger_min: -50
+    danger_max: 59
+  - name: mag_hk_fob_temp
+    type: limit
+    danger_min: -50
+    danger_max: 59
+  - name: mag_hk_mode
+    type: forbidden
+    values: [2, 4]
+    severity: warning
+    lookup:
+      2: Safe
+      4: Debug
+  - name: mag_hk_hk1v5_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk1v5c_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk1v8_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk1v8c_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk2v5_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk2v5c_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hkp8v5_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hkp8v5c_danger
+    type: flag
+    severity: danger
+  - name: mag_hk_hk1v5_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hk1v5c_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hk1v8_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hk1v8c_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hk2v5_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hk2v5c_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hkp8v5_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_hkp8v5c_warn
+    type: flag
+    severity: warning
+  - name: mag_hk_multbit_errs
+    type: flag
+    severity: danger
+  - name: mag_hk_fib_saturated
+    type: flag
+    severity: danger
+  - name: mag_hk_fob_saturated
+    type: flag
+    severity: danger

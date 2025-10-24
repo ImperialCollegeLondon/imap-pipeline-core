@@ -25,7 +25,7 @@ class CommandConfig(BaseModel):
             )
 
         if not os.path.exists(self._commmand_work_folder):
-            logger.info(f"Creating work folder {self._commmand_work_folder}")
+            logger.debug(f"Creating work folder {self._commmand_work_folder}")
             os.makedirs(self._commmand_work_folder)
 
         return self._commmand_work_folder

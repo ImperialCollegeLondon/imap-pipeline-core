@@ -13,7 +13,7 @@ from space_packet_parser import definitions
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
-from imap_mag.process.getPacketDefinitionFolder import getPacketDefinitionFolder
+from imap_mag.process.get_packet_definition_folder import get_packet_definition_folder
 from imap_mag.process.HKProcessSettings import HKProcessSettings
 from imap_mag.util import (
     CONSTANTS,
@@ -48,7 +48,9 @@ class HKProcessor(FileProcessor):
         return file.suffix in [".pkts", ".bin"]
 
     def initialize(self, packet_definition: Path) -> None:
-        self.__xtcePacketDefinitionFolder = getPacketDefinitionFolder(packet_definition)
+        self.__xtcePacketDefinitionFolder = get_packet_definition_folder(
+            packet_definition
+        )
 
     def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
         """Process HK with XTCE tools and create CSV file."""

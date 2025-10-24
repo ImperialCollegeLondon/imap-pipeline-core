@@ -24,8 +24,9 @@ def get_dates_for_download(
     original_start_date,
     original_end_date,
     validate_with_database,
+    **kwargs,
 ):
-    date_manager = DownloadDateManager(packet_name, database)
+    date_manager = DownloadDateManager(packet_name, database, **kwargs)
 
     packet_dates = date_manager.get_dates_for_download(
         original_start_date=original_start_date,
@@ -169,11 +170,13 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
     assert not mock_database.save.called
 
 
+@pytest.mark.parametrize("time_buffer", [timedelta(), timedelta(seconds=1)])
 @pytest.mark.parametrize("validate_with_database", [True, False])
 def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     capture_cli_logs,
     mock_database,
     validate_with_database,
+    time_buffer,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -190,6 +193,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
+        progress_time_buffer=time_buffer,
     )
 
     # Verify
@@ -197,7 +201,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
 
     start_date, end_date = result
 
-    assert start_date == workflow_progress.progress_timestamp
+    assert start_date == workflow_progress.progress_timestamp + time_buffer
     assert end_date == END_OF_TODAY
 
     assert (
@@ -205,7 +209,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         in capture_cli_logs.text
     )
     assert (
-        f"Start date not provided. Using last updated date {workflow_progress.progress_timestamp} for MAG_SCI_NORM from database."
+        f"Start date not provided. Using last updated date {workflow_progress.progress_timestamp} (with buffer of {time_buffer}) for MAG_SCI_NORM from database."
         in capture_cli_logs.text
     )
 
@@ -388,9 +392,11 @@ def test_get_start_end_dates_fully_up_to_date(
     assert not mock_database.save.called
 
 
+@pytest.mark.parametrize("time_buffer", [timedelta(), timedelta(seconds=1)])
 def test_get_start_end_dates_partially_up_to_date(
     capture_cli_logs,
     mock_database,
+    time_buffer,
     mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
@@ -410,6 +416,7 @@ def test_get_start_end_dates_partially_up_to_date(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=True,
+        progress_time_buffer=time_buffer,
     )
 
     # Verify
@@ -417,13 +424,13 @@ def test_get_start_end_dates_partially_up_to_date(
 
     start_date, end_date = result
 
-    assert start_date == workflow_progress.progress_timestamp
+    assert start_date == workflow_progress.progress_timestamp + time_buffer
     assert end_date == original_end_date
 
     assert "Using provided end date" in capture_cli_logs.text
     assert "Using provided start date" in capture_cli_logs.text
     assert (
-        f"Packet MAG_SCI_NORM is partially up to date. Downloading from {workflow_progress.progress_timestamp}."
+        f"Packet MAG_SCI_NORM is partially up to date. Downloading from {workflow_progress.progress_timestamp} (with buffer of {time_buffer})."
         in capture_cli_logs.text
     )
 

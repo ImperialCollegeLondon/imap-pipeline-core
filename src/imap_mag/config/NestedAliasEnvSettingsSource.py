@@ -73,7 +73,7 @@ class NestedAliasEnvSettingsSource(EnvSettingsSource):
                     )
                 elif not merged_results[key]:
                     merged_results[key] = value  # discard any empty/None value
-                else:
+                elif merged_results[key] != value:
                     print(
                         f"Conflicting values for '{key}': {merged_results[key]} (original) and {value} (alias). Discarding alias value.",
                         file=sys.stderr,
