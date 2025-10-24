@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -446,7 +447,7 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
             "met": 498689725,
             "ttj2000ns": 814265793369384064,
             "apid": 478,
-            "met_in_utc": "2025-10-20T20:55:24",
+            "met_in_utc": "2025-05-02T01:00:00",
             "spice_kernels": {
                 "planetary_constants": "pck00011.tpc",
                 "science_frames": "imap_science_100.tf",
@@ -456,7 +457,22 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
                 "spacecraft_clock": "imap_sclk_0021.tsc",
                 "planetary_ephemeris": "de440.bsp",
             },
-            "last_modified": "2025-10-20T20:55:24.185384+00:00",
+            "last_modified": "2025-05-02T01:00:00.185384+00:00",
+        },
+        {
+            "met_in_utc": "2025-05-02T02:00:00",
+            "mag_hk_status": {
+                "icu_temp": 3001,
+                "fib_temp": 3001,
+                "fob_temp": 3001,
+                "hk3v3": 3001,
+                "hk3v3_current": 3001,
+                "hkn8v5": 3001,
+                "hkn8v5_current": 3001,
+                "mode": 6,
+            },
+            "mag_B_GSM": [7, 8, 9],
+            "mag_B_RTN": [10, 11, 12],
         },
     ]
 
@@ -469,9 +485,23 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
 
     # Verify.
     assert processed_df.at[0, "mag_hk_mode"] == "Normal"
+    assert math.isclose(processed_df.at[0, "mag_hk_icu_temp"], 97.5681, rel_tol=1e-5)  # type: ignore
     assert processed_df.at[0, "mag_B_GSM_x"] == 1
     assert processed_df.at[0, "mag_B_GSM_y"] == 2
     assert processed_df.at[0, "mag_B_GSM_z"] == 3
     assert processed_df.at[0, "mag_B_RTN_r"] == 4
     assert processed_df.at[0, "mag_B_RTN_t"] == 5
     assert processed_df.at[0, "mag_B_RTN_n"] == 6
+    assert processed_df.at[0, "spice_kernels"] is np.nan
+
+    assert processed_df.at[1, "spice_kernels"] is not np.nan
+
+    assert processed_df.at[2, "mag_hk_mode"] == "Burst"
+    assert math.isclose(processed_df.at[2, "mag_hk_icu_temp"], 97.69167, rel_tol=1e-5)  # type: ignore
+    assert processed_df.at[2, "mag_B_GSM_x"] == 7
+    assert processed_df.at[2, "mag_B_GSM_y"] == 8
+    assert processed_df.at[2, "mag_B_GSM_z"] == 9
+    assert processed_df.at[2, "mag_B_RTN_r"] == 10
+    assert processed_df.at[2, "mag_B_RTN_t"] == 11
+    assert processed_df.at[2, "mag_B_RTN_n"] == 12
+    assert processed_df.at[2, "spice_kernels"] is np.nan
