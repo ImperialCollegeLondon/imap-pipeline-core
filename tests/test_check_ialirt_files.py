@@ -226,3 +226,47 @@ def test_check_ialirt_files_with_anomalies(
     # Verify.
     assert len(anomalies) == 1
     assert anomalies[0] == expected_anomaly
+
+
+def test_check_ialirt_files_unknown_validation_type(temp_folder_path, caplog) -> None:
+    # Set up.
+    packet_definition_file: Path = (
+        temp_folder_path / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
+    )
+    content: dict = {
+        "ialirt_human_readable_names": [
+            {"known_param": "Known Param"},
+        ],
+        "ialirt_validation": [
+            {
+                "name": "known_param",
+                "type": "unknown_type",
+            },
+            {
+                "name": "unknown_param",
+                "type": "flag",
+            },
+        ],
+    }
+
+    packet_definition_file.write_text(yaml.dump(content))
+
+    test_ialirt_data: Path = temp_folder_path / "ialirt_data.csv"
+    test_ialirt_data.write_text(
+        "met_in_utc,known_param\n"
+        "2024-01-01T00:00:00,1\n"
+        "2024-01-01T01:00:00,2\n"
+        "2024-01-01T02:00:00,3\n"
+    )
+
+    # Exercise.
+    check_ialirt_files(
+        files=[test_ialirt_data],
+        packet_definition_folder=temp_folder_path,
+    )
+
+    # Verify.
+    assert (
+        "Unknown validation type unknown_type for parameter known_param." in caplog.text
+    )
+    assert "Parameter unknown_param not found in I-ALiRT data columns." in caplog.text
