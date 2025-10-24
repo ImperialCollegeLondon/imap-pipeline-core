@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
+import pytz
 from prefect import flow, get_run_logger
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.events import Event, emit_event
@@ -154,8 +155,10 @@ async def poll_ialirt_flow(
             combined_plot=True,
         )
 
-        # If this is the 6 AM polling job, send the latest figure to Teams
-        if (end_date.hour == 6) and wait_for_new_data_to_arrive:
+        # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
+        if wait_for_new_data_to_arrive and (
+            end_date.astimezone(pytz.timezone("Europe/London")).hour == 6
+        ):
             imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                 imap_notification_webhook_name
             )
