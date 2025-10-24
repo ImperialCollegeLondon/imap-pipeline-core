@@ -12,6 +12,7 @@ from imap_mag.check.IALiRTAnomaly import (
 )
 from imap_mag.check.SeverityLevel import SeverityLevel
 from imap_mag.process import get_packet_definition_folder
+from imap_mag.util.constants import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,8 @@ def check_ialirt_files(
 
     # Load packet definition
     packet_definition_file: Path = (
-        get_packet_definition_folder(packet_definition_folder) / "ialirt_4.05.yaml"
+        get_packet_definition_folder(packet_definition_folder)
+        / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     )
     packet_definition: dict = yaml.safe_load(packet_definition_file.read_text())
 

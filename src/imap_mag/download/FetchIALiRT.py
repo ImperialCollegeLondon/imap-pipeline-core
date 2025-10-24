@@ -11,6 +11,7 @@ from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.process import get_packet_definition_folder
+from imap_mag.util.constants import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class FetchIALiRT:
     """Manage I-ALiRT data."""
 
     __DATE_INDEX = "met_in_utc"
-    __IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05.yaml"
+    __IALIRT_PACKET_DEFINITION_FILE = CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
 
     def __init__(
         self,
