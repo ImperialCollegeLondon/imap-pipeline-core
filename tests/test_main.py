@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from imap_mag.cli.check.check_ialirt import IALiRTAnomalyError
 from imap_mag.main import app
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
@@ -479,3 +480,55 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         open(cdf_file, "rb") as input,
     ):
         assert output.read() == input.read()
+
+
+def test_check_ialirt_no_issues(
+    temp_datastore,  # noqa: F811
+    capture_cli_logs,
+):
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "ialirt",
+            "--files",
+            str(TEST_DATA / "ialirt_data_without_anomalies.csv"),
+        ],
+        env={"MAG_DATA_STORE": str(temp_datastore)},
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 0
+    assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
+
+
+def test_check_ialirt_with_issues(
+    temp_datastore,  # noqa: F811
+    capture_cli_logs,
+):
+    # Exercise.
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "ialirt",
+            "--files",
+            str(TEST_DATA / "ialirt_data_with_anomalies.csv"),
+        ],
+        env={"MAG_DATA_STORE": str(temp_datastore)},
+    )
+
+    print("\n" + str(result.stdout))
+
+    # Verify.
+    assert result.exit_code == 1
+
+    assert isinstance(result.exception, IALiRTAnomalyError)
+    assert result.exception.args[0] == "I-ALiRT data contains anomalies."
+
+    assert "Detected 7 anomalies in I-ALiRT data:" in capture_cli_logs.text
+    assert "[DANGER]" in capture_cli_logs.text
+    assert "[WARNING]" in capture_cli_logs.text
