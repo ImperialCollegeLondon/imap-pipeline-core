@@ -16,7 +16,7 @@ from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
 
 @pytest.fixture
 def mock_teams_webhook_block(mocker) -> mock.Mock:
-    mock_block = mock.Mock(spec=MicrosoftTeamsWebhook)
+    mock_block = mock.AsyncMock(spec=MicrosoftTeamsWebhook)
     mock_block.notify_type = "info"
 
     mocker.patch(
