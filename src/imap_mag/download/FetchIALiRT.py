@@ -179,10 +179,11 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
     if "mag_hk_status" in df.columns:
         # drop rows without the status
-        column_hk = df[df["mag_hk_status"].notna()]["mag_hk_status"]
+        df_notna = df[df["mag_hk_status"].notna()]
+        column_hk = df_notna["mag_hk_status"]
 
         # Convert to DataFrame and add prefix to column names
-        dict_df = pd.DataFrame(column_hk.tolist())
+        dict_df = pd.DataFrame(column_hk.tolist(), index=df_notna.index)
         dict_df.columns = [f"mag_hk_{field}" for field in dict_df.columns]
 
         # Convert from engineering units
@@ -210,6 +211,6 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
         # Drop original column and concatenate new columns
         df = df.drop(columns=["mag_hk_status"])
-        df = pd.concat([df, dict_df], axis=1)
+        df = pd.concat([df, dict_df], axis="columns")
 
     return df
