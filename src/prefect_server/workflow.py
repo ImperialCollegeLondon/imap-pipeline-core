@@ -23,6 +23,7 @@ from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
+from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
 from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
 
@@ -157,6 +158,12 @@ def deploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    quicklook_ialirt_deployable = quicklook_ialirt_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     upload_deployable = upload_new_files_to_sharepoint.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.SHAREPOINT_UPLOAD,
         cron=get_cron_from_env(
@@ -246,6 +253,7 @@ def deploy_flows(local_debug: bool = False):
         poll_science_burst_l1b_deployable,
         poll_science_l2_deployable,
         publish_deployable,
+        quicklook_ialirt_deployable,
         upload_deployable,
     )
 

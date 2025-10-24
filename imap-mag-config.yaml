@@ -30,6 +30,10 @@ fetch_science:
     work_sub_folder:
     publish_to_data_store: true
 
+plot_ialirt:
+    work_sub_folder:
+    publish_to_data_store: true
+
 publish:
     api:
         url_base: 'https://api.dev.imap-mission.com'
@@ -52,3 +56,4 @@ upload:
         - "*hk/mag/l1/*"
         - "*hk/sc/l1/*"
         - "*ialirt/*"
+        - "*quicklook/*"

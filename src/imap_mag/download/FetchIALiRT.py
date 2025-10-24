@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
@@ -86,17 +85,11 @@ class FetchIALiRT:
                 )
 
                 if file_path is not None and file_path.exists():
-                    # Copy file to work folder
                     logger.debug(
                         f"File for {date.strftime('%Y-%m-%d')} already exists: {file_path.as_posix()}. Appending new data."
                     )
-
-                    file_path = fetch_file_for_work(
-                        file_path, self.__work_folder, throw_if_not_found=True
-                    )
                     existing_data = pd.read_csv(file_path)
                 else:
-                    # Create file
                     logger.debug(f"Creating new file for {date.strftime('%Y-%m-%d')}.")
 
                     file_path = self.__work_folder / path_handler.get_filename()
@@ -129,7 +122,7 @@ class FetchIALiRT:
                 )
 
                 combined_data.to_csv(
-                    file_path, mode=write_mode, header=True, index=True
+                    file_path, mode=write_mode, header=(write_mode == "w"), index=True
                 )
                 logger.debug(
                     f"I-ALiRT data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
@@ -186,10 +179,11 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
     if "mag_hk_status" in df.columns:
         # drop rows without the status
-        column_hk = df[df["mag_hk_status"].notna()]["mag_hk_status"]
+        df_notna = df[df["mag_hk_status"].notna()]
+        column_hk = df_notna["mag_hk_status"]
 
         # Convert to DataFrame and add prefix to column names
-        dict_df = pd.DataFrame(column_hk.tolist())
+        dict_df = pd.DataFrame(column_hk.tolist(), index=df_notna.index)
         dict_df.columns = [f"mag_hk_{field}" for field in dict_df.columns]
 
         # Convert from engineering units
@@ -217,6 +211,6 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
         # Drop original column and concatenate new columns
         df = df.drop(columns=["mag_hk_status"])
-        df = pd.concat([df, dict_df], axis=1)
+        df = pd.concat([df, dict_df], axis="columns")
 
     return df

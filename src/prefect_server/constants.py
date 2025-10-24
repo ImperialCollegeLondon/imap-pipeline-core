@@ -50,6 +50,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
         GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
+        QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
 
     class DEPLOYMENT_NAMES:
@@ -59,4 +60,5 @@ class PREFECT_CONSTANTS:
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
         PUBLISH = "publish"
+        QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"

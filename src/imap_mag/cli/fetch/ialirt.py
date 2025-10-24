@@ -29,7 +29,7 @@ def fetch_ialirt(
         ),
     ] = FetchMode.DownloadOnly,
 ) -> dict[Path, IALiRTPathHandler]:
-    """Download binary data from I-ALiRT."""
+    """Download I-ALiRT data from SDC."""
 
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
@@ -75,7 +75,7 @@ def fetch_ialirt(
             (output_file, output_handler) = output_manager.add_file(file, path_handler)
             ialirt_files_and_handlers[output_file] = output_handler
     else:
-        ialirt_files_and_handlers = downloaded_ialirt
         logger.info("Files not published to data store based on config.")
+        ialirt_files_and_handlers = downloaded_ialirt
 
     return ialirt_files_and_handlers
