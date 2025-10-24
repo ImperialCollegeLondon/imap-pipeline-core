@@ -1,4 +1,5 @@
 import re
+import sys
 from unittest import mock
 
 import pytest
@@ -40,6 +41,7 @@ async def test_check_ialirt_no_issues(
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
 
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.asyncio
 async def test_check_ialirt_with_issues(
     mock_teams_webhook_block: mock.Mock,
