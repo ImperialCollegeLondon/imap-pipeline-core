@@ -91,12 +91,12 @@ async def poll_ialirt_flow(
             }
         ),
     ] = 5 * 60,  # 5 minutes
-    plot_data: Annotated[
+    plot_last_3_days: Annotated[
         bool,
         Field(
             json_schema_extra={
-                "title": "Plot data",
-                "description": "If true, the flow will generate a quicklook plot of the downloaded data.",
+                "title": "Plot last 3 days",
+                "description": "If true, the flow will generate a quicklook plot of the downloaded data over the last 3 days.",
             }
         ),
     ] = True,
@@ -136,7 +136,7 @@ async def poll_ialirt_flow(
 
     logger.info("---------- End I-ALiRT Poll ----------")
 
-    if plot_data:
+    if plot_last_3_days:
         plot_ialirt(
             start_date=DatetimeProvider.today() - timedelta(days=2),
             end_date=DatetimeProvider.now(),
