@@ -97,14 +97,24 @@ class FetchIALiRT:
 
                 # Add data to file
                 # If data is completely new, just append new data.
-                # Otherwise read existing data and merge it.
-                if not existing_data.empty and (
-                    max(self.__get_index_as_datetime(existing_data)) < min_daily_date
+                # We still need to load the existing data, as some columns may be missing in the new data.
+                # If the data already in the data store has fewer columns than the new data, we need to rewrite the file.
+                combined_data = pd.concat([existing_data, daily_data])
+
+                if (
+                    not existing_data.empty
+                    and (len(existing_data.columns) >= len(daily_data.columns))
+                    and (
+                        max(self.__get_index_as_datetime(existing_data))
+                        < min_daily_date
+                    )
                 ):
-                    combined_data = daily_data
+                    # Only append the new data.
+                    combined_data = combined_data[
+                        self.__get_index_as_datetime(combined_data) >= min_daily_date
+                    ]
                     write_mode = "a"
                 else:
-                    combined_data = pd.concat([existing_data, daily_data])
                     write_mode = "w"
 
                 # Sort data by MET and remove any duplicates (by keeping the latest entries)
