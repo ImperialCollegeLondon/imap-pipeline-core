@@ -97,6 +97,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
     # Set up.
@@ -128,6 +129,7 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
     # Set up.
@@ -167,6 +169,7 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
     # Set up.

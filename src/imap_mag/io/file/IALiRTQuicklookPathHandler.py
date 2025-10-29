@@ -12,6 +12,6 @@ class IALiRTQuicklookPathHandler(QuicklookPathHandler):
     Path handler for I-ALiRT figures.
     """
 
-    @property
-    def plot_type(self) -> str:
+    @staticmethod
+    def get_plot_type() -> str:
         return "ialirt"

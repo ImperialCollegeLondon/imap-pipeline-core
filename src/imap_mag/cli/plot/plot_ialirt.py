@@ -1,4 +1,5 @@
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -11,6 +12,7 @@ from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
 from imap_mag.config import AppSettings
 from imap_mag.io.file import IALiRTQuicklookPathHandler
 from imap_mag.plot.plot_ialirt_files import plot_ialirt_files
+from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,21 @@ def plot_ialirt(
         for file, path_handler in generated_figure.items():
             (output_file, output_handler) = output_manager.add_file(file, path_handler)
             ialirt_file_and_handler[output_file] = output_handler
+
+            # Add "latest" copy for today
+            if path_handler.content_date and (
+                path_handler.content_date.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                == DatetimeProvider.today()
+            ):
+                shutil.copy(
+                    output_file,
+                    app_settings.data_store
+                    / output_handler.root_folder
+                    / "ialirt"
+                    / "latest.png",
+                )
     else:
         logger.info("Files not published to data store based on config.")
         ialirt_file_and_handler = generated_figure
