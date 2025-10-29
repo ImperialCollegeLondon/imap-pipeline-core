@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -153,9 +153,11 @@ async def poll_ialirt_flow(
         )
 
         # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
-        if wait_for_new_data_to_arrive and (
-            end_date.astimezone(pytz.timezone("Europe/London")).hour == 6
-        ):
+        uk_end_time = end_date.replace(tzinfo=timezone.utc).astimezone(
+            pytz.timezone("Europe/London")
+        )
+
+        if wait_for_new_data_to_arrive and (uk_end_time.hour == 6):
             imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                 imap_notification_webhook_name
             )
