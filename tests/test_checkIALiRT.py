@@ -3,7 +3,6 @@ import sys
 from unittest import mock
 
 import pytest
-from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.exceptions import FailedRun
 
 from prefect_server.checkIALiRT import check_ialirt_flow
@@ -12,20 +11,10 @@ from tests.util.miscellaneous import (
     TEST_DATA,
     temp_datastore,  # noqa: F401
 )
-from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
-
-
-@pytest.fixture
-def mock_teams_webhook_block(mocker) -> mock.Mock:
-    mock_block = mock.AsyncMock(spec=MicrosoftTeamsWebhook)
-    mock_block.notify_type = "info"
-
-    mocker.patch(
-        "prefect.blocks.notifications.MicrosoftTeamsWebhook.aload",
-        new=mock.AsyncMock(return_value=mock_block),
-    )
-
-    return mock_block
+from tests.util.prefect import (  # noqa: F401
+    mock_teams_webhook_block,
+    prefect_test_fixture,
+)
 
 
 @pytest.mark.asyncio
@@ -44,7 +33,7 @@ async def test_check_ialirt_no_issues(
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.asyncio
 async def test_check_ialirt_with_issues(
-    mock_teams_webhook_block: mock.Mock,
+    mock_teams_webhook_block: mock.Mock,  # noqa: F811
     temp_datastore,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     capture_cli_logs,
