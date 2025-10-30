@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -219,7 +220,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
     ((file_path, path_handler),) = actual_downloaded.items()
 
     assert file_path.exists()
-    assert file_path.name == "imap_ialirt_20250502.csv"
+    assert file_path == datastore_file
     assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
 
     with open(file_path) as f:
@@ -239,6 +240,153 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
         in capture_cli_logs.text
     )
     assert "I-ALiRT data appended to " in capture_cli_logs.text
+
+
+def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_columns(
+    mock_ialirt_data_access: mock.Mock,
+    temp_datastore,  # noqa: F811
+    capture_cli_logs,
+) -> None:
+    # Set up.
+    fetch_ialirt = FetchIALiRT(
+        mock_ialirt_data_access,
+        Path(tempfile.mkdtemp()),
+        DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
+    )
+
+    mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
+        {"met_in_utc": "2025-05-02T02:00:00", "a": 1, "c": 2, "d": 3},
+        {"met_in_utc": "2025-05-02T03:00:00", "a": 4, "c": 5, "d": 6},
+        {"met_in_utc": "2025-05-02T04:00:00", "a": 7, "c": 8, "d": 9},
+    ]
+
+    datastore_file = (
+        temp_datastore / "ialirt" / "2025" / "05" / "imap_ialirt_20250502.csv"
+    )
+    datastore_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(datastore_file, "w") as f:
+        f.write("met_in_utc,a,b,c,d,e\n")
+        f.write("2025-05-02T00:00:00,10,11,12,13,14\n")
+        f.write("2025-05-02T01:00:00,15,16,17,18,19\n")
+
+    # Exercise.
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
+    )
+
+    # Verify.
+    mock_ialirt_data_access.get_all_by_dates.assert_called_once_with(
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    ((file_path, path_handler),) = actual_downloaded.items()
+
+    assert file_path.exists()
+    assert file_path == datastore_file
+    assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
+
+    with open(file_path) as f:
+        file_content = f.read()
+
+        assert "met_in_utc,a,b,c,d,e" in file_content
+        assert "2025-05-02T00:00:00,10,11,12,13,14" in file_content
+        assert "2025-05-02T01:00:00,15,16,17,18,19" in file_content
+        assert "2025-05-02T02:00:00,1,,2,3," in file_content
+        assert "2025-05-02T03:00:00,4,,5,6," in file_content
+        assert "2025-05-02T04:00:00,7,,8,9," in file_content
+
+    assert "Downloaded 3 entries from I-ALiRT Data Access." in capture_cli_logs.text
+    assert "Downloaded I-ALiRT data for 1 days: 2025-05-02" in capture_cli_logs.text
+    assert (
+        f"File for 2025-05-02 already exists: {datastore_file.as_posix()}. Appending new data."
+        in capture_cli_logs.text
+    )
+    assert "I-ALiRT data appended to " in capture_cli_logs.text
+
+
+def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_columns(
+    mock_ialirt_data_access: mock.Mock,
+    temp_datastore,  # noqa: F811
+    capture_cli_logs,
+) -> None:
+    # Set up.
+    fetch_ialirt = FetchIALiRT(
+        mock_ialirt_data_access,
+        Path(tempfile.mkdtemp()),
+        DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
+    )
+
+    mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
+        {"met_in_utc": "2025-05-02T02:00:00", "a": 1, "b": 2, "c": 3, "d": 4, "e": 5},
+        {"met_in_utc": "2025-05-02T03:00:00", "a": 6, "b": 7, "c": 8, "d": 9, "e": 10},
+        {
+            "met_in_utc": "2025-05-02T04:00:00",
+            "a": 11,
+            "b": 12,
+            "c": 13,
+            "d": 14,
+            "e": 15,
+        },
+    ]
+
+    datastore_file = (
+        temp_datastore / "ialirt" / "2025" / "05" / "imap_ialirt_20250502.csv"
+    )
+    datastore_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(datastore_file, "w") as f:
+        f.write("met_in_utc,a,c,d\n")
+        f.write("2025-05-02T00:00:00,16,17,18\n")
+        f.write("2025-05-02T01:00:00,19,20,21\n")
+
+    # Exercise.
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
+    )
+
+    # Verify.
+    mock_ialirt_data_access.get_all_by_dates.assert_called_once_with(
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    ((file_path, path_handler),) = actual_downloaded.items()
+
+    assert file_path.exists()
+    assert file_path == datastore_file
+    assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
+
+    with open(file_path) as f:
+        file_content = f.read()
+
+        assert "met_in_utc,a,b,c,d,e" in file_content
+        assert "2025-05-02T00:00:00,16,,17,18," in file_content
+        assert "2025-05-02T01:00:00,19,,20,21," in file_content
+        assert "2025-05-02T02:00:00,1,2.0,3,4,5.0" in file_content
+        assert "2025-05-02T03:00:00,6,7.0,8,9,10.0" in file_content
+        assert "2025-05-02T04:00:00,11,12.0,13,14,15.0" in file_content
+
+    assert "Downloaded 3 entries from I-ALiRT Data Access." in capture_cli_logs.text
+    assert "Downloaded I-ALiRT data for 1 days: 2025-05-02" in capture_cli_logs.text
+    assert (
+        f"File for 2025-05-02 already exists: {datastore_file.as_posix()}. Appending new data."
+        in capture_cli_logs.text
+    )
+    assert "I-ALiRT data written to " in capture_cli_logs.text
 
 
 def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
@@ -289,7 +437,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
     ((file_path, path_handler),) = actual_downloaded.items()
 
     assert file_path.exists()
-    assert file_path.name == "imap_ialirt_20250502.csv"
+    assert file_path == datastore_file
     assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
 
     with open(file_path) as f:
@@ -446,7 +594,7 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
             "met": 498689725,
             "ttj2000ns": 814265793369384064,
             "apid": 478,
-            "met_in_utc": "2025-10-20T20:55:24",
+            "met_in_utc": "2025-05-02T01:00:00",
             "spice_kernels": {
                 "planetary_constants": "pck00011.tpc",
                 "science_frames": "imap_science_100.tf",
@@ -456,7 +604,22 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
                 "spacecraft_clock": "imap_sclk_0021.tsc",
                 "planetary_ephemeris": "de440.bsp",
             },
-            "last_modified": "2025-10-20T20:55:24.185384+00:00",
+            "last_modified": "2025-05-02T01:00:00.185384+00:00",
+        },
+        {
+            "met_in_utc": "2025-05-02T02:00:00",
+            "mag_hk_status": {
+                "icu_temp": 3001,
+                "fib_temp": 3001,
+                "fob_temp": 3001,
+                "hk3v3": 3001,
+                "hk3v3_current": 3001,
+                "hkn8v5": 3001,
+                "hkn8v5_current": 3001,
+                "mode": 6,
+            },
+            "mag_B_GSM": [7, 8, 9],
+            "mag_B_RTN": [10, 11, 12],
         },
     ]
 
@@ -469,9 +632,23 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
 
     # Verify.
     assert processed_df.at[0, "mag_hk_mode"] == "Normal"
+    assert math.isclose(processed_df.at[0, "mag_hk_icu_temp"], 97.5681, rel_tol=1e-5)  # type: ignore
     assert processed_df.at[0, "mag_B_GSM_x"] == 1
     assert processed_df.at[0, "mag_B_GSM_y"] == 2
     assert processed_df.at[0, "mag_B_GSM_z"] == 3
     assert processed_df.at[0, "mag_B_RTN_r"] == 4
     assert processed_df.at[0, "mag_B_RTN_t"] == 5
     assert processed_df.at[0, "mag_B_RTN_n"] == 6
+    assert processed_df.at[0, "spice_kernels"] is np.nan
+
+    assert processed_df.at[1, "spice_kernels"] is not np.nan
+
+    assert processed_df.at[2, "mag_hk_mode"] == "Burst"
+    assert math.isclose(processed_df.at[2, "mag_hk_icu_temp"], 97.69167, rel_tol=1e-5)  # type: ignore
+    assert processed_df.at[2, "mag_B_GSM_x"] == 7
+    assert processed_df.at[2, "mag_B_GSM_y"] == 8
+    assert processed_df.at[2, "mag_B_GSM_z"] == 9
+    assert processed_df.at[2, "mag_B_RTN_r"] == 10
+    assert processed_df.at[2, "mag_B_RTN_t"] == 11
+    assert processed_df.at[2, "mag_B_RTN_n"] == 12
+    assert processed_df.at[2, "spice_kernels"] is np.nan

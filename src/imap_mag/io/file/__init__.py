@@ -5,8 +5,10 @@ from imap_mag.io.file.CalibrationLayerPathHandler import (
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
+from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
 from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
+from imap_mag.io.file.QuicklookPathHandler import QuicklookPathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.file.StandardSPDFPathHandler import StandardSPDFPathHandler
@@ -19,8 +21,10 @@ __all__ = [
     "HKBinaryPathHandler",
     "HKDecodedPathHandler",
     "IALiRTPathHandler",
+    "IALiRTQuicklookPathHandler",
     "IFilePathHandler",
     "PartitionedPathHandler",
+    "QuicklookPathHandler",
     "SciencePathHandler",
     "SequenceablePathHandler",
     "StandardSPDFPathHandler",

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -9,6 +9,7 @@ from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.ialirt import fetch_ialirt
+from imap_mag.cli.plot.plot_ialirt import plot_ialirt
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import IALiRTPathHandler
@@ -42,6 +43,7 @@ def generate_flow_run_name() -> str:
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     log_prints=True,
     flow_run_name=generate_flow_run_name,
+    retries=1,
 )
 async def poll_ialirt_flow(
     start_date: Annotated[
@@ -89,6 +91,15 @@ async def poll_ialirt_flow(
             }
         ),
     ] = 5 * 60,  # 5 minutes
+    plot_last_3_days: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Plot last 3 days",
+                "description": "If true, the flow will generate a quicklook plot of the downloaded data over the last 3 days.",
+            }
+        ),
+    ] = True,
 ) -> None:
     """
     Poll I-ALiRT data from SDC.
@@ -102,25 +113,35 @@ async def poll_ialirt_flow(
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
     end_date = end_date or DatetimeProvider.end_of_hour()
+    updated_files: list[Path] = []
 
     logger.info("---------- Start I-ALiRT Poll ----------")
 
     if wait_for_new_data_to_arrive:
         while (end_date - DatetimeProvider.now()).total_seconds() > timeout:
-            do_poll_ialirt(
+            files = do_poll_ialirt(
                 database, auth_code, start_date, end_date, force_download, logger
             )
+            updated_files.extend(files)
 
             logger.info(
                 f"--- Waiting {timeout} seconds before polling for new data ---"
             )
             await asyncio.sleep(timeout)
     else:
-        do_poll_ialirt(
+        files = do_poll_ialirt(
             database, auth_code, start_date, end_date, force_download, logger
         )
+        updated_files.extend(files)
 
     logger.info("---------- End I-ALiRT Poll ----------")
+
+    if plot_last_3_days:
+        plot_ialirt(
+            start_date=DatetimeProvider.today() - timedelta(days=2),
+            end_date=DatetimeProvider.now(),
+            combined_plot=True,
+        )
 
 
 def do_poll_ialirt(
@@ -130,7 +151,7 @@ def do_poll_ialirt(
     end_date: datetime | None,
     force_download: bool,
     logger,
-) -> None:
+) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
     progress_item_id = "MAG_IALIRT"
 
@@ -146,7 +167,7 @@ def do_poll_ialirt(
 
     if packet_dates is None:
         logger.info("No dates to download - skipping")
-        return
+        return []
     else:
         (packet_start_date, packet_end_date) = packet_dates
 
@@ -162,7 +183,7 @@ def do_poll_ialirt(
         logger.info(
             f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
         )
-        return
+        return []
 
     # Update database with latest downloaded date as progress (for I-ALiRT)
     content_dates: list[datetime] = [
@@ -178,3 +199,5 @@ def do_poll_ialirt(
         checked_timestamp=start_timestamp,
         latest_timestamp=latest_date,
     )
+
+    return [k for k in downloaded_ialirt.keys()]

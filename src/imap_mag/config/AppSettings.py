@@ -17,6 +17,7 @@ from imap_mag.config.FetchConfig import (
 )
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
+from imap_mag.config.QuicklookConfig import QuicklookConfig
 from imap_mag.config.UploadConfig import UploadConfig
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class AppSettings(BaseSettings):
     )
 
     # Global settings
-    work_folder: Path = Path(".work")
+    work_folder: Path = Path(".work")  # type: ignore
     data_store: Path
     packet_definition: Path
 
@@ -46,6 +47,7 @@ class AppSettings(BaseSettings):
     fetch_binary: FetchBinaryConfig
     fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig
+    plot_ialirt: QuicklookConfig
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig

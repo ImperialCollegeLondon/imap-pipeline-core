@@ -114,7 +114,7 @@ def fetch_science(
             (output_file, output_handler) = output_manager.add_file(file, path_handler)
             output_science[output_file] = output_handler
     else:
-        output_science = downloaded_science
         logger.info("Files not published to data store based on config.")
+        output_science = downloaded_science
 
     return output_science
