@@ -5,7 +5,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def getPacketDefinitionFolder(packet_definition: Path) -> Path:
+def get_packet_definition_folder(packet_definition: Path) -> Path:
     """Retrieve path of packet definition folder, based on provided relative path."""
 
     paths_to_try: dict[str, Path] = {

@@ -14,10 +14,12 @@ class DownloadDateManager:
         database: Database,
         *,
         earliest_date: datetime | None = None,
+        progress_time_buffer: timedelta = timedelta(),
     ):
         self.__packet_name = packet_name
         self.__database = database
         self.__earliest_date = earliest_date
+        self.__progress_time_buffer = progress_time_buffer
 
         self.__last_checked_date: datetime | None = None
         self.__progress_timestamp: datetime | None = None
@@ -31,9 +33,9 @@ class DownloadDateManager:
 
         elif self.__progress_timestamp is not None:
             logger.info(
-                f"Start date not provided. Using last updated date {self.__progress_timestamp} for {self.__packet_name} from database."
+                f"Start date not provided. Using last updated date {self.__progress_timestamp} (with buffer of {self.__progress_time_buffer}) for {self.__packet_name} from database."
             )
-            return self.__progress_timestamp
+            return self.__progress_timestamp + self.__progress_time_buffer
 
         elif self.__last_checked_date is not None:
             # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday or the last checked date,
@@ -82,9 +84,9 @@ class DownloadDateManager:
             return None
         else:
             logger.info(
-                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__progress_timestamp}."
+                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__progress_timestamp} (with buffer of {self.__progress_time_buffer})."
             )
-            start_date = self.__progress_timestamp
+            start_date = self.__progress_timestamp + self.__progress_time_buffer
 
         return start_date, end_date
 

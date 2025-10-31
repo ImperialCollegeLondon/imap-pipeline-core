@@ -11,6 +11,7 @@ from prefect.events import DeploymentEventTrigger
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
+from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     apply_flow,
@@ -158,6 +159,30 @@ def deploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    check_ialirt_deployable = check_ialirt_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CHECK_IALIRT,
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        triggers=[
+            DeploymentEventTrigger(
+                name="Trigger I-ALiRT validation on I-ALiRT update",
+                expect={PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
+                },  # type: ignore
+                parameters={
+                    "files": {
+                        "__prefect_kind": "json",
+                        "value": {
+                            "__prefect_kind": "jinja",
+                            "template": "{{ event.payload.files | tojson }}",
+                        },
+                    },
+                },
+            ),
+        ],
+    )
+
     quicklook_ialirt_deployable = quicklook_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
         job_variables=shared_job_variables,
@@ -174,28 +199,28 @@ def deploy_flows(local_debug: bool = False):
         triggers=[
             DeploymentEventTrigger(
                 name="Trigger upload after HK poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after I-ALiRT poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after science poll",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
                 },
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after APPLY_CALIBRATION",
-                expect={"prefect.flow-run.Completed"},
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
                 },
@@ -253,6 +278,7 @@ def deploy_flows(local_debug: bool = False):
         poll_science_burst_l1b_deployable,
         poll_science_l2_deployable,
         publish_deployable,
+        check_ialirt_deployable,
         quicklook_ialirt_deployable,
         upload_deployable,
     )

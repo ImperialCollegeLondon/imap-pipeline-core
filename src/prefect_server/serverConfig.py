@@ -105,6 +105,14 @@ class ServerConfig:
                 prefect.blocks.system.Secret(value=SecretStr("")),
             ),
             (
+                PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
+                prefect.blocks.notifications.MicrosoftTeamsWebhook(
+                    url=SecretStr(  # Prefect example URL
+                        "https://prod-NO.LOCATION.logic.azure.com:443/workflows/WFID/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=SIGNATURE"
+                    )
+                ),
+            ),
+            (
                 PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
                 RCloneConfigFileBlock(
                     remote_name="imap_sharepoint",

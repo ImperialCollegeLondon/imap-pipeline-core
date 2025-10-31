@@ -9,9 +9,16 @@ class PREFECT_CONSTANTS:
     SHAREPOINT_BLOCK_NAME = "imap-sharepoint"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
+    IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
+
+    class EVENT:
+        FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
+        IALIRT_UPDATED = "imap_mag.ialirt.updated"
 
     class POLL_IALIRT:
+        IALIRT_DATABASE_WORKFLOW_NAME = "MAG_IALIRT"
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
+        IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
@@ -50,6 +57,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
         GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
+        CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
 
@@ -60,5 +68,6 @@ class PREFECT_CONSTANTS:
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
         PUBLISH = "publish"
+        CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
