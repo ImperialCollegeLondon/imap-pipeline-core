@@ -161,6 +161,7 @@ def deploy_flows(local_debug: bool = False):
 
     check_ialirt_deployable = check_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CHECK_IALIRT,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.CHECK_IALIRT_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         triggers=[
