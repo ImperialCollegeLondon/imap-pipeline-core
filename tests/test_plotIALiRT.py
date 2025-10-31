@@ -9,7 +9,9 @@ import pytest
 from diffimg import diff
 
 from imap_mag.cli.plot.plot_ialirt import plot_ialirt
+from imap_mag.config import SaveMode
 from imap_mag.util import DatetimeProvider
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     TEST_DATA,
     TEST_TRUTH,
@@ -92,3 +94,40 @@ def test_plot_ialirt_todays_data_copies_to_latest_figure(
     # Verify.
     assert len(generated_plots) == 1
     assert (temp_datastore / "quicklook" / "ialirt" / "latest.png").exists()
+
+
+def test_plot_ialirt_todays_data_added_to_database(
+    temp_datastore: Path,  # noqa: F811
+    test_database,  # noqa: F811
+    mock_datetime_provider_today_20251021,
+) -> None:
+    # Set up.
+    test_data = TEST_DATA / "ialirt_plot_data.csv"
+
+    (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        test_data,
+        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
+    )
+
+    assert len(test_database.get_files()) == 0
+
+    # Execute.
+    generated_plots = plot_ialirt(
+        start_date=datetime(2025, 10, 21, 0, 0, 0),
+        end_date=datetime(2025, 10, 21, 23, 59, 59),
+        save_mode=SaveMode.LocalAndDatabase,
+    )
+
+    # Verify.
+    assert len(generated_plots) == 1
+    assert (temp_datastore / "quicklook" / "ialirt" / "latest.png").exists()
+
+    files_in_db = test_database.get_files()
+    assert len(files_in_db) == 2
+
+    assert any(
+        file.path == "quicklook/ialirt/2025/10/imap_quicklook_ialirt_20251021.png"
+        for file in files_in_db
+    )
+    assert any(file.path == "quicklook/ialirt/latest.png" for file in files_in_db)
