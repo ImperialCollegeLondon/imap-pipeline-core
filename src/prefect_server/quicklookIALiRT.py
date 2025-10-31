@@ -6,6 +6,7 @@ from prefect.runtime import flow_run
 from pydantic import Field
 
 from imap_mag.cli.plot.plot_ialirt import plot_ialirt
+from imap_mag.config import SaveMode
 from imap_mag.util import DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 
@@ -61,4 +62,5 @@ async def quicklook_ialirt_flow(
         start_date=start_date,
         end_date=end_date,
         combined_plot=combined_plot,
+        save_mode=SaveMode.LocalAndDatabase,
     )

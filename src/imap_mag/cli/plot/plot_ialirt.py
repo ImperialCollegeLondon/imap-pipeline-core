@@ -9,7 +9,7 @@ import typer
 from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
-from imap_mag.config import AppSettings
+from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io.file import IALiRTQuicklookPathHandler
 from imap_mag.plot.plot_ialirt_files import plot_ialirt_files
 from imap_mag.util import DatetimeProvider
@@ -45,6 +45,10 @@ def plot_ialirt(
             help="Whether to combine all I-ALiRT data into a single figure",
         ),
     ] = False,
+    save_mode: Annotated[
+        SaveMode,
+        typer.Option(help="Whether to save locally only or to also save to database"),
+    ] = SaveMode.LocalOnly,
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
@@ -80,7 +84,7 @@ def plot_ialirt(
     if app_settings.plot_ialirt.publish_to_data_store:
         output_manager = appUtils.getOutputManagerByMode(
             app_settings,
-            use_database=False,
+            use_database=(save_mode == SaveMode.LocalAndDatabase),
         )
 
         for file, path_handler in generated_figure.items():
