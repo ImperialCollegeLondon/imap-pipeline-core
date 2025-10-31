@@ -27,13 +27,13 @@ def fetch_ialirt_files_for_work(
         and (files is None or len(files) == 0)
     ):
         logger.info(
-            "No start/end date or files provided, plotting yesterday's and today's data."
+            "No start/end date or files provided, loading yesterday's and today's data."
         )
         start_date = DatetimeProvider.yesterday()
         end_date = DatetimeProvider.today()
 
     if (start_date is not None) and (end_date is not None):
-        logger.info(f"Plotting I-ALiRT data from {start_date} to {end_date}.")
+        logger.info(f"Loading I-ALiRT data from {start_date} to {end_date}.")
 
         # Get unique range of dates
         unique_dates = pd.date_range(
@@ -49,7 +49,7 @@ def fetch_ialirt_files_for_work(
                 files.append(f)
 
     if files is None or (len(files) == 0):
-        logger.warning("No I-ALiRT files to plot.")
+        logger.warning("No I-ALiRT files to load.")
         return []
 
     # Copy files to work folder
