@@ -7,9 +7,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.io import OutputManager
-from imap_mag.io.file import (
-    HKDecodedPathHandler,
-)
+from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from tests.util.miscellaneous import (
     create_test_file,
 )
@@ -195,6 +193,55 @@ def test_copy_file_forced_version(temp_folder_path):
     assert Path(
         f"{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v003.txt"
     ).exists()
+
+
+class CustomPathHandler(IFilePathHandler):
+    def __init__(self, folder: str, name: str) -> None:
+        self.folder = folder
+        self.name = name
+
+    def supports_sequencing(self) -> bool:
+        return False
+
+    def get_content_date_for_indexing(self) -> datetime | None:
+        return None
+
+    def get_folder_structure(self) -> str:
+        return self.folder
+
+    def get_filename(self) -> str:
+        return self.name
+
+    @classmethod
+    def from_filename(cls, filename: str | Path) -> "CustomPathHandler | None":
+        return None
+
+
+def test_copy_file_same_origin_destination(temp_folder_path, caplog):
+    # Set up.
+    manager = OutputManager(temp_folder_path)
+
+    original_file = create_test_file(
+        Path(f"{temp_folder_path}/test_copy_file_same_origin_destination.txt")
+    )
+
+    original_mod_time = original_file.stat().st_mtime
+
+    # Exercise.
+    (new_file, _) = manager.add_file(
+        original_file,
+        CustomPathHandler(
+            folder=temp_folder_path.as_posix(),
+            name="test_copy_file_same_origin_destination.txt",
+        ),
+    )
+
+    # Verify.
+    assert original_file.exists() and new_file.exists()
+    assert original_file.samefile(new_file)
+    assert original_file.stat().st_mtime == original_mod_time
+
+    assert "Source and destination files are the same" in caplog.text
 
 
 def test_error_on_file_not_found(capture_cli_logs):

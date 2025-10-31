@@ -15,6 +15,7 @@ from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.download.FetchIALiRT import FetchIALiRT, process_ialirt_data
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import IALiRTPathHandler
+from imap_mag.util.constants import CONSTANTS
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
 
 IALIRT_PACKET_DEFINITION = (
@@ -474,7 +475,7 @@ def test_split_gse_gsm_to_xyz_components() -> None:
 
     # Exercise.
     processed_df = process_ialirt_data(
-        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+        df, IALIRT_PACKET_DEFINITION / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     )
 
     # Verify.
@@ -511,7 +512,7 @@ def test_split_rtn_to_rtn_components() -> None:
 
     # Exercise.
     processed_df = process_ialirt_data(
-        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+        df, IALIRT_PACKET_DEFINITION / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     )
 
     # Verify.
@@ -550,7 +551,7 @@ def test_process_mag_hk() -> None:
 
     # Exercise.
     processed_df = process_ialirt_data(
-        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+        df, IALIRT_PACKET_DEFINITION / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     )
 
     # Verify.
@@ -627,7 +628,7 @@ def test_process_mag_data_and_ignore_mixed_format_rows() -> None:
 
     # Exercise.
     processed_df = process_ialirt_data(
-        df, IALIRT_PACKET_DEFINITION / "ialirt_4.05.yaml"
+        df, IALIRT_PACKET_DEFINITION / CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     )
 
     # Verify.

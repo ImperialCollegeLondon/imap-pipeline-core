@@ -4,14 +4,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-import pandas as pd
 import typer
 
 from imap_mag import appUtils
-from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
+from imap_mag.cli.cliUtils import initialiseLoggingForCommand
+from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
 from imap_mag.config import AppSettings
-from imap_mag.io import DatastoreFileFinder
-from imap_mag.io.file import IALiRTPathHandler, IALiRTQuicklookPathHandler
+from imap_mag.io.file import IALiRTQuicklookPathHandler
 from imap_mag.plot.plot_ialirt_files import plot_ialirt_files
 from imap_mag.util import DatetimeProvider
 
@@ -56,47 +55,19 @@ def plot_ialirt(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    work_files = fetch_ialirt_files_for_work(
+        app_settings.data_store,
+        work_folder,
+        start_date=start_date,
+        end_date=end_date,
+        files=files,
+    )
 
-    if (
-        (start_date is None)
-        and (end_date is None)
-        and (files is None or len(files) == 0)
-    ):
-        logger.info(
-            "No start/end date or files provided, plotting yesterday's and today's data."
-        )
-        start_date = DatetimeProvider.yesterday()
-        end_date = DatetimeProvider.today()
-
-    if (start_date is not None) and (end_date is not None):
-        logger.info(f"Plotting I-ALiRT data from {start_date} to {end_date}.")
-
-        # Get unique range of dates
-        unique_dates = pd.date_range(
-            start=start_date, end=end_date, freq="d"
-        ).to_pydatetime()
-
-        path_handlers = [IALiRTPathHandler(content_date=date) for date in unique_dates]
-        files = []
-
-        for handler in path_handlers:
-            f = datastore_finder.find_matching_file(handler, throw_if_not_found=False)
-            if f is not None:
-                files.append(f)
-
-    if files is None or (len(files) == 0):
-        logger.warning("No I-ALiRT files to plot.")
+    if len(work_files) == 0:
         return {}
 
-    # Copy files to work folder
-    work_files: list[Path] = []
-
-    for f in files:
-        work_files.append(fetch_file_for_work(f, work_folder, throw_if_not_found=True))
-
     logger.info(
-        f"Plotting I-ALiRT data from {len(files)} files:\n{', '.join(f.as_posix() for f in work_files)}"
+        f"Plotting I-ALiRT data from {len(work_files)} files:\n{', '.join(f.as_posix() for f in work_files)}"
     )
 
     # Generate plots

@@ -19,7 +19,7 @@ from prefect_server.publishFlow import publish_flow
 from tests.util.miscellaneous import (
     DATASTORE,
 )
-from tests.util.prefect_test_fixture import prefect_test_fixture  # noqa: F401
+from tests.util.prefect import prefect_test_fixture  # noqa: F401
 
 runner = CliRunner()
 

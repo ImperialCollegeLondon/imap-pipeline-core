@@ -9,6 +9,9 @@ data_store:  'output/'
 packet_definition: 'packet_def/'
 
 # Command specific configuration:
+check_ialirt:
+    work_sub_folder:
+
 fetch_binary:
     api:
         url_base: 'https://lasp.colorado.edu/ops/imap/poda/dap2/packets/SID2/'
