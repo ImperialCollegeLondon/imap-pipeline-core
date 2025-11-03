@@ -103,6 +103,7 @@ def mock_datetime_provider_first_monday_of_month(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "now", lambda: NOW_FIRST_MONDAY_OF_MONTH)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.asyncio
 async def test_check_ialirt_first_monday_of_month_first_time(
     temp_datastore,  # noqa: F811
@@ -128,6 +129,7 @@ async def test_check_ialirt_first_monday_of_month_first_time(
     mock_teams_webhook_block.notify.assert_called_once()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.asyncio
 async def test_check_ialirt_first_monday_of_month_not_first_time(
     temp_datastore,  # noqa: F811
