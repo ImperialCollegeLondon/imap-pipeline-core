@@ -259,7 +259,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     # Some data is available only for specific packets.
     for hk in available_hk:
         workflow_progress = test_database.get_workflow_progress(hk.packet_name)
-        workflow_progress.record_successful_download(progress_timestamp)
+        workflow_progress.update_progress_timestamp(progress_timestamp)
         test_database.save(workflow_progress)
 
         define_available_data_webpoda_mappings(

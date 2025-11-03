@@ -209,7 +209,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     workflow_progress = test_database.get_workflow_progress(
         get_database_id_from_mode(ScienceMode.Normal)
     )
-    workflow_progress.record_successful_download(progress_timestamp)
+    workflow_progress.update_progress_timestamp(progress_timestamp)
     test_database.save(workflow_progress)
 
     define_available_data_sdc_mappings(
