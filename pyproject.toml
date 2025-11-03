@@ -35,7 +35,7 @@ psycopg = {extras = ["binary"], version = "^3.2.9"}
 prefect = {extras = ["shell"], version = "3.4.24"}
 prefect-docker = "^0.6.6"
 spacepy = "^0.7.0"
-pydantic-settings = "^2.8.1"
+pydantic-settings = "^2.11.0"
 ccsdspy = "^1.4.2"
 prefect-managedfiletransfer = "^0.2.0"
 pytest-env = "^1.1.5" # should this be a dev dependency?
