@@ -5,6 +5,7 @@ from datetime import datetime
 import pytest
 
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     TEST_DATA,
     temp_datastore,  # noqa: F401
@@ -20,6 +21,7 @@ from tests.util.prefect import prefect_test_fixture  # noqa: F401
 async def test_poll_ialirt_autoflow_first_ever_run(
     wiremock_manager,
     temp_datastore,  # noqa: F811
+    test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
 ):
     # Set up.

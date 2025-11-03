@@ -30,6 +30,7 @@ def mock_datetime_provider_today_20251021(monkeypatch):
 
 def test_plot_ialirt(
     temp_datastore: Path,  # noqa: F811
+    test_database,  # noqa: F811
 ) -> None:
     # Set up.
     test_data = TEST_DATA / "ialirt_plot_data.csv"
@@ -74,6 +75,7 @@ def test_plot_ialirt(
 
 def test_plot_ialirt_todays_data_copies_to_latest_figure(
     temp_datastore: Path,  # noqa: F811
+    test_database,  # noqa: F811
     mock_datetime_provider_today_20251021,
 ) -> None:
     # Set up.
