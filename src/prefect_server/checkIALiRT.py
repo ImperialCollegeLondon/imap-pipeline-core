@@ -12,7 +12,7 @@ from pydantic import Field
 from imap_mag.check import IALiRTAnomaly, SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt
 from imap_mag.db import Database
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 
 
@@ -95,7 +95,7 @@ async def send_monthly_test_message(
     # Send a monthly test notification on the first Monday of the month
     database = Database()
     workflow_progress = database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
 
     now = DatetimeProvider.now()

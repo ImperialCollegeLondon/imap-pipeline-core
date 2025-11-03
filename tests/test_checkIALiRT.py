@@ -6,9 +6,8 @@ from unittest import mock
 import pytest
 from prefect.exceptions import FailedRun
 
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.checkIALiRT import check_ialirt_flow
-from prefect_server.constants import PREFECT_CONSTANTS
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
@@ -38,12 +37,12 @@ async def test_check_ialirt_no_issues(
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
-    ialirt_monthly_test = test_database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+    ialirt_check_workflow = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
 
-    assert ialirt_monthly_test.get_progress_timestamp() is None
-    assert ialirt_monthly_test.get_last_checked_date() == NOW
+    assert ialirt_check_workflow.get_progress_timestamp() is None
+    assert ialirt_check_workflow.get_last_checked_date() == NOW
 
 
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
@@ -82,12 +81,12 @@ async def test_check_ialirt_no_files_default_dates(
     assert f"Loading I-ALiRT data from {YESTERDAY} to {TODAY}." in capture_cli_logs.text
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
-    ialirt_monthly_test = test_database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+    ialirt_check_workflow = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
 
-    assert ialirt_monthly_test.get_progress_timestamp() is None
-    assert ialirt_monthly_test.get_last_checked_date() == NOW
+    assert ialirt_check_workflow.get_progress_timestamp() is None
+    assert ialirt_check_workflow.get_last_checked_date() == NOW
 
 
 # Force the next tests to be at first Monday of the month
@@ -119,12 +118,12 @@ async def test_check_ialirt_first_monday_of_month_first_time(
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
-    ialirt_monthly_test = test_database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+    ialirt_check_workflow = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
 
-    assert ialirt_monthly_test.get_progress_timestamp() == NOW_FIRST_MONDAY_OF_MONTH
-    assert ialirt_monthly_test.get_last_checked_date() == NOW_FIRST_MONDAY_OF_MONTH
+    assert ialirt_check_workflow.get_progress_timestamp() == NOW_FIRST_MONDAY_OF_MONTH
+    assert ialirt_check_workflow.get_last_checked_date() == NOW_FIRST_MONDAY_OF_MONTH
 
     mock_teams_webhook_block.notify.assert_called_once()
 
@@ -140,13 +139,13 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     capture_cli_logs,
 ) -> None:
     # Set up.
-    ialirt_monthly_test = test_database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+    ialirt_check_workflow = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
     previous_progress_timestamp = NOW_FIRST_MONDAY_OF_MONTH - timedelta(seconds=10)
 
-    ialirt_monthly_test.update_progress_timestamp(previous_progress_timestamp)
-    test_database.save(ialirt_monthly_test)
+    ialirt_check_workflow.update_progress_timestamp(previous_progress_timestamp)
+    test_database.save(ialirt_check_workflow)
 
     # Exercise.
     await check_ialirt_flow(files=[TEST_DATA / "ialirt_data_without_anomalies.csv"])
@@ -154,11 +153,11 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
-    ialirt_monthly_test = test_database.get_workflow_progress(
-        PREFECT_CONSTANTS.CHECK_IALIRT.IALIRT_MONTHLY_TEST_WORKFLOW_NAME
+    ialirt_check_workflow = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
 
-    assert ialirt_monthly_test.get_progress_timestamp() == previous_progress_timestamp
-    assert ialirt_monthly_test.get_last_checked_date() == NOW_FIRST_MONDAY_OF_MONTH
+    assert ialirt_check_workflow.get_progress_timestamp() == previous_progress_timestamp
+    assert ialirt_check_workflow.get_last_checked_date() == NOW_FIRST_MONDAY_OF_MONTH
 
     mock_teams_webhook_block.notify.assert_not_called()

@@ -16,12 +16,8 @@ class PREFECT_CONSTANTS:
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
 
     class POLL_IALIRT:
-        IALIRT_DATABASE_WORKFLOW_NAME = "MAG_IALIRT"
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
         IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
-
-    class CHECK_IALIRT:
-        IALIRT_MONTHLY_TEST_WORKFLOW_NAME = "IALIRT_MONTHLY_TEST"
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
