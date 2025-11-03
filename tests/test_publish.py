@@ -161,7 +161,10 @@ def test_publish_file_to_sdc_cli(
 )
 @pytest.mark.asyncio
 async def test_publish_flow_to_sdc(
-    wiremock_manager, capture_cli_logs, dynamic_work_folder
+    wiremock_manager,
+    capture_cli_logs,
+    dynamic_work_folder,
+    prefect_test_fixture,  # noqa: F811
 ):
     # Set up.
     upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")

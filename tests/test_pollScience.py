@@ -150,6 +150,7 @@ def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: da
 async def test_poll_science_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     clean_datastore,
 ):
@@ -196,6 +197,7 @@ async def test_poll_science_autoflow_first_ever_run(
 async def test_poll_science_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     clean_datastore,
 ):
@@ -250,6 +252,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
 async def test_poll_science_specify_packets_and_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     force_database_update,
     capture_cli_logs,
@@ -310,6 +313,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
 async def test_poll_science_specify_ingestion_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
 ):
     # Set up.
@@ -372,7 +376,8 @@ def mock_fetch_science_to_fail_on_call(monkeypatch):
 async def test_database_progress_table_not_modified_if_poll_science_fails(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811,
+    prefect_test_fixture,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
     mock_fetch_science_to_fail_on_call,
 ):
     # Set up.
