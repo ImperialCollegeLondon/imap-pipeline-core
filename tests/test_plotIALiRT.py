@@ -2,7 +2,7 @@
 
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -10,11 +10,15 @@ from diffimg import diff
 
 from imap_mag.cli.plot.plot_ialirt import plot_ialirt
 from imap_mag.config import SaveMode
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import CONSTANTS, DatetimeProvider
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
+    END_OF_TODAY,
+    NOW,
     TEST_DATA,
     TEST_TRUTH,
+    TODAY,
+    mock_datetime_provider,  # noqa: F401
     temp_datastore,  # noqa: F401
 )
 
@@ -31,23 +35,38 @@ def mock_datetime_provider_today_20251021(monkeypatch):
 def test_plot_ialirt(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up.
     test_data = TEST_DATA / "ialirt_plot_data.csv"
 
-    (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
+    (temp_datastore / "ialirt" / TODAY.strftime("%Y/%m")).mkdir(
+        parents=True, exist_ok=True
+    )
     shutil.copy(
         test_data,
-        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
+        temp_datastore
+        / "ialirt"
+        / TODAY.strftime("%Y/%m")
+        / f"imap_ialirt_{TODAY.strftime('%Y%m%d')}.csv",
     )
+
+    ialirt_progress = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+    )
+    ialirt_progress.update_progress_timestamp(NOW)
+    test_database.save(ialirt_progress)
+
+    validation_progress = test_database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
+    )
+    validation_progress.update_last_checked_date(NOW - timedelta(hours=1))
+    test_database.save(validation_progress)
 
     expected_figure = TEST_TRUTH / "ialirt_quicklook.png"
 
     # Execute.
-    generated_plots = plot_ialirt(
-        start_date=datetime(2025, 10, 21, 0, 0, 0),
-        end_date=datetime(2025, 10, 21, 23, 59, 59),
-    )
+    generated_plots = plot_ialirt(start_date=TODAY, end_date=END_OF_TODAY)
 
     # Verify.
     assert len(generated_plots) == 1
