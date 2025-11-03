@@ -10,7 +10,7 @@ import pytest
 from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider, Environment
 
-NOW = datetime(2025, 6, 2, 12, 37, 9)
+NOW = datetime(2025, 6, 3, 12, 37, 9)  # should not be first Monday of month
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
 TOMORROW = TODAY + timedelta(days=1)
 YESTERDAY = TODAY - timedelta(days=1)
