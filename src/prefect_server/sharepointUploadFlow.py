@@ -45,7 +45,7 @@ async def upload_new_files_to_sharepoint(
 
     new_files_db = db.get_files_since(last_modified_date, how_many)
 
-    workflow_progress.record_checked_download(started)
+    workflow_progress.update_last_checked_date(started)
 
     logger.info(
         f"Found {len(new_files_db)} new files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
@@ -92,7 +92,7 @@ async def upload_new_files_to_sharepoint(
         logger.debug("Uploading completed")
         latest_file_timestamp = max(f.last_modified_date for f in files)
         new_progress_date = min(started, latest_file_timestamp.astimezone(timezone.utc))
-        workflow_progress.record_successful_download(new_progress_date)
+        workflow_progress.update_progress_timestamp(new_progress_date)
         logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
 
         result = Completed(message=f"{len(files)} files uploaded")

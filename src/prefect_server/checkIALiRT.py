@@ -1,7 +1,8 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from prefect import flow
+from prefect import flow, get_run_logger
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.client.schemas.objects import State
 from prefect.runtime import flow_run
@@ -10,7 +11,8 @@ from pydantic import Field
 
 from imap_mag.check import IALiRTAnomaly, SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt
-from imap_mag.util import DatetimeProvider
+from imap_mag.db import Database
+from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 
 
@@ -43,6 +45,8 @@ async def check_ialirt_flow(
     Check I-ALiRT data store data for anomalies.
     """
 
+    logger = get_run_logger()
+
     # If no files are provided, check data from yesterday to today
     start_date = DatetimeProvider.yesterday() if not files else None
     end_date = DatetimeProvider.today() if not files else None
@@ -52,6 +56,7 @@ async def check_ialirt_flow(
     )
 
     if not anomalies:
+        await send_monthly_test_message(logger, imap_notification_webhook_name)
         return Completed(message="No anomalies detected in I-ALiRT data.")
     else:
         # Report anomalies via Microsoft Teams
@@ -82,3 +87,38 @@ async def check_ialirt_flow(
             )
 
         return Failed(message="Anomalies detected in I-ALiRT data.")
+
+
+async def send_monthly_test_message(
+    logger, imap_notification_webhook_name: str
+) -> None:
+    # Send a monthly test notification on the first Monday of the month
+    database = Database()
+    workflow_progress = database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
+    )
+
+    now = DatetimeProvider.now()
+    progress_timestamp: datetime | None = workflow_progress.get_progress_timestamp()
+
+    if (
+        (now.weekday() == 0)
+        and (1 <= now.day <= 7)
+        and (not progress_timestamp or progress_timestamp.date() != now.date())
+    ):
+        imap_webhook_block = await MicrosoftTeamsWebhook.aload(
+            imap_notification_webhook_name
+        )
+        imap_webhook_block.notify_type = "info"  # type: ignore
+
+        await imap_webhook_block.notify(  # type: ignore
+            body="No anomalies detected in I-ALiRT data.",
+            subject="I-ALiRT Monthly Test - No Anomalies Detected",
+        )
+
+        workflow_progress.update_progress_timestamp(now)
+    else:
+        logger.debug("Not the first Monday of the month. Skipping test notification.")
+
+    workflow_progress.update_last_checked_date(now)
+    database.save(workflow_progress)

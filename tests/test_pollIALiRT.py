@@ -144,7 +144,7 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
 
     workflow_progress = test_database.get_workflow_progress("MAG_IALIRT")
-    workflow_progress.record_successful_download(progress_timestamp)
+    workflow_progress.update_progress_timestamp(progress_timestamp)
 
     test_database.save(workflow_progress)
     wiremock_manager.reset()

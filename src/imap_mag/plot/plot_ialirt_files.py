@@ -7,7 +7,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
+from imap_mag.db import Database
 from imap_mag.io.file import IALiRTQuicklookPathHandler
+from imap_mag.util import DatetimeProvider
+from imap_mag.util.constants import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -270,6 +273,7 @@ def create_figure(
     output_file = save_folder / f"ialirt_quicklook_{max_date.strftime('%Y%m%d')}.png"
 
     set_time_format(fig)
+    set_figure_title(fig)
 
     fig.set_size_inches(22, 12)
     fig.tight_layout()
@@ -312,3 +316,23 @@ def set_time_format(fig: plt.Figure) -> None:
         ax.xaxis.set_major_formatter(FuncFormatter(format_time_with_date))
         ax.tick_params(which="major", labelsize=8, length=5)
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
+
+
+def set_figure_title(fig: plt.Figure) -> None:
+    database = Database()
+    time_format = "%Y-%m-%d %H:%M:%S"
+
+    latest_data_timestamp = database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+    ).get_progress_timestamp()
+    latest_check_timestamp = database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
+    ).get_last_checked_date()
+
+    fig.suptitle(
+        "I-ALiRT Quicklook\n"
+        f"Generated on: {DatetimeProvider.now().strftime(time_format)} (UTC)\n"
+        f"Latest data downloaded at: {latest_data_timestamp.strftime(time_format) if latest_data_timestamp else 'N/A'} (UTC)\n"
+        f"Last check run at: {latest_check_timestamp.strftime(time_format) if latest_check_timestamp else 'N/A'} (UTC)",
+        fontsize=14,
+    )

@@ -167,7 +167,8 @@ def check_file_existence(
 async def test_poll_hk_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811,
+    prefect_test_fixture,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -235,6 +236,7 @@ async def test_poll_hk_autoflow_first_ever_run(
 async def test_poll_hk_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
@@ -259,7 +261,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     # Some data is available only for specific packets.
     for hk in available_hk:
         workflow_progress = test_database.get_workflow_progress(hk.packet_name)
-        workflow_progress.record_successful_download(progress_timestamp)
+        workflow_progress.update_progress_timestamp(progress_timestamp)
         test_database.save(workflow_progress)
 
         define_available_data_webpoda_mappings(
@@ -300,7 +302,8 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 async def test_poll_hk_specify_packets_and_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811,
+    prefect_test_fixture,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
     force_database_update,
     capture_cli_logs,
     dynamic_work_folder,
@@ -378,7 +381,8 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 async def test_poll_hk_specify_ert_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811,
+    prefect_test_fixture,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -468,7 +472,8 @@ def mock_functionality_to_fail_on_call(monkeypatch, function_to_mock):
 async def test_database_progress_table_not_modified_if_poll_hk_fails(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811,
+    prefect_test_fixture,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
     mock_functionality_to_fail_on_call,
 ):
     # Set up.

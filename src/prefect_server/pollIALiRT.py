@@ -163,7 +163,7 @@ async def poll_ialirt_flow(
             )
 
             latest_ialirt_date = database.get_workflow_progress(
-                PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
+                CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
             )
             message_body: str = (
                 f"View the [latest I-ALiRT data on Sharepoint]({PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_QUICKLOOK_SHAREPOINT_URL}).\n\n"
@@ -186,7 +186,7 @@ def do_poll_ialirt(
     logger,
 ) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
-    progress_item_id = PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_DATABASE_WORKFLOW_NAME
+    progress_item_id = CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
 
     date_manager = DownloadDateManager(
         progress_item_id,
