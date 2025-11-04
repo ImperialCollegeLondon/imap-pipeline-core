@@ -1,11 +1,11 @@
 [project]
 requires-python = ">=3.10"
 name = "imap-mag"
-version = "4.4.2"
+version = "4.5.0"
 
 [tool.poetry]
 name = "imap-mag"
-version = "4.4.2"
+version = "4.5.0"
 description = "Process IMAP data"
 authors = ["alastairtree"]
 readme = "README.md"
