@@ -61,8 +61,30 @@ def create_figure(
     fig = plt.figure()
     gs = fig.add_gridspec(3, 4)
 
-    # HK dangers
+    # GSE science
     ax00 = fig.add_subplot(gs[0, 0:2])
+
+    for i, b in enumerate(
+        [
+            "mag_B_GSE_x",
+            "mag_B_GSE_y",
+            "mag_B_GSE_z",
+            "mag_B_magnitude",
+        ]
+    ):
+        ax00.plot(
+            ialirt_data[ialirt_data[b].notna()].index,
+            ialirt_data[ialirt_data[b].notna()][b] * (1 + i * 0.1),
+            label=b.lstrip("mag_B_GSE_") if b != "mag_B_magnitude" else "|B|",
+        )
+
+    ax00.set_ylabel("[nT]")
+    ax00.legend(loc="upper right", fontsize="small", ncol=4)
+    ax00.grid()
+    ax00.set_title("GSE Field")
+
+    # HK dangers
+    ax02 = fig.add_subplot(gs[0, 2])
 
     for i, hk in enumerate(
         [
@@ -76,67 +98,19 @@ def create_figure(
             "mag_hk_hkp8v5c_danger",
         ]
     ):
-        ax00.plot(
+        ax02.plot(
             ialirt_data[ialirt_data[hk].notna()].index,
             ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_danger"),
         )
 
-    ax00.set_ylabel("0 == OK")
-    ax00.legend(loc="upper right", fontsize="small", ncol=4)
-    ax00.grid()
-    ax00.set_title("Danger Limits")
-
-    # 3.3 V
-    ax02 = fig.add_subplot(gs[0, 2])
-
-    ax02.plot(
-        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()]["mag_hk_hk3v3"],
-        linestyle="--",
-        label="Voltage",
-    )
-    ax02_left = ax02.twinx()
-    ax02_left.plot(
-        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()][
-            "mag_hk_hk3v3_current"
-        ],
-        color="orange",
-        label="Current",
-    )
-
-    ax02.set_ylabel("[V]")
-    ax02_left.set_ylabel("[mA]")
+    ax02.set_ylabel("0 == OK")
+    ax02.legend(loc="upper right", fontsize="small", ncol=4)
     ax02.grid()
-    ax02.set_title("3.3 V")
-
-    # -8 V
-    ax03 = fig.add_subplot(gs[0, 3])
-
-    ax03.plot(
-        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()]["mag_hk_hkn8v5"],
-        linestyle="--",
-        label="Voltage",
-    )
-    ax03_left = ax03.twinx()
-    ax03_left.plot(
-        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()][
-            "mag_hk_hkn8v5_current"
-        ],
-        color="orange",
-        label="Current",
-    )
-
-    ax03.set_ylabel("[V]")
-    ax03_left.set_ylabel("[mA]")
-    ax03.grid()
-    ax03.set_title("-8 V")
+    ax02.set_title("Danger Limits")
 
     # HK warnings
-    ax10 = fig.add_subplot(gs[1, 0:2], sharex=ax00)
+    ax03 = fig.add_subplot(gs[0, 3])
 
     for i, hk in enumerate(
         [
@@ -150,19 +124,67 @@ def create_figure(
             "mag_hk_hkp8v5c_warn",
         ]
     ):
-        ax10.plot(
+        ax03.plot(
             ialirt_data[ialirt_data[hk].notna()].index,
             ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_warn"),
         )
 
-    ax10.set_ylabel("0 == OK")
-    ax10.legend(loc="upper right", fontsize="small", ncol=4)
+    ax03.set_ylabel("0 == OK")
+    ax03.legend(loc="upper right", fontsize="small", ncol=4)
+    ax03.grid()
+    ax03.set_title("Warning Limits")
+
+    # 3.3 V
+    ax10 = fig.add_subplot(gs[1, 0])
+
+    ax10.plot(
+        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()].index,
+        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()]["mag_hk_hk3v3"],
+        linestyle="--",
+        label="Voltage",
+    )
+    ax10_left = ax10.twinx()
+    ax10_left.plot(
+        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()].index,
+        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()][
+            "mag_hk_hk3v3_current"
+        ],
+        color="orange",
+        label="Current",
+    )
+
+    ax10.set_ylabel("[V]")
+    ax10_left.set_ylabel("[mA]")
     ax10.grid()
-    ax10.set_title("Warning Limits")
+    ax10.set_title("3.3 V")
+
+    # -8 V
+    ax11 = fig.add_subplot(gs[1, 1])
+
+    ax11.plot(
+        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()].index,
+        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()]["mag_hk_hkn8v5"],
+        linestyle="--",
+        label="Voltage",
+    )
+    ax11_left = ax11.twinx()
+    ax11_left.plot(
+        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()].index,
+        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()][
+            "mag_hk_hkn8v5_current"
+        ],
+        color="orange",
+        label="Current",
+    )
+
+    ax11.set_ylabel("[V]")
+    ax11_left.set_ylabel("[mA]")
+    ax11.grid()
+    ax11.set_title("-8 V")
 
     # Bit errors
-    ax12 = fig.add_subplot(gs[1, 2], sharex=ax02)
+    ax12 = fig.add_subplot(gs[1, 2])
 
     ax12.plot(
         ialirt_data[ialirt_data["mag_hk_multbit_errs"].notna()].index,
@@ -226,7 +248,7 @@ def create_figure(
     ax21.set_title("Ranges")
 
     # Active
-    ax22 = fig.add_subplot(gs[2, 2], sharex=ax02)
+    ax22 = fig.add_subplot(gs[2, 2])
 
     ax22.plot(
         ialirt_data[ialirt_data["mag_hk_pri_isvalid"].notna()].index,
@@ -244,7 +266,7 @@ def create_figure(
     ax22.set_title("Status")
 
     # Temperatures
-    ax23 = fig.add_subplot(gs[2, 3], sharex=ax03)
+    ax23 = fig.add_subplot(gs[2, 3])
 
     ax23.plot(
         ialirt_data[ialirt_data["mag_hk_fob_temp"].notna()].index,
