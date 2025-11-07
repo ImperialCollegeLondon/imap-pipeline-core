@@ -78,6 +78,16 @@ env = [
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    "tests/datastore",
+    "docs",
+    "output",
+    "data",
+    "htmlcov",
+]
+
 [tool.ruff.lint]
 select = [
     "E",   # pycodestyle

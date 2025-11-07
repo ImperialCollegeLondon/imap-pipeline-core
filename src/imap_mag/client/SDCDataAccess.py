@@ -152,9 +152,7 @@ class SDCDataAccess:
 
         if ingest_start_day:
             date_format = "%Y%m%d"
-            params.append(
-                f"start_ingest_date={ingest_start_day.strftime(date_format)}"
-            )
+            params.append(f"start_ingest_date={ingest_start_day.strftime(date_format)}")
 
         if ingest_end_date:
             date_format = "%Y%m%d"

@@ -346,7 +346,7 @@ def test_get_start_end_dates_not_up_to_date(
     )
     assert "Using provided start date" in capture_cli_logs.text
     assert (
-        f"Packet MAG_SCI_NORM is not up to date. Downloading from {original_start_date}."
+        f"MAG_SCI_NORM is not up to date. Downloading from {original_start_date}."
         in capture_cli_logs.text
     )
 
@@ -384,8 +384,7 @@ def test_get_start_end_dates_fully_up_to_date(
     assert "Using provided end date" in capture_cli_logs.text
     assert "Using provided start date" in capture_cli_logs.text
     assert (
-        "Packet MAG_SCI_NORM is already up to date. Not downloading."
-        in capture_cli_logs.text
+        "MAG_SCI_NORM is already up to date. Not downloading." in capture_cli_logs.text
     )
 
     assert workflow_progress.last_checked_date is None
@@ -430,7 +429,7 @@ def test_get_start_end_dates_partially_up_to_date(
     assert "Using provided end date" in capture_cli_logs.text
     assert "Using provided start date" in capture_cli_logs.text
     assert (
-        f"Packet MAG_SCI_NORM is partially up to date. Downloading from {workflow_progress.progress_timestamp} (with buffer of {time_buffer})."
+        f"MAG_SCI_NORM is partially up to date. Downloading from {workflow_progress.progress_timestamp} (with buffer of {time_buffer})."
         in capture_cli_logs.text
     )
 

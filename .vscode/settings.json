@@ -7,7 +7,8 @@
         "editor.formatOnSave": true
     },
     "python.testing.pytestArgs": [
-        "-s", "tests"
+        "-s",
+        "tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
@@ -30,5 +31,5 @@
             "username": "postgres"
         }
     ],
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
 }

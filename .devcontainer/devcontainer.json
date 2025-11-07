@@ -9,6 +9,8 @@
         "ghcr.io/gvatsal60/dev-container-features/pre-commit:1": {},
         // allow access to the HOST docker socker for docker desktop
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+
+        // yuk-  this adds 250secs to build time
         "ghcr.io/mathworks/devcontainer-features/matlab:0": {
             "release": "r2024a",
             "products": "MATLAB Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox"
@@ -19,6 +21,8 @@
     "remoteEnv": {
         // add the poetry to the PATH for the dev user vscode
         "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
+
+        // pass through local environment variables to the devcontainer
         "IMAP_WEBPODA_TOKEN": "${localEnv:IMAP_WEBPODA_TOKEN}",
         "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
         "IALIRT_API_KEY": "${localEnv:IALIRT_API_KEY}",
@@ -47,7 +51,11 @@
                 "terminal.integrated.defaultProfile.linux": "zsh",
                 "terminal.integrated.profiles.linux": {
                     "zsh": {
-                        "path": "/bin/zsh"
+                        "path": "/bin/zsh",
+                        "args": [
+                            "-l",
+                            "-i"
+                        ]
                     }
                 }
             },

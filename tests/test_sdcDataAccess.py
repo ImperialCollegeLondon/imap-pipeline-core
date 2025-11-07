@@ -10,6 +10,7 @@ import pytest
 from pydantic import SecretStr
 
 from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.util import Environment
 
 
 def test_sdc_data_access_constructor_sets_config() -> None:
@@ -117,9 +118,7 @@ def test_spice_query_with_type_and_time_range(wiremock_manager) -> None:
             "file_intervals_j2000": [[315576066.1839245, 4575787269.183866]],
             "min_date_datetime": "2010-01-01, 00:00:00",
             "max_date_datetime": "2145-01-01, 00:00:00",
-            "file_intervals_datetime": [
-                ["2010-01-01T00:00:00", "2145-01-01T00:00:00"]
-            ],
+            "file_intervals_datetime": [["2010-01-01T00:00:00", "2145-01-01T00:00:00"]],
             "min_date_sclk": "1/0000000000:00000",
             "max_date_sclk": "1/4260214609:46809",
             "file_intervals_sclk": [["1/0000000000:00000", "1/4260214609:46809"]],
@@ -138,9 +137,7 @@ def test_spice_query_with_type_and_time_range(wiremock_manager) -> None:
             "file_intervals_j2000": [[315576066.1839245, 4575787269.183866]],
             "min_date_datetime": "2010-01-01, 00:00:00",
             "max_date_datetime": "2145-01-01, 00:00:00",
-            "file_intervals_datetime": [
-                ["2010-01-01T00:00:00", "2145-01-01T00:00:00"]
-            ],
+            "file_intervals_datetime": [["2010-01-01T00:00:00", "2145-01-01T00:00:00"]],
             "min_date_sclk": "1/0000000000:00000",
             "max_date_sclk": "1/4260214608:42276",
             "file_intervals_sclk": [["1/0000000000:00000", "1/4260214608:42276"]],
@@ -208,9 +205,7 @@ def test_spice_query_with_latest_flag(wiremock_manager) -> None:
             "file_intervals_j2000": [[315576066.1839245, 4575787269.183866]],
             "min_date_datetime": "2010-01-01, 00:00:00",
             "max_date_datetime": "2145-01-01, 00:00:00",
-            "file_intervals_datetime": [
-                ["2010-01-01T00:00:00", "2145-01-01T00:00:00"]
-            ],
+            "file_intervals_datetime": [["2010-01-01T00:00:00", "2145-01-01T00:00:00"]],
             "min_date_sclk": "1/0000000000:00000",
             "max_date_sclk": "1/4260214608:42276",
             "file_intervals_sclk": [["1/0000000000:00000", "1/4260214608:42276"]],
@@ -371,3 +366,123 @@ def get_sample_spice_data():
             "timestamp": 1761984608.0,
         },
     ]
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_spice_download(wiremock_manager, temp_folder_path):
+    """Test downloading SPICE files."""
+    wiremock_manager.reset()
+
+    # Setup query response
+    sample_data = get_sample_spice_data()
+    # Return only the spacecraft_clock kernel
+    spice_kernel = sample_data[2]
+
+    wiremock_manager.add_string_mapping(
+        "/api-key/spice-query?start_ingest_date=20251101",
+        json.dumps([spice_kernel]),
+        priority=1,
+    )
+
+    # Setup download response - return the actual test SPICE file
+    # Note: imap_data_access adds /imap/spice/ prefix to the download path
+    spice_file_path = (
+        Path(__file__).parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
+    )
+    wiremock_manager.add_file_mapping(
+        "/api-key/download/imap/spice/sclk/imap_sclk_0032.tsc",
+        str(spice_file_path),
+    )
+
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        data_access = SDCDataAccess(
+            auth_code=SecretStr("12345"),
+            data_dir=temp_folder_path,
+            sdc_url=wiremock_manager.get_url(),
+        )
+
+        # Import and test fetch_spice
+        from imap_mag.spice import fetch_spice
+
+        downloaded = fetch_spice(
+            data_access=data_access,
+            ingest_start_day=datetime(2025, 11, 1),
+        )
+
+    # Verify download
+    assert len(downloaded) == 1
+
+    # Check that file was downloaded
+    downloaded_file = next(iter(downloaded.keys()))
+    assert downloaded_file.exists()
+    assert downloaded_file.stat().st_size > 0
+    assert downloaded_file.name == "imap_sclk_0032.tsc"
+
+    # Check metadata
+    metadata = downloaded[downloaded_file]
+    assert metadata["file_name"] == "sclk/imap_sclk_0032.tsc"
+    assert metadata["kernel_type"] == "spacecraft_clock"
+    assert metadata["version"] == 32
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
+    """Test downloading multiple SPICE files."""
+    wiremock_manager.reset()
+
+    # Setup query response with all sample data
+    sample_data = get_sample_spice_data()
+
+    wiremock_manager.add_string_mapping(
+        "/api-key/spice-query?start_ingest_date=20251101",
+        json.dumps(sample_data),
+        priority=1,
+    )
+
+    # Setup download responses - we'll use the same file for all downloads as a test
+    # Note: imap_data_access adds /imap/spice/ prefix to the download path
+    spice_file_path = (
+        Path(__file__).parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
+    )
+
+    for item in sample_data:
+        wiremock_manager.add_file_mapping(
+            f"/api-key/download/imap/spice/{item['file_name']}",
+            str(spice_file_path),
+        )
+
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        data_access = SDCDataAccess(
+            auth_code=SecretStr("12345"),
+            data_dir=temp_folder_path,
+            sdc_url=wiremock_manager.get_url(),
+        )
+
+        # Import and test fetch_spice
+        from imap_mag.spice import fetch_spice
+
+        downloaded = fetch_spice(
+            data_access=data_access,
+            ingest_start_day=datetime(2025, 11, 1),
+        )
+
+    # Verify all files were downloaded
+    assert len(downloaded) == 3
+
+    # Check that all files exist
+    for downloaded_file, metadata in downloaded.items():
+        assert downloaded_file.exists()
+        assert downloaded_file.stat().st_size > 0
+        assert metadata["file_name"] in [item["file_name"] for item in sample_data]
