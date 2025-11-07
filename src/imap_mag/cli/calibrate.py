@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 
+from imap_mag import appUtils
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.config import AppSettings
-from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
-from imap_mag.io import DatastoreFileFinder, OutputManager
+from imap_mag.config import AppSettings, CalibrationConfig, GradiometryConfig, SaveMode
+from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -36,6 +36,10 @@ def gradiometry(
     sc_interference_threshold: Annotated[
         float, typer.Option(help="SC interference threshold")
     ] = 10.0,
+    save_mode: Annotated[
+        SaveMode,
+        typer.Option(help="Whether to save locally only or to also save to database"),
+    ] = SaveMode.LocalOnly,
 ) -> Path:
     """
     Run gradiometry calibration.
@@ -74,7 +78,9 @@ def gradiometry(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = OutputManager(app_settings.data_store)
+    outputManager = appUtils.getOutputManagerByMode(
+        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+    )
 
     # TODO: REFACTOR - this is convoluted to add the 2 files. Something like outputManager.add_files(layer.get_output_files()) would be better
     (output_calibration_path, _) = outputManager.add_file(
@@ -105,6 +111,10 @@ def calibrate(
             help="Configuration for the calibration - should be a YAML file or a JSON string",
         ),
     ] = None,
+    save_mode: Annotated[
+        SaveMode,
+        typer.Option(help="Whether to save locally only or to also save to database"),
+    ] = SaveMode.LocalOnly,
 ) -> Path:
     """
     Generate calibration parameters for a given input file.
@@ -157,7 +167,9 @@ def calibrate(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = OutputManager(app_settings.data_store)
+    outputManager = appUtils.getOutputManagerByMode(
+        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+    )
 
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler
