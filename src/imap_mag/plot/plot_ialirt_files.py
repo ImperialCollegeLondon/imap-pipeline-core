@@ -354,7 +354,7 @@ def set_figure_title(fig: plt.Figure) -> None:
     fig.suptitle(
         "I-ALiRT Quicklook\n"
         f"Generated at: {DatetimeProvider.now().strftime(time_format)} (UTC)\n"
-        f"Lastest downloaded timestamp: {latest_data_timestamp.strftime(time_format) if latest_data_timestamp else 'N/A'} (UTC)\n"
+        f"Last downloaded timestamp: {latest_data_timestamp.strftime(time_format) if latest_data_timestamp else 'N/A'} (UTC)\n"
         f"Last check run at: {latest_check_timestamp.strftime(time_format) if latest_check_timestamp else 'N/A'} (UTC)",
         fontsize=14,
     )
