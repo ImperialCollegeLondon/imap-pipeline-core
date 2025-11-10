@@ -47,7 +47,7 @@ process:
     work_sub_folder:
 
 upload:
-    root_path: "Flight Data"
+    root_path: "Flight Data (dev)"
     paths_to_match:
         - "*science/mag/l1b/*"
         - "*science/mag/l1c/*"
