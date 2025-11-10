@@ -98,6 +98,8 @@ def create_figure(
             "mag_hk_hkp8v5c_danger",
         ]
     ):
+        # Multiply by (1 + i * 0.1) to offset the lines for better visibility
+        # if they are ever equal to 1 at the same time.
         ax02.plot(
             ialirt_data[ialirt_data[hk].notna()].index,
             ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
@@ -124,6 +126,8 @@ def create_figure(
             "mag_hk_hkp8v5c_warn",
         ]
     ):
+        # Multiply by (1 + i * 0.1) to offset the lines for better visibility
+        # if they are ever equal to 1 at the same time.
         ax03.plot(
             ialirt_data[ialirt_data[hk].notna()].index,
             ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
