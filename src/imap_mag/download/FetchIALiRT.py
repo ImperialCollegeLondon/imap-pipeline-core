@@ -60,6 +60,19 @@ class FetchIALiRT:
                 self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
             )
 
+            # Aggregate data by multiple instruments per timestamp
+            rules: dict = dict.fromkeys(downloaded_data, "first")
+            del rules[self.__DATE_INDEX]
+
+            if "instrument" in rules:
+                rules["instrument"] = lambda x: ",".join(x.dropna().unique())
+
+            downloaded_data = (
+                downloaded_data.groupby(self.__DATE_INDEX)
+                .aggregate(rules)
+                .reset_index()
+            )
+
             downloaded_dates = pd.to_datetime(
                 downloaded_data[self.__DATE_INDEX]
             ).dt.date
