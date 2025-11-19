@@ -62,9 +62,8 @@ def test_spice_query(wiremock_manager) -> None:
     wiremock_manager.reset()
 
     # Configure wiremock to return SPICE data for the query
-    # Note: imap_data_access adds /api-key/ prefix to the base URL
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_ingest_date=20251101",
+        "/spice-query?start_ingest_date=20251101",
         json.dumps(sample_spice_data),
         priority=1,
     )
@@ -151,10 +150,9 @@ def test_spice_query_with_type_and_time_range(wiremock_manager) -> None:
     wiremock_manager.reset()
 
     # Configure wiremock to return SPICE data for the query with type and time range
-    # Note: imap_data_access adds /api-key/ prefix to the base URL
     # Note: Parameter order matters - they are added in the order specified in the method
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_time=1761984600&end_time=1761984610&type=spacecraft_clock",
+        "/spice-query?start_time=1761984600&end_time=1761984610&type=spacecraft_clock",
         json.dumps(sample_spice_data),
         priority=1,
     )
@@ -219,10 +217,10 @@ def test_spice_query_with_latest_flag(wiremock_manager) -> None:
     wiremock_manager.reset()
 
     # Configure wiremock to return only latest version
-    # Note: imap_data_access adds /api-key/ prefix to the base URL
+    # Note: imap_data_access adds / prefix to the base URL
     # Note: Parameter order matters - they are added in the order specified in the method
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_time=1761984600&end_time=1761984610&type=spacecraft_clock&latest=True",
+        "/spice-query?start_time=1761984600&end_time=1761984610&type=spacecraft_clock&latest=True",
         json.dumps(sample_spice_data),
         priority=1,
     )
@@ -265,9 +263,8 @@ def test_spice_query_with_date_range(wiremock_manager) -> None:
     wiremock_manager.reset()
 
     # Configure wiremock to return SPICE data for the query with date range
-    # Note: imap_data_access adds /api-key/ prefix to the base URL
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_ingest_date=20251101&end_ingest_date=20251105",
+        "/spice-query?start_ingest_date=20251101&end_ingest_date=20251105",
         json.dumps(sample_spice_data),
         priority=1,
     )
@@ -382,7 +379,7 @@ def test_spice_download(wiremock_manager, temp_folder_path):
     spice_kernel = sample_data[2]
 
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_ingest_date=20251101",
+        "/spice-query?start_ingest_date=20251101",
         json.dumps([spice_kernel]),
         priority=1,
     )
@@ -393,7 +390,7 @@ def test_spice_download(wiremock_manager, temp_folder_path):
         Path(__file__).parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
     )
     wiremock_manager.add_file_mapping(
-        "/api-key/download/imap/spice/sclk/imap_sclk_0032.tsc",
+        "/download/imap/spice/sclk/imap_sclk_0032.tsc",
         str(spice_file_path),
     )
 
@@ -408,7 +405,7 @@ def test_spice_download(wiremock_manager, temp_folder_path):
         )
 
         # Import and test fetch_spice
-        from imap_mag.spice import fetch_spice
+        from imap_mag.cli.fetch.spice import fetch_spice
 
         downloaded = fetch_spice(
             data_access=data_access,
@@ -419,13 +416,13 @@ def test_spice_download(wiremock_manager, temp_folder_path):
     assert len(downloaded) == 1
 
     # Check that file was downloaded
-    downloaded_file = next(iter(downloaded.keys()))
-    assert downloaded_file.exists()
-    assert downloaded_file.stat().st_size > 0
-    assert downloaded_file.name == "imap_sclk_0032.tsc"
+    downloaded_file = next(iter(downloaded))
+    assert downloaded_file[0].exists()
+    assert downloaded_file[0].stat().st_size > 0
+    assert downloaded_file[0].name == "imap_sclk_0032.tsc"
 
     # Check metadata
-    metadata = downloaded[downloaded_file]
+    metadata = downloaded[0][2]
     assert metadata["file_name"] == "sclk/imap_sclk_0032.tsc"
     assert metadata["kernel_type"] == "spacecraft_clock"
     assert metadata["version"] == 32
@@ -443,7 +440,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
     sample_data = get_sample_spice_data()
 
     wiremock_manager.add_string_mapping(
-        "/api-key/spice-query?start_ingest_date=20251101",
+        "/spice-query?start_ingest_date=20251101",
         json.dumps(sample_data),
         priority=1,
     )
@@ -456,7 +453,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
 
     for item in sample_data:
         wiremock_manager.add_file_mapping(
-            f"/api-key/download/imap/spice/{item['file_name']}",
+            f"/download/imap/spice/{item['file_name']}",
             str(spice_file_path),
         )
 
@@ -471,7 +468,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
         )
 
         # Import and test fetch_spice
-        from imap_mag.spice import fetch_spice
+        from imap_mag.cli.fetch.spice import fetch_spice
 
         downloaded = fetch_spice(
             data_access=data_access,
@@ -482,7 +479,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
     assert len(downloaded) == 3
 
     # Check that all files exist
-    for downloaded_file, metadata in downloaded.items():
+    for downloaded_file, handler, metadata in downloaded:
         assert downloaded_file.exists()
         assert downloaded_file.stat().st_size > 0
         assert metadata["file_name"] in [item["file_name"] for item in sample_data]

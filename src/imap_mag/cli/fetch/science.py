@@ -5,12 +5,12 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.io.file import SciencePathHandler
+from imap_mag.io.OutputManager import OutputManager
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceLevel, ScienceMode
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ def fetch_science(
     output_science: dict[Path, SciencePathHandler] = dict()
 
     if app_settings.fetch_science.publish_to_data_store:
-        output_manager = appUtils.getOutputManagerByMode(
+        output_manager = OutputManager.CreateByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )

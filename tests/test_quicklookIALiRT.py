@@ -10,7 +10,7 @@ from tests.util.miscellaneous import (
     TEST_DATA,
     temp_datastore,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 @pytest.mark.skipif(

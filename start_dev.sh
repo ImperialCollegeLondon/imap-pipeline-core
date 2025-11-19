@@ -42,6 +42,7 @@ runServer() {
 }
 
 runDatabase() {
+
     echo "Starting Postgres database for IMAP dev"
     DB_CONTAINER=postgres_imap_dev
     # remove it if needed
@@ -72,7 +73,12 @@ deployToServer() {
 
     # if the first arg is --no-deploy, skip deployment
     if [ "$SKIP_DEPLOY" == "--no-deploy" ]; then
-    # VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TO PROCEED
+
+        # since not doing the deployment we need to setup the database
+        imap-db create-db
+        imap-db upgrade-db
+
+        # VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TO PROCEED
         echo "SERVERS HAVE STARTED - Skipping deployment to server"
         return
     fi
@@ -81,10 +87,7 @@ deployToServer() {
     echo "Deploying to server"
     prefect work-pool create default-pool --type process --overwrite
 
-    PREFECT_LOGGING_ROOT_LEVEL="INFO" \
-        PREFECT_SERVER_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
-        PREFECT_INTERNAL_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
-            python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
+    python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
 
     echo "Deployment complete"
 }

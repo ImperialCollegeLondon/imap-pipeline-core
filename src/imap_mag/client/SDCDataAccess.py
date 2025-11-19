@@ -175,7 +175,7 @@ class SDCDataAccess:
 
         # Construct URL
         query_string = "&".join(params)
-        url = f"{imap_data_access.io._get_base_url()}/spice-query?{query_string}"
+        url = f"{self.get_url_base()}/spice-query?{query_string}"
 
         logger.info("Querying SPICE files with URL: %s", url)
 
@@ -188,3 +188,6 @@ class SDCDataAccess:
             logger.debug("Received JSON: %s", items)
 
         return items
+
+    def get_url_base(self):
+        return imap_data_access.config["DATA_ACCESS_URL"]

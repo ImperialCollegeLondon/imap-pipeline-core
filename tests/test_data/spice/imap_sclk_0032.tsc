@@ -10,7 +10,7 @@ IMAP Spacecraft Clock Kernel (SCLK)
      This file is a SPICE spacecraft clock (SCLK) kernel containing
      information required for time conversions involving the on-board
      IMAP spacecraft clock.
- 
+
 Version
 --------------------------------------------------------
 
@@ -26,14 +26,14 @@ Version
          Updated text to replace references to RBSP with SPP
 
      IMAP Version 0.0 - August 7, 2014 -- Eric Melin
-        The initial SPP spice kernel.  
-        This file was created by using RBSPA initial kernel and 
-        modifying the spacecraft ID. 
+        The initial SPP spice kernel.
+        This file was created by using RBSPA initial kernel and
+        modifying the spacecraft ID.
 
- 
+
 Usage
 --------------------------------------------------------
-  
+
      This file is used by the SPICE system as follows: programs that
      make use of this SCLK kernel must 'load' the kernel, normally
      during program initialization.  Loading the kernel associates
@@ -50,18 +50,18 @@ Usage
                   furnsh_c ( SCLK_kernel_name );
 
      Once loaded, the SCLK time conversion routines will be able to
-     access the necessary data located in this kernel for their 
+     access the necessary data located in this kernel for their
      designed purposes.
 
 References
 --------------------------------------------------------
- 
+
          1.   "SCLK Required Reading"
 
 Inquiries
 --------------------------------------------------------
 
-     If you have any questions regarding this file or its usage, 
+     If you have any questions regarding this file or its usage,
      contact:
 
            Scott Turner
@@ -73,8 +73,8 @@ Kernel Data
 
      The first block of keyword equals value assignments define the
      type, parallel time system, and format of the spacecraft clock.
-     These fields are invariant from SCLK kernel update to SCLK 
-     kernel update.    
+     These fields are invariant from SCLK kernel update to SCLK
+     kernel update.
 
      The IMAP spacecraft clock is represented by the SPICE
      type 1 SCLK kernel.  It uses TDT, Terrestrial Dynamical Time,
@@ -114,12 +114,12 @@ SCLK01_OUTPUT_DELIM_43     = (            2 )
      remaining sections of the kernel may require updates as the clock
      correlation coefficients evolve in time.  The first section below
      establishes the clock partitions.  The data in this section consists
-     of two parallel arrays, which denote the start and end values in 
+     of two parallel arrays, which denote the start and end values in
      ticks of each partition of the spacecraft clock.
 
      SPICE utilizes these two arrays to map from spacecraft clock ticks,
      determined with the usual modulo arithmetic, to encoded SCLK--the
-     internal, monotonically increasing sequence used to tag various 
+     internal, monotonically increasing sequence used to tag various
      data sources with spacecraft clock.
 
 \begindata
@@ -151,38 +151,38 @@ SCLK_PARTITION_END_43      = ( 2.14748364799999e+14 )
 
 SCLK01_COEFFICIENTS_43     = (
 
-                   0     @01-JAN-2010-00:01:06.184000     1.00000000000       
-      24822451300000     @24-SEP-2025-22:31:35.831485     1.00000000000       
-      24827384750000     @26-SEP-2025-01:56:04.742538     1.00000000000       
-      24831795450000     @27-SEP-2025-02:26:18.660826     0.99999908847       
-      24837318950000     @28-SEP-2025-09:07:28.560129     0.99999908853       
-      24841014800000     @29-SEP-2025-05:39:25.492756     0.99999908837       
-      24846929950000     @30-SEP-2025-14:31:08.384908     0.99999908797       
-      24852240150000     @01-OCT-2025-20:01:12.288047     0.99999908597       
-      24856920150000     @02-OCT-2025-22:01:12.202494     0.99999909228       
-      24861600150000     @04-OCT-2025-00:01:12.117531     0.99999908917       
-      24875640150000     @07-OCT-2025-06:01:11.861770     0.99999908927       
-      24878880150000     @08-OCT-2025-00:01:11.802755     0.99999908938       
-      24884280150000     @09-OCT-2025-06:01:11.704408     0.99999908946       
-      24888780150000     @10-OCT-2025-07:01:11.622459     0.99999909028       
-      24889500150000     @10-OCT-2025-11:01:11.609359     0.99999908975       
-      24895440150000     @11-OCT-2025-20:01:11.501221     0.99999909028       
-      24906060150000     @14-OCT-2025-07:01:11.307997     0.99999909096       
-      24907680150000     @14-OCT-2025-16:01:11.278544     0.99999909107       
-      24914520150000     @16-OCT-2025-06:01:11.154203     0.99999909156       
-      24922079900000     @18-OCT-2025-00:01:06.016851     0.99999909164       
-      24927660150000     @19-OCT-2025-07:01:10.915474     0.99999909233       
-      24930000150000     @19-OCT-2025-20:01:10.872995     0.99999909238       
-      24935220150000     @21-OCT-2025-01:01:10.778239     0.99999909249       
-      24940620150000     @22-OCT-2025-07:01:10.680227     0.99999909327       
-      24942240150000     @22-OCT-2025-16:01:10.650849     0.99999909292       
-      24948000150000     @24-OCT-2025-00:01:10.546353     0.99999909324       
-      24952679900000     @25-OCT-2025-02:01:05.461485     0.99999909350       
-      24957900150000     @26-OCT-2025-07:01:10.366842     0.99999909385       
-      24960240150000     @26-OCT-2025-20:01:10.324434     0.99999909393       
-      24966540150000     @28-OCT-2025-07:01:10.210269     0.99999909430       
-      24969240150000     @28-OCT-2025-22:01:10.161361     0.99999909430       
-      24973740150000     @29-OCT-2025-23:01:10.079848     0.99999909479       
-      24982380200000     @31-OCT-2025-23:01:10.923427     0.99999909462       
+                   0     @01-JAN-2010-00:01:06.184000     1.00000000000
+      24822451300000     @24-SEP-2025-22:31:35.831485     1.00000000000
+      24827384750000     @26-SEP-2025-01:56:04.742538     1.00000000000
+      24831795450000     @27-SEP-2025-02:26:18.660826     0.99999908847
+      24837318950000     @28-SEP-2025-09:07:28.560129     0.99999908853
+      24841014800000     @29-SEP-2025-05:39:25.492756     0.99999908837
+      24846929950000     @30-SEP-2025-14:31:08.384908     0.99999908797
+      24852240150000     @01-OCT-2025-20:01:12.288047     0.99999908597
+      24856920150000     @02-OCT-2025-22:01:12.202494     0.99999909228
+      24861600150000     @04-OCT-2025-00:01:12.117531     0.99999908917
+      24875640150000     @07-OCT-2025-06:01:11.861770     0.99999908927
+      24878880150000     @08-OCT-2025-00:01:11.802755     0.99999908938
+      24884280150000     @09-OCT-2025-06:01:11.704408     0.99999908946
+      24888780150000     @10-OCT-2025-07:01:11.622459     0.99999909028
+      24889500150000     @10-OCT-2025-11:01:11.609359     0.99999908975
+      24895440150000     @11-OCT-2025-20:01:11.501221     0.99999909028
+      24906060150000     @14-OCT-2025-07:01:11.307997     0.99999909096
+      24907680150000     @14-OCT-2025-16:01:11.278544     0.99999909107
+      24914520150000     @16-OCT-2025-06:01:11.154203     0.99999909156
+      24922079900000     @18-OCT-2025-00:01:06.016851     0.99999909164
+      24927660150000     @19-OCT-2025-07:01:10.915474     0.99999909233
+      24930000150000     @19-OCT-2025-20:01:10.872995     0.99999909238
+      24935220150000     @21-OCT-2025-01:01:10.778239     0.99999909249
+      24940620150000     @22-OCT-2025-07:01:10.680227     0.99999909327
+      24942240150000     @22-OCT-2025-16:01:10.650849     0.99999909292
+      24948000150000     @24-OCT-2025-00:01:10.546353     0.99999909324
+      24952679900000     @25-OCT-2025-02:01:05.461485     0.99999909350
+      24957900150000     @26-OCT-2025-07:01:10.366842     0.99999909385
+      24960240150000     @26-OCT-2025-20:01:10.324434     0.99999909393
+      24966540150000     @28-OCT-2025-07:01:10.210269     0.99999909430
+      24969240150000     @28-OCT-2025-22:01:10.161361     0.99999909430
+      24973740150000     @29-OCT-2025-23:01:10.079848     0.99999909479
+      24982380200000     @31-OCT-2025-23:01:10.923427     0.99999909462
 
 )

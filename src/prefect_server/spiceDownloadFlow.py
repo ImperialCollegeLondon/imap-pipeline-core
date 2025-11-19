@@ -9,11 +9,12 @@ from pydantic import Field
 
 from imap_db.main import create_db, upgrade_db
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
+from imap_mag.cli.fetch.spice import fetch_spice
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.config import AppSettings
+from imap_mag.config import AppSettings, FetchMode
 from imap_mag.db import Database, update_database_with_progress
-from imap_mag.spice import fetch_spice, parse_ingestion_date
-from imap_mag.util import CONSTANTS, DatetimeProvider, Environment
+from imap_mag.io.file import SPICEPathHandler
+from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, TimeConversion
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
 
@@ -182,26 +183,29 @@ async def poll_spice_flow(
             sdc_url=app_settings.fetch_spice.api.url_base,
         )
 
-        downloaded_spice: dict[Path, dict[str, str]] = fetch_spice(
-            data_access=data_access,
-            ingest_start_day=ingest_start_day,
-            ingest_end_date=ingest_end_date,
-            file_name=file_name,
-            start_time=start_time,
-            end_time=end_time,
-            kernel_type=kernel_type,
-            latest=latest,
+        downloaded_spice: list[tuple[Path, SPICEPathHandler, dict[str, str]]] = (
+            fetch_spice(
+                data_access=data_access,
+                ingest_start_day=ingest_start_day,
+                ingest_end_date=ingest_end_date,
+                file_name=file_name,
+                start_time=start_time,
+                end_time=end_time,
+                kernel_type=kernel_type,
+                latest=latest,
+                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+            )
         )
-
-    # TODO: move downloaded spice files into the datatore
 
     # Update database with latest ingestion date as progress
     if use_database:
         # Find the latest ingestion date from downloaded files
         ingestion_dates: list[datetime] = []
-        for metadata in downloaded_spice.values():
-            if metadata.get("ingestion_date"):
-                ingestion_date = parse_ingestion_date(metadata)
+        for _, _, metadata in downloaded_spice:
+            ingestion_date = TimeConversion.try_extract_iso_like_datetime(
+                metadata, "ingestion_date"
+            )
+            if ingestion_date:
                 ingestion_dates.append(ingestion_date)
 
         latest_ingestion_date: datetime | None = (

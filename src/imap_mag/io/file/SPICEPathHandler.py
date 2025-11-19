@@ -1,0 +1,159 @@
+import logging
+import re
+import typing
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.util import TimeConversion
+
+logger = logging.getLogger(__name__)
+
+T = typing.TypeVar("T", bound="SPICEPathHandler")
+
+"""
+See https://lasp.colorado.edu/galaxy/spaces/IMAP/pages/221734667/SDC+Expected+SPICE+File+List
+for expected SPICE file naming conventions:
+de###.bsp
+L1_de###.bsp
+naif####.tls
+pck#####.tpc
+earth_000101_yymmdd_yymmdd.bpc
+imap_yyyy_doy_yyyy_doy_##.ah.bc and imap_yyyy_doy_yyyy_doy_##.ah.a
+imap_yyyy_doy_yyyy_doy_##.ap.bc or imap_yyyy_doy_yyyy_doy_##.ap.a
+imap_dps_yyyy_doy_yyyy_doy_v###.ah.bc
+imap_yyyy_doy_a##.spice.mk or imap_yyyy_doy_a##.stk_a.mk
+imap_yyyy_doy_yyyy_doy_##.spin.csv
+imap_yyyy_doy_##.repoint.csv
+IMAP_yyyy_doy_e##.mk
+imap_launch_yyyymmdd_yyyymmdd_v##.bsp
+imap_nom_yyyymmdd_yyyymmdd_v##.bsp
+imap_recon_yyyymmdd_yyyymmdd_v##.bsp
+imap_pred_yyyymmdd_yyyymmdd_v  ??? bsp?
+imap_noburn_yyyymmdd_yyyymmdd_v##.bsp
+imap_long_yyyymmdd_yyyymmdd_v##.bsp
+imap_yyyy_doy_yyyy_doy_sff_hist__##.sff
+imap_###.tf
+imap_science_####.tf
+imap_sclk_####.tsc
+"""
+
+
+@dataclass
+class SPICEPathHandler(IFilePathHandler):
+    """
+    Path handler for all SPICE files such as kernels and meta-kernels.
+
+    e.g.
+    .work/spice/imap/spice/ck/imap_dps_2025_281_2025_286_001.ah.bc
+    .work/spice/imap/spice/sclk/imap_sclk_0003.tsc
+    """
+
+    kernel_folder: str  # e.g., ck, sclk, etc.
+    filename: str
+
+    # the content date we try and take from spice file API metadata if possible
+    # uses GET /spice-query filed min_date_datetime
+    # SPICE files might span long date ranges so this is just the starting date for the content
+    content_date: datetime | None = None
+
+    root_folder: str = "spice"
+    mission: str = "imap"
+
+    matching_file_patterns: typing.ClassVar[list[tuple[str, str]]] = [
+        (r"^de.*\.bsp$", "spk"),
+        (r"^L1_de.*\.bsp$", "spk"),
+        (r"^naif.*\.tls$", "lsk"),
+        (r"^pck.*\.tpc$", "pck"),
+        (r"^earth_.*\.bpc$", "bpc"),
+        (r"^imap_.*\.ah\.bc$", "ck"),
+        (r"^imap_.*\.ah\.a$", "ck"),
+        (r"^imap_.*\.ap\.bc$", "ck"),
+        (r"^imap_.*\.ap\.a$", "ck"),
+        (r"^imap_dps_.*\.ah\.bc$", "ck"),
+        (r"^imap_.*\.spice\.mk$", "mk"),
+        (r"^imap_.*\.stk_a\.mk$", "mk"),
+        (r"^imap_.*\.spin\.csv$", "spin"),
+        (r"^imap_.*\.repoint\.csv$", "repoint"),
+        (r"^IMAP_.*\.mk$", "mk"),
+        (r"^imap_launch_.*\.bsp$", "spk"),
+        (r"^imap_nom_.*\.bsp$", "spk"),
+        (r"^imap_recon_.*\.bsp$", "spk"),
+        (r"^imap_pred_.*\.bsp$", "spk"),
+        (r"^imap_noburn_.*\.bsp$", "spk"),
+        (r"^imap_long_.*\.bsp$", "spk"),
+        (r"^imap_.*\.sff$", "activities"),
+        (r"^imap_.*\.tf$", "fk"),
+        (r"^imap_science_.*\.tf$", "fk"),
+        (r"^imap_sclk_.*\.tsc$", "sclk"),
+    ]
+
+    def supports_sequencing(self) -> bool:
+        return False
+
+    def get_content_date_for_indexing(self) -> datetime | None:
+        return self.content_date
+
+    def get_folder_structure(self) -> str:
+        super()._check_property_values(
+            "folder structure", ["root_folder", "kernel_folder"]
+        )
+        assert self.kernel_folder
+
+        return (Path(self.root_folder) / self.kernel_folder).as_posix()
+
+    def get_filename(self) -> str:
+        assert self.filename
+
+        return self.filename
+
+    def add_metadata(self, metadata: dict) -> None:
+        self.content_date = TimeConversion.try_extract_iso_like_datetime(
+            metadata, "min_date_datetime"
+        ) or TimeConversion.try_extract_iso_like_datetime(metadata, "ingestion_date")
+
+    @classmethod
+    def from_filename(cls: type[T], filename: str | Path) -> T | None:
+        if filename is None:
+            return None
+
+        is_spice = False
+        kernel_type = None
+        filename_only = (
+            filename.name if isinstance(filename, Path) else Path(filename).name
+        )
+
+        # check for Path
+        if (
+            isinstance(filename, Path)
+            and filename.parent.parent.name == SPICEPathHandler.root_folder
+        ):
+            # if this is in the SPICE folder structure it IS spice and so we just take it as-is
+            is_spice = True
+            kernel_type = filename.parent.name
+        elif isinstance(filename, str):
+            filename = Path(filename)
+
+        # See https://lasp.colorado.edu/galaxy/spaces/IMAP/pages/221734667/SDC+Expected+SPICE+File+List
+        # for file information
+        for file_pattern in cls.matching_file_patterns:
+            if re.match(file_pattern[0], filename_only):
+                is_spice = True
+                # if we did not get the kernel folder from the path then (try) work it out fromt the file name
+                kernel_type = file_pattern[1] if kernel_type is None else kernel_type
+                break
+
+        if is_spice:
+            if kernel_type is None:
+                logger.warning(
+                    f"Could not determine kernel type for SPICE file {filename}. Setting to 'unknown'."
+                )
+                kernel_type = "unknown"
+
+            return cls(
+                kernel_folder=kernel_type,
+                filename=filename_only,
+            )
+
+        return None
