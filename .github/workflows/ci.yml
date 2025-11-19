@@ -241,7 +241,7 @@ jobs:
 
             # Each of these frees more space, takes more time
             android: false
-            dotnet: false
+            dotnet: true
             haskell: false
             large-packages: false
             docker-images: false
