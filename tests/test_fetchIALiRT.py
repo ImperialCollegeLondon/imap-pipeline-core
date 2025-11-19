@@ -460,6 +460,90 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
     assert "I-ALiRT data written to " in capture_cli_logs.text
 
 
+def test_fetch_ialirt_duplicate_timestamps_different_instruments(
+    mock_ialirt_data_access: mock.Mock,
+    temp_datastore,  # noqa: F811
+    capture_cli_logs,
+) -> None:
+    # Set up.
+    fetch_ialirt = FetchIALiRT(
+        mock_ialirt_data_access,
+        Path(tempfile.mkdtemp()),
+        DatastoreFileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
+    )
+
+    mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
+        {
+            "met_in_utc": "2025-05-02T00:00:00",
+            "instrument": "mag",
+            "mag_data": [1, 2, 3],
+        },
+        {
+            "met_in_utc": "2025-05-02T00:00:00",
+            "instrument": "swe",
+            "swe_data": [1.5, 2.5, 3.5],
+        },
+        {
+            "met_in_utc": "2025-05-02T01:00:00",
+            "instrument": "mag",
+            "mag_data": [4, 5, 6],
+        },
+        {
+            "met_in_utc": "2025-05-02T01:00:00",
+            "instrument": "swe",
+            "swe_data": [4.5, 5.5, 6.5],
+        },
+        {
+            "met_in_utc": "2025-05-02T02:00:00",
+            "instrument": "mag",
+            "mag_data": [7, 8, 9],
+        },
+        {
+            "met_in_utc": "2025-05-02T02:00:00",
+            "instrument": "swe",
+            "swe_data": [7.5, 8.5, 9.5],
+        },
+    ]
+
+    # Exercise.
+    actual_downloaded: dict[Path, IALiRTPathHandler] = (
+        fetch_ialirt.download_ialirt_to_csv(
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
+    )
+
+    # Verify.
+    mock_ialirt_data_access.get_all_by_dates.assert_called_once_with(
+        start_date=datetime(2025, 5, 2),
+        end_date=datetime(2025, 5, 3),
+    )
+
+    assert len(actual_downloaded) == 1
+
+    ((file_path, path_handler),) = actual_downloaded.items()
+
+    assert file_path.exists()
+    assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
+
+    with open(file_path) as f:
+        file_content = f.read()
+
+        assert (
+            "met_in_utc,instrument,mag_data_1,mag_data_2,mag_data_3,swe_data_1,swe_data_2,swe_data_3"
+            in file_content
+        )
+        assert '2025-05-02T00:00:00,"mag,swe",1.0,2.0,3.0,1.5,2.5,3.5' in file_content
+        assert '2025-05-02T01:00:00,"mag,swe",4.0,5.0,6.0,4.5,5.5,6.5' in file_content
+        assert '2025-05-02T02:00:00,"mag,swe",7.0,8.0,9.0,7.5,8.5,9.5' in file_content
+
+    assert "Downloaded 6 entries from I-ALiRT Data Access." in capture_cli_logs.text
+    assert "Downloaded I-ALiRT data for 1 days: 2025-05-02" in capture_cli_logs.text
+    assert "Creating new file for 2025-05-02." in capture_cli_logs.text
+    assert "I-ALiRT data written to " in capture_cli_logs.text
+
+
 def test_split_gse_gsm_to_xyz_components() -> None:
     # Set up.
     raw_data = [
