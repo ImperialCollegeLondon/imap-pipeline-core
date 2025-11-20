@@ -151,10 +151,10 @@ def update_database_with_progress(
     workflow_progress = database.get_workflow_progress(progress_item_id)
 
     logger.debug(
-        f"Latest downloaded timestamp for packet {progress_item_id} is {latest_timestamp}."
+        f"Latest progress timestamp for {progress_item_id} is {latest_timestamp}."
     )
 
-    workflow_progress.update_last_checked_date(checked_timestamp)
+    workflow_progress.update_last_checked_timestamp(checked_timestamp)
 
     if latest_timestamp and (
         (workflow_progress.progress_timestamp is None)
@@ -163,7 +163,7 @@ def update_database_with_progress(
         workflow_progress.update_progress_timestamp(latest_timestamp)
     else:
         logger.info(
-            f"Database not updated for {progress_item_id} as no new data available."
+            f"Latest progress timestamp not updated for {progress_item_id} - no new data found"
         )
 
     database.save(workflow_progress)

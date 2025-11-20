@@ -120,5 +120,5 @@ async def send_monthly_test_message(
     else:
         logger.debug("Not the first Monday of the month. Skipping test notification.")
 
-    workflow_progress.update_last_checked_date(now)
+    workflow_progress.update_last_checked_timestamp(now)
     database.save(workflow_progress)

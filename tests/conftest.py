@@ -21,7 +21,7 @@ logging.getLogger("websockets").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.INFO)
 logging.getLogger("testcontainers").setLevel(logging.WARNING)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 pytest_plugins = (

@@ -39,6 +39,12 @@ class IALiRTPathHandler(IFilePathHandler):
 
         return f"{self.mission}_ialirt_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
 
+    def add_metadata(self, metadata: dict) -> None:
+        raise NotImplementedError()
+
+    def get_metadata(self) -> dict | None:
+        return None
+
     @classmethod
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
         match = re.match(

@@ -21,7 +21,7 @@ from tests.util.miscellaneous import (
     create_test_file,
     mock_datetime_provider,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 def get_database_id_from_mode(mode: ScienceMode) -> str:

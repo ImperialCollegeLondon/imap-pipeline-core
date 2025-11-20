@@ -73,3 +73,18 @@ class TimeConversion:
         """
         j2000ns = TimeConversion.convert_met_to_j2000ns(met, reference_epoch)
         return TimeConversion.convert_j2000ns_to_date(j2000ns)
+
+    @staticmethod
+    def try_extract_iso_like_datetime(dict, key) -> datetime | None:
+        # Handle both "YYYY-MM-DD, HH:MM:SS" and "YYYY-MM-DD HH:MM:SS" formats stored in a dictionary
+
+        if not dict or not key or key not in dict:
+            return None
+
+        result = dict.get(key)
+        result = result.replace(", ", " ")
+        try:
+            result_date = datetime.fromisoformat(result)
+            return result_date
+        except ValueError:
+            return None

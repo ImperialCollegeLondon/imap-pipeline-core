@@ -3,6 +3,7 @@ import logging
 import shutil
 from pathlib import Path
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IOutputManager import IOutputManager, T
 
@@ -32,9 +33,10 @@ class OutputManager(IOutputManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
+        original_hash = generate_hash(original_file)
         skip_file_copy: bool = self.__get_next_available_version(
             path_handler,
-            original_hash=generate_hash(original_file),
+            original_hash=original_hash,
         )
         destination_file: Path = path_handler.get_full_path(self.location)
 
@@ -108,3 +110,16 @@ class OutputManager(IOutputManager):
             destination_file = updated_file
 
         return False
+
+    @classmethod
+    def CreateByMode(cls, settings: AppSettings, use_database: bool) -> IOutputManager:
+        """Retrieve output manager based on destination and mode."""
+
+        from imap_mag.io.DatabaseFileOutputManager import DatabaseFileOutputManager
+
+        output_manager: IOutputManager = OutputManager(settings.data_store)
+
+        if use_database:
+            return DatabaseFileOutputManager(output_manager, settings=settings)
+        else:
+            return output_manager

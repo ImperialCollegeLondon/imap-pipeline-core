@@ -3,6 +3,7 @@ from imap_mag.util.constants import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket
+from imap_mag.util.Humaniser import Humaniser
 from imap_mag.util.Level import HKLevel, ScienceLevel
 from imap_mag.util.MAGMode import MAGMode
 from imap_mag.util.MAGSensor import MAGSensor
@@ -18,6 +19,7 @@ __all__ = [
     "Environment",
     "HKLevel",
     "HKPacket",
+    "Humaniser",
     "MAGMode",
     "MAGSensor",
     "ReferenceFrame",

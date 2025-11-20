@@ -84,6 +84,10 @@ docker run -it --rm \
 
 ## Get the prefect server running in a local dev env
 
+**EITHER** Use the dev_start.sh script to start a local prefect server and a local postgres database for the imap app to use.
+**OR** use the vscode task `start_servers` that does this for you - see [.vscode/tasks.json](.vscode/tasks.json)
+**OR** do it manually as below:
+
 ```bash
 # in the root of the repo, start a local dev prefect server in a terminal
 poetry install
@@ -95,8 +99,8 @@ docker run --name postgres_imap_dev -e POSTGRES_PASSWORD=postgres -e POSTGRES_US
 
 # in a third terminal, deploy the imap flows
 source .venv/bin/activate
-source defaults.env
-# [optional] source dev.env
+cp defaults.env .env
+source .env
 python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
 
 # Now open the UI in a browser at http://127.0.0.1:4200/deployments
@@ -105,7 +109,9 @@ python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(
 
 ## Debugging a prefect flow
 
-This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode witha  debugger attached and then run your flow from there.
+This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode with a debugger attached and then run your flow from there.
+
+You can also setup flows to just deploy one at a time for debugging and then use "debug current file". Run F5 inside spiceDownloadFlow.py for example to debug that flow and see the code in the `if __main__` block at the bottom run.
 
 ## CLI Commands
 

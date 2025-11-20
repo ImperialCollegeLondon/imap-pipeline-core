@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -35,6 +35,7 @@ class File(Base):
     )
     deletion_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     software_version: Mapped[str] = mapped_column(String(16))
+    file_meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
@@ -108,8 +109,8 @@ class WorkflowProgress(Base):
         )
         self.progress_timestamp = progress_timestamp
 
-    def update_last_checked_date(self, last_checked_date: datetime):
+    def update_last_checked_timestamp(self, last_checked_timestamp: datetime):
         logger.info(
-            f"Updating last checked date for {self.item_name} to {last_checked_date.strftime('%d/%m/%Y %H:%M:%S')}."
+            f"Updating last checked timestamp for {self.item_name} to {last_checked_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
         )
-        self.last_checked_date = last_checked_date
+        self.last_checked_date = last_checked_timestamp

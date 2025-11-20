@@ -106,3 +106,13 @@ class WireMockManager:
             mapping.priority = options["priority"]
 
         Mappings.create_mapping(mapping)
+
+        # clone and add for /api-key prefix
+        api_key_mapping = Mapping.from_json(mapping.to_json())
+        if api_key_mapping.request.url is not None:
+            api_key_mapping.request.url = "/api-key" + api_key_mapping.request.url
+        if api_key_mapping.request.url_pattern is not None:
+            api_key_mapping.request.url_pattern = (
+                "/api-key" + api_key_mapping.request.url_pattern
+            )
+        Mappings.create_mapping(api_key_mapping)

@@ -45,7 +45,7 @@ async def upload_new_files_to_sharepoint(
 
     new_files_db = db.get_files_since(last_modified_date, how_many)
 
-    workflow_progress.update_last_checked_date(started)
+    workflow_progress.update_last_checked_timestamp(started)
 
     logger.info(
         f"Found {len(new_files_db)} new files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."

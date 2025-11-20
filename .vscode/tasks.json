@@ -48,6 +48,57 @@
             "python": {
                 "file": "src/main.py"
             }
+        },
+        {
+            "type": "shell",
+            "label": "start_servers",
+            "command": "${workspaceFolder}/start_dev.sh",
+            "args": [
+                "--no-deploy"
+            ],
+            // do not wait till the command is finished - just till server has started
+            "isBackground": true,
+             "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": ".",
+                            "file": 1,
+                            "location": 2,
+                            "message": 3
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": ".*STARTING DEV SERVERS.*",
+                        "endsPattern": ".*SERVERS HAVE STARTED.*"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "shell",
+            "label": "start_servers_and_deploy_workflow",
+            "command": "${workspaceFolder}/start_dev.sh",
+            "args": [],
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": ".",
+                            "file": 1,
+                            "location": 2,
+                            "message": 3
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": ".*STARTING DEV SERVERS.*",
+                        "endsPattern": ".*Deployment complete.*"
+                    }
+                }
+            ]
         }
     ],
     "version": "2.0.0"

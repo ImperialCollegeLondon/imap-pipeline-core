@@ -4,10 +4,9 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
+from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector, OutputManager
 from imap_mag.io.file import IFilePathHandler
 from imap_mag.process import FileProcessor, dispatch
 
@@ -73,7 +72,7 @@ def process(
     # Copy files to the output directory.
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
-    output_manager = appUtils.getOutputManagerByMode(
+    output_manager = OutputManager.CreateByMode(
         app_settings,
         use_database=(save_mode == SaveMode.LocalAndDatabase),
     )

@@ -27,6 +27,7 @@ from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
 from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
+from prefect_server.spiceDownloadFlow import poll_spice_flow
 
 
 async def get_matlab_license_server():
@@ -117,6 +118,13 @@ def deploy_flows(local_debug: bool = False):
     poll_hk_deployable = poll_hk_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_spice_deployable = poll_spice_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPICE,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
@@ -275,6 +283,7 @@ def deploy_flows(local_debug: bool = False):
     deployables = (
         poll_ialirt_deployable,
         poll_hk_deployable,
+        poll_spice_deployable,
         poll_science_norm_l1c_deployable,
         poll_science_burst_l1b_deployable,
         poll_science_l2_deployable,
