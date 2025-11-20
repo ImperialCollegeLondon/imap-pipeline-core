@@ -394,23 +394,7 @@ def test_spice_download(wiremock_manager, temp_folder_path):
         str(spice_file_path),
     )
 
-    with Environment(
-        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
-        IMAP_API_KEY="12345",
-    ):
-        data_access = SDCDataAccess(
-            auth_code=SecretStr("12345"),
-            data_dir=temp_folder_path,
-            sdc_url=wiremock_manager.get_url(),
-        )
-
-        # Import and test fetch_spice
-        from imap_mag.cli.fetch.spice import fetch_spice
-
-        downloaded = fetch_spice(
-            data_access=data_access,
-            ingest_start_day=datetime(2025, 11, 1),
-        )
+    downloaded = call_fetch_spice(wiremock_manager, datetime(2025, 11, 1))
 
     # Verify download
     assert len(downloaded) == 1
@@ -457,23 +441,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
             str(spice_file_path),
         )
 
-    with Environment(
-        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
-        IMAP_API_KEY="12345",
-    ):
-        data_access = SDCDataAccess(
-            auth_code=SecretStr("12345"),
-            data_dir=temp_folder_path,
-            sdc_url=wiremock_manager.get_url(),
-        )
-
-        # Import and test fetch_spice
-        from imap_mag.cli.fetch.spice import fetch_spice
-
-        downloaded = fetch_spice(
-            data_access=data_access,
-            ingest_start_day=datetime(2025, 11, 1),
-        )
+    downloaded = call_fetch_spice(wiremock_manager, datetime(2025, 11, 1))
 
     # Verify all files were downloaded
     assert len(downloaded) == 3
@@ -483,3 +451,17 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
         assert downloaded_file.exists()
         assert downloaded_file.stat().st_size > 0
         assert metadata["file_name"] in [item["file_name"] for item in sample_data]
+
+
+def call_fetch_spice(wiremock_manager, start_date):
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        from imap_mag.cli.fetch.spice import fetch_spice
+
+        downloaded = fetch_spice(
+            ingest_start_day=start_date,
+        )
+
+    return downloaded

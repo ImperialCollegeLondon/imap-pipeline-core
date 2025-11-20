@@ -60,7 +60,7 @@ def test_plot_ialirt(
     validation_progress = test_database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
-    validation_progress.update_last_checked_date(NOW - timedelta(hours=1))
+    validation_progress.update_last_checked_timestamp(NOW - timedelta(hours=1))
     test_database.save(validation_progress)
 
     expected_figure = TEST_TRUTH / "ialirt_quicklook.png"
