@@ -77,15 +77,17 @@ class DatabaseFileOutputManager(IOutputManager):
             )
 
             try:
-                self.__database.insert_file(
-                    File.from_file(
-                        file=destination_file,
-                        version=version,
-                        hash=original_hash,
-                        content_date=path_handler.get_content_date_for_indexing(),
-                        settings=self.__settings,
-                    )
+                new_file = File.from_file(
+                    file=destination_file,
+                    version=version,
+                    hash=original_hash,
+                    content_date=path_handler.get_content_date_for_indexing(),
+                    settings=self.__settings,
                 )
+
+                new_file.file_meta = path_handler.get_metadata()
+
+                self.__database.insert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 destination_file.unlink()
@@ -139,9 +141,9 @@ class DatabaseFileOutputManager(IOutputManager):
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
-        assert len(matching_files) <= 1, (
-            "There should be at most one file with the same hash in the database."
-        )
+        assert (
+            len(matching_files) <= 1
+        ), "There should be at most one file with the same hash in the database."
 
         if matching_files:
             path_handler.set_sequence(matching_files[0].version)

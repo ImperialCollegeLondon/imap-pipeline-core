@@ -52,6 +52,7 @@ class SPICEPathHandler(IFilePathHandler):
 
     kernel_folder: str  # e.g., ck, sclk, etc.
     filename: str
+    metadata: dict | None = None
 
     # the content date we try and take from spice file API metadata if possible
     # uses GET /spice-query filed min_date_datetime
@@ -112,6 +113,11 @@ class SPICEPathHandler(IFilePathHandler):
         self.content_date = TimeConversion.try_extract_iso_like_datetime(
             metadata, "min_date_datetime"
         ) or TimeConversion.try_extract_iso_like_datetime(metadata, "ingestion_date")
+
+        self.metadata = metadata
+
+    def get_metadata(self) -> dict | None:
+        return self.metadata
 
     @classmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
