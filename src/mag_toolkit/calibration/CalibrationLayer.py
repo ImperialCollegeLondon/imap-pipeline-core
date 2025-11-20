@@ -56,6 +56,7 @@ class CalibrationLayer(Layer):
             .str.replace(" ", "T")
             .tolist()
         )
+        print(self._contents.head())
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
         logger.info("Writing calibration layer to CDF file.")
@@ -69,7 +70,7 @@ class CalibrationLayer(Layer):
             self._contents = self._values_from_csv(self._data_path)
 
         logger.debug("Converting epoch values to raw epoch format for CDF.")
-        self._convert_to_raw_epoch()
+        # self._convert_to_raw_epoch()
 
         offsets_values = np.nan_to_num(
             self._contents[
@@ -84,7 +85,7 @@ class CalibrationLayer(Layer):
 
         epoch_data = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.RAW_EPOCH],
+            data=self._contents[CONSTANTS.CSV_VARS.EPOCH],
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.EPOCH].attrs,
         )
         offsets_data = xr.Variable(
