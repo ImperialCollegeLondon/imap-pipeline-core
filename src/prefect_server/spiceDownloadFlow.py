@@ -10,8 +10,7 @@ from pydantic import Field
 from imap_db.main import create_db, upgrade_db
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.spice import fetch_spice
-from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.config import AppSettings, FetchMode
+from imap_mag.config import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import SPICEPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, TimeConversion
@@ -124,7 +123,6 @@ async def poll_spice_flow(
     database = Database()
     progress_item_id = "SPICE"
     date_manager = DownloadDateManager(progress_item_id, database)
-    app_settings = AppSettings()  # type: ignore
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
@@ -173,19 +171,10 @@ async def poll_spice_flow(
         f"Downloading {ingest_start_day} to {ingest_end_date} based on {ingest_date_filter_source} for ingestion date filter."
     )
 
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_spice)
-
     # Download files from SDC
     with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
-        data_access = SDCDataAccess(
-            auth_code=app_settings.fetch_spice.api.auth_code,
-            data_dir=work_folder,
-            sdc_url=app_settings.fetch_spice.api.url_base,
-        )
-
         downloaded_spice: list[tuple[Path, SPICEPathHandler, dict[str, str]]] = (
             fetch_spice(
-                data_access=data_access,
                 ingest_start_day=ingest_start_day,
                 ingest_end_date=ingest_end_date,
                 file_name=file_name,

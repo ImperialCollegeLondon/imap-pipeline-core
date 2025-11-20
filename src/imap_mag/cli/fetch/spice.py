@@ -61,7 +61,6 @@ GET https://api.imap-mission.com/spice-query?start_ingest_date=20251101&end_inge
 
 
 def fetch_spice(
-    data_access: SDCDataAccess,
     ingest_start_day: datetime | None = None,
     ingest_end_date: datetime | None = None,
     file_name: str | None = None,
@@ -95,10 +94,14 @@ def fetch_spice(
 
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
+    data_access = SDCDataAccess(
+        auth_code=app_settings.fetch_spice.api.auth_code,
+        data_dir=work_folder,
+        sdc_url=app_settings.fetch_spice.api.url_base,
+    )
 
     # Query SPICE files from SDC
     spice_file_query_results = data_access.spice_query(
