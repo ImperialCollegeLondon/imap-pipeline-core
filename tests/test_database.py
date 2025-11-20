@@ -23,7 +23,6 @@ from imap_mag.io.file import (
     HKDecodedPathHandler,
 )
 from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
-from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
     TODAY,
@@ -420,7 +419,7 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -452,7 +451,7 @@ def test_update_database_update_needed_no_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -484,7 +483,7 @@ def test_update_database_update_needed_old_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {TODAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {TODAY}."
         in capture_cli_logs.text
     )
 
@@ -499,7 +498,7 @@ def test_update_database_update_needed_old_data(
 )
 def test_database_output_manager_real_database_l0_hk_partitioned_file(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -584,7 +583,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
 )
 def test_database_output_manager_real_database_l1_hk_versioned_file(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -668,7 +667,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     reason="Test containers (used by test database) does not work on Windows",
 )
 def test_database_insert_file_same_name_different_hash(
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -728,7 +727,7 @@ def test_database_insert_file_same_name_different_hash(
 )
 def test_add_ancillary_files_to_database_uses_correct_dates(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
     ancillary_file_name: str,
     expected_date: datetime,

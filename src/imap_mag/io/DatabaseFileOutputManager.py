@@ -141,9 +141,9 @@ class DatabaseFileOutputManager(IOutputManager):
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
-        assert (
-            len(matching_files) <= 1
-        ), "There should be at most one file with the same hash in the database."
+        assert len(matching_files) <= 1, (
+            "There should be at most one file with the same hash in the database."
+        )
 
         if matching_files:
             path_handler.set_sequence(matching_files[0].version)
