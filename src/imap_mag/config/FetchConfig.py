@@ -15,3 +15,8 @@ class FetchIALiRTConfig(CommandConfig):
 class FetchScienceConfig(CommandConfig):
     api: SdcApiSource
     publish_to_data_store: bool = True
+
+
+class FetchSpiceConfig(CommandConfig):
+    api: SdcApiSource
+    publish_to_data_store: bool = True

@@ -22,7 +22,7 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
 )
-from tests.util.database import test_database  # noqa: F401
+from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
 from tests.util.miscellaneous import (
     NOW,
     TODAY,
@@ -46,7 +46,11 @@ def mock_database() -> mock.Mock:
 
 
 def check_inserted_file(
-    file: File, test_file: Path, version: int, file_name: str = "test_file.txt"
+    file: File,
+    test_file: Path,
+    version: int,
+    file_name: str = "test_file.txt",
+    metadata: dict | None = None,
 ):
     # Two instances of `File` will never be equal, so we check the attributes.
     assert file.name == file_name
@@ -58,6 +62,8 @@ def check_inserted_file(
     assert file.last_modified_date == datetime.fromtimestamp(test_file.stat().st_mtime)
     assert file.deletion_date is None
     assert file.software_version == __version__
+    if metadata is not None:
+        assert file.file_meta == metadata
 
 
 def test_database_output_manager_writes_to_database(
@@ -413,7 +419,7 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -445,7 +451,7 @@ def test_update_database_update_needed_no_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -477,7 +483,7 @@ def test_update_database_update_needed_old_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {TODAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {TODAY}."
         in capture_cli_logs.text
     )
 
@@ -492,7 +498,7 @@ def test_update_database_update_needed_old_data(
 )
 def test_database_output_manager_real_database_l0_hk_partitioned_file(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -577,7 +583,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
 )
 def test_database_output_manager_real_database_l1_hk_versioned_file(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -661,7 +667,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     reason="Test containers (used by test database) does not work on Windows",
 )
 def test_database_insert_file_same_name_different_hash(
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
 ) -> None:
     # Set up.
@@ -721,7 +727,7 @@ def test_database_insert_file_same_name_different_hash(
 )
 def test_add_ancillary_files_to_database_uses_correct_dates(
     mock_output_manager: mock.Mock,
-    test_database,  # noqa: F811
+    test_database,
     capture_cli_logs,
     ancillary_file_name: str,
     expected_date: datetime,
@@ -758,3 +764,36 @@ def test_add_ancillary_files_to_database_uses_correct_dates(
     assert database_files[0].name == ancillary_file_name
     assert database_files[0].version == 1
     assert database_files[0].content_date == expected_date
+
+
+def test_database_output_manager_writes_metadata_to_database(
+    mock_output_manager: mock.Mock, test_database, capture_cli_logs
+) -> None:
+    # Set up.
+    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    meta = {"key1": "value1", "key2": 42}
+    path_handler = SPICEPathHandler(
+        kernel_folder="spk",
+        filename="test_file1.spk",
+        metadata=meta,
+        mission="imap",
+        root_folder="spice",
+        content_date=datetime(2025, 5, 2),
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "file_in_datastore.txt"
+    mock_output_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        path_handler,
+    )
+    database_manager.add_file(original_file, path_handler)
+    database_files = test_database.get_files()
+
+    # Verify
+    assert f"Inserting {test_file} into database." in capture_cli_logs.text
+    assert len(database_files) == 1
+    assert database_files[0].file_meta == meta

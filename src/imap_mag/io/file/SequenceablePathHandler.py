@@ -45,3 +45,9 @@ class SequenceablePathHandler(IFilePathHandler):
     def get_sequence_variable_name() -> str:
         """Get the name of the variable denoting a "sequence" in the class and patterns."""
         pass
+
+    def add_metadata(self, metadata: dict) -> None:
+        raise NotImplementedError()
+
+    def get_metadata(self) -> dict | None:
+        return None

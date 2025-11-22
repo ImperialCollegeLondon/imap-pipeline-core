@@ -47,6 +47,12 @@ class QuicklookPathHandler(IFilePathHandler):
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
+    def add_metadata(self, metadata: dict) -> None:
+        raise NotImplementedError()
+
+    def get_metadata(self) -> dict | None:
+        return None
+
     def get_filename(self) -> str:
         super()._check_property_values("file name", ["content_date"])
         assert self.content_date
