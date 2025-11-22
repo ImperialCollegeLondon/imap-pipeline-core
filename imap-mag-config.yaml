@@ -68,3 +68,4 @@ upload:
         - "*hk/sc/l1/*"
         - "*ialirt/*"
         - "*quicklook/*"
+        - "*spice/*"
