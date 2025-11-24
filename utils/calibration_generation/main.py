@@ -13,6 +13,7 @@ from calibration_generation.cal_utils import (
     generate_l1d_file,
     generate_l2_file,
     get_correctly_arranged_offsets,
+    get_default_matrices,
     get_one_sensor_stacked_offsets,
     get_stacked_identity_matrices,
     verify_frame_transforms,
@@ -24,6 +25,7 @@ app = typer.Typer()
 
 class VALID_MATRIX_TYPES(Enum):
     IDENTITY = "identity"
+    DEFAULT = "default"
 
 
 class OFFSET_TYPES(Enum):
@@ -93,14 +95,21 @@ def ialirt(
         ),
     ],
 ):
+    if matrix_type == VALID_MATRIX_TYPES.IDENTITY:
+        frame_transform_mago = get_stacked_identity_matrices()
+
+        frame_transform_magi = get_stacked_identity_matrices()
+    elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
+        frame_transform_mago, frame_transform_magi = get_default_matrices()
+
     offsets = get_offsets(offset_type)
     g = gradiometer_value * np.eye(3, 3)
     fn = generate_ialirt_file(
         version=version,
         valid_start_date=valid_start_date,
         offsets=offsets,
-        frame_transform_mago=get_stacked_identity_matrices(),
-        frame_transform_magi=get_stacked_identity_matrices(),
+        frame_transform_mago=frame_transform_mago,
+        frame_transform_magi=frame_transform_magi,
         gradiometer_value=g,
     )
     print(f"Generated I-ALiRT Calibration file: {fn}")
@@ -114,9 +123,12 @@ def l2(
         VALID_MATRIX_TYPES, typer.Option(prompt=True, help="Type of matrix to generate")
     ],
 ):
-    frame_transform_mago = get_stacked_identity_matrices()
+    if matrix_type == VALID_MATRIX_TYPES.IDENTITY:
+        frame_transform_mago = get_stacked_identity_matrices()
 
-    frame_transform_magi = get_stacked_identity_matrices()
+        frame_transform_magi = get_stacked_identity_matrices()
+    elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
+        frame_transform_mago, frame_transform_magi = get_default_matrices()
 
     fn = generate_l2_file(
         version=version,
@@ -143,11 +155,14 @@ def l1d(
         typer.Option(prompt=True, help="Type of offset to generate (e.g., 'zero')"),
     ],
 ):
+    if matrix_type == VALID_MATRIX_TYPES.IDENTITY:
+        frame_transform_mago = get_stacked_identity_matrices()
+
+        frame_transform_magi = get_stacked_identity_matrices()
+    elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
+        frame_transform_mago, frame_transform_magi = get_default_matrices()
+
     g = gradiometer_value * np.eye(3, 3)
-
-    frame_transform_mago = get_stacked_identity_matrices()
-
-    frame_transform_magi = get_stacked_identity_matrices()
 
     offsets = get_offsets(offset_type)
 

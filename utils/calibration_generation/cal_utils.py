@@ -27,6 +27,26 @@ def get_correctly_arranged_offsets(mago_offsets, magi_offsets):
     return np.stack([mago_offsets, magi_offsets], axis=0)
 
 
+def get_default_matrices():
+    mago_default = [
+        [0.999989918615689, -3.25282523386058e-05, -0.00477484817389527],
+        [-0.00161934234084477, 1.00081282729992, -0.0107947265795152],
+        [0.00449876643714237, 0.0068123135754105, 0.999984957597784],
+    ]
+    magi_default = [
+        [1.0011485845956, -0.00335794534947757, -0.00337416446398934],
+        [0.000583975986099036, 1.00042889375192, -0.00962198497343362],
+        [0.0050384296101901, 0.00443047384468987, 0.999976121125062],
+    ]
+    mago_stack = np.stack(
+        [mago_default, mago_default, mago_default, mago_default], axis=2
+    )
+    magi_stack = np.stack(
+        [magi_default, magi_default, magi_default, magi_default], axis=2
+    )
+    return mago_stack, magi_stack
+
+
 def get_stacked_identity_matrices():
     i = np.eye(3, 3)
     return np.stack([i, i, i, i], axis=2)
@@ -47,6 +67,12 @@ def verify_frame_transforms(cdf: pycdf.CDF):
         3,
         4,
     ), "MAGi frame transform shape is incorrect, expected (3, 3, 4)"
+    range_3_mago = mago_transform[:, :, 3]
+    range_3_magi = magi_transform[:, :, 3]
+    print("Manually Verify Range 3 MAGo Frame Transform Matrix:")
+    print(range_3_mago)
+    print("Manually Verify Range 3 MAGi Frame Transform Matrix:")
+    print(range_3_magi)
     return True
 
 
