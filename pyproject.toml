@@ -44,7 +44,7 @@ apprise = ">=1.9.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
-pytest-cov = "^6.2.1"
+pytest-cov = "^7.0.0"
 pytest-mock = "^3.14.1"
 pytest-asyncio = "^1.2.0"
 pre-commit = "^3.8.0"
