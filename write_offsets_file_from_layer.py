@@ -2,23 +2,26 @@ from pathlib import Path
 
 from src.mag_toolkit.calibration import CalibrationLayer
 
-for day in range(1, 16):
+norm_or_burst = "norm"  # "burst" or "norm"
+version = str(1).zfill(3)
+
+for day in range(13, 14):
     year = 2025
-    month = 10
+    month = 11
     day = str(day).zfill(2)
-    version = str(1).zfill(3)
+
     layer = CalibrationLayer.from_file(
         Path(
-            f"test_data_store/calibration/layers/{year}/{month}/imap_mag_manual-norm-layer_{year}{month}{day}_v002.json"
+            f"test_data_store/calibration/layers/{year}/{month}/imap_mag_manual-{norm_or_burst}-layer_{year}{month}{day}_v004.json"
         ),
         load_contents=True,
     )
     print(layer._contents.head())
     layer.writeToFile(
         Path(
-            f"offsets/imap_mag_l2-norm-offsets_{year}{month}{day}_{year}{month}{day}_v{version}.cdf"
+            f"offsets/imap_mag_l2-{norm_or_burst}-offsets_{year}{month}{day}_{year}{month}{day}_v{version}.cdf"
         )
     )
     print(
-        f"Written offsets/imap_mag_l2-norm-offsets_{year}{month}{day}_{year}{month}{day}_v{version}.cdf"
+        f"Written offsets/imap_mag_l2-{norm_or_burst}-offsets_{year}{month}{day}_{year}{month}{day}_v{version}.cdf"
     )
