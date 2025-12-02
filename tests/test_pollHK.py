@@ -19,7 +19,7 @@ from tests.util.miscellaneous import (
     TODAY,
     mock_datetime_provider,  # noqa: F401
 )
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 def define_available_data_webpoda_mappings(

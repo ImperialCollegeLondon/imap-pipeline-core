@@ -193,5 +193,3 @@ async def poll_science_flow(
         logger.info(
             f"---------- Finished downloading Packet {progress_item_id} ----------"
         )
-
-    logger.info("---------- Finished ----------")
