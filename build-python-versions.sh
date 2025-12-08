@@ -9,7 +9,7 @@ rm -rf $OUTPUT_DIR
 mkdir "$OUTPUT_DIR"
 
 # iterate over an array of python versions and build each one
-for version in 3.10 3.11 3.12 3.13
+for version in 3.11 3.12 3.13 3.14
 do
     PACK_OUTPUT_FOLDER="$OUTPUT_DIR/python$version"
     # apply the version to the current shell
