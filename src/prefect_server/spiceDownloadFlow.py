@@ -182,7 +182,7 @@ async def poll_spice_flow(
                 end_time=end_time,
                 kernel_type=kernel_type,
                 latest=latest,
-                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+                use_database=use_database,
             )
         )
 
@@ -213,7 +213,7 @@ async def poll_spice_flow(
 
 # Enable quick local dev like `source .env && python -m src.prefect_server.spiceDownloadFlow` and "debug this file" in vscode
 if __name__ == "__main__":
-    # detect if a debugger is attached
+    # we are running locally for development?
     if os.environ.get("ENV_NAME", "") == "dev":
         print("Setting up database for dev environment...")
         create_db()

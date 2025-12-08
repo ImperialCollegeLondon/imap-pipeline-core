@@ -72,7 +72,11 @@ class DatabaseFileOutputManager(IOutputManager):
 
             version: int = (
                 path_handler.get_sequence()
-                if isinstance(path_handler, SequenceablePathHandler)
+                if path_handler.supports_sequencing()
+                and isinstance(
+                    path_handler,
+                    SequenceablePathHandler,
+                )
                 else 0
             )
 
@@ -141,9 +145,9 @@ class DatabaseFileOutputManager(IOutputManager):
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
-        assert len(matching_files) <= 1, (
-            "There should be at most one file with the same hash in the database."
-        )
+        assert (
+            len(matching_files) <= 1
+        ), "There should be at most one file with the same hash in the database."
 
         if matching_files:
             path_handler.set_sequence(matching_files[0].version)

@@ -15,7 +15,6 @@ class SequenceablePathHandler(IFilePathHandler):
     some sort of sequencing (e.g., versioning or part numbers).
     """
 
-    @final
     def supports_sequencing(self) -> bool:
         """Denotes whether this path handler supports sequence-like indexes."""
         return True

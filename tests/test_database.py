@@ -780,8 +780,6 @@ def test_database_output_manager_writes_metadata_to_database(
         kernel_folder="spk",
         filename="test_file1.spk",
         metadata=meta,
-        mission="imap",
-        root_folder="spice",
         content_date=datetime(2025, 5, 2),
     )
 

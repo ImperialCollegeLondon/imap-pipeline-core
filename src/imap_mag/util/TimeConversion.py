@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 import numpy as np
 import numpy.typing as npt
+import spiceypy
 
 from imap_mag.util.constants import CONSTANTS
 
@@ -88,3 +89,21 @@ class TimeConversion:
             return result_date
         except ValueError:
             return None
+
+    @staticmethod
+    def datetime_to_j2000(value_as_datetime: datetime):
+        if not (value_as_datetime):
+            raise ValueError("expected valid datetime in datetime_to_j2000")
+
+        tdb_secs_since_j2000_epoch = spiceypy.datetime2et(value_as_datetime)
+        return tdb_secs_since_j2000_epoch
+
+    @staticmethod
+    def j2000_to_datetime(value_as_j2000s: int) -> datetime:
+        if not (value_as_j2000s):
+            raise ValueError("expected valid datetime in datetime_to_j2000")
+        datetime_value = spiceypy.et2datetime(value_as_j2000s)
+
+        assert isinstance(datetime_value, datetime)
+
+        return datetime_value

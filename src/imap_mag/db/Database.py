@@ -98,6 +98,16 @@ class Database:
         session = self.__get_active_session()
         return session.query(File).filter(*args).filter_by(**kwargs).all()
 
+    @__session_manager(expire_on_commit=False)
+    def get_files_by_path(self, path: str) -> list[File]:
+        session = self.__get_active_session()
+        return (
+            session.query(File)
+            .filter(File.path.startswith(path))
+            .order_by(File.last_modified_date)
+            .all()
+        )
+
     def get_files_since(
         self, last_modified_date: datetime, how_many: int | None = None
     ) -> list[File]:

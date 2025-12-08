@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import TimeConversion
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ imap_sclk_####.tsc
 
 
 @dataclass
-class SPICEPathHandler(IFilePathHandler):
+class SPICEPathHandler(VersionedPathHandler):
     """
     Path handler for all SPICE files such as kernels and meta-kernels.
 
@@ -50,17 +51,19 @@ class SPICEPathHandler(IFilePathHandler):
     .work/spice/imap/spice/sclk/imap_sclk_0003.tsc
     """
 
-    kernel_folder: str  # e.g., ck, sclk, etc.
-    filename: str
+    kernel_folder: str | None = None  # e.g., ck, sclk, etc.
+    filename: str | None = None
     metadata: dict | None = None
+    is_versioned_spice_file: bool = False
 
     # the content date we try and take from spice file API metadata if possible
     # uses GET /spice-query filed min_date_datetime
     # SPICE files might span long date ranges so this is just the starting date for the content
     content_date: datetime | None = None
 
-    root_folder: str = "spice"
-    mission: str = "imap"
+    @staticmethod
+    def get_root_folder() -> str:
+        return "spice"
 
     matching_file_patterns: typing.ClassVar[list[tuple[str, str]]] = [
         (r"^de.*\.bsp$", "spk"),
@@ -91,18 +94,33 @@ class SPICEPathHandler(IFilePathHandler):
     ]
 
     def supports_sequencing(self) -> bool:
-        return False
+        return self.is_versioned_spice_file
+
+    def get_unsequenced_pattern(self) -> re.Pattern:
+        if not self.is_versioned_spice_file:
+            raise ValueError(
+                "This SPICE file is not versioned; no unsequenced pattern available."
+            )
+
+        super()._check_property_values("unsequenced pattern", ["filename", "version"])
+
+        filename_extension = self.filename.split(".")[-1]
+        base_filename = self.filename[
+            : -len(f"_v{self.version:03}.{filename_extension}")
+        ]
+
+        return re.compile(
+            rf"{re.escape(base_filename)}_v(?P<version>\d+)\.{filename_extension}"
+        )
 
     def get_content_date_for_indexing(self) -> datetime | None:
         return self.content_date
 
     def get_folder_structure(self) -> str:
-        super()._check_property_values(
-            "folder structure", ["root_folder", "kernel_folder"]
-        )
+        super()._check_property_values("folder structure", ["kernel_folder"])
         assert self.kernel_folder
 
-        return (Path(self.root_folder) / self.kernel_folder).as_posix()
+        return (Path(self.get_root_folder()) / self.kernel_folder).as_posix()
 
     def get_filename(self) -> str:
         assert self.filename
@@ -115,6 +133,10 @@ class SPICEPathHandler(IFilePathHandler):
         ) or TimeConversion.try_extract_iso_like_datetime(metadata, "ingestion_date")
 
         self.metadata = metadata
+
+        if metadata.get("version") is not None:
+            self.version = int(metadata["version"])
+            self.is_versioned_spice_file = True
 
     def get_metadata(self) -> dict | None:
         return self.metadata
@@ -133,7 +155,7 @@ class SPICEPathHandler(IFilePathHandler):
         # check for Path
         if (
             isinstance(filename, Path)
-            and filename.parent.parent.name == SPICEPathHandler.root_folder
+            and filename.parent.parent.name == SPICEPathHandler.get_root_folder()
         ):
             # if this is in the SPICE folder structure it IS spice and so we just take it as-is
             is_spice = True
@@ -151,6 +173,14 @@ class SPICEPathHandler(IFilePathHandler):
                 break
 
         if is_spice:
+            # file is versioned if it has _v### before the file extension
+            versioned_match = re.search(r"_v(\d{3,})\.", filename_only)
+            if versioned_match:
+                is_versioned_spice_file = True
+                version = int(versioned_match.group(1))
+            else:
+                is_versioned_spice_file = False
+
             if kernel_type is None:
                 logger.warning(
                     f"Could not determine kernel type for SPICE file {filename}. Setting to 'unknown'."
