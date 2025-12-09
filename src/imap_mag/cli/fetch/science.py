@@ -31,8 +31,8 @@ def fetch_science(
     level: Annotated[
         ScienceLevel, typer.Option(case_sensitive=False, help="Level to download")
     ] = ScienceLevel.l2,
-    reference_frame: Annotated[
-        ReferenceFrame | None,
+    reference_frames: Annotated[
+        list[ReferenceFrame] | None,
         typer.Option(
             "--frame",
             case_sensitive=False,
@@ -40,21 +40,18 @@ def fetch_science(
         ),
     ] = None,
     modes: Annotated[
-        list[ScienceMode],
+        list[ScienceMode] | None,
         typer.Option(
             case_sensitive=False,
-            help="Science modes to download",
+            help="Science modes to download. None = All modes",
         ),
-    ] = [
-        "norm",  # type: ignore
-        "burst",  # type: ignore
-    ],  # for some reason Typer does not like these being enums
+    ] = None,
     sensors: Annotated[
-        list[MAGSensor], typer.Option(case_sensitive=False, help="Sensors to download")
-    ] = [
-        MAGSensor.IBS,
-        MAGSensor.OBS,
-    ],
+        list[MAGSensor] | None,
+        typer.Option(
+            case_sensitive=False, help="Sensors to download. None = All sensors"
+        ),
+    ] = None,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -72,22 +69,52 @@ def fetch_science(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    if reference_frame is not None and level != ScienceLevel.l2:
-        logger.warning(
-            f"Reference frame {reference_frame.value} is only applicable for L2 data. Ignoring input value."
-        )
-        reference_frame = None
-
     data_access = SDCDataAccess(
         auth_code=app_settings.fetch_science.api.auth_code,
         data_dir=work_folder,
         sdc_url=app_settings.fetch_science.api.url_base,
     )
 
+    # if we ommitted some param and specifiyed others the API client need to build a full descripter so fill in the other values
+    if level in [ScienceLevel.l1b, ScienceLevel.l1c]:
+        if not sensors and modes:
+            sensors = [
+                MAGSensor.IBS,
+                MAGSensor.OBS,
+            ]
+        if not modes and sensors:
+            modes = [
+                ScienceMode.Normal,
+                ScienceMode.Burst,
+            ]
+
+    if level in [ScienceLevel.l1d, ScienceLevel.l2]:
+        if sensors:
+            logger.warning(
+                f"Sensors specified for level {level.value} which does not use sensors. Ignoring sensor specification."
+            )
+            sensors = None
+        if modes and not reference_frames:
+            logger.warning(
+                f"Modes specified for level {level.value} without reference frames. Adding all default reference frames."
+            )
+            reference_frames = [
+                ReferenceFrame.GSE,
+                ReferenceFrame.DSRF,
+                ReferenceFrame.SRF,
+                ReferenceFrame.RTN,
+                ReferenceFrame.GSM,
+            ]
+        if reference_frames and not modes:
+            logger.warning(
+                f"Reference frames specified for level {level.value} without modes. Adding all default modes."
+            )
+            modes = [ScienceMode.Normal, ScienceMode.Burst]
+
     fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
     downloaded_science: dict[Path, SciencePathHandler] = fetch_science.download_science(
         level=level,
-        reference_frame=reference_frame,
+        reference_frames=reference_frames,
         start_date=start_date,
         end_date=end_date,
         use_ingestion_date=use_ingestion_date,

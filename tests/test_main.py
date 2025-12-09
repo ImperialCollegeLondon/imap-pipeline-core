@@ -341,7 +341,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&start_date=20250502&end_date=20250502&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -455,6 +455,8 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "science",
             "--level",
             "l1b",
+            "--modes",
+            "norm",
             "--start-date",
             "2024-07-16",
             "--end-date",

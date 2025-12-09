@@ -8,6 +8,7 @@ from prefect.client.schemas.objects import (
     ConcurrencyLimitStrategy,
 )
 from prefect.events import DeploymentEventTrigger
+from prefect.schedules import Cron
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
@@ -121,36 +122,60 @@ def deploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_science_norm_l1c_deployable = poll_science_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
-        parameters={
-            "modes": ["norm"],
-            "level": "l1c",
-        },
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
+    sci_polling_schedules = []
+    timezone = "Europe/London"
+    if get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON):
+        sci_polling_schedules.append(
+            Cron(
+                get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1C_NORM_CRON),
+                timezone=timezone,
+                parameters={
+                    "modes": ["norm"],
+                    "level": "l1c",
+                },
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
+            )
+        )
+    if get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON):
+        sci_polling_schedules.append(
+            Cron(
+                get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
+                timezone=timezone,
+                parameters={
+                    "modes": ["burst"],
+                    "level": "l1b",
+                },
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
+            )
+        )
+    if get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON):
+        sci_polling_schedules.append(
+            Cron(
+                get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
+                timezone=timezone,
+                parameters={
+                    "level": "l2",
+                },
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
+            )
+        )
+    if get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1D_CRON):
+        sci_polling_schedules.append(
+            Cron(
+                get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1D_CRON),
+                timezone=timezone,
+                parameters={
+                    "level": "l1d",
+                },
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D,
+            )
+        )
+
+    poll_science_deployable = poll_science_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SCIENCE,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-    )
-    poll_science_burst_l1b_deployable = poll_science_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
-        parameters={
-            "modes": ["burst"],
-            "level": "l1b",
-        },
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1B_BURST_CRON),
-        job_variables=shared_job_variables,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-    )
-    poll_science_l2_deployable = poll_science_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
-        parameters={
-            "modes": ["norm", "burst"],
-            "level": "l2",
-            "reference_frame": "dsrf",
-        },
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L2_CRON),
-        job_variables=shared_job_variables,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        schedules=sci_polling_schedules,
     )
 
     publish_deployable = publish_flow.to_deployment(
@@ -275,9 +300,7 @@ def deploy_flows(local_debug: bool = False):
     deployables = (
         poll_ialirt_deployable,
         poll_hk_deployable,
-        poll_science_norm_l1c_deployable,
-        poll_science_burst_l1b_deployable,
-        poll_science_l2_deployable,
+        poll_science_deployable,
         publish_deployable,
         check_ialirt_deployable,
         quicklook_ialirt_deployable,

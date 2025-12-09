@@ -27,7 +27,10 @@ def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
     level: ScienceLevel = parameters["level"]
-    modes: list[ScienceMode] = parameters["modes"]
+    modes: list[ScienceMode] = parameters["modes"] or [
+        ScienceMode.Normal,
+        ScienceMode.Burst,
+    ]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
         if parameters["start_date"] is not None
@@ -53,24 +56,24 @@ async def poll_science_flow(
             }
         ),
     ] = ScienceLevel.l1c,
-    reference_frame: Annotated[
-        ReferenceFrame | None,
+    reference_frames: Annotated[
+        list[ReferenceFrame] | None,
         Field(
             json_schema_extra={
-                "title": "Reference frame",
-                "description": "Reference frame to download for L2. Only used if level is L2.",
+                "title": "Reference frame(s)",
+                "description": "Reference frame(s) to download for L2/L1D. None downloads all frames.",
             }
         ),
     ] = None,
     modes: Annotated[
-        list[ScienceMode],
+        list[ScienceMode] | None,
         Field(
             json_schema_extra={
                 "title": "Science modes to download",
-                "description": "List of science modes to download. Default is both Normal and Burst.",
+                "description": "List of science modes to download. Default (none) is both Normal and Burst.",
             }
         ),
-    ] = [ScienceMode.Normal, ScienceMode.Burst],
+    ] = None,
     start_date: Annotated[
         datetime | None,
         Field(
@@ -120,6 +123,11 @@ async def poll_science_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
+    if reference_frames and level not in [ScienceLevel.l2, ScienceLevel.l1d]:
+        raise ValueError(
+            "Reference frames specified but level is not L2 or L1D. Reference frames will be ignored."
+        )
+
     if force_database_update and not force_ingestion_date:
         logger.warning(
             "Database cannot be updated without forcing ingestion date. Database will not be updated."
@@ -133,65 +141,69 @@ async def poll_science_flow(
     ) or automated_flow_run
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
-    for mode in modes:
-        packet_start_timestamp = DatetimeProvider.now()
+    if modes and len(modes) == 1:
+        mode = modes[0]
         progress_item_id = f"{mode.packet}_{level.value.upper()}"
+    else:
+        progress_item_id = f"ALL_MODES_{level.value.upper()}"
 
-        logger.info(f"---------- Downloading Packet {mode.packet} ----------")
+    packet_start_timestamp = DatetimeProvider.now()
+    frame_suffix = (
+        ("_" + "_".join([rf.value for rf in reference_frames]))
+        if reference_frames
+        else ""
+    )
+    progress_item_id += frame_suffix
 
-        date_manager = DownloadDateManager(progress_item_id, database)
+    logger.info(
+        f"Downloading {progress_item_id} from SDC '{start_date}' to '{end_date}'"
+    )
 
-        packet_dates = date_manager.get_dates_for_download(
-            original_start_date=start_date,
-            original_end_date=end_date,
-            validate_with_database=use_database,
+    date_manager = DownloadDateManager(progress_item_id, database)
+
+    packet_dates = date_manager.get_dates_for_download(
+        original_start_date=start_date,
+        original_end_date=end_date,
+        validate_with_database=use_database,
+    )
+
+    if packet_dates is None:
+        logger.info(f"No dates for download of {progress_item_id} - skipping")
+        return
+    else:
+        (packet_start_date, packet_end_date) = packet_dates
+
+    # Download files from SDC
+    with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
+        downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
+            level=level,
+            reference_frames=reference_frames,
+            modes=modes,
+            start_date=packet_start_date,
+            end_date=packet_end_date,
+            use_ingestion_date=use_ingestion_date,
+            fetch_mode=FetchMode.DownloadAndUpdateProgress,
         )
 
-        if packet_dates is None:
-            logger.info(f"No dates for download of {progress_item_id} - skipping")
-            continue
-        else:
-            (packet_start_date, packet_end_date) = packet_dates
-
-        # Download files from SDC
-        with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
-            downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
-                level=level,
-                reference_frame=reference_frame,
-                modes=[mode],
-                start_date=packet_start_date,
-                end_date=packet_end_date,
-                use_ingestion_date=use_ingestion_date,
-                fetch_mode=FetchMode.DownloadAndUpdateProgress,
-            )
-
-        if not downloaded_science:
-            logger.info(
-                f"No data downloaded for packet {mode.packet} from {packet_start_date} to {packet_end_date}."
-            )
-
-        # Update database with latest ingestion date as progress (for science)
-        if use_database:
-            ingestion_dates: list[datetime] = [
-                metadata.ingestion_date
-                for metadata in downloaded_science.values()
-                if metadata.ingestion_date
-            ]
-            latest_ingestion_date: datetime | None = (
-                max(ingestion_dates) if ingestion_dates else None
-            )
-
-            update_database_with_progress(
-                progress_item_id=progress_item_id,
-                database=database,
-                checked_timestamp=packet_start_timestamp,
-                latest_timestamp=latest_ingestion_date,
-            )
-        else:
-            logger.info(f"Database not updated for {progress_item_id}.")
-
-        logger.info(
-            f"---------- Finished downloading Packet {progress_item_id} ----------"
+    # Update database with latest ingestion date as progress (for science)
+    if use_database:
+        ingestion_dates: list[datetime] = [
+            metadata.ingestion_date
+            for metadata in downloaded_science.values()
+            if metadata.ingestion_date
+        ]
+        latest_ingestion_date: datetime | None = (
+            max(ingestion_dates) if ingestion_dates else None
         )
 
-    logger.info("---------- Finished ----------")
+        update_database_with_progress(
+            progress_item_id=progress_item_id,
+            database=database,
+            checked_timestamp=packet_start_timestamp,
+            latest_timestamp=latest_ingestion_date,
+        )
+        logger.info(f"Database updated for {progress_item_id}.")
+    else:
+        logger.info(f"Database not updated for {progress_item_id}.")
+
+    logger.info("Poll science flow complete")

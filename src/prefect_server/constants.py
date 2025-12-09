@@ -34,6 +34,7 @@ class PREFECT_CONSTANTS:
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1C_NORM"
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1B_BURST"
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
+        POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
@@ -63,9 +64,11 @@ class PREFECT_CONSTANTS:
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
         POLL_HK = "poll_hk"
+        POLL_SCIENCE = "poll_science"
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
+        POLL_L1D = "poll_l1d_science"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
