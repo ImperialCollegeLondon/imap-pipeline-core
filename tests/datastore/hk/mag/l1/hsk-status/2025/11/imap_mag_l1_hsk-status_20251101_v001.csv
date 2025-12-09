@@ -1,0 +1,2 @@
+epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,hk_strucid,magmode,prisensor,fobclksrc,fibclksrc,fobstat,fibstat,icufobar,icufibar,edacstat,fobar,fibar,spare1,cpuidle,fill,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len,time_met_iso,epoch_iso
+815298991184000000,499722927,0,1,0,3,25,4,Burst,OBSensor,ICU,External,Active,Active,Enabled,Enabled,Enabled,Enabled,Enabled,0,54,0,0,0,1,1064,3,787,11,2025-11-01T19:55:27,
