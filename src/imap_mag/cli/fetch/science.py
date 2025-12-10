@@ -36,7 +36,7 @@ def fetch_science(
         typer.Option(
             "--frame",
             case_sensitive=False,
-            help="Reference frame to download for L2. Only used if level is L2.",
+            help="Reference frame to download for L2/L1D. Use None for L1B/L1C. Defaults to None - all reference frames.",
         ),
     ] = None,
     modes: Annotated[
@@ -75,49 +75,19 @@ def fetch_science(
         sdc_url=app_settings.fetch_science.api.url_base,
     )
 
-    # if we ommitted some param and specifiyed others the API client need to build a full descripter so fill in the other values
-    if level in [ScienceLevel.l1b, ScienceLevel.l1c]:
-        if not sensors and modes:
-            sensors = [
-                MAGSensor.IBS,
-                MAGSensor.OBS,
-            ]
-        if not modes and sensors:
-            modes = [
-                ScienceMode.Normal,
-                ScienceMode.Burst,
-            ]
+    (modes, sensors, reference_frames) = _validate_and_complete_parameters(
+        level, modes, sensors, reference_frames
+    )
 
-    if level in [ScienceLevel.l1d, ScienceLevel.l2]:
-        if sensors:
-            logger.warning(
-                f"Sensors specified for level {level.value} which does not use sensors. Ignoring sensor specification."
-            )
-            sensors = None
-        if modes and not reference_frames:
-            logger.warning(
-                f"Modes specified for level {level.value} without reference frames. Adding all default reference frames."
-            )
-            reference_frames = [
-                ReferenceFrame.GSE,
-                ReferenceFrame.DSRF,
-                ReferenceFrame.SRF,
-                ReferenceFrame.RTN,
-                ReferenceFrame.GSM,
-            ]
-        if reference_frames and not modes:
-            logger.warning(
-                f"Reference frames specified for level {level.value} without modes. Adding all default modes."
-            )
-            modes = [ScienceMode.Normal, ScienceMode.Burst]
-
-    fetch_science = FetchScience(data_access, modes=modes, sensors=sensors)
+    fetch_science = FetchScience(data_access)
     downloaded_science: dict[Path, SciencePathHandler] = fetch_science.download_science(
         level=level,
         reference_frames=reference_frames,
         start_date=start_date,
         end_date=end_date,
         use_ingestion_date=use_ingestion_date,
+        modes=modes,
+        sensors=sensors,
     )
 
     if not downloaded_science:
@@ -145,3 +115,83 @@ def fetch_science(
         output_science = downloaded_science
 
     return output_science
+
+
+def _validate_and_complete_parameters(
+    level: ScienceLevel,
+    modes: list[ScienceMode] | None,
+    sensors: list[MAGSensor] | None,
+    reference_frames: list[ReferenceFrame] | None,
+) -> tuple[
+    list[ScienceMode] | None, list[MAGSensor] | None, list[ReferenceFrame] | None
+]:
+    """
+    Validate the parameters are correct and add defaults where needed to ensure the full set of downloads are completed
+
+    If all are None then all files will be downloaded.
+    If one of the descriptor components are specified (e.g. L1B mode but not sensor) then the missing components will be added as defaults to ensure a full set of files are downloaded.
+    """
+
+    # Normalize empty lists to None
+    if sensors == [] or sensors == [None]:
+        sensors = None
+    if modes == [] or modes == [None]:
+        modes = None
+    if reference_frames == [] or reference_frames == [None]:
+        reference_frames = None
+
+    # If all are None then all files will be downloaded - simple case
+    if not sensors and not modes and not reference_frames:
+        return modes, sensors, reference_frames
+
+    if level in [ScienceLevel.l1a, ScienceLevel.l1b, ScienceLevel.l1c]:
+        if reference_frames:
+            raise ValueError(
+                f"Reference frames specified for level {level.value} which does not use reference frames"
+            )
+
+        if modes is not None and sensors is None:
+            logger.info(
+                f"Modes specified for level {level.value} but no sensors. Adding all default sensors."
+            )
+            sensors = [
+                MAGSensor.IBS,
+                MAGSensor.OBS,
+            ]
+        if sensors is not None and modes is None:
+            logger.info(
+                f"Sensors specified for level {level.value} but no modes. Adding all default modes."
+            )
+            modes = [
+                ScienceMode.Normal,
+                ScienceMode.Burst,
+            ]
+
+    if level in [ScienceLevel.l2, ScienceLevel.l1d]:
+        if sensors is not None:
+            raise ValueError(
+                f"Sensors specified for level {level.value} which does not use sensors"
+            )
+
+        if modes is not None and reference_frames is None:
+            logger.info(
+                f"Modes specified for level {level.value} but no reference frames. Adding all default reference frames."
+            )
+            reference_frames = [
+                ReferenceFrame.GSE,
+                ReferenceFrame.DSRF,
+                ReferenceFrame.SRF,
+                ReferenceFrame.RTN,
+                ReferenceFrame.GSM,
+            ]
+
+        if reference_frames is not None and modes is None:
+            logger.info(
+                f"Reference frames specified for level {level.value} but no modes. Adding all default modes."
+            )
+            modes = [
+                ScienceMode.Normal,
+                ScienceMode.Burst,
+            ]
+
+    return modes, sensors, reference_frames

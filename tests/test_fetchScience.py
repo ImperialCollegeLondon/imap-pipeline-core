@@ -21,9 +21,7 @@ def mock_soc() -> mock.Mock:
 
 def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     mock_soc.query_sdc_files.side_effect = lambda **_: {}  # return empty dictionary
 
@@ -32,6 +30,8 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
         level=ScienceLevel.l1b,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
@@ -50,9 +50,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
 
 def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
@@ -73,6 +71,8 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
         level=ScienceLevel.l1b,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
@@ -148,9 +148,7 @@ def test_fetch_binary_different_start_end_dates(
     mock_soc: mock.Mock, start_date, end_date, expected_start_date, expected_end_date
 ) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     mock_soc.query_sdc_files.side_effect = lambda **_: {}  # return empty dictionary
 
@@ -159,6 +157,8 @@ def test_fetch_binary_different_start_end_dates(
         level=ScienceLevel.l1b,
         start_date=start_date,
         end_date=end_date,
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
@@ -177,9 +177,7 @@ def test_fetch_binary_different_start_end_dates(
 
 def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
@@ -201,6 +199,8 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
         use_ingestion_date=True,
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
@@ -235,7 +235,7 @@ def test_fetch_l2_science_with_both_sensors(
     mock_soc: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    fetchScience = FetchScience(mock_soc, modes=[ScienceMode.Normal], sensors=None)
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
@@ -257,6 +257,7 @@ def test_fetch_l2_science_with_both_sensors(
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
         reference_frames=[ReferenceFrame.GSE],
+        modes=[ScienceMode.Normal],
     )
 
     # Verify.

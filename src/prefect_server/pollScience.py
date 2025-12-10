@@ -123,11 +123,6 @@ async def poll_science_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
-    if reference_frames and level not in [ScienceLevel.l2, ScienceLevel.l1d]:
-        raise ValueError(
-            "Reference frames specified but level is not L2 or L1D. Reference frames will be ignored."
-        )
-
     if force_database_update and not force_ingestion_date:
         logger.warning(
             "Database cannot be updated without forcing ingestion date. Database will not be updated."
@@ -142,8 +137,7 @@ async def poll_science_flow(
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
     if modes and len(modes) == 1:
-        mode = modes[0]
-        progress_item_id = f"{mode.packet}_{level.value.upper()}"
+        progress_item_id = f"{modes[0].packet}_{level.value.upper()}"
     else:
         progress_item_id = f"ALL_MODES_{level.value.upper()}"
 

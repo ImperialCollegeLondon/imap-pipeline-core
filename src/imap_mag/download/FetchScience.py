@@ -12,24 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class FetchScience:
-    """Manage SOC data."""
+    """Download MAG science data from the SDC."""
 
     __data_access: SDCDataAccess
-
-    __modes: list[ScienceMode] | None
-    __sensor: list[MAGSensor] | None
 
     def __init__(
         self,
         data_access: SDCDataAccess,
-        modes: list[ScienceMode] | None,
-        sensors: list[MAGSensor] | None,
     ) -> None:
-        """Initialize SDC interface."""
-
         self.__data_access = data_access
-        self.__modes = modes
-        self.__sensor = sensors
 
     def download_science(
         self,
@@ -37,6 +28,8 @@ class FetchScience:
         start_date: datetime,
         end_date: datetime,
         reference_frames: list[ReferenceFrame] | None = None,
+        modes: list[ScienceMode] | None = None,
+        sensors: list[MAGSensor] | None = None,
         use_ingestion_date: bool = False,
     ) -> dict[Path, SciencePathHandler]:
         """Retrieve SDC data."""
@@ -49,7 +42,7 @@ class FetchScience:
         }
 
         for descriptor in self.get_descriptors(
-            reference_frames=reference_frames, level=level
+            level=level, modes=modes, sensors=sensors, reference_frames=reference_frames
         ):
             file_details = self.__data_access.query_sdc_files(
                 level=level.value,
@@ -85,35 +78,38 @@ class FetchScience:
 
     def get_descriptors(
         self,
-        reference_frames: list[ReferenceFrame] | None = None,
-        level: ScienceLevel | None = None,
+        level: ScienceLevel | None,
+        modes: list[ScienceMode] | None,
+        sensors: list[MAGSensor] | None,
+        reference_frames: list[ReferenceFrame] | None,
     ) -> list[str] | list[None]:
         """Get list of descriptors based on modes and reference frames."""
         descriptors: list[str] = []
 
-        for mode in self.__modes if self.__modes else []:
-            descriptors.append(mode.short_name)
-
-        if self.__sensor:
-            if descriptors:
-                descriptors = [
-                    descriptor + "-" + sensor.value
-                    for descriptor in descriptors
-                    for sensor in self.__sensor
-                ]
-            else:
-                descriptors.extend([sensor.value for sensor in self.__sensor])
-
-        if reference_frames:
-            if descriptors:
-                descriptors = [
-                    descriptor + "-" + reference_frame.value
-                    for descriptor in descriptors
-                    for reference_frame in reference_frames
-                ]
-            else:
-                descriptors.extend(
-                    [reference_frame.value for reference_frame in reference_frames]
+        if level in [ScienceLevel.l1d, ScienceLevel.l2]:
+            if (modes is not None and reference_frames is None) or (
+                modes is None and reference_frames is not None
+            ):
+                raise ValueError(
+                    "Both modes and reference_frames must be provided together."
                 )
+
+            if modes is not None and reference_frames is not None:
+                descriptors = [
+                    f"{m.short_name}-{rf.value}"
+                    for m in modes
+                    for rf in reference_frames
+                ]
+
+        elif level in [ScienceLevel.l1a, ScienceLevel.l1b, ScienceLevel.l1c]:
+            if (modes is not None and sensors is None) or (
+                modes is None and sensors is not None
+            ):
+                raise ValueError("Both modes and sensors must be provided together.")
+
+            if modes is not None and sensors is not None:
+                descriptors = [
+                    f"{m.short_name}-{s.value}" for m in modes for s in sensors
+                ]
 
         return descriptors if descriptors else [None]
