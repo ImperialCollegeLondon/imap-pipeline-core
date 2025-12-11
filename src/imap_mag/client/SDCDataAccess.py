@@ -85,7 +85,7 @@ class SDCDataAccess:
             extension=extension,
         )
 
-    def get_filename(
+    def query_sdc_files(
         self,
         *,
         level: str | None = None,
@@ -97,6 +97,13 @@ class SDCDataAccess:
         version: str | None = None,
         extension: str | None = None,
     ) -> list[dict[str, str]] | None:
+        logger.info(
+            f"Querying SDC for files with parameters: level={level}, descriptor={descriptor}, "
+            f"start_date={start_date}, end_date={end_date}, "
+            f"ingestion_start_date={ingestion_start_date}, ingestion_end_date={ingestion_end_date}, "
+            f"version={version}, extension={extension}"
+        )
+
         file_details: list[dict[str, str]] = self.query(
             level=level,
             descriptor=descriptor,

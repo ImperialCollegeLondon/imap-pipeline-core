@@ -21,21 +21,21 @@ def mock_soc() -> mock.Mock:
 
 def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
-    mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
+    mock_soc.query_sdc_files.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
-    mock_soc.get_filename.assert_called_once_with(
+    mock_soc.query_sdc_files.assert_called_once_with(
         level="l1b",
         descriptor="norm-mago",
         start_date=datetime(2025, 5, 2),
@@ -50,14 +50,12 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
 
 def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
 
-    mock_soc.get_filename.side_effect = lambda **_: [
+    mock_soc.query_sdc_files.side_effect = lambda **_: [
         {
             "file_path": test_file.absolute(),
             "descriptor": "norm-mago",
@@ -73,10 +71,12 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
         level=ScienceLevel.l1b,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
-    mock_soc.get_filename.assert_called_once_with(
+    mock_soc.query_sdc_files.assert_called_once_with(
         level="l1b",
         descriptor="norm-mago",
         start_date=datetime(2025, 5, 2),
@@ -148,21 +148,21 @@ def test_fetch_binary_different_start_end_dates(
     mock_soc: mock.Mock, start_date, end_date, expected_start_date, expected_end_date
 ) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
-    mock_soc.get_filename.side_effect = lambda **_: {}  # return empty dictionary
+    mock_soc.query_sdc_files.side_effect = lambda **_: {}  # return empty dictionary
 
     # Exercise.
     actual_downloaded: dict[Path, SciencePathHandler] = fetchScience.download_science(
         level=ScienceLevel.l1b,
         start_date=start_date,
         end_date=end_date,
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
-    mock_soc.get_filename.assert_called_once_with(
+    mock_soc.query_sdc_files.assert_called_once_with(
         level="l1b",
         descriptor="norm-mago",
         start_date=expected_start_date,
@@ -177,14 +177,12 @@ def test_fetch_binary_different_start_end_dates(
 
 def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
 
-    mock_soc.get_filename.side_effect = lambda **_: [
+    mock_soc.query_sdc_files.side_effect = lambda **_: [
         {
             "file_path": test_file.absolute(),
             "descriptor": "norm-mago",
@@ -201,10 +199,12 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
         use_ingestion_date=True,
+        modes=[ScienceMode.Normal],
+        sensors=[MAGSensor.OBS],
     )
 
     # Verify.
-    mock_soc.get_filename.assert_called_once_with(
+    mock_soc.query_sdc_files.assert_called_once_with(
         level="l1b",
         descriptor="norm-mago",
         ingestion_start_date=datetime(2025, 5, 2),
@@ -235,14 +235,12 @@ def test_fetch_l2_science_with_both_sensors(
     mock_soc: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    fetchScience = FetchScience(
-        mock_soc, modes=[ScienceMode.Normal], sensors=[MAGSensor.OBS, MAGSensor.IBS]
-    )
+    fetchScience = FetchScience(mock_soc)
 
     test_file = Path(tempfile.gettempdir()) / "test_file"
     test_file.write_text("contents")
 
-    mock_soc.get_filename.side_effect = lambda **_: [
+    mock_soc.query_sdc_files.side_effect = lambda **_: [
         {
             "file_path": test_file.absolute(),
             "descriptor": "norm-gse",
@@ -258,11 +256,12 @@ def test_fetch_l2_science_with_both_sensors(
         level=ScienceLevel.l2,
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
-        reference_frame=ReferenceFrame.GSE,
+        reference_frames=[ReferenceFrame.GSE],
+        modes=[ScienceMode.Normal],
     )
 
     # Verify.
-    mock_soc.get_filename.assert_called_once_with(
+    mock_soc.query_sdc_files.assert_called_once_with(
         level="l2",
         descriptor="norm-gse",
         start_date=datetime(2025, 5, 2),
@@ -286,9 +285,4 @@ def test_fetch_l2_science_with_both_sensors(
             extension="cdf",
         )
         in actual_downloaded.values()
-    )
-
-    assert (
-        "Forcing download of only OBS (mago) sensor for L2 data."
-        in capture_cli_logs.text
     )
