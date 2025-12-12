@@ -24,6 +24,7 @@ from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.prefectUtils import get_cron_from_env
+from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
@@ -254,6 +255,45 @@ def deploy_flows(local_debug: bool = False):
         ],
     )
 
+    postgres_upload_deployable = upload_new_files_to_postgres.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POSTGRES_UPLOAD,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_POSTGRES_UPLOAD
+        ),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        triggers=[
+            DeploymentEventTrigger(
+                name="Trigger postgres upload after HK poll",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
+                },
+            ),
+            DeploymentEventTrigger(
+                name="Trigger postgres upload after I-ALiRT poll",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
+                },
+            ),
+            DeploymentEventTrigger(
+                name="Trigger postgres upload after science poll",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
+                },
+            ),
+            DeploymentEventTrigger(
+                name="Trigger postgres upload after APPLY_CALIBRATION",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
+                },
+            ),
+        ],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "4g"
     matlab_shared_job_variables["memswap_limit"] = "4g"
@@ -309,6 +349,7 @@ def deploy_flows(local_debug: bool = False):
         check_ialirt_deployable,
         quicklook_ialirt_deployable,
         upload_deployable,
+        postgres_upload_deployable,
     )
 
     if local_debug:
