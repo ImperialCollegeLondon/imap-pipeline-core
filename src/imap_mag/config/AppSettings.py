@@ -16,6 +16,7 @@ from imap_mag.config.FetchConfig import (
     FetchScienceConfig,
 )
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
+from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
 from imap_mag.config.PublishConfig import PublishConfig
 from imap_mag.config.QuicklookConfig import QuicklookConfig
 from imap_mag.config.UploadConfig import UploadConfig
@@ -52,6 +53,7 @@ class AppSettings(BaseSettings):
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig
+    postgres_upload: PostgresUploadConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:
