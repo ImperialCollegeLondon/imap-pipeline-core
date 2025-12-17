@@ -59,87 +59,61 @@ ialirt_validation:
     type: limit
     danger_min: 3.0
     danger_max: 3.6
-    warning_min: 3.35
-    warning_max: 3.38
-  - name: mag_hk_hk3v3_current
-    type: limit
-    warning_min: 110
-    warning_max: 143
+    warning_min: 3.15
+    warning_max: 3.45
   - name: mag_hk_hkn8v5
     type: limit
-    danger_min: -10.61
-    danger_max: -8.25
-    warning_min: -9.8
-    warning_max: -9.46
-  - name: mag_hk_hkn8v5_current
-    type: limit
-    warning_min: 80
-    warning_max: 180
+    danger_min: -10.6
+    danger_max: -8.20
+    warning_min: -10.0
+    warning_max: -8.4
   - name: mag_hk_icu_temp
     type: limit
     danger_min: -30
-    danger_max: 50
+    danger_max: 60
+    warning_min: -25
+    warning_max: 50
   - name: mag_hk_fib_temp
     type: limit
     danger_min: -50
     danger_max: 59
+    warning_min: -45
+    warning_max: 55
   - name: mag_hk_fob_temp
     type: limit
     danger_min: -50
     danger_max: 59
+    warning_min: -45
+    warning_max: 55
   - name: mag_hk_mode
     type: forbidden
     values: [2, 4]
-    severity: warning
+    severity: danger
     lookup:
       2: Safe
       4: Debug
   - name: mag_hk_hk1v5_danger
     type: flag
     severity: danger
-  - name: mag_hk_hk1v5c_danger
-    type: flag
-    severity: danger
   - name: mag_hk_hk1v8_danger
-    type: flag
-    severity: danger
-  - name: mag_hk_hk1v8c_danger
     type: flag
     severity: danger
   - name: mag_hk_hk2v5_danger
     type: flag
     severity: danger
-  - name: mag_hk_hk2v5c_danger
-    type: flag
-    severity: danger
   - name: mag_hk_hkp8v5_danger
-    type: flag
-    severity: danger
-  - name: mag_hk_hkp8v5c_danger
     type: flag
     severity: danger
   - name: mag_hk_hk1v5_warn
     type: flag
     severity: warning
-  - name: mag_hk_hk1v5c_warn
-    type: flag
-    severity: warning
   - name: mag_hk_hk1v8_warn
-    type: flag
-    severity: warning
-  - name: mag_hk_hk1v8c_warn
     type: flag
     severity: warning
   - name: mag_hk_hk2v5_warn
     type: flag
     severity: warning
-  - name: mag_hk_hk2v5c_warn
-    type: flag
-    severity: warning
   - name: mag_hk_hkp8v5_warn
-    type: flag
-    severity: warning
-  - name: mag_hk_hkp8v5c_warn
     type: flag
     severity: warning
   - name: mag_hk_multbit_errs
