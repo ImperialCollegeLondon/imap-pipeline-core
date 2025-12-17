@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 
 from imap_mag.cli.check.check_ialirt import IALiRTAnomalyError
 from imap_mag.main import app
+from prefect_server.checkIALiRT import CONSTANTS
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     TEST_DATA,
@@ -511,6 +512,7 @@ def test_check_ialirt_with_issues(
     temp_datastore,  # noqa: F811
     capture_cli_logs,
 ):
+    CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
     # Exercise.
     result = runner.invoke(
         app,
