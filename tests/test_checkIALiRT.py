@@ -53,6 +53,7 @@ async def test_check_ialirt_with_issues(
     prefect_test_fixture,  # noqa: F811
     capture_cli_logs,
 ):
+    CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
     # Exercise.
     with pytest.raises(
         FailedRun, match=re.escape("Anomalies detected in I-ALiRT data.")
