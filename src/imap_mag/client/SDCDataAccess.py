@@ -55,36 +55,6 @@ class SDCDataAccess:
             logger.error(f"Upload failed: {e}")
             raise SDCUploadError(f"Failed to upload file {filename}") from e
 
-    def query(
-        self,
-        *,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
-    ) -> list[dict[str, str]]:
-        return imap_data_access.query(
-            instrument="mag",
-            data_level=level,
-            descriptor=descriptor,
-            start_date=(start_date.strftime("%Y%m%d") if start_date else None),
-            end_date=(end_date.strftime("%Y%m%d") if end_date else None),
-            ingestion_start_date=(
-                ingestion_start_date.strftime("%Y%m%d")
-                if ingestion_start_date
-                else None
-            ),
-            ingestion_end_date=(
-                ingestion_end_date.strftime("%Y%m%d") if ingestion_end_date else None
-            ),
-            version=version,
-            extension=extension,
-        )
-
     def query_sdc_files(
         self,
         *,
@@ -104,19 +74,44 @@ class SDCDataAccess:
             f"version={version}, extension={extension}"
         )
 
-        file_details: list[dict[str, str]] = self.query(
-            level=level,
+        file_details: list[dict[str, str]] = imap_data_access.query(
+            instrument="mag",
+            data_level=level,
             descriptor=descriptor,
-            start_date=start_date,
-            end_date=end_date,
-            ingestion_start_date=ingestion_start_date,
-            ingestion_end_date=ingestion_end_date,
+            start_date=(start_date.strftime("%Y%m%d") if start_date else None),
+            end_date=(end_date.strftime("%Y%m%d") if end_date else None),
+            ingestion_start_date=(
+                ingestion_start_date.strftime("%Y%m%d")
+                if ingestion_start_date
+                else None
+            ),
+            ingestion_end_date=(
+                ingestion_end_date.strftime("%Y%m%d") if ingestion_end_date else None
+            ),
             version=version,
             extension=extension,
         )
 
         file_names: str = ", ".join([value["file_path"] for value in file_details])
         logger.info(f"Found {len(file_details)} matching files:\n{file_names}")
+
+        # if we specified ingestion_start_date or end date then ignore any files that are outside that range
+        # because the query is only on date and not the full datetime
+        if ingestion_start_date or ingestion_end_date:
+            filtered_files: list[dict[str, str]] = []
+            for file in file_details:
+                ingestion_date = datetime.strptime(
+                    file["ingestion_date"], "%Y%m%d %H:%M:%S"
+                )
+                if ingestion_start_date and ingestion_date <= ingestion_start_date:
+                    continue
+                if ingestion_end_date and ingestion_date > ingestion_end_date:
+                    continue
+                filtered_files.append(file)
+            logger.info(
+                f"After filtering based on ingestion dates, {len(filtered_files)} files remain."
+            )
+            return filtered_files
 
         return file_details
 
