@@ -56,7 +56,7 @@ jobs:
         run: poetry run pytest -s --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --junitxml=test-results.xml tests
 
       - name: Upload Coverage report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           name: CoverageReport_${{ matrix.os }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}
