@@ -254,9 +254,13 @@ def deploy_flows(local_debug: bool = False):
         ],
     )
 
+    matlab_shared_job_variables = shared_job_variables.copy()
+    matlab_shared_job_variables["mem_limit"] = "4g"
+    matlab_shared_job_variables["memswap_limit"] = "4g"
+
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
-        job_variables=shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
@@ -265,7 +269,7 @@ def deploy_flows(local_debug: bool = False):
 
     gradiometer_deployable = gradiometry_flow.to_deployment(
         name="gradiometer",
-        job_variables=shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
@@ -274,7 +278,7 @@ def deploy_flows(local_debug: bool = False):
 
     apply_deployable = apply_flow.to_deployment(
         name="apply",
-        job_variables=shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
@@ -283,7 +287,7 @@ def deploy_flows(local_debug: bool = False):
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name="calibrate_and_apply",
-        job_variables=shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
