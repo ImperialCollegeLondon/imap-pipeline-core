@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -21,6 +22,9 @@ from imap_mag.util import (
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var
+
+BATCH_SIZE = 30
+MAX_DOWNLOADS_PER_FLOW = 1000
 
 
 def generate_flow_run_name() -> str:
@@ -150,9 +154,63 @@ async def poll_science_flow(
     progress_item_id += frame_suffix
 
     logger.info(
-        f"Downloading {progress_item_id} from SDC '{start_date}' to '{end_date}'"
+        f"Downloading {progress_item_id} from SDC '{start_date}' to '{end_date}' in batches of {BATCH_SIZE} files. "
     )
 
+    downloaded_science = []
+
+    for _ in range(
+        MAX_DOWNLOADS_PER_FLOW // BATCH_SIZE
+    ):  # arbitrary large number to prevent infinite loops
+        with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
+            items = download_batch_of_science(
+                level,
+                reference_frames,
+                modes,
+                start_date,
+                end_date,
+                logger,
+                database,
+                use_database,
+                use_ingestion_date,
+                progress_item_id,
+                packet_start_timestamp,
+                BATCH_SIZE,
+            )
+            if items:
+                downloaded_science.append(items)
+
+        if items is None or len(items) < BATCH_SIZE:
+            # No more items to download
+            break
+
+        if len(downloaded_science) >= MAX_DOWNLOADS_PER_FLOW:
+            logger.warning(
+                "Downloaded 1000 or more files in this flow run. Stopping to avoid excessive downloads."
+            )
+            break
+
+        await asyncio.sleep(3)  # brief pause between batches
+
+    logger.info(
+        f"Poll science flow complete. Downloaded total of {len(downloaded_science)} items."
+    )
+
+
+def download_batch_of_science(
+    level,
+    reference_frames,
+    modes,
+    start_date,
+    end_date,
+    logger,
+    database,
+    use_database,
+    use_ingestion_date,
+    progress_item_id,
+    packet_start_timestamp,
+    batch_size,
+):
     date_manager = DownloadDateManager(progress_item_id, database)
 
     packet_dates = date_manager.get_dates_for_download(
@@ -168,16 +226,16 @@ async def poll_science_flow(
         (packet_start_date, packet_end_date) = packet_dates
 
     # Download files from SDC
-    with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
-        downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
-            level=level,
-            reference_frames=reference_frames,
-            modes=modes,
-            start_date=packet_start_date,
-            end_date=packet_end_date,
-            use_ingestion_date=use_ingestion_date,
-            fetch_mode=FetchMode.DownloadAndUpdateProgress,
-        )
+    downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
+        level=level,
+        reference_frames=reference_frames,
+        modes=modes,
+        start_date=packet_start_date,
+        end_date=packet_end_date,
+        use_ingestion_date=use_ingestion_date,
+        fetch_mode=FetchMode.DownloadAndUpdateProgress,
+        max_downloads=batch_size,
+    )
 
     # Update database with latest ingestion date as progress (for science)
     if use_database:
@@ -200,4 +258,4 @@ async def poll_science_flow(
     else:
         logger.info(f"Database not updated for {progress_item_id}.")
 
-    logger.info("Poll science flow complete")
+    return downloaded_science

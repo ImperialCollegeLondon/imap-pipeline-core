@@ -31,10 +31,15 @@ class FetchScience:
         modes: list[ScienceMode] | None = None,
         sensors: list[MAGSensor] | None = None,
         use_ingestion_date: bool = False,
+        max_downloads: int | None = None,
     ) -> dict[Path, SciencePathHandler]:
         """Retrieve SDC data."""
 
         downloaded: dict[Path, SciencePathHandler] = dict()
+        max_downloads_reached = False
+
+        if max_downloads is not None and max_downloads <= 0:
+            raise ValueError("max_downloads must be greater than zero or None")
 
         dates: dict[str, datetime] = {
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
@@ -44,11 +49,20 @@ class FetchScience:
         for descriptor in self.get_descriptors(
             level=level, modes=modes, sensors=sensors, reference_frames=reference_frames
         ):
+            if max_downloads_reached:
+                break
+
             file_details = self.__data_access.query_sdc_files(
                 level=level.value,
                 descriptor=descriptor,
                 extension="cdf",
                 **dates,  # type: ignore
+            )
+
+            # sort by ingestion date to ensure we process in cronological order
+            file_details = sorted(
+                file_details,
+                key=lambda x: datetime.strptime(x["ingestion_date"], "%Y%m%d %H:%M:%S"),
             )
 
             for file in file_details if file_details else []:
@@ -69,6 +83,14 @@ class FetchScience:
                         version=int(file["version"].lstrip("v")),
                         extension="cdf",
                     )
+                    max_downloads_reached = (
+                        max_downloads is not None and len(downloaded) >= max_downloads
+                    )
+                    if max_downloads_reached:
+                        logger.info(
+                            f"Reached maximum number of downloads ({max_downloads}). Stopping further downloads."
+                        )
+                        break
                 else:
                     logger.debug(
                         f"Downloaded file {downloaded_file} is empty and will not be used."

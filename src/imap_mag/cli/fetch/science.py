@@ -59,6 +59,12 @@ def fetch_science(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
+    max_downloads: Annotated[
+        int | None,
+        typer.Option(
+            help="Maximum number of files to download. None means no limit.",
+        ),
+    ] = None,
 ) -> dict[Path, SciencePathHandler]:
     """Download science data from the SDC."""
 
@@ -88,6 +94,7 @@ def fetch_science(
         use_ingestion_date=use_ingestion_date,
         modes=modes,
         sensors=sensors,
+        max_downloads=max_downloads,
     )
 
     if not downloaded_science:
