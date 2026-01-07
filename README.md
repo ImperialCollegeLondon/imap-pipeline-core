@@ -98,6 +98,7 @@ source .venv/bin/activate
 source defaults.env
 # [optional] source dev.env
 python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
+# Or perhaps PYTHONPATH=src:$PYTHONPATH python -m prefect_server.workflow --local
 
 # Now open the UI in a browser at http://127.0.0.1:4200/deployments
 # Go to the blocks page and make sure to add any credentials such as the web poda auth code
@@ -105,7 +106,7 @@ python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(
 
 ## Debugging a prefect flow
 
-This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode witha  debugger attached and then run your flow from there.
+This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode with a debugger attached and then run your flow from there.
 
 ## CLI Commands
 
@@ -163,7 +164,6 @@ Example 2 - prepare a section in config file based on a data file:
 crump prepare -c imap-db-injest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
 ```
 
-
 Example 3 - crump command to ingest data based on a config file section:
 
 ```bash
@@ -179,4 +179,3 @@ Example 3 - crump command to ingest data based on a config file section:
 
     crump sync -- job imap_mag_l1_hsk-status_v  ./tests/datastore/hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv imap-db-injest-config.yaml
 ```
-

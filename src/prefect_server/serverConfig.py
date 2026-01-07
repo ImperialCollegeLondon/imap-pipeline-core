@@ -40,6 +40,8 @@ class ServerConfig:
     async def _create_queues(client, local_debug: bool):
         existing_queues = await client.read_work_queues()
 
+        print(f"Existing work queues: {[q.name for q in existing_queues]}")
+
         work_pool = PREFECT_CONSTANTS.DEFAULT_WORKPOOL if not local_debug else None
 
         if PREFECT_CONSTANTS.QUEUES.HIGH_PRIORITY not in [

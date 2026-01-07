@@ -1,5 +1,5 @@
 import typing
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 T = typing.TypeVar("T", date, datetime)
 
@@ -9,14 +9,14 @@ class DatetimeProvider:
 
     @staticmethod
     def now() -> datetime:
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        return datetime.now(UTC).replace(tzinfo=None)
 
     @staticmethod
     def today(date_type: type[T] = datetime) -> T:
         today = date_type.today()
 
         if isinstance(today, datetime):
-            return today.astimezone(timezone.utc).replace(
+            return today.astimezone(UTC).replace(
                 hour=0, minute=0, second=0, microsecond=0, tzinfo=None
             )
         else:

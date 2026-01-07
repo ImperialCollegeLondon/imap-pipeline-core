@@ -37,13 +37,14 @@ prefect-docker = "^0.6.6"
 spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
 ccsdspy = "^1.4.2"
-crump = "^0.1.0"
+crump = "^0.2.0"
 prefect-managedfiletransfer = "^0.2.0"
 pytest-env = "^1.1.5" # should this be a dev dependency?
 ialirt-data-access = "^0.5.0"
 apprise = ">=1.9.5"
 urllib3 = "^2.6.1"
 starlette = "^0.50.0"
+prefect-sqlalchemy = "^0.5.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"

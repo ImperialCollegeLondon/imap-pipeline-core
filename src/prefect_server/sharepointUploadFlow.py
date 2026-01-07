@@ -1,5 +1,5 @@
 import fnmatch
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import prefect_managedfiletransfer
@@ -28,10 +28,10 @@ async def upload_new_files_to_sharepoint(
 
     app_settings = AppSettings()  # type: ignore
     db = Database()
-    started = datetime.now(tz=timezone.utc)
+    started = datetime.now(tz=UTC)
     workflow_progress = db.get_workflow_progress(PROGRESS_KEY)
     if workflow_progress.progress_timestamp is None:
-        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=timezone.utc)
+        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=UTC)
 
     last_modified_date = (
         workflow_progress.progress_timestamp
@@ -91,7 +91,7 @@ async def upload_new_files_to_sharepoint(
     if files:
         logger.debug("Uploading completed")
         latest_file_timestamp = max(f.last_modified_date for f in files)
-        new_progress_date = min(started, latest_file_timestamp.astimezone(timezone.utc))
+        new_progress_date = min(started, latest_file_timestamp.astimezone(UTC))
         workflow_progress.update_progress_timestamp(new_progress_date)
         logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
 

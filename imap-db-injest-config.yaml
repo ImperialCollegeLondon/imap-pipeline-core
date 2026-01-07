@@ -1,6 +1,7 @@
 jobs:
   imap_mag_l1_hsk-procstat_v:
     target_table: hsk_procstat
+    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -289,6 +290,7 @@ jobs:
         order: DESC
   imap_mag_l1_hsk-pw_v:
     target_table: hsk_pw
+    filename_match: imap_mag_l1_hsk-pw_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -425,6 +427,7 @@ jobs:
         order: DESC
   imap_mag_l1_hsk-sci_v:
     target_table: hsk_sci
+    filename_match: imap_mag_l1_hsk-sci_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -677,6 +680,7 @@ jobs:
         order: DESC
   imap_mag_l1_hsk-sid15_v:
     target_table: hsk_sid15
+    filename_match: imap_mag_l1_hsk-sid15_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -2913,6 +2917,7 @@ jobs:
         order: DESC
   imap_mag_l1_hsk-status_v:
     target_table: hsk_status
+    filename_match: imap_mag_l1_hsk-status_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -2997,6 +3002,7 @@ jobs:
         order: DESC
   imap_sc_l1_x285_v:
     target_table: sc_x285
+    filename_match: imap_sc_l1_x285_*_v*.csv
     id_mapping:
       epoch:
         db_column: id
@@ -5861,6 +5867,7 @@ jobs:
         order: DESC
   imap_sc_l1_x286_v:
     target_table: sc_x286
+    filename_match: imap_sc_l1_x286_*_v*.csv
     id_mapping:
       epoch:
         db_column: id

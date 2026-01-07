@@ -1,23 +1,25 @@
 import fnmatch
+import logging
 import os
 import re
 import tempfile
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from crump import CrumpConfig, sync_file_to_db
 from prefect import flow, get_run_logger
-from prefect.states import Completed
+from prefect.states import Completed, Failed
+from prefect_sqlalchemy import SqlAlchemyConnector
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
 
-PROGRESS_KEY = "postgres-upload"
+logger = logging.getLogger(__name__)
 
 
-def extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
+def _extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
     """
     Extract date and version number from a file path.
 
@@ -44,7 +46,7 @@ def extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
                 int(date_match.group(1)),
                 int(date_match.group(2)),
                 int(date_match.group(3)),
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             )
         except ValueError:
             pass
@@ -58,7 +60,7 @@ def extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
                     int(date_match.group(1)),
                     int(date_match.group(2)),
                     int(date_match.group(3)),
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
             except ValueError:
                 pass
@@ -78,7 +80,7 @@ def extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
     return date, version
 
 
-def select_latest_version_per_day(files: list) -> list:
+def _select_latest_version_per_day(files: list) -> list:
     """
     Select only the latest version of files per day.
 
@@ -96,7 +98,7 @@ def select_latest_version_per_day(files: list) -> list:
     files_by_date = defaultdict(list)
 
     for file in files:
-        date, version = extract_version_and_date(Path(file.path))
+        date, version = _extract_version_and_date(Path(file.path))
         date_key = date.date() if date else None
         files_by_date[date_key].append((file, version))
 
@@ -110,6 +112,67 @@ def select_latest_version_per_day(files: list) -> list:
     return latest_files
 
 
+async def _get_database_connectionstring(
+    app_settings: AppSettings,
+    db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None,
+) -> str:
+    """
+    Get database connection string from environment variable or Prefect block.
+
+    Args:
+        db_env_name_or_block_name_or_block: Environment variable name, Prefect block name, or SqlAlchemyConnector block.
+    Returns:
+        Database connection string.
+    """
+
+    if db_env_name_or_block_name_or_block is None:
+        logger.info("Using database connection info from app settings")
+        db_url_lookup_key = (
+            app_settings.postgres_upload.database_url_env_var_or_block_name
+        )
+    else:
+        db_url_lookup_key = db_env_name_or_block_name_or_block
+
+    if db_url_lookup_key is None:
+        raise RuntimeError(
+            "Database connection information not provided. Cannot upload."
+        )
+
+    db_url = None
+
+    if isinstance(db_env_name_or_block_name_or_block, SqlAlchemyConnector):
+        db_url = db_env_name_or_block_name_or_block._rendered_url.render_as_string(
+            False
+        )
+    elif isinstance(db_env_name_or_block_name_or_block, str):
+        # Check if it's an environment variable
+        env_value = os.getenv(db_env_name_or_block_name_or_block)
+        if env_value:
+            logger.info(
+                f"Using database connection string from environment variable {db_env_name_or_block_name_or_block}"
+            )
+            db_url = env_value
+        else:
+            # Assume it's a Prefect block name
+            try:
+                connector_block = await SqlAlchemyConnector.aload(
+                    db_env_name_or_block_name_or_block
+                )
+                logger.info(
+                    f"Using database connection string from Prefect SqlAlchemyConnector block {db_env_name_or_block_name_or_block}\n{connector_block._rendered_url.render_as_string(True)}"
+                )
+                db_url = connector_block._rendered_url.render_as_string(False)
+            except ValueError:
+                logger.info(
+                    f"{db_env_name_or_block_name_or_block} SqlAlchemyConnector block not found or empty"
+                )
+
+    if db_url is None:
+        raise ValueError("Invalid database connection input")
+
+    return db_url
+
+
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POSTGRES_UPLOAD,
     log_prints=True,
@@ -118,6 +181,8 @@ async def upload_new_files_to_postgres(
     find_files_after: datetime | None = None,
     how_many: int | None = None,
     job_name: str | None = None,
+    db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None = None,
+    progress_key="postgres-upload",
 ):
     """
     Upload new CSV and CDF files to PostgreSQL database using crump.
@@ -139,13 +204,17 @@ async def upload_new_files_to_postgres(
     logger = get_run_logger()
 
     app_settings = AppSettings()  # type: ignore
-    db = Database()
-    started = datetime.now(tz=timezone.utc)
+    db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
+    started = datetime.now(tz=UTC)
+
+    db_url = await _get_database_connectionstring(
+        app_settings, db_env_name_or_block_name_or_block
+    )
 
     # Get workflow progress
-    workflow_progress = db.get_workflow_progress(PROGRESS_KEY)
+    workflow_progress = db.get_workflow_progress(progress_key)
     if workflow_progress.progress_timestamp is None:
-        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=timezone.utc)
+        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=UTC)
 
     last_modified_date = (
         workflow_progress.progress_timestamp
@@ -180,55 +249,24 @@ async def upload_new_files_to_postgres(
 
     if files:
         # Select only latest version per day
-        files = select_latest_version_per_day(files)
+        files = _select_latest_version_per_day(files)
         logger.info(
             f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
         )
 
-    # Get database URL from environment
-    db_url_env_var = app_settings.postgres_upload.database_url_env_var
-    db_url = os.getenv(db_url_env_var)
-
-    if not db_url:
-        logger.error(
-            f"Database URL not found in environment variable '{db_url_env_var}'. Skipping upload."
-        )
-        return Completed(
-            message=f"Database URL not configured in {db_url_env_var}",
-            name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME,
-        )
+    # Print the current working directory for debugging
+    logger.info(f"Current working directory: {Path.cwd()}")
 
     # Load crump configuration
     crump_config_path = app_settings.postgres_upload.crump_config_path
+    logger.info(f"Loading crump config path: {crump_config_path}")
     if not crump_config_path.exists():
-        logger.error(
+        raise ValueError(
             f"Crump configuration file not found at {crump_config_path}. Skipping upload."
-        )
-        return Completed(
-            message=f"Crump config not found at {crump_config_path}",
-            name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME,
         )
 
     logger.info(f"Loading crump configuration from {crump_config_path}")
     crump_config = CrumpConfig.from_yaml(crump_config_path)
-
-    # Determine which job to use
-    if job_name is None:
-        if len(crump_config.jobs) == 1:
-            job_name = list(crump_config.jobs.keys())[0]
-            logger.info(f"Auto-detected single job: {job_name}")
-        else:
-            logger.error(
-                f"Multiple jobs found in config ({', '.join(crump_config.jobs.keys())}). "
-                "Please specify job_name parameter."
-            )
-            return Completed(
-                message="Multiple jobs in config, job_name required",
-                name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME,
-            )
-
-    job = crump_config.get_job(job_name)
-    logger.info(f"Using crump job '{job_name}' targeting table '{job.target_table}'")
 
     # Process each file
     uploaded_count = 0
@@ -248,6 +286,14 @@ async def upload_new_files_to_postgres(
             )
             failed_count += 1
             continue
+
+        # Determine job to use
+        (job, job_name) = crump_config.get_job_or_auto_detect(
+            job_name, filename=path_inc_datastore.as_posix()
+        )
+        logger.info(
+            f"Using crump job '{job_name}' targeting table '{job.target_table}'"
+        )
 
         try:
             logger.info(f"Syncing {path_inside_datastore} to database...")
@@ -307,9 +353,12 @@ async def upload_new_files_to_postgres(
     if uploaded_count > 0:
         logger.info(f"Upload completed: {uploaded_count} files synced to database")
         latest_file_timestamp = max(f.last_modified_date for f in files)
-        new_progress_date = min(started, latest_file_timestamp.astimezone(timezone.utc))
-        workflow_progress.update_progress_timestamp(new_progress_date)
-        logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
+        workflow_progress.update_progress_timestamp(
+            latest_file_timestamp.astimezone(UTC)
+        )
+        logger.info(
+            f"Set progress timestamp for {progress_key} to {latest_file_timestamp.astimezone(UTC)}"
+        )
 
         message = f"{uploaded_count} file(s) uploaded to PostgreSQL"
         if failed_count > 0:
@@ -317,7 +366,7 @@ async def upload_new_files_to_postgres(
         result = Completed(message=message)
     else:
         if failed_count > 0:
-            result = Completed(message=f"All {failed_count} files failed")
+            result = Failed(message=f"All {failed_count} files failed")
         else:
             result = Completed(
                 message="No work to do 💤", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME

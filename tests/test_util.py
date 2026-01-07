@@ -1,6 +1,6 @@
 """Tests for app utilities."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -29,7 +29,7 @@ def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
     "date",
     [
         datetime(2025, 3, 20, 10, 0, 0, tzinfo=timezone(timedelta(hours=-1))),
-        datetime(2025, 3, 20, 10, 0, 0, tzinfo=timezone.utc),
+        datetime(2025, 3, 20, 10, 0, 0, tzinfo=UTC),
         datetime(2025, 3, 20, 10, 0, 0, tzinfo=None),
     ],
 )

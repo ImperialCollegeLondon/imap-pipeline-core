@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  'output/'
+data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 
 # Command specific configuration:
@@ -60,3 +60,10 @@ upload:
         - "*hk/sc/l1/*"
         - "*ialirt/*"
         - "*quicklook/*"
+
+postgres_upload:
+    crump_config_path: imap-db-injest-config.yaml
+    database_url_env_var_or_block_name: 'DATABASE_URL'
+    enable_history: true
+    paths_to_match:
+        - "*hk/mag/l1/*"

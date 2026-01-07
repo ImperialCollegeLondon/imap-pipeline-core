@@ -16,9 +16,9 @@ class PostgresUploadConfig(CommandConfig):
         default=Path("crump_config.yml"),
         description="Path to crump YAML configuration file that maps files to database tables",
     )
-    database_url_env_var: str = Field(
+    database_url_env_var_or_block_name: str = Field(
         default="DATABASE_URL",
-        description="Environment variable name containing PostgreSQL connection string",
+        description="Environment variable name or Prefect block name containing PostgreSQL connection string",
     )
     enable_history: bool = Field(
         default=False,

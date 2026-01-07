@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 from urllib.parse import quote
 
@@ -221,7 +221,7 @@ NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
             microsecond=0,
         )
     )
-    .astimezone(timezone.utc)
+    .astimezone(UTC)
     .replace(tzinfo=None)
 )
 
