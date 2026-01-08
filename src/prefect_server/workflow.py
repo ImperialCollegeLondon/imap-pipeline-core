@@ -336,7 +336,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    matlab_deployables = (
+    matlab_deployables = await asyncio.gather(
         calibration_deployable,
         gradiometer_deployable,
         apply_deployable,
