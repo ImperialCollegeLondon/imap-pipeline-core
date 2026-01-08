@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  'tests/datastore'
+data_store:  'output/'
 packet_definition: 'packet_def/'
 
 # Command specific configuration:

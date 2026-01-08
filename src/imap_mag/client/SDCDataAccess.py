@@ -98,6 +98,16 @@ class SDCDataAccess:
         # if we specified ingestion_start_date or end date then ignore any files that are outside that range
         # because the query is only on date and not the full datetime
         if ingestion_start_date or ingestion_end_date:
+            # If the end date does not have a time component then assume the end of the day
+            if (
+                ingestion_end_date
+                and ingestion_end_date.hour == 0
+                and ingestion_end_date.minute == 0
+            ):
+                ingestion_end_date = ingestion_end_date.replace(
+                    hour=23, minute=59, second=59
+                )
+
             filtered_files: list[dict[str, str]] = []
             for file in file_details:
                 ingestion_date = datetime.strptime(
