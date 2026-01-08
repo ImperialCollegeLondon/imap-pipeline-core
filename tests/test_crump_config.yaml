@@ -1,0 +1,114 @@
+jobs:
+  imap_mag_l1_hsk-procstat_v:
+    target_table: hsk_procstat
+    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: text
+        nullable: false
+      total_tasks:
+        db_column: total_tasks
+        type: integer
+        nullable: false
+      total_tm_cpuusg:
+        db_column: total_tm_cpuusg
+        type: integer
+        nullable: false
+      total_tm_cpuusg_us:
+        db_column: total_tm_cpuusg_us
+        type: integer
+        nullable: false
+      idle_tsk_cpuusg:
+        db_column: idle_tsk_cpuusg
+        type: integer
+        nullable: false
+      idle_tsk_cpuusg_us:
+        db_column: idle_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      spir_tsk_cpuusg:
+        db_column: spir_tsk_cpuusg
+        type: integer
+        nullable: false
+      spir_tsk_cpuusg_us:
+        db_column: spir_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      ibbt_tsk_cpuusg:
+        db_column: ibbt_tsk_cpuusg
+        type: integer
+        nullable: false
+      ibbt_tsk_cpuusg_us:
+        db_column: ibbt_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      ibnt_tsk_cpuusg:
+        db_column: ibnt_tsk_cpuusg
+        type: integer
+        nullable: false
+      ibnt_tsk_cpuusg_us:
+        db_column: ibnt_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      obbt_tsk_cpuusg:
+        db_column: obbt_tsk_cpuusg
+        type: integer
+        nullable: false
+      obbt_tsk_cpuusg_us:
+        db_column: obbt_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      obnt_tsk_cpuusg:
+        db_column: obnt_tsk_cpuusg
+        type: integer
+        nullable: false
+      obnt_tsk_cpuusg_us:
+        db_column: obnt_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      scit_tsk_cpuusg:
+        db_column: scit_tsk_cpuusg
+        type: integer
+        nullable: false
+      scit_tsk_cpuusg_us:
+        db_column: scit_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      tcim_tsk_cpuusg:
+        db_column: tcim_tsk_cpuusg
+        type: integer
+        nullable: false
+      tcim_tsk_cpuusg_us:
+        db_column: tcim_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      tcir_tsk_cpuusg:
+        db_column: tcir_tsk_cpuusg
+        type: integer
+        nullable: false
+      tcir_tsk_cpuusg_us:
+        db_column: tcir_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      tmot_tsk_cpuusg:
+        db_column: tmot_tsk_cpuusg
+        type: integer
+        nullable: false
+      tmot_tsk_cpuusg_us:
+        db_column: tmot_tsk_cpuusg_us
+        type: integer
+        nullable: false
+      tmwr_tsk_cpuusg:
+        db_column: tmwr_tsk_cpuusg
+        type: integer
+        nullable: false
+      tmwr_tsk_cpuusg_us:
+        db_column: tmwr_tsk_cpuusg_us
+        type: integer
+        nullable: false
