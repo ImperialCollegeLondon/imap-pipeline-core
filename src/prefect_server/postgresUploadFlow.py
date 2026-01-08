@@ -170,6 +170,10 @@ async def _get_database_connectionstring(
     if db_url is None:
         raise ValueError("Invalid database connection input")
 
+    # Convert PostgreSQL URL for crump (remove +psycopg driver specification)
+    # crump expects/needs: postgresql://user:pass@host:port/dbname
+    db_url = db_url.replace("postgresql+psycopg://", "postgresql://")
+
     return db_url
 
 
@@ -231,10 +235,6 @@ async def upload_new_files_to_postgres(
 
     workflow_progress.update_last_checked_date(started)
 
-    logger.info(
-        f"Found {len(new_files_db)} new files. Checking against {len(app_settings.postgres_upload.paths_to_match)} patterns from settings."
-    )
-
     # Filter files by patterns
     files = [
         f
@@ -244,8 +244,9 @@ async def upload_new_files_to_postgres(
             for p in app_settings.postgres_upload.paths_to_match
         )
     ]
-
-    logger.info(f"{len(files)} files matching upload patterns.")
+    logger.info(
+        f"Found {len(new_files_db)} new files. Checked against {len(app_settings.postgres_upload.paths_to_match)} patterns from settings and {len(files)} files match"
+    )
 
     if files:
         # Select only latest version per day
@@ -254,18 +255,13 @@ async def upload_new_files_to_postgres(
             f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
         )
 
-    # Print the current working directory for debugging
-    logger.info(f"Current working directory: {Path.cwd()}")
-
     # Load crump configuration
     crump_config_path = app_settings.postgres_upload.crump_config_path
-    logger.info(f"Loading crump config path: {crump_config_path}")
+    logger.info(f"Loading crump config path: {crump_config_path.absolute()}")
     if not crump_config_path.exists():
         raise ValueError(
             f"Crump configuration file not found at {crump_config_path}. Skipping upload."
         )
-
-    logger.info(f"Loading crump configuration from {crump_config_path}")
     crump_config = CrumpConfig.from_yaml(crump_config_path)
 
     # Process each file

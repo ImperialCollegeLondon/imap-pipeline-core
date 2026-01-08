@@ -10,15 +10,16 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import Environment
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from tests.util.miscellaneous import DATASTORE
-
-pytest_plugins = ("tests.util.prefect",)
+from tests.util.prefect import prefect_test_fixture  # noqa: F401
 
 
 @pytest.mark.asyncio
 async def test_upload_new_files_to_postgres_does_upload_files(
-    capture_cli_logs, test_database, prefect_test_fixture
+    capture_cli_logs,
+    test_database,
+    prefect_test_fixture,  # noqa: F811
 ):
-    # Set up test data in IMAP tracking database
+    # Set up test data in IMAP files database table
     test_files = [
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv",
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v001.csv",
@@ -36,7 +37,7 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         with Environment(
             MAG_DATA_STORE=str(DATASTORE.absolute()),
             MAG_POSTGRES_UPLOAD__CRUMP_CONFIG_PATH=str(crump_config_path.absolute()),
-            MAG_POSTGRES_UPLOAD__PATHS_TO_MATCH='["*hk/mag/l1/*"]',
+            TARGET_DATABASE_URL=target_db_url,
         ):
             # Insert test files into IMAP tracking database
             app_settings = AppSettings()
@@ -54,44 +55,28 @@ async def test_upload_new_files_to_postgres_does_upload_files(
                     )
                 )
 
-            # Convert PostgreSQL URL for crump (remove +psycopg driver specification)
-            # crump expects: postgresql://user:pass@host:port/dbname
-            TARGET_DATABASE_URL = target_db_url.replace(
-                "postgresql+psycopg://", "postgresql://"
+            # Exercise - upload files to postgres
+            await upload_new_files_to_postgres(
+                find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
+                db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
             )
 
-            # Exercise - upload files to postgres
-            # Use find_files_after to ensure we find the files
-            with Environment(TARGET_DATABASE_URL=TARGET_DATABASE_URL):
-                await upload_new_files_to_postgres(
-                    find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
-                    db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
+            # Verify
+            assert "2 file(s) uploaded to PostgreSQL" in capture_cli_logs.text
+
+            # Verify data was uploaded to target database
+            with target_engine.connect() as conn:
+                result = conn.execute(text("SELECT COUNT(*) FROM hsk_procstat"))
+                row_count = result.scalar()
+                assert row_count == 48, (
+                    f"Expected rows in hsk_procstat table, but found {row_count}"
                 )
 
-        # Verify
-        assert "2 file(s) uploaded to PostgreSQL" in capture_cli_logs.text
-
-        # Verify data was uploaded to target database
-        with target_engine.connect() as conn:
-            result = conn.execute(text("SELECT COUNT(*) FROM hsk_procstat"))
-            row_count = result.scalar()
-            assert row_count > 0, (
-                f"Expected rows in hsk_procstat table, but found {row_count}"
-            )
-
-        # Exercise again - should not upload again (no new files)
-        # Don't pass find_files_after so it uses the updated workflow progress
-        with Environment(
-            MAG_DATA_STORE=str(DATASTORE.absolute()),
-            MAG_POSTGRES_UPLOAD__CRUMP_CONFIG_PATH=str(crump_config_path.absolute()),
-            MAG_POSTGRES_UPLOAD__PATHS_TO_MATCH='["*hk/mag/l1/*"]',
-            TARGET_DATABASE_URL=TARGET_DATABASE_URL,
-        ):
+            # Exercise again - should not upload again (no new files)
+            # Don't pass find_files_after so it uses the updated workflow progress
             await upload_new_files_to_postgres(
                 db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
             )
 
-        # Verify - should be no work to do
-        assert "No work to do" in capture_cli_logs.text
-
-        target_engine.dispose()
+            # Verify - should be no work to do
+            assert "No work to do" in capture_cli_logs.text
