@@ -11,6 +11,8 @@ class PREFECT_CONSTANTS:
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
 
+    IMAP_DATABASE_BLOCK_NAME = "imap-database"
+
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_UPDATED = "imap_mag.ialirt.updated"

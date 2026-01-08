@@ -183,9 +183,12 @@ async def _get_database_connectionstring(
 )
 async def upload_new_files_to_postgres(
     find_files_after: datetime | None = None,
+    paths_to_match: list[str] | None = None,
     how_many: int | None = None,
     job_name: str | None = None,
-    db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None = None,
+    db_env_name_or_block_name_or_block: str
+    | SqlAlchemyConnector
+    | None = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
     progress_key="postgres-upload",
 ):
     """
@@ -200,6 +203,8 @@ async def upload_new_files_to_postgres(
     Args:
         find_files_after: Optional datetime to find files modified after this time.
                          If None, uses the last progress timestamp.
+        paths_to_match: Optional list of path patterns to filter files.
+                        If None, uses patterns from app settings.
         how_many: Optional limit on number of files to process
         job_name: Optional specific job name from crump config to use.
                  If None, will auto-detect if only one job exists in config.
@@ -226,8 +231,14 @@ async def upload_new_files_to_postgres(
         else find_files_after
     )
 
+    paths_to_match = (
+        paths_to_match
+        if paths_to_match is not None
+        else app_settings.postgres_upload.paths_to_match
+    )
+
     logger.info(
-        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date}"
+        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date} matching patterns: {paths_to_match}"
     )
 
     # Get new files from database
@@ -239,13 +250,10 @@ async def upload_new_files_to_postgres(
     files = [
         f
         for f in new_files_db
-        if any(
-            fnmatch.fnmatch(f.path, p)
-            for p in app_settings.postgres_upload.paths_to_match
-        )
+        if any(fnmatch.fnmatch(f.path, p) for p in paths_to_match)
     ]
     logger.info(
-        f"Found {len(new_files_db)} new files. Checked against {len(app_settings.postgres_upload.paths_to_match)} patterns from settings and {len(files)} files match"
+        f"Found {len(new_files_db)} new files. Checked against {len(paths_to_match)} patterns from settings and {len(files)} files match"
     )
 
     if files:
@@ -284,12 +292,24 @@ async def upload_new_files_to_postgres(
             continue
 
         # Determine job to use
-        (job, job_name) = crump_config.get_job_or_auto_detect(
-            job_name, filename=path_inc_datastore.as_posix()
-        )
-        logger.info(
-            f"Using crump job '{job_name}' targeting table '{job.target_table}'"
-        )
+        try:
+            job_details = crump_config.get_job_or_auto_detect(
+                job_name, filename=path_inc_datastore.as_posix()
+            )
+            if job_details is None:
+                raise ValueError("No matching job found in crump config")
+
+            job, job_name = job_details
+
+            logger.info(
+                f"Using crump job '{job_name}' targeting table '{job.target_table}'"
+            )
+        except ValueError as ve:
+            logger.error(
+                f"Failed to determine crump job for {path_inside_datastore}: {ve}"
+            )
+            failed_count += 1
+            continue
 
         try:
             logger.info(f"Syncing {path_inside_datastore} to database...")
