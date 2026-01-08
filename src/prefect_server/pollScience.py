@@ -159,16 +159,32 @@ async def poll_science_flow(
 
     downloaded_science = []
 
-    for _ in range(
-        MAX_DOWNLOADS_PER_FLOW // BATCH_SIZE
-    ):  # arbitrary large number to prevent infinite loops
+    total_batches = MAX_DOWNLOADS_PER_FLOW // BATCH_SIZE
+
+    date_manager = DownloadDateManager(progress_item_id, database)
+
+    packet_dates = date_manager.get_dates_for_download(
+        original_start_date=start_date,
+        original_end_date=end_date,
+        validate_with_database=use_database,
+    )
+
+    if packet_dates is None:
+        logger.info(f"No dates for download of {progress_item_id} - skipping")
+        return
+    else:
+        (packet_start_date, packet_end_date) = packet_dates
+
+    first_path_in_previous_batch = Path("")
+
+    for _ in range(total_batches):  # arbitrary large number to prevent infinite loops
         with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
             items = download_batch_of_science(
                 level,
                 reference_frames,
                 modes,
-                start_date,
-                end_date,
+                packet_start_date,
+                packet_end_date,
                 logger,
                 database,
                 use_database,
@@ -176,6 +192,7 @@ async def poll_science_flow(
                 progress_item_id,
                 packet_start_timestamp,
                 BATCH_SIZE,
+                len(downloaded_science),
             )
             if items:
                 downloaded_science.append(items)
@@ -183,6 +200,15 @@ async def poll_science_flow(
         if items is None or len(items) < BATCH_SIZE:
             # No more items to download
             break
+
+        first_path_in_batch = next(iter(items.keys()))
+        if first_path_in_batch == first_path_in_previous_batch:
+            logger.warning(
+                "First item in batch is the same as the previous batch. Stopping to avoid infinite loop."
+            )
+            break
+
+        first_path_in_previous_batch = first_path_in_batch
 
         if len(downloaded_science) >= MAX_DOWNLOADS_PER_FLOW:
             logger.warning(
@@ -210,43 +236,28 @@ def download_batch_of_science(
     progress_item_id,
     packet_start_timestamp,
     batch_size,
+    skip_items_count,
 ):
-    date_manager = DownloadDateManager(progress_item_id, database)
-
-    packet_dates = date_manager.get_dates_for_download(
-        original_start_date=start_date,
-        original_end_date=end_date,
-        validate_with_database=use_database,
+    logger.info(
+        f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
     )
-
-    if packet_dates is None:
-        logger.info(f"No dates for download of {progress_item_id} - skipping")
-        return
-    else:
-        (packet_start_date, packet_end_date) = packet_dates
 
     # Download files from SDC
     downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
         level=level,
         reference_frames=reference_frames,
         modes=modes,
-        start_date=packet_start_date,
-        end_date=packet_end_date,
+        start_date=start_date,
+        end_date=end_date,
         use_ingestion_date=use_ingestion_date,
         fetch_mode=FetchMode.DownloadAndUpdateProgress,
         max_downloads=batch_size,
+        skip_items_count=skip_items_count,
     )
 
     # Update database with latest ingestion date as progress (for science)
     if use_database:
-        ingestion_dates: list[datetime] = [
-            metadata.ingestion_date
-            for metadata in downloaded_science.values()
-            if metadata.ingestion_date
-        ]
-        latest_ingestion_date: datetime | None = (
-            max(ingestion_dates) if ingestion_dates else None
-        )
+        latest_ingestion_date = get_latest_ingestion_date(downloaded_science)
 
         update_database_with_progress(
             progress_item_id=progress_item_id,
@@ -259,3 +270,16 @@ def download_batch_of_science(
         logger.info(f"Database not updated for {progress_item_id}.")
 
     return downloaded_science
+
+
+def get_latest_ingestion_date(downloaded_science):
+    ingestion_dates: list[datetime] = [
+        metadata.ingestion_date
+        for metadata in downloaded_science.values()
+        if metadata.ingestion_date
+    ]
+    latest_ingestion_date: datetime | None = (
+        max(ingestion_dates) if ingestion_dates else None
+    )
+
+    return latest_ingestion_date

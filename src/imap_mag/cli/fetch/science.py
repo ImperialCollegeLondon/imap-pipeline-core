@@ -65,6 +65,12 @@ def fetch_science(
             help="Maximum number of files to download. None means no limit.",
         ),
     ] = None,
+    skip_items_count: Annotated[
+        int,
+        typer.Option(
+            help="Number of items to skip from the start of the query results. Useful for batching downloads.",
+        ),
+    ] = 0,
 ) -> dict[Path, SciencePathHandler]:
     """Download science data from the SDC."""
 
@@ -95,6 +101,7 @@ def fetch_science(
         modes=modes,
         sensors=sensors,
         max_downloads=max_downloads,
+        skip_items_count=skip_items_count,
     )
 
     if not downloaded_science:
@@ -117,6 +124,10 @@ def fetch_science(
         for file, path_handler in downloaded_science.items():
             (output_file, output_handler) = output_manager.add_file(file, path_handler)
             output_science[output_file] = output_handler
+
+            # Clean up work folder files as have been copied to datastore
+            logger.debug(f"Removing temporary file {file} from work folder.")
+            file.unlink(missing_ok=False)
     else:
         logger.info("Files not published to data store based on config.")
         output_science = downloaded_science
