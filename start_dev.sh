@@ -38,7 +38,7 @@ runWiremock() {
 
 deployToServer() {
     # let the server startup
-    sleep 30
+    sleep 20
 
     echo "Deploying to server"
     prefect work-pool create default-pool --type process --overwrite

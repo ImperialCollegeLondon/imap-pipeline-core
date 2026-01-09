@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 
-from prefect import deploy, serve
+from prefect import aserve, deploy
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
@@ -23,6 +23,7 @@ from prefect_server.performCalibration import (
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollScience import poll_science_flow
+from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
@@ -31,14 +32,18 @@ from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
 
 
 async def get_matlab_license_server():
-    return await Variable.get(
+    return await Variable.aget(
         "matlab_license",
         default=os.getenv("MLM_LICENSE_FILE"),  # type: ignore
     )
 
 
 def deploy_flows(local_debug: bool = False):
-    asyncio.get_event_loop().run_until_complete(ServerConfig.initialise(local_debug))
+    asyncio.run(adeploy_flows(local_debug))
+
+
+async def adeploy_flows(local_debug: bool = False):
+    await ServerConfig.initialise(local_debug)
 
     # Docker image and tag, e.g. so-pipeline-core:latest. May include registry, e.g. ghcr.io/imperialcollegelondon/so-pipeline-core:latest
     docker_image = os.getenv(
@@ -66,9 +71,7 @@ def deploy_flows(local_debug: bool = False):
         "mag-lab-data-platform",
     ).split(",")
 
-    matlab_license = asyncio.get_event_loop().run_until_complete(
-        get_matlab_license_server()
-    )
+    matlab_license = await get_matlab_license_server()
 
     # remove empty strings
     docker_volumes = [x for x in docker_volumes if x]
@@ -254,6 +257,24 @@ def deploy_flows(local_debug: bool = False):
         ],
     )
 
+    postgres_upload_deployable = upload_new_files_to_postgres.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POSTGRES_UPLOAD,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_POSTGRES_UPLOAD
+        ),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        triggers=[
+            DeploymentEventTrigger(
+                name="Trigger postgres upload after HK poll",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
+                },
+            ),
+        ],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "4g"
     matlab_shared_job_variables["memswap_limit"] = "4g"
@@ -294,14 +315,14 @@ def deploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    matlab_deployables = (
+    matlab_deployables = await asyncio.gather(
         calibration_deployable,
         gradiometer_deployable,
         apply_deployable,
         calibrate_and_apply_deployable,
     )
 
-    deployables = (
+    deployables = await asyncio.gather(
         poll_ialirt_deployable,
         poll_hk_deployable,
         poll_science_deployable,
@@ -309,6 +330,7 @@ def deploy_flows(local_debug: bool = False):
         check_ialirt_deployable,
         quicklook_ialirt_deployable,
         upload_deployable,
+        postgres_upload_deployable,
     )
 
     if local_debug:
@@ -316,12 +338,12 @@ def deploy_flows(local_debug: bool = False):
             deployable.work_queue_name = None
             deployable.job_variables = {}
 
-        serve(
+        await aserve(
             *deployables,
         )
 
     else:
-        deploy_ids = deploy(
+        deploy_ids = await deploy(
             *deployables,  # type: ignore
             work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,
             build=False,
@@ -329,7 +351,7 @@ def deploy_flows(local_debug: bool = False):
             image=f"{docker_image}:{docker_tag}",
         )  # type: ignore
 
-        matlab_deploy_ids = deploy(
+        matlab_deploy_ids = await deploy(
             *matlab_deployables,  # type: ignore
             work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,
             build=False,

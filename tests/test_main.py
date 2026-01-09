@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -358,6 +359,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         is_pattern=True,
         priority=2,
     )
+    clean_science_output_folder()
 
     settings_overrides_for_env: Mapping[str, str] = {
         "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
@@ -397,6 +399,16 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         open(cdf_file, "rb") as input,
     ):
         assert output.read() == input.read()
+
+
+def clean_science_output_folder():
+    destination_folder = "output/science/mag/l1b"
+    if Path(destination_folder).exists():
+        for file in Path(destination_folder).rglob("*"):
+            if file.is_file():
+                file.unlink(missing_ok=True)
+            if file.is_dir():
+                shutil.rmtree(file, ignore_errors=True)
 
 
 @pytest.mark.skipif(
@@ -441,6 +453,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         is_pattern=True,
         priority=2,
     )
+    clean_science_output_folder()
 
     settings_overrides_for_env: Mapping[str, str] = {
         "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),

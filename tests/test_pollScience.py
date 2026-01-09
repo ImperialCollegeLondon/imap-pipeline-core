@@ -146,7 +146,7 @@ def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: da
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-async def test_poll_science_autoflow_first_ever_run(
+async def test_poll_science_flow_has_correct_workflow_start_date_on_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
@@ -154,7 +154,7 @@ async def test_poll_science_autoflow_first_ever_run(
     clean_datastore,
 ):
     # Set up.
-    ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+    ingestion_timestamp = NOW - timedelta(hours=1)
 
     wiremock_manager.reset()
 

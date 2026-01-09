@@ -39,6 +39,19 @@ class File(Base):
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
 
+    def get_file_type_string(self) -> str:
+        # convert
+        # imap_mag_l1_hsk-status_20251201_v001.csv to imap_mag_l1_hsk-status
+        # imap_mag_l2-burst-offsets_20250421_20250421_v000.cdf to imap_mag_l2-burst-offsets
+        # imap_mag_l1d_burst-srf_20251207_v001.cdf to imap_mag_l1d_burst-srf
+        parts = self.name.rsplit(".", 1)[0].split("_")
+
+        # remove all trailing parts that are date or version
+        while parts and (parts[-1].startswith("v") or parts[-1].isdigit()):
+            parts.pop()
+
+        return "_".join(parts)
+
     @classmethod
     def from_file(
         cls,

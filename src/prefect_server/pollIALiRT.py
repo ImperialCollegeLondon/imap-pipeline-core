@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -153,7 +153,7 @@ async def poll_ialirt_flow(
         )
 
         # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
-        uk_end_time = end_date.replace(tzinfo=timezone.utc).astimezone(
+        uk_end_time = end_date.replace(tzinfo=UTC).astimezone(
             pytz.timezone("Europe/London")
         )
 

@@ -11,6 +11,8 @@ class PREFECT_CONSTANTS:
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
 
+    IMAP_DATABASE_BLOCK_NAME = "imap-database"
+
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
@@ -36,6 +38,7 @@ class PREFECT_CONSTANTS:
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
         POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
+        IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -60,6 +63,7 @@ class PREFECT_CONSTANTS:
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
+        POSTGRES_UPLOAD = "postgres-upload"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
@@ -73,3 +77,4 @@ class PREFECT_CONSTANTS:
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
+        POSTGRES_UPLOAD = "postgres_upload"

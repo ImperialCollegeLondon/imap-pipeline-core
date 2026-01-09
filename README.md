@@ -98,6 +98,7 @@ source .venv/bin/activate
 source defaults.env
 # [optional] source dev.env
 python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
+# Or perhaps PYTHONPATH=src:$PYTHONPATH python -m prefect_server.workflow --local
 
 # Now open the UI in a browser at http://127.0.0.1:4200/deployments
 # Go to the blocks page and make sure to add any credentials such as the web poda auth code
@@ -105,7 +106,7 @@ python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(
 
 ## Debugging a prefect flow
 
-This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode witha  debugger attached and then run your flow from there.
+This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode with a debugger attached and then run your flow from there.
 
 ## CLI Commands
 
@@ -147,4 +148,34 @@ imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.
 ```bash
 export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
+```
+
+## Using crump to import data
+
+Example 1 - generate a config file for multiple files:
+
+```bash
+crump prepare -c imap-db-injest-config.yaml ./tests/datastore/hk/**/*.csv
+```
+
+Example 2 - prepare a section in config file based on a data file:
+
+```bash
+crump prepare -c imap-db-injest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
+```
+
+Example 3 - crump command to ingest data based on a config file section:
+
+```bash
+# remove dry-run if you are happy with results!
+    DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/imap \
+        crump sync --job imap_mag_l1_hsk-procstat_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v*.csv imap-db-injest-config.yaml
+
+    crump sync --job imap_mag_l1_hsk-pw_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251101_v*.csv imap-db-injest-config.yaml
+
+    crump sync --job imap_mag_l1_hsk-sci_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-sci/2025/12/imap_mag_l1_hsk-sci_20251206_v001.csv  imap-db-injest-config.yaml
+
+    crump sync --job imap_mag_l1_hsk-sid15_v  ./tests/datastore/hk/mag/l1/hsk-sid15/2025/11/imap_mag_l1_hsk-sid15_20251101_v001.csv imap-db-injest-config.yaml
+
+    crump sync -- job imap_mag_l1_hsk-status_v  ./tests/datastore/hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv imap-db-injest-config.yaml
 ```

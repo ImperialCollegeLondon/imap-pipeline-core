@@ -1,7 +1,7 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import ialirt_data_access
 from pydantic import SecretStr
@@ -62,10 +62,6 @@ class IALiRTApiClient:
 
     def __do_download(self, start_date: datetime, end_date: datetime) -> list[dict]:
         return ialirt_data_access.data_product_query(
-            met_in_utc_start=start_date.astimezone(timezone.utc).strftime(
-                self.__DATE_FORMAT
-            ),
-            met_in_utc_end=end_date.astimezone(timezone.utc).strftime(
-                self.__DATE_FORMAT
-            ),
+            met_in_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+            met_in_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
         )
