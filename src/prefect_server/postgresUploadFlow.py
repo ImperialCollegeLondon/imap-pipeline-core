@@ -294,16 +294,19 @@ async def upload_new_files_to_postgres(
 
         # Determine job to use
         try:
-            job_details = crump_config.get_job_or_auto_detect(
+            logger.info(
+                f"Determining crump job for file {path_inc_datastore.as_posix()} and name {job_name}..."
+            )
+            detected_crump_job_details = crump_config.get_job_or_auto_detect(
                 job_name, filename=path_inc_datastore.as_posix()
             )
-            if job_details is None:
+            if detected_crump_job_details is None:
                 raise ValueError("No matching job found in crump config")
 
-            job, job_name = job_details
+            detected_crump_job, detected_crump_job_name = detected_crump_job_details
 
             logger.info(
-                f"Using crump job '{job_name}' targeting table '{job.target_table}'"
+                f"Using crump job '{detected_crump_job_name}' targeting table '{detected_crump_job.target_table}'"
             )
         except ValueError as ve:
             logger.error(
@@ -341,7 +344,7 @@ async def upload_new_files_to_postgres(
                     for result in results:
                         rows_synced = sync_file_to_db(
                             file_path=result.output_file,
-                            job=job,
+                            job=detected_crump_job,
                             db_connection_string=db_url,
                             enable_history=app_settings.postgres_upload.enable_history,
                         )
@@ -352,7 +355,7 @@ async def upload_new_files_to_postgres(
                 # Direct sync for CSV and Parquet files
                 rows_synced = sync_file_to_db(
                     file_path=path_inc_datastore,
-                    job=job,
+                    job=detected_crump_job,
                     db_connection_string=db_url,
                     enable_history=app_settings.postgres_upload.enable_history,
                 )
