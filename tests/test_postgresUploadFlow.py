@@ -22,7 +22,7 @@ async def test_upload_new_files_to_postgres_does_upload_files(
     # Set up test data in IMAP files database table
     test_files = [
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv",
-        "hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv",  # not in config file
+        "hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv",
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v001.csv",
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v002.csv",
     ]

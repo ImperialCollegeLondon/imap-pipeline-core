@@ -272,27 +272,6 @@ async def adeploy_flows(local_debug: bool = False):
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
                 },
             ),
-            DeploymentEventTrigger(
-                name="Trigger postgres upload after I-ALiRT poll",
-                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
-                match_related={
-                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
-                },
-            ),
-            DeploymentEventTrigger(
-                name="Trigger postgres upload after science poll",
-                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
-                match_related={
-                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
-                },
-            ),
-            DeploymentEventTrigger(
-                name="Trigger postgres upload after APPLY_CALIBRATION",
-                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
-                match_related={
-                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
-                },
-            ),
         ],
     )
 

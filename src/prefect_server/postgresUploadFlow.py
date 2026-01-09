@@ -208,7 +208,7 @@ async def upload_new_files_to_postgres(
                         If None, uses patterns from app settings.
         how_many: Optional limit on number of files to process
         job_name: Optional specific job name from crump config to use.
-                 If None, will auto-detect if only one job exists in config.
+                 If None, will auto-detect from file names patterns configured in the crump config file.
     """
 
     logger = get_run_logger()
