@@ -195,7 +195,7 @@ async def poll_science_flow(
                 len(downloaded_science),
             )
             if items:
-                downloaded_science.append(items)
+                downloaded_science.extend(items.keys())
 
         if items is None or len(items) < BATCH_SIZE:
             # No more items to download
@@ -237,7 +237,7 @@ def download_batch_of_science(
     packet_start_timestamp,
     batch_size,
     skip_items_count,
-):
+) -> dict[Path, SciencePathHandler]:
     logger.info(
         f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
     )
