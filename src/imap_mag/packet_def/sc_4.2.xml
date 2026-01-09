@@ -10775,6 +10775,7 @@
                 <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned" />
                 <xtce:EnumerationList>
                     <xtce:Enumeration value="0" label="MOH_INVALID_CC" />
+                    <xtce:Enumeration value="0" label="1" />
                 </xtce:EnumerationList>
             </xtce:EnumeratedParameterType>
             <xtce:EnumeratedParameterType name="SCID_X286.HK_COPY_DUMP_SRC_PHYS_LOC_BIT" signed="false">
