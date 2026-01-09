@@ -12,6 +12,7 @@ from prefect import flow, get_run_logger
 from prefect.states import Completed, Failed
 from prefect_sqlalchemy import SqlAlchemyConnector
 
+from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -80,7 +81,7 @@ def _extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
     return date, version
 
 
-def _select_latest_version_per_day(files: list) -> list:
+def _select_latest_version_per_day(files: list[File]) -> list[File]:
     """
     Select only the latest version of files per day.
 
@@ -99,12 +100,12 @@ def _select_latest_version_per_day(files: list) -> list:
 
     for file in files:
         date, version = _extract_version_and_date(Path(file.path))
-        date_key = date.date() if date else None
-        files_by_date[date_key].append((file, version))
+        type_date_key = (file.get_file_type_string(), date.date() if date else None)
+        files_by_date[type_date_key].append((file, version))
 
     # Select latest version per date
     latest_files = []
-    for date_key, file_list in files_by_date.items():
+    for _, file_list in files_by_date.items():
         # Sort by version (descending) and take the first one
         file_list.sort(key=lambda x: x[1], reverse=True)
         latest_files.append(file_list[0][0])  # Append the file object
