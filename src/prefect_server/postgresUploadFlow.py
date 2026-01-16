@@ -1,9 +1,7 @@
 import fnmatch
 import logging
 import os
-import re
 import tempfile
-from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,105 +10,12 @@ from prefect import flow, get_run_logger
 from prefect.states import Completed, Failed
 from prefect_sqlalchemy import SqlAlchemyConnector
 
-from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.fileVersionUtils import select_latest_version_per_day
 
 logger = logging.getLogger(__name__)
-
-
-def _extract_version_and_date(file_path: Path) -> tuple[datetime | None, int]:
-    """
-    Extract date and version number from a file path.
-
-    Looks for patterns like:
-    - YYYY-MM-DD or YYYYMMDD for dates
-    - v###, version###, _###_ for version numbers
-
-    Args:
-        file_path: Path to the file
-
-    Returns:
-        Tuple of (date, version) where date is a datetime object or None,
-        and version is an integer (0 if not found)
-    """
-    path_str = str(file_path)
-
-    # Extract date - try multiple patterns
-    date = None
-    # Pattern 1: YYYY-MM-DD
-    date_match = re.search(r"(\d{4})-(\d{2})-(\d{2})", path_str)
-    if date_match:
-        try:
-            date = datetime(
-                int(date_match.group(1)),
-                int(date_match.group(2)),
-                int(date_match.group(3)),
-                tzinfo=UTC,
-            )
-        except ValueError:
-            pass
-
-    # Pattern 2: YYYYMMDD
-    if date is None:
-        date_match = re.search(r"(\d{4})(\d{2})(\d{2})", path_str)
-        if date_match:
-            try:
-                date = datetime(
-                    int(date_match.group(1)),
-                    int(date_match.group(2)),
-                    int(date_match.group(3)),
-                    tzinfo=UTC,
-                )
-            except ValueError:
-                pass
-
-    # Extract version number - try multiple patterns
-    version = 0
-    # Pattern 1: v### or version###
-    version_match = re.search(r"v(?:ersion)?[\s_-]?(\d+)", path_str, re.IGNORECASE)
-    if version_match:
-        version = int(version_match.group(1))
-    else:
-        # Pattern 2: _###_ or -###- (version between separators)
-        version_match = re.search(r"[_-](\d{3,})[_-]", path_str)
-        if version_match:
-            version = int(version_match.group(1))
-
-    return date, version
-
-
-def _select_latest_version_per_day(files: list[File]) -> list[File]:
-    """
-    Select only the latest version of files per day.
-
-    Groups files by date and selects the file with the highest version number
-    for each date. Files without dates are kept separate and the latest version
-    among them is selected.
-
-    Args:
-        files: List of File objects from database
-
-    Returns:
-        List of File objects containing only the latest version per day
-    """
-    # Group files by date
-    files_by_date = defaultdict(list)
-
-    for file in files:
-        date, version = _extract_version_and_date(Path(file.path))
-        type_date_key = (file.get_file_type_string(), date.date() if date else None)
-        files_by_date[type_date_key].append((file, version))
-
-    # Select latest version per date
-    latest_files = []
-    for _, file_list in files_by_date.items():
-        # Sort by version (descending) and take the first one
-        file_list.sort(key=lambda x: x[1], reverse=True)
-        latest_files.append(file_list[0][0])  # Append the file object
-
-    return latest_files
 
 
 async def _get_database_connectionstring(
@@ -259,7 +164,7 @@ async def upload_new_files_to_postgres(
 
     if files:
         # Select only latest version per day
-        files = _select_latest_version_per_day(files)
+        files = select_latest_version_per_day(files)
         logger.info(
             f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
         )

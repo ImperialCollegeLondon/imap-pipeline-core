@@ -14,6 +14,7 @@ from prefect.variables import Variable
 from imap_mag.util import CONSTANTS
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.datastoreCleanupFlow import cleanup_datastore
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -275,6 +276,15 @@ async def adeploy_flows(local_debug: bool = False):
         ],
     )
 
+    datastore_cleanup_deployable = cleanup_datastore.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DATASTORE_CLEANUP,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_DATASTORE_CLEANUP
+        ),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "4g"
     matlab_shared_job_variables["memswap_limit"] = "4g"
@@ -331,6 +341,7 @@ async def adeploy_flows(local_debug: bool = False):
         quicklook_ialirt_deployable,
         upload_deployable,
         postgres_upload_deployable,
+        datastore_cleanup_deployable,
     )
 
     if local_debug:

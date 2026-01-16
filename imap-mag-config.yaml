@@ -73,3 +73,19 @@ postgres_upload:
         - "*hk/mag/l1/hsk-status/*"
         - "*hk/sc/l1/x285/*"
         - "*hk/sc/l1/x286/*"
+
+datastore_cleanup:
+    dry_run: true
+    tasks:
+        - name: "hk-old-versions"
+          paths_to_match:
+              - "*hk/mag/l1/*"
+          files_older_than: "30d"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "science-old-versions"
+          paths_to_match:
+              - "*science/mag/*"
+          files_older_than: "30d"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
