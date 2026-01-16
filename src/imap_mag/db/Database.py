@@ -141,16 +141,6 @@ class Database:
         session = self.__get_active_session()
         session.merge(model)
 
-    @__session_manager()
-    def mark_file_as_deleted(self, file: File, deletion_date: datetime) -> None:
-        """Mark a file as deleted by setting its deletion_date and updating last_modified_date."""
-        session = self.__get_active_session()
-        db_file = session.query(File).filter_by(id=file.id).first()
-        if db_file:
-            db_file.deletion_date = deletion_date
-            db_file.last_modified_date = deletion_date
-            logger.info(f"Marked file {file.path} as deleted.")
-
     def get_all_active_files(self) -> list[File]:
         """Get all files that have not been deleted."""
         statement = select(File).where(File.deletion_date.is_(None))
@@ -210,18 +200,8 @@ class Database:
         # Escape existing SQL LIKE special characters first
         result = pattern.replace("%", r"\%").replace("_", r"\_")
         # Convert fnmatch wildcards to SQL LIKE wildcards
-        result = result.replace("*", "%").replace("?", "_")
+        result = result.replace("**", "%").replace("*", "%").replace("?", "_")
         return result
-
-    @__session_manager()
-    def update_file_path(self, file: File, new_path: str) -> None:
-        """Update the path of a file in the database."""
-        session = self.__get_active_session()
-        db_file = session.query(File).filter_by(id=file.id).first()
-        if db_file:
-            old_path = db_file.path
-            db_file.path = new_path
-            logger.info(f"Updated file path from {old_path} to {new_path}.")
 
 
 def update_database_with_progress(

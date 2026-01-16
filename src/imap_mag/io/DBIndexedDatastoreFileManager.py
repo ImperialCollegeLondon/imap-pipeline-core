@@ -1,5 +1,6 @@
 import logging
 import re
+import shutil
 from pathlib import Path
 
 from sqlalchemy.sql import text
@@ -7,30 +8,34 @@ from sqlalchemy.sql import text
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
+from imap_mag.io.DatastoreFileManager import DatastoreFileManager, generate_hash
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
-from imap_mag.io.IOutputManager import IOutputManager, T
-from imap_mag.io.OutputManager import generate_hash
+from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseFileOutputManager(IOutputManager):
+class DBIndexedDatastoreFileManager(IDatastoreFileManager):
     """Decorator for adding files to database as well as output."""
 
-    __output_manager: IOutputManager
+    __file_manager: IDatastoreFileManager
     __database: Database
     __settings: AppSettings
 
     def __init__(
         self,
-        output_manager: IOutputManager,
+        file_manager: IDatastoreFileManager | None = None,
         database: Database | None = None,
         settings: AppSettings | None = None,
     ):
         """Initialize database and output manager."""
 
-        self.__output_manager = output_manager
         self.__settings = settings if settings else AppSettings()  # type: ignore
+        self.__file_manager = (
+            file_manager
+            if file_manager
+            else DatastoreFileManager(self.__settings.data_store)
+        )
 
         if database is None:
             self.__database = Database()
@@ -47,7 +52,7 @@ class DatabaseFileOutputManager(IOutputManager):
         )
 
         # Add file locally
-        (destination_file, path_handler) = self.__output_manager.add_file(
+        (destination_file, path_handler) = self.__file_manager.add_file(
             original_file, path_handler
         )
 
@@ -92,6 +97,83 @@ class DatabaseFileOutputManager(IOutputManager):
                 raise e
 
         return (destination_file, path_handler)
+
+    def archive_file(
+        self,
+        file: File,
+        archive_folder: Path,
+    ) -> None:
+        """
+        Move a file to the archive folder.
+
+        1. Copy to archive location
+        2. Create new database record for archived file
+        3. Mark original file as deleted
+        4. Delete original file from filesystem
+
+        Args:
+            file: File to archive
+            datastore: Path to datastore root
+            archive_folder: Path to archive folder
+            db: Database instance
+            archive_date: Timestamp to record as archive/deletion date
+        """
+        source_path = self.__settings.data_store / file.path
+        dest_path = archive_folder / file.path
+
+        # Create destination directory
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Copy file to archive
+        shutil.copy2(source_path, dest_path)
+
+        # if destination path is in datastore use a relative path, otherwise use absolute path
+        if dest_path.is_relative_to(self.__settings.data_store):
+            new_db_path = str(dest_path.relative_to(self.__settings.data_store))
+        else:
+            new_db_path = str(dest_path.absolute())
+
+        archived_file = File(
+            name=file.name,
+            path=new_db_path,
+            version=file.version,
+            hash=file.hash,
+            size=file.size,
+            content_date=file.content_date,
+            creation_date=file.creation_date,
+            software_version=file.software_version,
+        )
+        self.__database.insert_file(archived_file)
+
+        # Mark original file as deleted
+        file.set_deleted()
+        self.__database.save(file)
+        # Delete original from filesystem
+        source_path.unlink()
+
+    def delete_file(self, file: File) -> None:
+        """
+        Delete a file and mark it as deleted in the database.
+
+        Args:
+            file: File to delete
+            datastore: Path to datastore root
+            db: Database instance
+            deletion_date: Timestamp to record as deletion date
+        """
+        file_path = (
+            self.__settings.data_store / file.path
+            if not Path(file.path).is_absolute()
+            else Path(file.path)
+        )
+
+        # Mark as deleted in database first
+        file.set_deleted()
+        self.__database.save(file)
+
+        # Delete from filesystem if it exists
+        if file_path.exists():
+            file_path.unlink()
 
     def __get_matching_database_files(
         self, path_handler: SequenceablePathHandler

@@ -1,10 +1,7 @@
 """Prefect flow for cleaning up files from the datastore."""
 
 import logging
-import shutil
-from collections import defaultdict
 from datetime import UTC, datetime
-from pathlib import Path
 
 from prefect import flow, get_run_logger
 from prefect.states import Completed
@@ -13,64 +10,21 @@ from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.DatastoreCleanupConfig import CleanupMode, CleanupTask
 from imap_mag.db import Database
+from imap_mag.io.DBIndexedDatastoreFileManager import (
+    DBIndexedDatastoreFileManager,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.durationUtils import parse_duration
-from prefect_server.fileVersionUtils import (
-    get_file_type_date_key,
-    get_file_version,
-)
 
 logger = logging.getLogger(__name__)
 
 
 def _identify_non_latest_versions(files: list[File]) -> list[File]:
-    """
-    Identify files that are not the latest version for their file type and date.
-
-    Args:
-        files: List of File objects from database
-
-    Returns:
-        List of File objects that are NOT the latest version
-    """
-    files_by_type_date: dict[tuple[str, datetime | None], list[tuple[File, int]]] = (
-        defaultdict(list)
-    )
-
-    for file in files:
-        type_date_key = get_file_type_date_key(file)
-        version = get_file_version(file)
-        files_by_type_date[type_date_key].append((file, version))
-
-    non_latest_files = []
-    for _, file_list in files_by_type_date.items():
-        if len(file_list) <= 1:
-            continue
-
-        file_list.sort(key=lambda x: x[1], reverse=True)
-        for file, _ in file_list[1:]:
-            non_latest_files.append(file)
+    all = set(files)
+    latest_files = set(File.filter_to_latest_versions_only(files))
+    non_latest_files = list(all - latest_files)
 
     return non_latest_files
-
-
-def _get_files_matching_patterns(
-    db: Database,
-    patterns: list[str],
-) -> list[File]:
-    """
-    Get all active files matching any of the given patterns.
-
-    Queries the database server-side to avoid loading all files into memory.
-
-    Args:
-        db: Database instance
-        patterns: List of fnmatch patterns
-
-    Returns:
-        List of matching files
-    """
-    return db.get_active_files_matching_patterns(patterns)
 
 
 def _get_files_to_cleanup(
@@ -110,87 +64,8 @@ def _get_files_to_cleanup(
     return files_to_cleanup
 
 
-def _archive_file(
-    file: File,
-    datastore: Path,
-    archive_folder: Path,
-    db: Database,
-    archive_date: datetime,
-) -> None:
-    """
-    Move a file to the archive folder.
-
-    1. Copy to archive location
-    2. Create new database record for archived file
-    3. Mark original file as deleted
-    4. Delete original file from filesystem
-
-    Args:
-        file: File to archive
-        datastore: Path to datastore root
-        archive_folder: Path to archive folder
-        db: Database instance
-        archive_date: Timestamp to record as archive/deletion date
-    """
-    source_path = datastore / file.path
-    dest_path = archive_folder / file.path
-
-    # Create destination directory
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Copy file to archive
-    shutil.copy2(source_path, dest_path)
-
-    # Create new database record for archived file
-    new_db_path = str(dest_path.relative_to(archive_folder.parent))
-    archived_file = File(
-        name=file.name,
-        path=new_db_path,
-        version=file.version,
-        hash=file.hash,
-        size=file.size,
-        content_date=file.content_date,
-        creation_date=archive_date,
-        last_modified_date=archive_date,
-        software_version=file.software_version,
-    )
-    db.insert_file(archived_file)
-
-    # Mark original file as deleted
-    db.mark_file_as_deleted(file, archive_date)
-
-    # Delete original from filesystem
-    source_path.unlink()
-
-
-def _delete_file(
-    file: File,
-    datastore: Path,
-    db: Database,
-    deletion_date: datetime,
-) -> None:
-    """
-    Delete a file and mark it as deleted in the database.
-
-    Args:
-        file: File to delete
-        datastore: Path to datastore root
-        db: Database instance
-        deletion_date: Timestamp to record as deletion date
-    """
-    file_path = datastore / file.path
-
-    # Mark as deleted in database first
-    db.mark_file_as_deleted(file, deletion_date)
-
-    # Delete from filesystem if it exists
-    if file_path.exists():
-        file_path.unlink()
-
-
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.DATASTORE_CLEANUP,
-    log_prints=True,
 )
 async def cleanup_datastore(
     task_names: list[str] | None = None,
@@ -218,6 +93,9 @@ async def cleanup_datastore(
     app_settings = AppSettings()  # type: ignore
     db = Database()
     started = datetime.now(tz=UTC)
+    datastore_manager = DBIndexedDatastoreFileManager(
+        database=db, settings=app_settings
+    )
 
     # Get configuration
     config = app_settings.datastore_cleanup
@@ -257,7 +135,7 @@ async def cleanup_datastore(
         age_cutoff = started - files_older_than
 
         # Get files matching this task's patterns
-        matched_files = _get_files_matching_patterns(db, task.paths_to_match)
+        matched_files = db.get_active_files_matching_patterns(task.paths_to_match)
 
         if not matched_files:
             logger.info(f"  No files match patterns for task '{task.name}'")
@@ -301,17 +179,14 @@ async def cleanup_datastore(
 
             # Perform actual cleanup
             if task.cleanup_mode == CleanupMode.ARCHIVE:
-                _archive_file(
+                datastore_manager.archive_file(
                     file,
-                    app_settings.data_store,
                     task.archive_folder,
-                    db,
-                    started,
                 )
                 logger.info(f"  Archived: {file.path}")
                 total_archived += 1
             else:
-                _delete_file(file, app_settings.data_store, db, started)
+                datastore_manager.delete_file(file)
                 logger.info(f"  Deleted: {file.path}")
                 total_deleted += 1
 

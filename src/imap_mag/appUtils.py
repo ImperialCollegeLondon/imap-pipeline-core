@@ -3,22 +3,24 @@ from pathlib import Path
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io import (
-    DatabaseFileOutputManager,
-    IOutputManager,
-    OutputManager,
+    DatastoreFileManager,
+    DBIndexedDatastoreFileManager,
+    IDatastoreFileManager,
 )
 from imap_mag.io.file import IFilePathHandler
 
 logger = logging.getLogger(__name__)
 
 
-def getOutputManagerByMode(settings: AppSettings, use_database: bool) -> IOutputManager:
+def getOutputManagerByMode(
+    settings: AppSettings, use_database: bool
+) -> IDatastoreFileManager:
     """Retrieve output manager based on destination and mode."""
 
-    output_manager: IOutputManager = OutputManager(settings.data_store)
+    output_manager: IDatastoreFileManager = DatastoreFileManager(settings.data_store)
 
     if use_database:
-        return DatabaseFileOutputManager(output_manager, settings=settings)
+        return DBIndexedDatastoreFileManager(output_manager, settings=settings)
     else:
         return output_manager
 
@@ -26,7 +28,7 @@ def getOutputManagerByMode(settings: AppSettings, use_database: bool) -> IOutput
 def copyFileToDestination(
     file_path: Path,
     destination: Path,
-    output_manager: OutputManager | None = None,
+    output_manager: DatastoreFileManager | None = None,
 ) -> tuple[Path, IFilePathHandler]:
     """Copy file to destination folder."""
 
@@ -50,6 +52,6 @@ def copyFileToDestination(
             return cls(str(filename))
 
     if output_manager is None:
-        output_manager = OutputManager(destination.parent)
+        output_manager = DatastoreFileManager(destination.parent)
 
     return output_manager.add_file(file_path, SimplePathHandler(destination.name))

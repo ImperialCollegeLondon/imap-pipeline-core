@@ -14,8 +14,8 @@ from imap_db.model import File, WorkflowProgress
 from imap_mag import __version__
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
-    DatabaseFileOutputManager,
-    IOutputManager,
+    DBIndexedDatastoreFileManager,
+    IDatastoreFileManager,
 )
 from imap_mag.io.file import (
     AncillaryPathHandler,
@@ -36,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 @pytest.fixture
 def mock_output_manager() -> mock.Mock:
     """Fixture for a mock IOutputManager instance."""
-    return mock.create_autospec(IOutputManager, spec_set=True)
+    return mock.create_autospec(IDatastoreFileManager, spec_set=True)
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def test_database_output_manager_writes_to_database(
     mock_database: mock.Mock,
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -106,7 +106,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
     preclean_work_and_output,
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -159,7 +159,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -231,7 +231,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -309,7 +309,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -338,7 +338,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -365,7 +365,7 @@ def test_database_output_manager_errors_database_error(
     mock_output_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -496,7 +496,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
     capture_cli_logs,
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -581,7 +581,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     capture_cli_logs,
 ) -> None:
     # Set up.
-    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -727,7 +727,7 @@ def test_add_ancillary_files_to_database_uses_correct_dates(
     expected_date: datetime,
 ) -> None:
     # Set Up
-    database_manager = DatabaseFileOutputManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / ancillary_file_name, "some content"

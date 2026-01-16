@@ -1,7 +1,9 @@
 import hashlib
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -38,6 +40,10 @@ class File(Base):
 
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
+
+    def set_deleted(self) -> None:
+        self.deletion_date = datetime.now(UTC)
+        self.last_modified_date = self.deletion_date
 
     def get_file_type_string(self) -> str:
         # convert
@@ -94,6 +100,39 @@ class File(Base):
             last_modified_date=datetime.fromtimestamp(file.stat().st_mtime),
             software_version=__version__,
         )
+
+    @classmethod
+    def filter_to_latest_versions_only(cls, files: list[Self]) -> list[Self]:
+        """
+        Select only the latest version of files per day.
+
+        Groups files by date and selects the file with the highest version number
+        for each date. Files without dates are kept separate and the latest version
+        among them is selected.
+
+        Args:
+            files: List of File objects from database
+
+        Returns:
+            List of File objects containing only the latest version per day
+        """
+
+        # Group files by type and date so we have lists with each version of the file
+        files_by_date: dict[str, list[tuple[Self, int]]] = defaultdict(list)
+
+        for file in files:
+            files_by_date[
+                f"{file.get_file_type_string()}-{file.content_date.date()}"
+            ].append((file, file.version))
+
+        # Select latest version per date
+        latest_files = []
+        for _, file_list in files_by_date.items():
+            # Sort by version (descending) and take the first one
+            file_list.sort(key=lambda x: x[1], reverse=True)
+            latest_files.append(file_list[0][0])  # Append the file object
+
+        return latest_files
 
 
 class WorkflowProgress(Base):

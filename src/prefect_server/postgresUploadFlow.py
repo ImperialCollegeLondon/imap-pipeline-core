@@ -10,10 +10,10 @@ from prefect import flow, get_run_logger
 from prefect.states import Completed, Failed
 from prefect_sqlalchemy import SqlAlchemyConnector
 
+from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.fileVersionUtils import select_latest_version_per_day
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ async def upload_new_files_to_postgres(
 
     if files:
         # Select only latest version per day
-        files = select_latest_version_per_day(files)
+        files = File.filter_to_latest_versions_only(files)
         logger.info(
             f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
         )

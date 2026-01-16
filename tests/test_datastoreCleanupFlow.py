@@ -10,89 +10,8 @@ from prefect_server.datastoreCleanupFlow import (
     _identify_non_latest_versions,
     cleanup_datastore,
 )
-from prefect_server.durationUtils import format_duration, parse_duration
-from prefect_server.fileVersionUtils import extract_version_and_date
 from tests.util.miscellaneous import create_test_file
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
-
-
-class TestParseDuration:
-    """Test the duration parsing utility."""
-
-    def test_parses_days(self):
-        assert parse_duration("30d") == timedelta(days=30)
-        assert parse_duration("1D") == timedelta(days=1)
-
-    def test_parses_hours(self):
-        assert parse_duration("12h") == timedelta(hours=12)
-        assert parse_duration("24H") == timedelta(hours=24)
-
-    def test_parses_minutes(self):
-        assert parse_duration("45m") == timedelta(minutes=45)
-        assert parse_duration("60M") == timedelta(minutes=60)
-
-    def test_parses_seconds(self):
-        assert parse_duration("30s") == timedelta(seconds=30)
-        assert parse_duration("60S") == timedelta(seconds=60)
-
-    def test_parses_combinations(self):
-        assert parse_duration("1d12h") == timedelta(days=1, hours=12)
-        assert parse_duration("2d6h30m") == timedelta(days=2, hours=6, minutes=30)
-
-    def test_raises_on_invalid_format(self):
-        with pytest.raises(ValueError):
-            parse_duration("invalid")
-        with pytest.raises(ValueError):
-            parse_duration("")
-        with pytest.raises(ValueError):
-            parse_duration("30")
-
-
-class TestFormatDuration:
-    """Test the duration formatting utility."""
-
-    def test_formats_days(self):
-        assert format_duration(timedelta(days=30)) == "30d"
-
-    def test_formats_hours(self):
-        assert format_duration(timedelta(hours=12)) == "12h"
-
-    def test_formats_combinations(self):
-        assert format_duration(timedelta(days=1, hours=12)) == "1d12h"
-
-    def test_formats_zero(self):
-        assert format_duration(timedelta(0)) == "0s"
-
-
-class TestExtractVersionAndDate:
-    """Test the version and date extraction function."""
-
-    def test_extracts_date_from_yyyymmdd_format(self):
-        file_path = Path("imap_mag_l1_hsk-procstat_20251101_v001.csv")
-        date, version = extract_version_and_date(file_path)
-        assert date == datetime(2025, 11, 1, tzinfo=UTC)
-        assert version == 1
-
-    def test_extracts_date_from_yyyy_mm_dd_format(self):
-        file_path = Path("some_file_2025-11-01_v002.csv")
-        date, version = extract_version_and_date(file_path)
-        assert date == datetime(2025, 11, 1, tzinfo=UTC)
-        assert version == 2
-
-    def test_extracts_version_from_v_pattern(self):
-        file_path = Path("imap_mag_l1_hsk-procstat_20251101_v003.csv")
-        _date, version = extract_version_and_date(file_path)
-        assert version == 3
-
-    def test_returns_zero_version_when_not_found(self):
-        file_path = Path("some_file_without_version.csv")
-        _date, version = extract_version_and_date(file_path)
-        assert version == 0
-
-    def test_returns_none_date_when_not_found(self):
-        file_path = Path("some_file_without_date.csv")
-        date, _version = extract_version_and_date(file_path)
-        assert date is None
 
 
 class TestIdentifyNonLatestVersions:

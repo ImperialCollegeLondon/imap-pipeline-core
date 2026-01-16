@@ -75,17 +75,33 @@ postgres_upload:
         - "*hk/sc/l1/x286/*"
 
 datastore_cleanup:
-    dry_run: true
+    dry_run: false
     tasks:
-        - name: "hk-old-versions"
+        - name: "delete-all-non-latest-hk-versions"
           paths_to_match:
+              - "*hk/mag/l0/*"
               - "*hk/mag/l1/*"
+              - "*hk/sc/l0/*"
+              - "*hk/sc/l1/*"
+          files_older_than: "1h"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "delete-all-non-latest-l1d-versions"
+          paths_to_match:
+              - "*science/mag/l1d/*"
+          files_older_than: "1h"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "delete-30day-old-non-latest-science-versions"
+          paths_to_match:
+              - "*science/mag/l1b/*"
+              - "*science/mag/l1c/*"
           files_older_than: "30d"
           keep_latest_version_only: true
           cleanup_mode: "delete"
-        - name: "science-old-versions"
+        - name: "delete-all-6week-old-quicklooks"
           paths_to_match:
-              - "*science/mag/*"
-          files_older_than: "30d"
-          keep_latest_version_only: true
+              - "*quicklook/ialirt/**/*.png"
+          files_older_than: "42d"
+          keep_latest_version_only: false
           cleanup_mode: "delete"

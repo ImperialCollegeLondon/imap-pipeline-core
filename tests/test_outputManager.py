@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from imap_mag.io import OutputManager
+from imap_mag.io import DatastoreFileManager
 from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from tests.util.miscellaneous import (
     create_test_file,
@@ -15,7 +15,7 @@ from tests.util.miscellaneous import (
 
 def test_copy_new_file(capture_cli_logs, temp_folder_path):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(Path(f"{temp_folder_path}/some_test_file.txt"))
 
@@ -42,7 +42,7 @@ def test_copy_new_file(capture_cli_logs, temp_folder_path):
 
 def test_copy_file_same_content(capture_cli_logs, temp_folder_path):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(
         Path(f"{temp_folder_path}/test_copy_file_same_content.txt"), "some content"
@@ -82,7 +82,7 @@ def test_copy_file_second_existing_file_with_same_content(
     capture_cli_logs, temp_folder_path
 ):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(
         Path(
@@ -135,7 +135,7 @@ def test_copy_file_existing_versions(
     temp_folder_path,
 ):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(
         Path(f"{temp_folder_path}/test_copy_file_existing_versions.txt"), "some content"
@@ -172,7 +172,7 @@ def test_copy_file_existing_versions(
 
 def test_copy_file_forced_version(temp_folder_path):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(
         Path(f"{temp_folder_path}/test_copy_file_forced_version.txt")
@@ -219,7 +219,7 @@ class CustomPathHandler(IFilePathHandler):
 
 def test_copy_file_same_origin_destination(temp_folder_path, caplog):
     # Set up.
-    manager = OutputManager(temp_folder_path)
+    manager = DatastoreFileManager(temp_folder_path)
 
     original_file = create_test_file(
         Path(f"{temp_folder_path}/test_copy_file_same_origin_destination.txt")
@@ -246,7 +246,7 @@ def test_copy_file_same_origin_destination(temp_folder_path, caplog):
 
 def test_error_on_file_not_found(capture_cli_logs):
     # Set up.
-    manager = OutputManager(Path("output"))
+    manager = DatastoreFileManager(Path("output"))
 
     original_file = Path("does_not/exist.right?")
 
