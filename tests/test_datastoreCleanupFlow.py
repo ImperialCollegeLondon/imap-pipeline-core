@@ -5,10 +5,11 @@ import pytest
 
 from imap_db.model import File
 from imap_mag.config.DatastoreCleanupConfig import CleanupMode, CleanupTask
+from imap_mag.util import DatetimeProvider
 from prefect_server.datastoreCleanupFlow import (
     _get_files_to_cleanup,
     _identify_non_latest_versions,
-    cleanup_datastore,
+    cleanup_datastore_flow,
 )
 from tests.util.miscellaneous import create_test_file
 from tests.util.prefect import prefect_test_fixture  # noqa: F401
@@ -19,9 +20,15 @@ class TestIdentifyNonLatestVersions:
 
     def test_identifies_non_latest_versions(self):
         files = [
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v001.csv", 1),
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v002.csv", 2),
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v003.csv", 3),
+            _create_test_file_from_path(
+                "imap_mag_l1_hsk-procstat_20251101_v001.csv", 1
+            ),
+            _create_test_file_from_path(
+                "imap_mag_l1_hsk-procstat_20251101_v002.csv", 2
+            ),
+            _create_test_file_from_path(
+                "imap_mag_l1_hsk-procstat_20251101_v003.csv", 3
+            ),
         ]
 
         non_latest = _identify_non_latest_versions(files)
@@ -33,7 +40,9 @@ class TestIdentifyNonLatestVersions:
 
     def test_returns_empty_for_single_file(self):
         files = [
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v001.csv", 1),
+            _create_test_file_from_path(
+                "./hk/l1/procstats/imap_mag_l1_hsk-procstat_20251101_v001.csv", 1
+            ),
         ]
 
         non_latest = _identify_non_latest_versions(files)
@@ -42,10 +51,14 @@ class TestIdentifyNonLatestVersions:
 
     def test_groups_by_file_type_and_date(self):
         files = [
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v001.csv", 1),
-            _create_mock_file("imap_mag_l1_hsk-procstat_20251101_v002.csv", 2),
-            _create_mock_file("imap_mag_l1_hsk-status_20251101_v001.csv", 3),
-            _create_mock_file("imap_mag_l1_hsk-status_20251101_v002.csv", 4),
+            _create_test_file_from_path(
+                "imap_mag_l1_hsk-procstat_20251101_v001.csv", 1
+            ),
+            _create_test_file_from_path(
+                "imap_mag_l1_hsk-procstat_20251101_v002.csv", 2
+            ),
+            _create_test_file_from_path("imap_mag_l1_hsk-status_20251101_v001.csv", 3),
+            _create_test_file_from_path("imap_mag_l1_hsk-status_20251101_v002.csv", 4),
         ]
 
         non_latest = _identify_non_latest_versions(files)
@@ -60,11 +73,6 @@ class TestGetFilesToCleanup:
     """Test the file selection logic."""
 
     def test_filters_by_age(self):
-        files = [
-            _create_mock_file("hk/mag/l1/old_v001.csv", 1, days_old=60),
-            _create_mock_file("hk/mag/l1/new_v001.csv", 2, days_old=5),
-        ]
-
         task = CleanupTask(
             name="test",
             paths_to_match=["hk/mag/l1/*"],
@@ -72,17 +80,23 @@ class TestGetFilesToCleanup:
             keep_latest_version_only=False,
             cleanup_mode=CleanupMode.DELETE,
         )
-
-        age_cutoff = datetime.now(tz=UTC) - timedelta(days=30)
-        result = _get_files_to_cleanup(files, task, age_cutoff)
+        files = [
+            _create_test_file_from_path("hk/mag/l1/old_v001.csv", 1, days_old=31),
+            _create_test_file_from_path("hk/mag/l1/new_v001.csv", 2, days_old=30),
+        ]
+        result = _get_files_to_cleanup(files, task)
 
         assert len(result) == 1
         assert result[0].path == "hk/mag/l1/old_v001.csv"
 
-    def test_keeps_latest_version_only(self):
+    def test_keeps_latest_version_only(self, mock_datetime_provider):
         files = [
-            _create_mock_file("hk/mag/l1/file_20251101_v001.csv", 1, days_old=60),
-            _create_mock_file("hk/mag/l1/file_20251101_v002.csv", 2, days_old=60),
+            _create_test_file_from_path(
+                "hk/mag/l1/file_20251101_v001.csv", 1, days_old=60
+            ),
+            _create_test_file_from_path(
+                "hk/mag/l1/file_20251101_v002.csv", 2, days_old=60
+            ),
         ]
 
         task = CleanupTask(
@@ -93,16 +107,19 @@ class TestGetFilesToCleanup:
             cleanup_mode=CleanupMode.DELETE,
         )
 
-        age_cutoff = datetime.now(tz=UTC) - timedelta(days=30)
-        result = _get_files_to_cleanup(files, task, age_cutoff)
+        result = _get_files_to_cleanup(files, task)
 
         assert len(result) == 1
         assert "v001" in result[0].path
 
     def test_removes_all_when_keep_latest_false(self):
         files = [
-            _create_mock_file("hk/mag/l1/file_20251101_v001.csv", 1, days_old=60),
-            _create_mock_file("hk/mag/l1/file_20251101_v002.csv", 2, days_old=60),
+            _create_test_file_from_path(
+                "hk/mag/l1/file_20251101_v001.csv", 1, days_old=60
+            ),
+            _create_test_file_from_path(
+                "hk/mag/l1/file_20251101_v002.csv", 2, days_old=60
+            ),
         ]
 
         task = CleanupTask(
@@ -113,8 +130,7 @@ class TestGetFilesToCleanup:
             cleanup_mode=CleanupMode.DELETE,
         )
 
-        age_cutoff = datetime.now(tz=UTC) - timedelta(days=30)
-        result = _get_files_to_cleanup(files, task, age_cutoff)
+        result = _get_files_to_cleanup(files, task)
 
         assert len(result) == 2
 
@@ -149,16 +165,43 @@ class TestCleanupTaskValidation:
         assert task.cleanup_mode == CleanupMode.DELETE
 
 
-def _create_mock_file(path: str, file_id: int, days_old: int = 0) -> File:
+def _create_test_file_from_path(path: str, file_id: int, days_old: int = 0) -> File:
     """Create a mock File object for testing."""
-    modified_date = datetime.now(tz=UTC) - timedelta(days=days_old)
+    modified_date = (
+        DatetimeProvider.now() - timedelta(days=days_old) + timedelta(seconds=1)
+    )
+    name = Path(path).name
+
+    # Extract version from filename (e.g., v001, v002)
+    version = 1
+    name_without_ext = name.rsplit(".", 1)[0]
+    parts = name_without_ext.split("_")
+    for part in reversed(parts):
+        if part.startswith("v") and part[1:].isdigit():
+            version = int(part[1:])
+            break
+
+    # extract content date from filename in format yyyyMMdd
+    content_date = None
+    for part in parts:
+        if len(part) == 8 and part.isdigit():
+            try:
+                content_date = datetime.strptime(part, "%Y%m%d")
+                break
+            except ValueError:
+                continue
+
+    content_date = content_date.replace(tzinfo=UTC) if content_date else None
+
     file = File(
-        id=file_id,
-        name=Path(path).name,
+        # id=file_id,
+        name=name,
         path=path,
-        version=1,
+        descriptor=File.get_descriptor_from_filename(name),
+        version=version,
         hash="test-hash",
         size=100,
+        content_date=content_date,
         creation_date=modified_date,
         last_modified_date=modified_date,
         software_version="1.0.0",
@@ -185,26 +228,15 @@ async def test_cleanup_datastore_dry_run(
         ),
     ]
 
-    old_date = datetime.now(tz=UTC) - timedelta(days=60)
-
-    for file_path_str, version in test_files_info:
+    for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
 
-        file = File(
-            name=Path(file_path_str).name,
-            path=file_path_str,
-            version=version,
-            hash="test-hash",
-            size=100,
-            creation_date=old_date,
-            last_modified_date=old_date,
-            software_version="1.0.0",
-        )
+        file = _create_test_file_from_path(file_path_str, id, days_old=60)
         test_database.insert_file(file)
 
-    await cleanup_datastore(
-        task_names=["hk-old-versions"],
+    await cleanup_datastore_flow(
+        task_names=["delete-all-non-latest-hk-versions"],
         dry_run=True,
     )
 
@@ -237,26 +269,15 @@ async def test_cleanup_datastore_deletes_non_latest(
         ),
     ]
 
-    old_date = datetime.now(tz=UTC) - timedelta(days=60)
-
-    for file_path_str, version in test_files_info:
+    for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
 
-        file = File(
-            name=Path(file_path_str).name,
-            path=file_path_str,
-            version=version,
-            hash="test-hash",
-            size=100,
-            creation_date=old_date,
-            last_modified_date=old_date,
-            software_version="1.0.0",
-        )
+        file = _create_test_file_from_path(file_path_str, id, days_old=60)
         test_database.insert_file(file)
 
-    await cleanup_datastore(
-        task_names=["hk-old-versions"],
+    await cleanup_datastore_flow(
+        task_names=["delete-all-non-latest-hk-versions"],
         dry_run=False,
     )
 
@@ -292,26 +313,18 @@ async def test_cleanup_datastore_respects_min_age(
         ),
     ]
 
-    recent_date = datetime.now(tz=UTC) - timedelta(days=5)
+    recent_date = DatetimeProvider.now() - timedelta(minutes=30)
 
-    for file_path_str, version in test_files_info:
+    for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
 
-        file = File(
-            name=Path(file_path_str).name,
-            path=file_path_str,
-            version=version,
-            hash="test-hash",
-            size=100,
-            creation_date=recent_date,
-            last_modified_date=recent_date,
-            software_version="1.0.0",
-        )
+        file = _create_test_file_from_path(file_path_str, id, days_old=0)
+        file.last_modified_date = recent_date
         test_database.insert_file(file)
 
-    await cleanup_datastore(
-        task_names=["hk-old-versions"],
+    await cleanup_datastore_flow(
+        task_names=["delete-all-non-latest-hk-versions"],
         dry_run=False,
     )
 
@@ -352,22 +365,11 @@ async def test_cleanup_datastore_archives_files(
         ),
     ]
 
-    old_date = datetime.now(tz=UTC) - timedelta(days=60)
-
-    for file_path_str, version in test_files_info:
+    for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
 
-        file = File(
-            name=Path(file_path_str).name,
-            path=file_path_str,
-            version=version,
-            hash="test-hash",
-            size=100,
-            creation_date=old_date,
-            last_modified_date=old_date,
-            software_version="1.0.0",
-        )
+        file = _create_test_file_from_path(file_path_str, id, days_old=60)
         test_database.insert_file(file)
 
     # Mock the config to use archive mode
@@ -396,7 +398,7 @@ async def test_cleanup_datastore_archives_files(
 
     mocker.patch.object(AppSettings, "__init__", patched_init)
 
-    await cleanup_datastore(
+    await cleanup_datastore_flow(
         task_names=["archive-test"],
         dry_run=False,
     )
@@ -432,8 +434,8 @@ async def test_cleanup_datastore_no_matching_files(
     """Test flow handles case when no files match patterns."""
     # Don't add any files to database
 
-    await cleanup_datastore(
-        task_names=["hk-old-versions"],
+    await cleanup_datastore_flow(
+        task_names=["delete-all-non-latest-hk-versions"],
         dry_run=False,
     )
 
@@ -448,7 +450,7 @@ async def test_cleanup_datastore_unknown_task(
     prefect_test_fixture,  # noqa: F811
 ):
     """Test flow handles unknown task names gracefully."""
-    await cleanup_datastore(
+    await cleanup_datastore_flow(
         task_names=["nonexistent-task"],
         dry_run=False,
     )
@@ -473,27 +475,15 @@ async def test_cleanup_datastore_max_file_operations(
         for i in range(1, 6)
     ]
 
-    old_date = datetime.now(tz=UTC) - timedelta(days=60)
-
-    for file_path_str, version in test_files_info:
+    for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
-
-        file = File(
-            name=Path(file_path_str).name,
-            path=file_path_str,
-            version=version,
-            hash="test-hash",
-            size=100,
-            creation_date=old_date,
-            last_modified_date=old_date,
-            software_version="1.0.0",
-        )
+        file = _create_test_file_from_path(file_path_str, id, days_old=60)
         test_database.insert_file(file)
 
     # Only allow 2 operations
-    await cleanup_datastore(
-        task_names=["hk-old-versions"],
+    await cleanup_datastore_flow(
+        task_names=["delete-all-non-latest-hk-versions"],
         dry_run=True,
         max_file_operations=2,
     )

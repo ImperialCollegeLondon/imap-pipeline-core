@@ -97,13 +97,15 @@ def fetch_binary(
     output_binaries: dict[Path, HKBinaryPathHandler] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
-        output_manager = appUtils.getOutputManagerByMode(
+        datastore_manager = appUtils.getManagerByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
         for file, path_handler in downloaded_binaries.items():
-            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            (output_file, output_handler) = datastore_manager.add_file(
+                file, path_handler
+            )
             output_binaries[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")

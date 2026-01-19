@@ -1,16 +1,17 @@
 import hashlib
 import logging
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Self
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,20 @@ class Base(DeclarativeBase):
 
 class File(Base):
     __tablename__ = "files"
+    __table_args__ = (
+        UniqueConstraint(
+            "descriptor",
+            "content_date",
+            "version",
+            "deletion_date",
+            name="uq_files_descriptor_content_date_version_deletion_date",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
     path: Mapped[str] = mapped_column(String(256), unique=True)
+    descriptor: Mapped[str] = mapped_column(String(128))
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer())
@@ -42,15 +53,44 @@ class File(Base):
         return f"<File {self.id} (name={self.name}, path={self.path})>"
 
     def set_deleted(self) -> None:
-        self.deletion_date = datetime.now(UTC)
-        self.last_modified_date = self.deletion_date
+        now = DatetimeProvider.now()
+        self.deletion_date = now
+        self.last_modified_date = now
 
-    def get_file_type_string(self) -> str:
-        # convert
-        # imap_mag_l1_hsk-status_20251201_v001.csv to imap_mag_l1_hsk-status
-        # imap_mag_l2-burst-offsets_20250421_20250421_v000.cdf to imap_mag_l2-burst-offsets
-        # imap_mag_l1d_burst-srf_20251207_v001.cdf to imap_mag_l1d_burst-srf
-        parts = self.name.rsplit(".", 1)[0].split("_")
+    def archive_to_new_file_path(self, new_path: Path) -> Self:
+        """Create a new File object for the archived file and mark this file as deleted.
+
+        Args:
+            new_path: Path where the archived file will be stored
+        Returns:         New File object representing the archived file
+        """
+
+        archived_file = self.__class__(
+            name=self.name,
+            path=new_path.as_posix(),
+            descriptor=self.descriptor,
+            version=self.version,
+            hash=self.hash,
+            size=self.size,
+            content_date=self.content_date,
+            creation_date=self.creation_date,
+            software_version=self.software_version,
+            last_modified_date=DatetimeProvider.now(),
+        )
+
+        self.set_deleted()
+        return archived_file
+
+    @classmethod
+    def get_descriptor_from_filename(cls, name: str) -> str:
+        """Extract file type string (descriptor) from a filename.
+
+        Examples:
+            imap_mag_l1_hsk-status_20251201_v001.csv -> imap_mag_l1_hsk-status
+            imap_mag_l2-burst-offsets_20250421_20250421_v000.cdf -> imap_mag_l2-burst-offsets
+            imap_mag_l1d_burst-srf_20251207_v001.cdf -> imap_mag_l1d_burst-srf
+        """
+        parts = name.rsplit(".", 1)[0].split("_")
 
         # remove all trailing parts that are date or version
         while parts and (parts[-1].startswith("v") or parts[-1].isdigit()):
@@ -92,6 +132,7 @@ class File(Base):
         return cls(
             name=file.name,
             path=file_with_app_relative_path.as_posix(),
+            descriptor=cls.get_descriptor_from_filename(file.name),
             version=version,
             hash=hash,
             size=size,
@@ -122,7 +163,7 @@ class File(Base):
 
         for file in files:
             files_by_date[
-                f"{file.get_file_type_string()}-{file.content_date.date()}"
+                f"{file.descriptor}-{file.content_date.date() if file.content_date else 'no_date'}"
             ].append((file, file.version))
 
         # Select latest version per date

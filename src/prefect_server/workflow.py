@@ -14,7 +14,7 @@ from prefect.variables import Variable
 from imap_mag.util import CONSTANTS
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.datastoreCleanupFlow import cleanup_datastore
+from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -276,7 +276,7 @@ async def adeploy_flows(local_debug: bool = False):
         ],
     )
 
-    datastore_cleanup_deployable = cleanup_datastore.to_deployment(
+    datastore_cleanup_deployable = cleanup_datastore_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DATASTORE_CLEANUP,
         cron=get_cron_from_env(
             PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_DATASTORE_CLEANUP

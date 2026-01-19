@@ -1,7 +1,7 @@
 """Prefect flow for cleaning up files from the datastore."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC
 
 from prefect import flow, get_run_logger
 from prefect.states import Completed
@@ -14,15 +14,14 @@ from imap_mag.io.DBIndexedDatastoreFileManager import (
     DBIndexedDatastoreFileManager,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.durationUtils import parse_duration
 
 logger = logging.getLogger(__name__)
 
 
 def _identify_non_latest_versions(files: list[File]) -> list[File]:
-    all = set(files)
+    all_files = set(files)
     latest_files = set(File.filter_to_latest_versions_only(files))
-    non_latest_files = list(all - latest_files)
+    non_latest_files = list(all_files - latest_files)
 
     return non_latest_files
 
@@ -30,7 +29,6 @@ def _identify_non_latest_versions(files: list[File]) -> list[File]:
 def _get_files_to_cleanup(
     files: list[File],
     task: CleanupTask,
-    age_cutoff: datetime,
 ) -> list[File]:
     """
     Get files that should be cleaned up based on task configuration.
@@ -53,12 +51,13 @@ def _get_files_to_cleanup(
         candidates = files
 
     # Filter by age
+    cutoff = task.get_file_age_cutoff()
     files_to_cleanup = []
     for f in candidates:
         file_modified = f.last_modified_date
         if file_modified.tzinfo is None:
             file_modified = file_modified.replace(tzinfo=UTC)
-        if file_modified < age_cutoff:
+        if file_modified < cutoff:
             files_to_cleanup.append(f)
 
     return files_to_cleanup
@@ -67,7 +66,7 @@ def _get_files_to_cleanup(
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.DATASTORE_CLEANUP,
 )
-async def cleanup_datastore(
+async def cleanup_datastore_flow(
     task_names: list[str] | None = None,
     dry_run: bool | None = None,
     max_file_operations: int = 100,
@@ -92,7 +91,6 @@ async def cleanup_datastore(
 
     app_settings = AppSettings()  # type: ignore
     db = Database()
-    started = datetime.now(tz=UTC)
     datastore_manager = DBIndexedDatastoreFileManager(
         database=db, settings=app_settings
     )
@@ -130,10 +128,6 @@ async def cleanup_datastore(
 
         logger.info(f"Processing task: {task.name}")
 
-        # Parse files_older_than duration
-        files_older_than = parse_duration(task.files_older_than)
-        age_cutoff = started - files_older_than
-
         # Get files matching this task's patterns
         matched_files = db.get_active_files_matching_patterns(task.paths_to_match)
 
@@ -144,7 +138,7 @@ async def cleanup_datastore(
         logger.info(f"  Found {len(matched_files)} files matching patterns")
 
         # Get files to clean up
-        files_to_cleanup = _get_files_to_cleanup(matched_files, task, age_cutoff)
+        files_to_cleanup = _get_files_to_cleanup(matched_files, task)
 
         if not files_to_cleanup:
             logger.info(f"  No files to clean up for task '{task.name}'")
@@ -179,16 +173,19 @@ async def cleanup_datastore(
 
             # Perform actual cleanup
             if task.cleanup_mode == CleanupMode.ARCHIVE:
+                assert task.archive_folder is not None
                 datastore_manager.archive_file(
                     file,
                     task.archive_folder,
                 )
                 logger.info(f"  Archived: {file.path}")
                 total_archived += 1
-            else:
+            elif task.cleanup_mode == CleanupMode.DELETE:
                 datastore_manager.delete_file(file)
                 logger.info(f"  Deleted: {file.path}")
                 total_deleted += 1
+            else:
+                raise NotImplementedError(f"Unknown cleanup mode: {task.cleanup_mode}")
 
             operations_performed += 1
 

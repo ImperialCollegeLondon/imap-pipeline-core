@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, model_validator
 
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.util import DatetimeProvider
+from prefect_server.durationUtils import parse_duration
 
 
 class CleanupMode(str, Enum):
@@ -48,6 +51,13 @@ class CleanupTask(BaseModel):
                 "archive_folder is required when cleanup_mode is 'archive'"
             )
         return self
+
+    def get_file_age_cutoff(self) -> datetime:
+        """Get the age cutoff datetime based on current time and files_older_than."""
+
+        duration = parse_duration(self.files_older_than)
+        cutoff = DatetimeProvider.now() - duration
+        return cutoff.replace(tzinfo=UTC)
 
 
 class DatastoreCleanupConfig(CommandConfig):

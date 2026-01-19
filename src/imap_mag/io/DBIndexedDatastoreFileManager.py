@@ -128,26 +128,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         shutil.copy2(source_path, dest_path)
 
         # if destination path is in datastore use a relative path, otherwise use absolute path
+        new_db_path = dest_path.absolute()
         if dest_path.is_relative_to(self.__settings.data_store):
-            new_db_path = str(dest_path.relative_to(self.__settings.data_store))
-        else:
-            new_db_path = str(dest_path.absolute())
+            new_db_path = dest_path.relative_to(self.__settings.data_store)
 
-        archived_file = File(
-            name=file.name,
-            path=new_db_path,
-            version=file.version,
-            hash=file.hash,
-            size=file.size,
-            content_date=file.content_date,
-            creation_date=file.creation_date,
-            software_version=file.software_version,
-        )
+        archived_file = file.archive_to_new_file_path(new_db_path)
         self.__database.insert_file(archived_file)
-
-        # Mark original file as deleted
-        file.set_deleted()
         self.__database.save(file)
+
         # Delete original from filesystem
         source_path.unlink()
 

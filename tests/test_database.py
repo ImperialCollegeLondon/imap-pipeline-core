@@ -34,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def mock_output_manager() -> mock.Mock:
+def mock_datastore_manager() -> mock.Mock:
     """Fixture for a mock IOutputManager instance."""
     return mock.create_autospec(IDatastoreFileManager, spec_set=True)
 
@@ -60,12 +60,14 @@ def check_inserted_file(
     assert file.software_version == __version__
 
 
-def test_database_output_manager_writes_to_database(
-    mock_output_manager: mock.Mock,
+def test_database_datastore_manager_writes_to_database(
+    mock_datastore_manager: mock.Mock,
     mock_database: mock.Mock,
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -78,7 +80,7 @@ def test_database_output_manager_writes_to_database(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file1.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
     )
@@ -93,20 +95,22 @@ def test_database_output_manager_writes_to_database(
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(original_file, path_handler)
+    mock_datastore_manager.add_file.assert_called_once_with(original_file, path_handler)
 
     assert actual_file == test_file
     assert actual_path_handler == path_handler
 
 
-def test_database_output_manager_same_file_already_exists_in_database(
-    mock_output_manager: mock.Mock,
+def test_database_datastore_manager_same_file_already_exists_in_database(
+    mock_datastore_manager: mock.Mock,
     mock_database: mock.Mock,
     capture_cli_logs,
     preclean_work_and_output,
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -122,6 +126,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
         File(
             name=path_handler.get_filename(),
             path=path_handler.get_folder_structure(),
+            descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
             version=1,
             hash=hashlib.md5(b"some content").hexdigest(),
             size=0,
@@ -131,7 +136,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
     ]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
     )
@@ -142,7 +147,7 @@ def test_database_output_manager_same_file_already_exists_in_database(
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(original_file, path_handler)
+    mock_datastore_manager.add_file.assert_called_once_with(original_file, path_handler)
 
     mock_database.insert_file.assert_not_called()
 
@@ -155,11 +160,13 @@ def test_database_output_manager_same_file_already_exists_in_database(
     assert actual_path_handler == path_handler
 
 
-def test_database_output_manager_same_file_already_exists_as_second_file_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
+def test_database_datastore_manager_same_file_already_exists_as_second_file_in_database(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -182,6 +189,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
                 path="hk/mag/l1/hsk-pw/2025/05",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=1,
                 hash="",
                 size=0,
@@ -191,6 +199,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v002.txt",
                 path="hk/mag/l1/hsk-pw/2025/05",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=2,
                 hash=hashlib.md5(b"some content").hexdigest(),
                 size=0,
@@ -201,7 +210,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     ]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         matched_path_handler,
     )
@@ -212,7 +221,7 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.add_file.assert_called_once_with(
         original_file, matched_path_handler
     )
 
@@ -227,11 +236,13 @@ def test_database_output_manager_same_file_already_exists_as_second_file_in_data
     assert actual_path_handler == matched_path_handler
 
 
-def test_database_output_manager_file_different_hash_already_exists_in_database(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
+def test_database_datastore_manager_file_different_hash_already_exists_in_database(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock, capture_cli_logs
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -250,7 +261,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file3.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
     )
@@ -260,6 +271,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
                 path="hk/mag/l1/hsk-pw/2025/05",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=1,
                 hash=0,
                 size=0,
@@ -269,6 +281,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v002.txt",
                 path="hk/mag/l1/hsk-pw/2025/05",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=2,
                 hash=0,
                 size=0,
@@ -287,7 +300,7 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.add_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -305,11 +318,13 @@ def test_database_output_manager_file_different_hash_already_exists_in_database(
     assert actual_path_handler == unique_path_handler
 
 
-def test_database_output_manager_errors_when_destination_file_is_not_found(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock
+def test_database_datastore_manager_errors_when_destination_file_is_not_found(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -324,7 +339,7 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     test_file.unlink(missing_ok=True)
 
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         test_file,
         path_handler,
     )
@@ -334,11 +349,13 @@ def test_database_output_manager_errors_when_destination_file_is_not_found(
         database_manager.add_file(original_file, path_handler)
 
 
-def test_database_output_manager_errors_destination_file_different_hash(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock
+def test_database_datastore_manager_errors_destination_file_different_hash(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -351,7 +368,7 @@ def test_database_output_manager_errors_destination_file_different_hash(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some other content"),
         path_handler,
     )
@@ -361,11 +378,13 @@ def test_database_output_manager_errors_destination_file_different_hash(
         database_manager.add_file(original_file, path_handler)
 
 
-def test_database_output_manager_errors_database_error(
-    mock_output_manager: mock.Mock, mock_database: mock.Mock
+def test_database_datastore_manager_errors_database_error(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, mock_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -378,7 +397,7 @@ def test_database_output_manager_errors_database_error(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
     )
@@ -490,13 +509,15 @@ def test_update_database_update_needed_old_data(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
-def test_database_output_manager_real_database_l0_hk_partitioned_file(
-    mock_output_manager: mock.Mock,
+def test_database_datastore_manager_real_database_l0_hk_partitioned_file(
+    mock_datastore_manager: mock.Mock,
     test_database,  # noqa: F811
     capture_cli_logs,
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -515,7 +536,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
     )
@@ -525,6 +546,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
             File(
                 name="imap_mag_l0_hsk-pw_20250502_001.txt",
                 path="hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt",
+                descriptor="imap_mag_l0_hsk-pw",
                 version=1,
                 hash=0,
                 size=123,
@@ -536,6 +558,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
             File(
                 name="imap_mag_l0_hsk-pw_20250502_002.txt",
                 path="hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt",
+                descriptor="imap_mag_l0_hsk-pw",
                 version=2,
                 hash=0,
                 size=456,
@@ -553,7 +576,7 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.add_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -575,13 +598,15 @@ def test_database_output_manager_real_database_l0_hk_partitioned_file(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
-def test_database_output_manager_real_database_l1_hk_versioned_file(
-    mock_output_manager: mock.Mock,
+def test_database_datastore_manager_real_database_l1_hk_versioned_file(
+    mock_datastore_manager: mock.Mock,
     test_database,  # noqa: F811
     capture_cli_logs,
 ) -> None:
     # Set up.
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / "some_file", "some content"
@@ -600,7 +625,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
     )
@@ -610,6 +635,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
                 path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=1,
                 hash=0,
                 size=123,
@@ -621,6 +647,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v002.txt",
                 path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt",
+                descriptor="imap_mag_l1_hsk-pw",
                 version=2,
                 hash=0,
                 size=456,
@@ -638,7 +665,7 @@ def test_database_output_manager_real_database_l1_hk_versioned_file(
     )
 
     # Verify.
-    mock_output_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.add_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -671,6 +698,7 @@ def test_database_insert_file_same_name_different_hash(
     file1 = File(
         name="test_file.txt",
         path=test_file1.absolute().as_posix(),
+        descriptor=File.get_descriptor_from_filename("test_file.txt"),
         version=1,
         hash=hashlib.md5(b"some content").hexdigest(),
         size=0,
@@ -688,6 +716,7 @@ def test_database_insert_file_same_name_different_hash(
     file2 = File(
         name="test_file.txt",
         path=test_file2.absolute().as_posix(),
+        descriptor=File.get_descriptor_from_filename("test_file.txt"),
         version=1,
         hash=hashlib.md5(b"some other content").hexdigest(),
         size=0,
@@ -720,14 +749,16 @@ def test_database_insert_file_same_name_different_hash(
     ],
 )
 def test_add_ancillary_files_to_database_uses_correct_dates(
-    mock_output_manager: mock.Mock,
+    mock_datastore_manager: mock.Mock,
     test_database,  # noqa: F811
     capture_cli_logs,
     ancillary_file_name: str,
     expected_date: datetime,
 ) -> None:
     # Set Up
-    database_manager = DBIndexedDatastoreFileManager(mock_output_manager, test_database)
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
 
     original_file = create_test_file(
         Path(tempfile.gettempdir()) / ancillary_file_name, "some content"
@@ -739,7 +770,7 @@ def test_add_ancillary_files_to_database_uses_correct_dates(
     test_file = Path(tempfile.gettempdir()) / ancillary_file_name
     unique_path_handler = AncillaryPathHandler.from_filename(ancillary_file_name)
 
-    mock_output_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
     )
