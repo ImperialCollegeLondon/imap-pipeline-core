@@ -9,12 +9,12 @@ from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import Environment
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
+from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 from tests.util.miscellaneous import DATASTORE
 
 
 @pytest.mark.asyncio
-async def test_upload_new_files_to_sharepoint_does_upload_a_file_locally(
+async def test_upload_shared_docs_flow_does_upload_a_file_locally(
     capture_cli_logs, test_database
 ):
     # Set up.
@@ -41,17 +41,17 @@ async def test_upload_new_files_to_sharepoint_does_upload_a_file_locally(
         expected_path.unlink(missing_ok=True)
 
         # Exercise.
-        await upload_new_files_to_sharepoint()
+        await upload_shared_docs_flow()
 
     # Verify.
-    assert "1 file(s) uploaded to SharePoint" in capture_cli_logs.text
+    assert "1 file(s) uploaded" in capture_cli_logs.text
     assert expected_path.exists(), f"Expected file {expected_path} to exist"
 
     # Exercise again - do nothing
     with Environment(
         MAG_DATA_STORE=str(DATASTORE),
     ):
-        await upload_new_files_to_sharepoint()
+        await upload_shared_docs_flow()
 
     # Verify.
-    assert "0 file(s) uploaded to SharePoint" in capture_cli_logs.text
+    assert "0 file(s) uploaded" in capture_cli_logs.text

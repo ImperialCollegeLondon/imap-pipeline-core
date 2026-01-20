@@ -17,11 +17,11 @@ PROGRESS_KEY = "sharepoint-upload"
     name=PREFECT_CONSTANTS.FLOW_NAMES.SHAREPOINT_UPLOAD,
     log_prints=True,
 )
-async def upload_new_files_to_sharepoint(
+async def upload_shared_docs_flow(
     find_files_after: datetime | None = None, how_many: int | None = None
 ):
     """
-    Publish new files to sharepoint
+    Publish new files to sharepoint/box/whatever configured cloud storage
     """
 
     logger = get_run_logger()
@@ -102,5 +102,5 @@ async def upload_new_files_to_sharepoint(
         )
 
     db.save(workflow_progress)
-    logger.info(f"{len(files)} file(s) uploaded to SharePoint")
+    logger.info(f"{len(files)} file(s) uploaded")
     return result

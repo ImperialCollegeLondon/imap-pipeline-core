@@ -29,7 +29,7 @@ from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
-from prefect_server.sharepointUploadFlow import upload_new_files_to_sharepoint
+from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 
 
 async def get_matlab_license_server():
@@ -219,7 +219,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    upload_deployable = upload_new_files_to_sharepoint.to_deployment(
+    upload_deployable = upload_shared_docs_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.SHAREPOINT_UPLOAD,
         cron=get_cron_from_env(
             PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_SHAREPOINT_UPLOAD
