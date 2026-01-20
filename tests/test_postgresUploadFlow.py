@@ -46,12 +46,20 @@ async def test_upload_new_files_to_postgres_does_upload_files(
                 file_path = DATASTORE / file_path_str
                 # Extract version from filename (e.g., v001 -> 1, v002 -> 2)
                 version = int(file_path.stem.split("_v")[-1])
+                # Extract date from filename (e.g., 20251101 -> 2025-11-01)
+                date_str = file_path.stem.split("_")[-2]  # e.g., "20251101"
+                content_date = datetime(
+                    int(date_str[:4]),
+                    int(date_str[4:6]),
+                    int(date_str[6:8]),
+                    tzinfo=UTC,
+                )
                 test_database.insert_file(
                     File.from_file(
                         file_path,
                         version,
                         "NOT-REAL-HASH",
-                        datetime(2025, 11, 1, tzinfo=UTC),
+                        content_date,
                         app_settings,
                     )
                 )
