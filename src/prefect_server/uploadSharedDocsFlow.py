@@ -216,7 +216,7 @@ async def remove_deleted_files(
         ) / file.get_datastore_relative_path(app_settings)
 
         await prefect_managedfiletransfer.delete_files_flow(
-            source_block_or_block_name=destination_block_or_blockname,
+            source_block_or_blockname=destination_block_or_blockname,
             source_file_matchers=[
                 FileMatcher(
                     source_folder=remote_path.parent,
