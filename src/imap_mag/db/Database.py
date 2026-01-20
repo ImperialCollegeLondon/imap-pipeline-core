@@ -117,6 +117,25 @@ class Database:
 
         return list(self.session().execute(statement).scalars().all())
 
+    def get_files_deleted_since(
+        self, last_modified_date: datetime, how_many: int | None = None
+    ) -> list[File]:
+        """Get files that have been marked as deleted since the given date."""
+        statement = (
+            select(File)
+            .where(
+                File.deletion_date > last_modified_date,
+            )
+            .order_by(File.deletion_date)
+        )
+
+        if how_many is not None:
+            statement = statement.limit(how_many)
+
+        logger.debug(f"Executing SQL statement: {statement}")
+
+        return list(self.session().execute(statement).scalars().all())
+
     @__session_manager(expire_on_commit=False)
     def get_workflow_progress(self, item_name: str) -> WorkflowProgress:
         session = self.__get_active_session()

@@ -1,11 +1,11 @@
 [project]
 requires-python = ">=3.11"
 name = "imap-mag"
-version = "4.7.0"
+version = "4.8.0"
 
 [tool.poetry]
 name = "imap-mag"
-version = "4.7.0"
+version = "4.8.0"
 description = "Process IMAP data"
 authors = ["alastairtree"]
 readme = "README.md"
@@ -38,7 +38,7 @@ spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
 ccsdspy = "^1.4.2"
 crump = "^0.2.0"
-prefect-managedfiletransfer = "^0.4.0"
+prefect-managedfiletransfer = "^0.4.1"
 
 ialirt-data-access = "^0.5.0"
 apprise = ">=1.9.5"

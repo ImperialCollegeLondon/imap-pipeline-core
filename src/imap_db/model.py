@@ -81,6 +81,16 @@ class File(Base):
         self.set_deleted()
         return archived_file
 
+    def get_datastore_relative_path(self, app_settings: AppSettings) -> Path:
+        """Get the file path relative to the data store root."""
+        path_inside_datastore = Path(self.path)
+        if app_settings.data_store in path_inside_datastore.parents:
+            return path_inside_datastore.absolute().relative_to(
+                app_settings.data_store.absolute()
+            )
+        else:
+            return path_inside_datastore
+
     @classmethod
     def get_descriptor_from_filename(cls, name: str) -> str:
         """Extract file type string (descriptor) from a filename.
