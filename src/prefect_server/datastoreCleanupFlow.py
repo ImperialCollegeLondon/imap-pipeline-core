@@ -117,8 +117,11 @@ async def cleanup_datastore_flow(
     total_deleted = 0
     total_archived = 0
     operations_performed = 0
+    exiting_early = False
 
     for task in tasks:
+        if exiting_early:
+            break
         if operations_performed >= max_file_operations:
             logger.info(
                 f"Reached max file operations limit ({max_file_operations}). "
@@ -135,8 +138,6 @@ async def cleanup_datastore_flow(
             logger.info(f"  No files match patterns for task '{task.name}'")
             continue
 
-        logger.info(f"  Found {len(matched_files)} files matching patterns")
-
         # Get files to clean up
         files_to_cleanup = _get_files_to_cleanup(matched_files, task)
 
@@ -145,7 +146,7 @@ async def cleanup_datastore_flow(
             continue
 
         logger.info(
-            f"  {len(files_to_cleanup)} files to clean up "
+            f"  Found {len(matched_files)} files matching patterns,{len(files_to_cleanup)} files to clean up "
             f"(files_older_than={task.files_older_than}, keep_latest_only={task.keep_latest_version_only})"
         )
 
@@ -155,6 +156,7 @@ async def cleanup_datastore_flow(
                     f"Reached max file operations limit ({max_file_operations}). "
                     "Stopping cleanup."
                 )
+                exiting_early = True
                 break
 
             if task.cleanup_mode == CleanupMode.ARCHIVE:
