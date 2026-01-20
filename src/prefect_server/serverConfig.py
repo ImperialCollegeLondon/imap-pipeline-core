@@ -117,7 +117,7 @@ class ServerConfig:
                 ),
             ),
             (
-                PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
+                PREFECT_CONSTANTS.DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME,
                 RCloneConfigFileBlock(
                     remote_name="imap_sharepoint",
                     config_file_contents=SAMPLE_RCLONE_FILE_CONTENTS,

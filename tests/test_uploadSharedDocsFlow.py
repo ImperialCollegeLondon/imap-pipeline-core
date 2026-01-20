@@ -31,7 +31,9 @@ async def test_upload_shared_docs_flow_does_upload_a_file_locally(
             )
         )
         destination = LocalFileSystem(basepath=sharepoint.as_posix())
-        await destination.save(PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME, overwrite=True)
+        await destination.save(
+            PREFECT_CONSTANTS.DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME, overwrite=True
+        )
 
         expected_path = (
             sharepoint

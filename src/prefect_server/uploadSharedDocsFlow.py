@@ -1,16 +1,24 @@
 import fnmatch
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
 import prefect_managedfiletransfer
-from prefect import flow, get_run_logger
+from prefect import State, flow
+from prefect.filesystems import LocalFileSystem
 from prefect.states import Completed
+from prefect_managedfiletransfer import (
+    RCloneConfigFileBlock,
+    ServerWithBasicAuthBlock,
+    ServerWithPublicKeyAuthBlock,
+)
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
+from imap_mag.util.constants import CONSTANTS
 from prefect_server.constants import PREFECT_CONSTANTS
 
-PROGRESS_KEY = "sharepoint-upload"
+logger = logging.getLogger(__name__)
 
 
 @flow(
@@ -18,20 +26,80 @@ PROGRESS_KEY = "sharepoint-upload"
     log_prints=True,
 )
 async def upload_shared_docs_flow(
-    find_files_after: datetime | None = None, how_many: int | None = None
+    destination_block_or_blockname: (
+        ServerWithBasicAuthBlock
+        | ServerWithPublicKeyAuthBlock
+        | LocalFileSystem
+        | RCloneConfigFileBlock
+        | str
+    ) = PREFECT_CONSTANTS.DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME,
+    find_files_after: datetime | None = None,
+    how_many: int | None = None,
+    do_uploads: bool = True,
+    do_deletes: bool = True,
+    workflow_progress_key: str = "sharepoint-upload",
 ):
     """
     Publish new files to sharepoint/box/whatever configured cloud storage
     """
 
-    logger = get_run_logger()
-
     app_settings = AppSettings()  # type: ignore
     db = Database()
     started = datetime.now(tz=UTC)
-    workflow_progress = db.get_workflow_progress(PROGRESS_KEY)
+
+    uploaded_files = (
+        await upload_new_files(
+            destination_block_or_blockname,
+            how_many,
+            app_settings,
+            db,
+            started,
+            find_files_after,
+            workflow_progress_key,
+        )
+        if do_uploads
+        else 0
+    )
+
+    deleted_files = (
+        await remove_deleted_files(
+            destination_block_or_blockname,
+            how_many,
+            app_settings,
+            db,
+            started,
+            find_files_after,
+            workflow_progress_key,
+        )
+        if do_deletes
+        else 0
+    )
+
+    result: State
+    if uploaded_files or deleted_files:
+        result = Completed(
+            message=f"{uploaded_files} files uploaded, {deleted_files} files deleted"
+        )
+    else:
+        result = Completed(
+            message="No work to do 💤", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME
+        )
+
+    return result
+
+
+async def upload_new_files(
+    destination_block_or_blockname,
+    how_many: int | None,
+    app_settings: AppSettings,
+    db: Database,
+    started: datetime,
+    find_files_after: datetime | None,
+    workflow_progress_key: str,
+) -> int:
+    workflow_progress = db.get_workflow_progress(workflow_progress_key)
     if workflow_progress.progress_timestamp is None:
-        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=UTC)
+        workflow_progress.progress_timestamp = CONSTANTS.IMAP_EPOCH_DATETIME
 
     last_modified_date = (
         workflow_progress.progress_timestamp
@@ -79,7 +147,7 @@ async def upload_shared_docs_flow(
             continue
 
         await prefect_managedfiletransfer.upload_file_flow(
-            destination_block_or_blockname=PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
+            destination_block_or_blockname=destination_block_or_blockname,
             source_folder=path_inc_datastore.parent,
             pattern_to_upload=path_inc_datastore.name,
             destination_file=destination_path,
@@ -87,20 +155,43 @@ async def upload_shared_docs_flow(
             mode=prefect_managedfiletransfer.TransferType.Copy,
         )
 
-    result = None
     if files:
         logger.debug("Uploading completed")
         latest_file_timestamp = max(f.last_modified_date for f in files)
         new_progress_date = min(started, latest_file_timestamp.astimezone(UTC))
         workflow_progress.update_progress_timestamp(new_progress_date)
-        logger.info(f"Set progress timestamp for {PROGRESS_KEY} to {new_progress_date}")
-
-        result = Completed(message=f"{len(files)} files uploaded")
-    else:
-        result = Completed(
-            message="No work to do 💤", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME
+        logger.info(
+            f"Set progress timestamp for {workflow_progress_key} to {new_progress_date}"
         )
 
     db.save(workflow_progress)
     logger.info(f"{len(files)} file(s) uploaded")
-    return result
+    return len(files)
+
+
+async def remove_deleted_files(
+    destination_block_or_blockname,
+    how_many: int | None,
+    app_settings: AppSettings,
+    db: Database,
+    started: datetime,
+    find_files_after: datetime | None,
+    workflow_progress_key: str,
+) -> int:
+    workflow_progress = db.get_workflow_progress(workflow_progress_key + "-deletes")
+    if workflow_progress.progress_timestamp is None:
+        workflow_progress.progress_timestamp = CONSTANTS.IMAP_EPOCH_DATETIME
+
+    last_modified_date = (
+        workflow_progress.progress_timestamp
+        if find_files_after is None
+        else find_files_after
+    )
+
+    logger.info(
+        f"Looking for {how_many if how_many else 'all'} files deleted after {last_modified_date}"
+    )
+
+    # TODO: Implement this and the finish this method like the upload flow, but with deletes
+    # deleted_files_db = db.get_files_deleted_since(last_modified_date, how_many)
+    return 0
