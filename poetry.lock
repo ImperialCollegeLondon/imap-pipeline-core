@@ -3044,14 +3044,14 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.6.9"
+version = "3.6.11"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect-3.6.9-py3-none-any.whl", hash = "sha256:7d83b3244b53fe23ac934d7bba16428573439e078443bbd3b79d9daf7fb739bc"},
-    {file = "prefect-3.6.9.tar.gz", hash = "sha256:bcb08bb3a402910a6cc40018943d9d229a2c6b47fe15d6c7580fdd9fb7d478bb"},
+    {file = "prefect-3.6.11-py3-none-any.whl", hash = "sha256:93a39ebb8fe252de2950023a256848f7466cbb50e8345cc52bdfbbd5dd856f2d"},
+    {file = "prefect-3.6.11.tar.gz", hash = "sha256:d83ff1ace0bd425c2bbd885b33125093f558298d90beee5d22d08f0bc094e2e5"},
 ]
 
 [package.dependencies]
@@ -3109,7 +3109,7 @@ toml = ">=0.10.0"
 typer = ">=0.16.0,<0.21.0"
 typing-extensions = ">=4.10.0,<5.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
-websockets = ">=15.0.1,<16.0"
+websockets = ">=15.0.1,<17.0"
 whenever = {version = ">=0.7.3,<0.10.0", markers = "python_version >= \"3.13\""}
 
 [package.extras]
@@ -3136,14 +3136,14 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-docker"
-version = "0.6.6"
+version = "0.7.1"
 description = "Prefect integrations for interacting with Docker."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect_docker-0.6.6-py3-none-any.whl", hash = "sha256:5b9ab447bfa563cf3304e66b32113727d40fd451144ea3a199e5b6406293eb0b"},
-    {file = "prefect_docker-0.6.6.tar.gz", hash = "sha256:fd9a927b36d4b86ccbfd810688b186be07a0b2c99afbae5864aaec89963fa078"},
+    {file = "prefect_docker-0.7.1-py3-none-any.whl", hash = "sha256:b4fe1760c12206d3eaec2826d63acb1235bd41756921eb0c6b5feeb20b157e37"},
+    {file = "prefect_docker-0.7.1.tar.gz", hash = "sha256:7d5053bcc049d56b5498ca4629c9b08b31d96f5387e1eb34f510ec322d5aad89"},
 ]
 
 [package.dependencies]
@@ -3153,14 +3153,14 @@ prefect = ">=3.3.5"
 
 [[package]]
 name = "prefect-managedfiletransfer"
-version = "0.2.0"
-description = "Upload and download files easily between Local/SFTP/Cloud storage using rclone"
+version = "0.4.0"
+description = "Upload, download, and delete files easily between Local/SFTP/Cloud storage using rclone"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect_managedfiletransfer-0.2.0-py3-none-any.whl", hash = "sha256:f8f542f4c8c49032464b8cd758aca6d85de74085689a6665e75678497acb0a24"},
-    {file = "prefect_managedfiletransfer-0.2.0.tar.gz", hash = "sha256:d7765ffa6912c73610dbe91f91df65a75f301437b102900864238c99ef06db15"},
+    {file = "prefect_managedfiletransfer-0.4.0-py3-none-any.whl", hash = "sha256:8b37f3dd4c36ef593230deaca88b249e1a32042f2a0e720e79cf43cde9d7d438"},
+    {file = "prefect_managedfiletransfer-0.4.0.tar.gz", hash = "sha256:20cff06d531d902058cd7c49fdebf421804ca058e7c5ebb596b127d72b8c8f28"},
 ]
 
 [package.dependencies]
@@ -5427,4 +5427,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "ca820090abe48b0ab18f1c8fcccc655a869c6e14369b0ad822e76254ab5bd038"
+content-hash = "4fd9859dbd8e1c41bdbe4a52f6b7a46aedd4fd0ad2ee74f89316d7697402489f"
