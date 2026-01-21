@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
-from imap_mag.io.IOutputManager import IOutputManager, T
+from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +13,13 @@ def generate_hash(file: Path) -> str:
     return hashlib.md5(file.read_bytes()).hexdigest()
 
 
-class OutputManager(IOutputManager):
+class DatastoreFileManager(IDatastoreFileManager):
     """Manage output files."""
 
     location: Path
 
-    def __init__(self, location: Path) -> None:
-        self.location = location
+    def __init__(self, datastore_path: Path) -> None:
+        self.location = datastore_path
 
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
         """Add file to output location."""

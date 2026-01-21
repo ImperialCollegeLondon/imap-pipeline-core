@@ -7,7 +7,7 @@
         "editor.formatOnSave": true
     },
     "python.testing.pytestArgs": [
-        "-s", "tests"
+        "-s", "-n", "auto", "--dist", "worksteal", "--maxprocesses=4", "tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,

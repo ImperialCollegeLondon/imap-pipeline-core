@@ -116,13 +116,15 @@ def fetch_science(
     output_science: dict[Path, SciencePathHandler] = dict()
 
     if app_settings.fetch_science.publish_to_data_store:
-        output_manager = appUtils.getOutputManagerByMode(
+        datastore_manager = appUtils.getManagerByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
         for file, path_handler in downloaded_science.items():
-            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            (output_file, output_handler) = datastore_manager.add_file(
+                file, path_handler
+            )
             output_science[output_file] = output_handler
 
             # Clean up work folder files as have been copied to datastore

@@ -81,13 +81,15 @@ def plot_ialirt(
     ialirt_file_and_handler: dict[Path, IALiRTQuicklookPathHandler] = {}
 
     if app_settings.plot_ialirt.publish_to_data_store:
-        output_manager = appUtils.getOutputManagerByMode(
+        datastore_manager = appUtils.getManagerByMode(
             app_settings,
             use_database=(save_mode == SaveMode.LocalAndDatabase),
         )
 
         for file, path_handler in generated_figure.items():
-            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            (output_file, output_handler) = datastore_manager.add_file(
+                file, path_handler
+            )
             ialirt_file_and_handler[output_file] = output_handler
 
             # Add "latest" copy for today
@@ -106,7 +108,7 @@ def plot_ialirt(
                     extension="png",
                     latest_date=DatetimeProvider.today(),
                 )
-                output_manager.add_file(output_file, latest_handler)
+                datastore_manager.add_file(output_file, latest_handler)
     else:
         logger.info("Files not published to data store based on config.")
         ialirt_file_and_handler = generated_figure

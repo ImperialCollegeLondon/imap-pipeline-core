@@ -177,7 +177,7 @@ def apply(
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
-    outputManager = appUtils.getOutputManagerByMode(
+    outputManager = appUtils.getManagerByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 

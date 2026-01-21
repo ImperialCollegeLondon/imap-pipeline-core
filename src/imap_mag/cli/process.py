@@ -43,6 +43,11 @@ def process(
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    datastore_manager = appUtils.getManagerByMode(
+        app_settings,
+        use_database=(save_mode == SaveMode.LocalAndDatabase),
+    )
+
     work_files: list[Path] = []
 
     for file in files:
@@ -73,13 +78,8 @@ def process(
     # Copy files to the output directory.
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
-    output_manager = appUtils.getOutputManagerByMode(
-        app_settings,
-        use_database=(save_mode == SaveMode.LocalAndDatabase),
-    )
-
     for processed_file, path_handler in processed_files.items():
-        (copied_file, path_handler) = output_manager.add_file(
+        (copied_file, path_handler) = datastore_manager.add_file(
             processed_file, path_handler
         )
 

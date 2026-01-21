@@ -7,7 +7,7 @@ from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 T = typing.TypeVar("T", bound="IFilePathHandler")
 
 
-class IOutputManager(abc.ABC):
+class IDatastoreFileManager(abc.ABC):
     """Interface for output managers."""
 
     @abc.abstractmethod

@@ -10,6 +10,7 @@ from pydantic_settings import (
 )
 
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
     FetchIALiRTConfig,
@@ -54,6 +55,7 @@ class AppSettings(BaseSettings):
     publish: PublishConfig
     upload: UploadConfig
     postgres_upload: PostgresUploadConfig
+    datastore_cleanup: DatastoreCleanupConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

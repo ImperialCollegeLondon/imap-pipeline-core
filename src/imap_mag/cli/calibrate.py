@@ -78,7 +78,7 @@ def gradiometry(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = appUtils.getOutputManagerByMode(
+    outputManager = appUtils.getManagerByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 
@@ -167,7 +167,7 @@ def calibrate(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = appUtils.getOutputManagerByMode(
+    outputManager = appUtils.getManagerByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 

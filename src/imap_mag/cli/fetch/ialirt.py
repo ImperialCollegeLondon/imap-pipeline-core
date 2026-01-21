@@ -66,13 +66,15 @@ def fetch_ialirt(
     ialirt_files_and_handlers: dict[Path, IALiRTPathHandler] = dict()
 
     if app_settings.fetch_ialirt.publish_to_data_store:
-        output_manager = appUtils.getOutputManagerByMode(
+        datastore_manager = appUtils.getManagerByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
         for file, path_handler in downloaded_ialirt.items():
-            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            (output_file, output_handler) = datastore_manager.add_file(
+                file, path_handler
+            )
             ialirt_files_and_handlers[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")

@@ -1,6 +1,8 @@
-# imap-pipline-core
+# IMAP Pipeline Core
 
-TODO: fill this in!
+IMAP Pipeline Core is a Python data processing pipeline for the IMAP (Interstellar Mapping and Acceleration Probe) mission. It processes magnetometer data from multiple sources (WebPODA, IMAP SDC CDF files API, I-ALiRT API), performs calibration, and manages a  shared folder of file saved in a data store. The data-store data is tracked in a postgres database which also contains some packet data mirrored from CSV and CDF files.
+
+The project uses Prefect for workflow orchestration, Typer for CLI commands, SQLAlchemy ORM with Alembic for database management, and Pydantic for configuration management. It includes a magnetometer calibration toolkit and supports automated testing with pytest.
 
 ## Developer setup steps - option 1: Dev Container
 
