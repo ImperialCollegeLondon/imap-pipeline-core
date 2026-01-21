@@ -77,19 +77,17 @@ postgres_upload:
 datastore_cleanup:
     dry_run: false
     tasks:
-        - name: "delete-all-non-latest-hk-versions"
+        - name: "delete-all-non-latest-hk-l1-versions"
           paths_to_match:
-              - "*hk/mag/l0/*"
               - "*hk/mag/l1/*"
-              - "*hk/sc/l0/*"
               - "*hk/sc/l1/*"
-          files_older_than: "1h"
+          files_older_than: "24h"
           keep_latest_version_only: true
           cleanup_mode: "delete"
         - name: "delete-all-non-latest-l1d-versions"
           paths_to_match:
               - "*science/mag/l1d/*"
-          files_older_than: "1h"
+          files_older_than: "24h"
           keep_latest_version_only: true
           cleanup_mode: "delete"
         - name: "delete-30day-old-non-latest-science-versions"
