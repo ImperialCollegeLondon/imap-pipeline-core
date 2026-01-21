@@ -5,7 +5,6 @@
 import json
 import os
 import re
-import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -117,9 +116,14 @@ def test_process_error_with_unsupported_file_type():
     "mode",
     [None, "downloadonly"],
 )
-def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
+def test_fetch_binary_downloads_hk_from_webpoda(
+    wiremock_manager, mode, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
+    expected_result = (
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
+    )
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
@@ -161,13 +165,11 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 
     # Verify.
     assert result.exit_code == 0
-    assert Path(
-        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
-    ).exists()
+    assert Path(expected_result).exists()
 
     with (
         open(
-            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts",
+            expected_result,
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -179,7 +181,9 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
+def test_fetch_binary_downloads_hk_from_webpoda_with_ert(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
@@ -323,7 +327,9 @@ def test_fetch_ialirt_downloads_data_from_sdc(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
+def test_fetch_science_downloads_cdf_from_sdc(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     query_response: list[dict[str, str]] = [
         {
@@ -359,7 +365,6 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         is_pattern=True,
         priority=2,
     )
-    clean_science_output_folder()
 
     settings_overrides_for_env: Mapping[str, str] = {
         "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
@@ -401,21 +406,13 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
         assert output.read() == input.read()
 
 
-def clean_science_output_folder():
-    destination_folder = "output/science/mag/l1b"
-    if Path(destination_folder).exists():
-        for file in Path(destination_folder).rglob("*"):
-            if file.is_file():
-                file.unlink(missing_ok=True)
-            if file.is_dir():
-                shutil.rmtree(file, ignore_errors=True)
-
-
 @pytest.mark.skipif(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manager):
+def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     query_response: list[dict[str, str]] = [
         {
@@ -453,7 +450,6 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
         is_pattern=True,
         priority=2,
     )
-    clean_science_output_folder()
 
     settings_overrides_for_env: Mapping[str, str] = {
         "IMAP_DATA_ACCESS_URL": wiremock_manager.get_url(),
