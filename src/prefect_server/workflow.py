@@ -117,6 +117,9 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
     )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
@@ -168,10 +171,21 @@ async def adeploy_flows(local_debug: bool = False):
             Cron(
                 get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1D_CRON),
                 timezone=timezone,
+                parameters={"level": "l1d", "modes": ["norm"]},
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D + "_norm_only",
+            )
+        )
+        sci_polling_schedules.append(
+            Cron(
+                get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1D_CRON),
+                timezone=timezone,
                 parameters={
                     "level": "l1d",
+                    "modes": ["burst"],
+                    "reference_frames": ["gse", "rtn"],
                 },
-                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D,
+                slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D
+                + "_burst_gse_rtn_only",
             )
         )
 
@@ -192,6 +206,9 @@ async def adeploy_flows(local_debug: bool = False):
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CHECK_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.CHECK_IALIRT_CRON),
         job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         triggers=[
             DeploymentEventTrigger(
@@ -226,6 +243,9 @@ async def adeploy_flows(local_debug: bool = False):
         ),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
         triggers=[
             DeploymentEventTrigger(
                 name="Trigger upload after HK poll",
@@ -264,6 +284,9 @@ async def adeploy_flows(local_debug: bool = False):
             PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_POSTGRES_UPLOAD
         ),
         job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         triggers=[
             DeploymentEventTrigger(
@@ -282,6 +305,9 @@ async def adeploy_flows(local_debug: bool = False):
             PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_DATASTORE_CLEANUP
         ),
         job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
