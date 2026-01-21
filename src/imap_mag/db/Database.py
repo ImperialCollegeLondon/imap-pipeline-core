@@ -26,7 +26,7 @@ class Database:
                 "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
             )
 
-        self.engine = create_engine(db_url)
+        self.engine = create_engine(db_url, pool_pre_ping=True)
         self.session = sessionmaker(bind=self.engine)
 
     @staticmethod
