@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -100,13 +101,19 @@ class File(Base):
             imap_mag_l2-burst-offsets_20250421_20250421_v000.cdf -> imap_mag_l2-burst-offsets
             imap_mag_l1d_burst-srf_20251207_v001.cdf -> imap_mag_l1d_burst-srf
         """
-        parts = name.rsplit(".", 1)[0].split("_")
 
-        # remove all trailing parts that are date or version
-        while parts and (parts[-1].startswith("v") or parts[-1].isdigit()):
-            parts.pop()
+        name_without_extension = name.rsplit(".", 1)[0] if "." in name else name
 
-        return "_".join(parts)
+        # Match everything up to the last date/version pattern
+        # This regex captures everything before date patterns (YYYYMMDD or YYYY-MM-DD) and version patterns (vNNN or NNN)
+        match = re.match(
+            r"^(.+?)(?:_(?:\d{8}|\d{4}-\d{2}-\d{2}|v\d+|\d+))+$", name_without_extension
+        )
+        if match:
+            return match.group(1)
+
+        # Fallback: return filename without extension if no pattern matched
+        return name_without_extension
 
     @classmethod
     def from_file(
