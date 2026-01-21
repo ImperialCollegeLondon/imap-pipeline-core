@@ -99,9 +99,9 @@ datastore_cleanup:
           files_older_than: "30d"
           keep_latest_version_only: true
           cleanup_mode: "delete"
-        - name: "delete-all-6week-old-quicklooks"
+        - name: "delete-all-12week-old-quicklooks"
           paths_to_match:
               - "*quicklook/ialirt/**/*.png"
-          files_older_than: "42d"
+          files_older_than: "90d"
           keep_latest_version_only: false
           cleanup_mode: "delete"
