@@ -19,7 +19,7 @@ from tests.util.miscellaneous import (
     YESTERDAY,
     mock_datetime_provider,  # noqa: F401
 )
-from tests.util.prefect import (  # noqa: F401
+from tests.util.prefect_test_utils import (  # noqa: F401
     mock_teams_webhook_block,
     prefect_test_fixture,
 )

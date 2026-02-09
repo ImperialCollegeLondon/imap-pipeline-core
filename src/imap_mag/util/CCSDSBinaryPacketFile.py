@@ -105,7 +105,7 @@ class CCSDSBinaryPacketFile:
             )
         except (IndexError, RuntimeError) as e:
             logger.error(
-                f"Error decoding {len(packet_bytes)} bytes in {self.file}: {e}"
+                f"Error decoding {len(packet_bytes)} bytes in {self.file}", exc_info=e
             )
             packet = None
 

@@ -137,8 +137,35 @@ def test_decode_hk_packet(packet_type):
     )
 
 
+@pytest.mark.parametrize(
+    "packet_file_name",
+    [
+        "imap_sc_l0_x286_20260204_001.pkts",
+        "imap_sc_l0_x286_20260204_002.pkts",
+    ],
+)
+def test_can_decode_some_sc_hk_packets_from_2026(packet_file_name: str):
+    # Set up.
+    packet_path = TEST_DATA / packet_file_name
+
+    processor = instantiate_hk_processor()
+
+    # Exercise.
+    processed_files: dict[Path, IFilePathHandler] = processor.process(
+        [packet_path], raise_on_error=True
+    )
+
+    # Verify.
+    assert len(processed_files) == 1
+
+    processed_path: Path = next(iter(processed_files))
+    assert processed_path.exists()
+
+
 def test_decode_hk_packet_with_data_spanning_two_days(
-    mock_met_to_j2000_conversion_for_hk_power_to_span_two_days, capture_cli_logs
+    mock_met_to_j2000_conversion_for_hk_power_to_span_two_days,
+    capture_cli_logs,
+    clean_datastore,
 ):
     """
     Test that HKProcessor splits data into separate files for each day, for each ApID,
@@ -147,7 +174,7 @@ def test_decode_hk_packet_with_data_spanning_two_days(
 
     # Set up.
     packet_path = TEST_DATA / "MAG_HSK_PW.pkts"
-    processor = instantiate_hk_processor()
+    processor = instantiate_hk_processor(clean_datastore)
 
     # Exercise.
     processed_files: dict[Path, IFilePathHandler] = processor.process(packet_path)
@@ -433,7 +460,7 @@ def test_hk_processor_ignores_corrupt_hk_packet_with_bad_apid(
     assert len(processed_path) == 0
 
     assert re.search(
-        rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
+        rf"Error decoding \d+ bytes in {packet_path}", capture_cli_logs.text
     )
     assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
     assert f"Found 0 subsystems in {packet_path!s}:" in capture_cli_logs.text
@@ -448,7 +475,12 @@ def test_hk_processor_ignores_corrupt_hk_packet_with_bad_apid(
     ],
 )
 def test_hk_processor_fails_gracefully_on_corrupt_hk_packet(
-    start_idx, end_idx, replace_bytes, capture_cli_logs, temp_folder_path
+    start_idx,
+    end_idx,
+    replace_bytes,
+    capture_cli_logs,
+    temp_folder_path,
+    clean_datastore,
 ):
     """Test that HKProcessor throws an error on corrupt HK packet."""
 
@@ -457,21 +489,20 @@ def test_hk_processor_fails_gracefully_on_corrupt_hk_packet(
     original_path = TEST_DATA / "MAG_HSK_PW.pkts"
     write_corrupt_packet(original_path, packet_path, start_idx, end_idx, replace_bytes)
 
-    processor = instantiate_hk_processor()
+    processor = instantiate_hk_processor(clean_datastore)
 
     # Exercise.
     processed_path = processor.process(packet_path)
 
-    assert len(processed_path) == 0
+    assert len(processed_path) == 1, (
+        "Processor should still produce an output file for the non-corrupted packets."
+    )
 
     assert re.search(
-        rf"Error decoding \d+ bytes in {packet_path}:", capture_cli_logs.text
+        rf"Error decoding \d+ bytes in {packet_path}", capture_cli_logs.text
     )
+
     assert "Unrecognized ApIDs will be ignored:" in capture_cli_logs.text
-    assert (
-        f"Failed to decommutate packets from {packet_path!s}:\nnegative shift count"
-        in capture_cli_logs.text
-    )
 
 
 def test_hk_processor_decodes_correctly_on_corrupt_header(capture_cli_logs):

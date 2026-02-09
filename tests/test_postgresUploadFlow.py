@@ -10,7 +10,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import Environment
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from tests.util.miscellaneous import DATASTORE
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 @pytest.mark.asyncio

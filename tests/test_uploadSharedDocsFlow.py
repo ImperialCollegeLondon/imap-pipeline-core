@@ -11,7 +11,7 @@ from imap_mag.util import Environment
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 from tests.util.miscellaneous import DATASTORE
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 @pytest.mark.asyncio
