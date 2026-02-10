@@ -3006,7 +3006,7 @@ jobs:
     id_mapping:
       epoch:
         db_column: id
-        type: integer
+        type: bigint
         nullable: false
     columns:
       hk_low_tpsh_met_sec:
@@ -4587,27 +4587,27 @@ jobs:
         nullable: false
       riu_1c_rf_swch_pos:
         db_column: riu_1c_rf_swch_pos
-        type: varchar(9)
+        type: varchar(13)
         nullable: false
       pdu_sspa_a_pwr_state:
         db_column: pdu_sspa_a_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_pwr_st:
         db_column: ilo_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_pwr_st:
         db_column: h90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       sc_pnl_surv_htrs_grp_3_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_3_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45_pwr_st:
         db_column: u45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       x2red_ctrl_lv_a_open_pulse_state:
         db_column: x2red_ctrl_lv_a_open_pulse_state
@@ -4619,15 +4619,15 @@ jobs:
         nullable: false
       idx_surv_htr_pwr_st:
         db_column: idx_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       glx_pwr_st:
         db_column: glx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_2_pwr_state:
         db_column: pdu_presxdcr_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_batt_htr_1_pwr_state:
         db_column: pdu_batt_htr_1_pwr_state
@@ -4647,35 +4647,35 @@ jobs:
         nullable: false
       pdu_pse_pwr_state:
         db_column: pdu_pse_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_pwr_st:
         db_column: idx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       sc_pnl_surv_htrs_grp_2_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       hit_pwr_st:
         db_column: hit_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       st_valve_htr_grp_1b_2b_pwr_state:
         db_column: st_valve_htr_grp_1b_2b_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_st_pwr_state:
         db_column: pdu_st_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       mag_pwr_st:
         db_column: mag_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_pwr_st:
         db_column: u90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_dep_decon_htr_pwr_st:
         db_column: idx_dep_decon_htr_pwr_st
@@ -4687,7 +4687,7 @@ jobs:
         nullable: false
       ilo_bps_surv_htr_pwr_st:
         db_column: ilo_bps_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_rf_swch_posa_mga_pulse_state:
         db_column: pdu_rf_swch_posa_mga_pulse_state
@@ -4695,7 +4695,7 @@ jobs:
         nullable: false
       swp_pwr_st:
         db_column: swp_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sspa_b_pwr_state:
         db_column: pdu_sspa_b_pwr_state
@@ -4703,11 +4703,11 @@ jobs:
         nullable: false
       cod_surv_htrs_pwr_st:
         db_column: cod_surv_htrs_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_pwr_st:
         db_column: cod_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       x1red_ctrl_lv_b_open_pulse_state:
         db_column: x1red_ctrl_lv_b_open_pulse_state
@@ -4719,19 +4719,19 @@ jobs:
         nullable: false
       h45_pwr_st:
         db_column: h45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_tof_surv_htr_pwr_st:
         db_column: ilo_tof_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_1_pwr_state:
         db_column: pdu_presxdcr_1_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sse_pwr_state:
         db_column: pdu_sse_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ed_htr_grp_1b_2b_3b_4b_pwr_state:
         db_column: ed_htr_grp_1b_2b_3b_4b_pwr_state
@@ -4751,11 +4751,11 @@ jobs:
         nullable: false
       sc_pnl_surv_htrs_grp_1_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_1_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       st_valve_htr_grp_1a_2a_pwr_state:
         db_column: st_valve_htr_grp_1a_2a_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_pivot_pwr_st:
         db_column: ilo_pivot_pwr_st
@@ -4771,15 +4771,15 @@ jobs:
         nullable: false
       swe_pwr_st:
         db_column: swe_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_prop_htr_1_2_pwr_state:
         db_column: pdu_prop_htr_1_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45u90_surv_htr_pwr_st:
         db_column: u45u90_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       rf_swch_posb_mga_lga_pulse_state:
         db_column: rf_swch_posb_mga_lga_pulse_state
@@ -4787,11 +4787,11 @@ jobs:
         nullable: false
       status_rx_1_carrier_loop_sel:
         db_column: status_rx_1_carrier_loop_sel
-        type: varchar(13)
+        type: varchar(15)
         nullable: false
       riu_1c_loss_of_vacuum_state:
         db_column: riu_1c_loss_of_vacuum_state
-        type: varchar(14)
+        type: varchar(15)
         nullable: false
       riu_1c_rf_swch_posb_mga_lga:
         db_column: riu_1c_rf_swch_posb_mga_lga
@@ -4803,11 +4803,11 @@ jobs:
         nullable: false
       riu_1c_prop_lv_a:
         db_column: riu_1c_prop_lv_a
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       riu_1c_prop_lv_b:
         db_column: riu_1c_prop_lv_b
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       pse_coul_active_ctrlr_status:
         db_column: pse_coul_active_ctrlr_status
@@ -5007,7 +5007,7 @@ jobs:
         nullable: false
       pdu_por_seq_inh_flag:
         db_column: pdu_por_seq_inh_flag
-        type: varchar(7)
+        type: varchar(9)
         nullable: false
       pdu_sep_majority_status:
         db_column: pdu_sep_majority_status
@@ -5043,7 +5043,7 @@ jobs:
         nullable: false
       pdu_por_seq_done:
         db_column: pdu_por_seq_done
-        type: varchar(3)
+        type: varchar(4)
         nullable: false
       pdu_thrust_safety_bus_a_state:
         db_column: pdu_thrust_safety_bus_a_state
@@ -5111,7 +5111,7 @@ jobs:
         nullable: false
       pdu_sspa_a_pwr_set_state:
         db_column: pdu_sspa_a_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_brkr_trip_st:
         db_column: ilo_brkr_trip_st
@@ -5119,7 +5119,7 @@ jobs:
         nullable: false
       ilo_pwr_set_st:
         db_column: ilo_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_brkr_trip_st:
         db_column: h90_brkr_trip_st
@@ -5127,7 +5127,7 @@ jobs:
         nullable: false
       h90_pwr_set_st:
         db_column: h90_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       surv_htrs_grp_3_brkr_trip_state:
         db_column: surv_htrs_grp_3_brkr_trip_state
@@ -5135,7 +5135,7 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_3_pwr_set_state:
         db_column: nl_surv_htrs_grp_3_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_catbed_htr_grp_4a_ena_state:
         db_column: pdu_catbed_htr_grp_4a_ena_state
@@ -5159,7 +5159,7 @@ jobs:
         nullable: false
       u45_pwr_set_st:
         db_column: u45_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_surv_htr_brkr_set_st:
         db_column: idx_surv_htr_brkr_set_st
@@ -5211,7 +5211,7 @@ jobs:
         nullable: false
       idx_surv_htr_pwr_set_st:
         db_column: idx_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       lv_a_close_ena_st:
         db_column: lv_a_close_ena_st
@@ -5223,7 +5223,7 @@ jobs:
         nullable: false
       glx_pwr_set_st:
         db_column: glx_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_2_brkr_trip_state:
         db_column: pdu_presxdcr_2_brkr_trip_state
@@ -5231,7 +5231,7 @@ jobs:
         nullable: false
       pdu_presxdcr_2_pwr_set_state:
         db_column: pdu_presxdcr_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_batt_htr_1_brkr_trip_state:
         db_column: pdu_batt_htr_1_brkr_trip_state
@@ -5303,7 +5303,7 @@ jobs:
         nullable: false
       pdu_pse_pwr_set_state:
         db_column: pdu_pse_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_brkr_trip_st:
         db_column: idx_brkr_trip_st
@@ -5311,7 +5311,7 @@ jobs:
         nullable: false
       idx_pwr_set_st:
         db_column: idx_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       surv_htrs_grp_2_brkr_trip_state:
         db_column: surv_htrs_grp_2_brkr_trip_state
@@ -5319,7 +5319,7 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_2_pwr_set_state:
         db_column: nl_surv_htrs_grp_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       aplo_hdrm_1_red_deploy_arm_state:
         db_column: aplo_hdrm_1_red_deploy_arm_state
@@ -5343,7 +5343,7 @@ jobs:
         nullable: false
       hit_pwr_set_st:
         db_column: hit_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_st_brkr_set_state:
         db_column: pdu_st_brkr_set_state
@@ -5367,7 +5367,7 @@ jobs:
         nullable: false
       alve_htr_grp_1b_2b_pwr_set_state:
         db_column: alve_htr_grp_1b_2b_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       tac_thrust_bus_grp_1_ena_state:
         db_column: tac_thrust_bus_grp_1_ena_state
@@ -5379,7 +5379,7 @@ jobs:
         nullable: false
       pdu_st_pwr_set_state:
         db_column: pdu_st_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       plo_instr_bps_surv_htr_ena_state:
         db_column: plo_instr_bps_surv_htr_ena_state
@@ -5395,7 +5395,7 @@ jobs:
         nullable: false
       mag_pwr_set_st:
         db_column: mag_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_brkr_trip_st:
         db_column: u90_brkr_trip_st
@@ -5403,7 +5403,7 @@ jobs:
         nullable: false
       u90_pwr_set_st:
         db_column: u90_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_bps_surv_htr_brkr_set_st:
         db_column: ilo_bps_surv_htr_brkr_set_st
@@ -5447,7 +5447,7 @@ jobs:
         nullable: false
       ilo_bps_surv_htr_pwr_set_st:
         db_column: ilo_bps_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       rf_swch_posa_mga_brkr_trip_state:
         db_column: rf_swch_posa_mga_brkr_trip_state
@@ -5471,7 +5471,7 @@ jobs:
         nullable: false
       swp_pwr_set_st:
         db_column: swp_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_surv_htrs_brkr_set_st:
         db_column: cod_surv_htrs_brkr_set_st
@@ -5499,7 +5499,7 @@ jobs:
         nullable: false
       cod_surv_htrs_pwr_set_st:
         db_column: cod_surv_htrs_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_brkr_trip_st:
         db_column: cod_brkr_trip_st
@@ -5507,7 +5507,7 @@ jobs:
         nullable: false
       cod_pwr_set_st:
         db_column: cod_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_catbed_htr_grp_4b_ena_state:
         db_column: pdu_catbed_htr_grp_4b_ena_state
@@ -5571,7 +5571,7 @@ jobs:
         nullable: false
       h45_pwr_set_st:
         db_column: h45_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_lv_b_close_ena_state:
         db_column: pdu_lv_b_close_ena_state
@@ -5583,7 +5583,7 @@ jobs:
         nullable: false
       ilo_tof_surv_htr_pwr_set_st:
         db_column: ilo_tof_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_1_brkr_trip_state:
         db_column: pdu_presxdcr_1_brkr_trip_state
@@ -5591,7 +5591,7 @@ jobs:
         nullable: false
       pdu_presxdcr_1_pwr_set_state:
         db_column: pdu_presxdcr_1_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sse_brkr_trip_state:
         db_column: pdu_sse_brkr_trip_state
@@ -5599,7 +5599,7 @@ jobs:
         nullable: false
       pdu_sse_pwr_set_state:
         db_column: pdu_sse_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_lv_b_close_brkr_set_state:
         db_column: pdu_lv_b_close_brkr_set_state
@@ -5675,7 +5675,7 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_1_pwr_set_state:
         db_column: nl_surv_htrs_grp_1_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_prop_htr_2_ena_state:
         db_column: pdu_prop_htr_2_ena_state
@@ -5719,7 +5719,7 @@ jobs:
         nullable: false
       alve_htr_grp_1a_2a_pwr_set_state:
         db_column: alve_htr_grp_1a_2a_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       tac_thrust_bus_grp_2_ena_state:
         db_column: tac_thrust_bus_grp_2_ena_state
@@ -5759,7 +5759,7 @@ jobs:
         nullable: false
       swe_pwr_set_st:
         db_column: swe_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       swch_posb_mga_lga_brkr_set_state:
         db_column: swch_posb_mga_lga_brkr_set_state
@@ -5779,7 +5779,7 @@ jobs:
         nullable: false
       pdu_prop_htr_1_2_pwr_set_state:
         db_column: pdu_prop_htr_1_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45u90_surv_htr_brkr_trip_st:
         db_column: u45u90_surv_htr_brkr_trip_st
@@ -5787,7 +5787,7 @@ jobs:
         nullable: false
       u45u90_surv_htr_pwr_set_st:
         db_column: u45u90_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       wch_posb_mga_lga_brkr_trip_state:
         db_column: wch_posb_mga_lga_brkr_trip_state
@@ -5871,7 +5871,7 @@ jobs:
     id_mapping:
       epoch:
         db_column: id
-        type: integer
+        type: bigint
         nullable: false
     columns:
       hk_med_tpsh_met_sec:
@@ -5892,7 +5892,7 @@ jobs:
         nullable: false
       hk_curr_anti_replay_value:
         db_column: hk_curr_anti_replay_value
-        type: integer
+        type: bigint
         nullable: false
       fsw_cpu_hk_idler_task_cycles:
         db_column: fsw_cpu_hk_idler_task_cycles
@@ -7916,11 +7916,11 @@ jobs:
         nullable: false
       fsw_fm_hk_dir_create_status:
         db_column: fsw_fm_hk_dir_create_status
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       fsw_fm_hk_ram_dir_create_status:
         db_column: fsw_fm_hk_ram_dir_create_status
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       fsw_pb_hk_auto_pb_curr_dir:
         db_column: fsw_pb_hk_auto_pb_curr_dir
@@ -7948,35 +7948,35 @@ jobs:
         nullable: false
       ilo_pwr_st:
         db_column: ilo_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_pwr_st:
         db_column: h90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45_pwr_st:
         db_column: u45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       glx_pwr_st:
         db_column: glx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_pwr_st:
         db_column: idx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       hit_pwr_st:
         db_column: hit_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       mag_pwr_st:
         db_column: mag_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_pwr_st:
         db_column: u90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_dep_decon_htr_pwr_st:
         db_column: idx_dep_decon_htr_pwr_st
@@ -7988,15 +7988,15 @@ jobs:
         nullable: false
       swp_pwr_st:
         db_column: swp_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_pwr_st:
         db_column: cod_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h45_pwr_st:
         db_column: h45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_decon_htr_pwr_st:
         db_column: u90_decon_htr_pwr_st
@@ -8008,7 +8008,7 @@ jobs:
         nullable: false
       swe_pwr_st:
         db_column: swe_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       status_rx_1_carrier_loop_sel:
         db_column: status_rx_1_carrier_loop_sel
