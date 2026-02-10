@@ -26,8 +26,8 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v002.csv",
         "hk/mag/l1/prog-mtran/2025/09/imap_mag_l1_prog-mtran_20250927_v002.csv",
         "hk/mag/l1/prog-btsucc/2025/09/imap_mag_l1_prog-btsucc_20250927_v002.csv",
-        "hk/sc/x285/2025/11/imap_sc_l1_x285_20251101_v001.csv",
         "hk/sc/x286/2025/11/imap_sc_l1_x286_20251109_v001.csv",
+        "hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv",
     ]
 
     # Set up test environment with a target database for crump to write to
@@ -82,6 +82,12 @@ async def test_upload_new_files_to_postgres_does_upload_files(
                 "Synced 24 rows from hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v002.csv"
                 in capture_cli_logs.text
             )
+
+            assert (
+                "Synced 1213 rows from hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv"
+                in capture_cli_logs.text
+            )
+
             assert "7 file(s) uploaded to PostgreSQL" in capture_cli_logs.text
 
             # Verify data was uploaded to target database

@@ -3005,7 +3005,7 @@ jobs:
     filename_match: imap_sc_l1_x285_*_v*.csv
     id_mapping:
       epoch:
-        db_column: id
+        db_column: epoch
         type: bigint
         nullable: false
     columns:
@@ -4575,19 +4575,19 @@ jobs:
         nullable: false
       radio_status_ex_1_fault_status:
         db_column: radio_status_ex_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       radio_status_dsp_fault_status:
         db_column: radio_status_dsp_fault_status
-        type: varchar(6)
+        type: varchar(25)
         nullable: false
       radio_status_rx_1_fault_status:
         db_column: radio_status_rx_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       riu_1c_rf_swch_pos:
         db_column: riu_1c_rf_swch_pos
-        type: varchar(13)
+        type: varchar(17)
         nullable: false
       pdu_sspa_a_pwr_state:
         db_column: pdu_sspa_a_pwr_state
@@ -4915,7 +4915,7 @@ jobs:
         nullable: false
       pse_active_mon_if_status:
         db_column: pse_active_mon_if_status
-        type: varchar(6)
+        type: varchar(8)
         nullable: false
       ilo_deploy_pri_arm_st:
         db_column: ilo_deploy_pri_arm_st
@@ -5015,7 +5015,7 @@ jobs:
         nullable: false
       pdu_single_thread_config_state:
         db_column: pdu_single_thread_config_state
-        type: varchar(6)
+        type: varchar(9)
         nullable: false
       pdu_subst_tlm_ena_state:
         db_column: pdu_subst_tlm_ena_state
@@ -5247,7 +5247,7 @@ jobs:
         nullable: false
       r_grp_1a_2a_3a_4a_brkr_set_state:
         db_column: r_grp_1a_2a_3a_4a_brkr_set_state
-        type: varchar(3)
+        type: varchar(8)
         nullable: false
       grp_1a_2a_3a_4a_brkr_trip_state:
         db_column: grp_1a_2a_3a_4a_brkr_trip_state
@@ -5595,7 +5595,7 @@ jobs:
         nullable: false
       pdu_sse_brkr_trip_state:
         db_column: pdu_sse_brkr_trip_state
-        type: varchar(3)
+        type: varchar(8)
         nullable: false
       pdu_sse_pwr_set_state:
         db_column: pdu_sse_pwr_set_state
@@ -10644,7 +10644,7 @@ jobs:
           use_to_delete_old_rows: true
   imap_mag_l1_mem-chckrep_v:
     target_table: mem-chckrep
-    filename_match: imap_mag_l_mem-chckrep_*_v*.csv
+    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
