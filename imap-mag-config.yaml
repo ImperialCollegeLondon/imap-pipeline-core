@@ -71,6 +71,13 @@ postgres_upload:
         - "*hk/mag/l1/hsk-procstat/*"
         - "*hk/mag/l1/hsk-sid15/*"
         - "*hk/mag/l1/hsk-status/*"
+        - "*hk/mag/l1/ehs-hkadc/*"
+        - "*hk/mag/l1/els-confld/*"
+        - "*hk/mag/l1/els-itf/*"
+        - "*hk/mag/l1/mem-chckrep/*"
+        - "*hk/mag/l1/prog-btsucc/*"
+        - "*hk/mag/l1/prog-mtran/*"
+        - "*hk/mag/l1/tcc-succ/*"
         - "*hk/sc/l1/x285/*"
         - "*hk/sc/l1/x286/*"
         # Next 2 are for some test data files that have a different structure than the final files, but we want to be able to test the full flow with them

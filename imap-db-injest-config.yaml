@@ -10394,3 +10394,498 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+  imap_mag_l1_ehs-hkadc_v:
+    target_table: ehs-hkadc
+    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: integer
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(16)
+        nullable: false
+      p1v5v:
+        db_column: p1v5v
+        type: float
+        nullable: false
+      p1v8v:
+        db_column: p1v8v
+        type: float
+        nullable: false
+      p3v3v:
+        db_column: p3v3v
+        type: float
+        nullable: false
+      p2v5v:
+        db_column: p2v5v
+        type: float
+        nullable: false
+      p8v:
+        db_column: p8v
+        type: float
+        nullable: false
+      n8v:
+        db_column: n8v
+        type: float
+        nullable: false
+      icu_temp:
+        db_column: icu_temp
+        type: float
+        nullable: false
+      p2v4v:
+        db_column: p2v4v
+        type: float
+        nullable: false
+      p1v5i:
+        db_column: p1v5i
+        type: float
+        nullable: false
+      p1v8i:
+        db_column: p1v8i
+        type: float
+        nullable: false
+      p3v3i:
+        db_column: p3v3i
+        type: float
+        nullable: false
+      p2v5i:
+        db_column: p2v5i
+        type: float
+        nullable: false
+      p8vi:
+        db_column: p8vi
+        type: float
+        nullable: false
+      n8vi:
+        db_column: n8vi
+        type: float
+        nullable: false
+      fob_temp:
+        db_column: fob_temp
+        type: float
+        nullable: false
+      fib_temp:
+        db_column: fib_temp
+        type: float
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_ehs-hkadc_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_els-confld_v:
+    target_table: els-confld
+    filename_match: imap_mag_l1_els-confld_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(13)
+        nullable: false
+      addr:
+        db_column: addr
+        type: integer
+        nullable: false
+      crc_mram:
+        db_column: crc_mram
+        type: integer
+        nullable: false
+      crc_config:
+        db_column: crc_config
+        type: integer
+        nullable: false
+      icv_ver_mram:
+        db_column: icv_ver_mram
+        type: integer
+        nullable: false
+      icv_ver_asw:
+        db_column: icv_ver_asw
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_els-confld_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_els-itf_v:
+    target_table: els-itf
+    filename_match: imap_mag_l1_els-itf_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      itf_channel:
+        db_column: itf_channel
+        type: integer
+        nullable: false
+      itf_seq_num:
+        db_column: itf_seq_num
+        type: integer
+        nullable: false
+      itf_mesglen:
+        db_column: itf_mesglen
+        type: integer
+        nullable: false
+      failure_id0:
+        db_column: failure_id0
+        type: varchar(11)
+        nullable: false
+      failure_id1:
+        db_column: failure_id1
+        type: varchar(20)
+        nullable: false
+      failure_id2:
+        db_column: failure_id2
+        type: float
+        nullable: false
+      failure_id3:
+        db_column: failure_id3
+        type: float
+        nullable: false
+      failure_id4:
+        db_column: failure_id4
+        type: float
+        nullable: false
+      failure_id5:
+        db_column: failure_id5
+        type: float
+        nullable: false
+      failure_id6:
+        db_column: failure_id6
+        type: float
+        nullable: false
+      failure_id7:
+        db_column: failure_id7
+        type: float
+        nullable: false
+      failure_id8:
+        db_column: failure_id8
+        type: float
+        nullable: false
+      failure_id9:
+        db_column: failure_id9
+        type: float
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_els-itf_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_mem-chckrep_v:
+    target_table: mem-chckrep
+    filename_match: imap_mag_l_mem-chckrep_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      mem_id:
+        db_column: mem_id
+        type: varchar(4)
+        nullable: false
+      strt_addr:
+        db_column: strt_addr
+        type: integer
+        nullable: false
+      dt_len:
+        db_column: dt_len
+        type: integer
+        nullable: false
+      mem_csum:
+        db_column: mem_csum
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_mem-chckrep_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_prog-btsucc_v:
+    target_table: prog-btsucc
+    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(14)
+        nullable: false
+      sw_verptch:
+        db_column: sw_verptch
+        type: varchar(11)
+        nullable: false
+      sw_verspare:
+        db_column: sw_verspare
+        type: integer
+        nullable: false
+      sw_verrel:
+        db_column: sw_verrel
+        type: varchar(7)
+        nullable: false
+      sw_vernum:
+        db_column: sw_vernum
+        type: integer
+        nullable: false
+      isv_ver:
+        db_column: isv_ver
+        type: integer
+        nullable: false
+      prom_csum:
+        db_column: prom_csum
+        type: integer
+        nullable: false
+      hw_model:
+        db_column: hw_model
+        type: varchar(2)
+        nullable: false
+      build_id:
+        db_column: build_id
+        type: bigint
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_prog-btsucc_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
+  imap_mag_l1_prog-mtran_v:
+    target_table: prog-mtran
+    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(14)
+        nullable: false
+      prevm_id:
+        db_column: prevm_id
+        type: varchar(10)
+        nullable: false
+      currm_id:
+        db_column: currm_id
+        type: varchar(10)
+        nullable: false
+      tranrsn_id:
+        db_column: tranrsn_id
+        type: varchar(20)
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_prog-mtran_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
+  imap_mag_l1_tcc-succ_v:
+    target_table: tcc-succ
+    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      pkt_id:
+        db_column: pkt_id
+        type: integer
+        nullable: false
+      pkt_seqcntrl:
+        db_column: pkt_seqcntrl
+        type: integer
+        nullable: false
+      pkt_opcode:
+        db_column: pkt_opcode
+        type: integer
+        nullable: false
+      pkt_type:
+        db_column: pkt_type
+        type: integer
+        nullable: false
+      pkt_subtype:
+        db_column: pkt_subtype
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_tcc-succ_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
