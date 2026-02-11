@@ -84,7 +84,7 @@ async def test_upload_new_files_to_postgres_does_upload_files(
             )
 
             assert (
-                "Synced 1213 rows from hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv"
+                "Synced 31 rows from hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv"
                 in capture_cli_logs.text
             )
 
