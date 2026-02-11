@@ -12,7 +12,7 @@ from prefect_server.datastoreCleanupFlow import (
     cleanup_datastore_flow,
 )
 from tests.util.miscellaneous import create_test_file
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 class TestIdentifyNonLatestVersions:
@@ -236,7 +236,7 @@ async def test_cleanup_datastore_dry_run(
         test_database.insert_file(file)
 
     await cleanup_datastore_flow(
-        task_names=["delete-all-non-latest-hk-versions"],
+        task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=True,
     )
 
@@ -277,7 +277,7 @@ async def test_cleanup_datastore_deletes_non_latest(
         test_database.insert_file(file)
 
     await cleanup_datastore_flow(
-        task_names=["delete-all-non-latest-hk-versions"],
+        task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=False,
     )
 
@@ -324,7 +324,7 @@ async def test_cleanup_datastore_respects_min_age(
         test_database.insert_file(file)
 
     await cleanup_datastore_flow(
-        task_names=["delete-all-non-latest-hk-versions"],
+        task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=False,
     )
 
@@ -435,7 +435,7 @@ async def test_cleanup_datastore_no_matching_files(
     # Don't add any files to database
 
     await cleanup_datastore_flow(
-        task_names=["delete-all-non-latest-hk-versions"],
+        task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=False,
     )
 
@@ -483,7 +483,7 @@ async def test_cleanup_datastore_max_file_operations(
 
     # Only allow 2 operations
     await cleanup_datastore_flow(
-        task_names=["delete-all-non-latest-hk-versions"],
+        task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=True,
         max_file_operations=2,
     )

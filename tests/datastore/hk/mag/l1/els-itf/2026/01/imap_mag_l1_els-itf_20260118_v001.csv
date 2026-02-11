@@ -1,0 +1,2 @@
+epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,itf_channel,itf_seq_num,itf_mesglen,failure_id0,failure_id1,failure_id2,failure_id3,failure_id4,failure_id5,failure_id6,failure_id7,failure_id8,failure_id9,fill,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len,time_met_iso,epoch_iso
+821968377184000000,506392313,0,1,0,1,2,11,160,42,UARTOverrun,ITFdropIncompletePkt,nan,nan,nan,nan,nan,nan,nan,nan,0,0,0,1,1061,3,0,31,2026-01-18T00:31:53,

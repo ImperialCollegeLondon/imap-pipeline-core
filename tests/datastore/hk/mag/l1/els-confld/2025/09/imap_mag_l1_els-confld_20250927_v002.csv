@@ -1,0 +1,3 @@
+epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,event_id,addr,crc_mram,crc_config,icv_ver_mram,icv_ver_asw,fill,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len,time_met_iso,epoch_iso
+812245293184000000,496669229,0,1,0,5,1,icvMramLoaded,538443776,26072,26072,14,14,0,0,0,1,1081,3,0,19,2025-09-27T11:40:29,
+812274988184000000,496698924,0,1,0,5,1,icvMramLoaded,538443776,26072,26072,14,14,0,0,0,1,1081,3,0,19,2025-09-27T19:55:24,

@@ -444,11 +444,11 @@ jobs:
         nullable: false
       npri_outrate:
         db_column: npri_outrate
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       nsec_outrate:
         db_column: nsec_outrate
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       n_pkttime:
         db_column: n_pkttime
@@ -1001,7 +1001,7 @@ jobs:
         nullable: false
       isv_tm_syncflg:
         db_column: isv_tm_syncflg
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       isv_tmcd_int:
         db_column: isv_tmcd_int
@@ -1157,7 +1157,7 @@ jobs:
         nullable: false
       isv_datarate:
         db_column: isv_datarate
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       isv_datarateignored:
         db_column: isv_datarateignored
@@ -2109,7 +2109,7 @@ jobs:
         nullable: false
       icv_outrate_ibsn:
         db_column: icv_outrate_ibsn
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       icv_decimation_ibsn:
         db_column: icv_decimation_ibsn
@@ -2181,7 +2181,7 @@ jobs:
         nullable: false
       icv_outrate_obsn:
         db_column: icv_outrate_obsn
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       icv_decimation_obsn:
         db_column: icv_decimation_obsn
@@ -3005,8 +3005,8 @@ jobs:
     filename_match: imap_sc_l1_x285_*_v*.csv
     id_mapping:
       epoch:
-        db_column: id
-        type: integer
+        db_column: epoch
+        type: bigint
         nullable: false
     columns:
       hk_low_tpsh_met_sec:
@@ -3019,11 +3019,7 @@ jobs:
         nullable: false
       hk_low_tpsh_sbc_phys_id:
         db_column: hk_low_tpsh_sbc_phys_id
-        type: varchar(4)
-        nullable: false
-      fill6:
-        db_column: fill6
-        type: integer
+        type: varchar(5)
         nullable: false
       pse_5hz_mf1_sa_volt_ctrl_volt:
         db_column: pse_5hz_mf1_sa_volt_ctrl_volt
@@ -4083,7 +4079,7 @@ jobs:
         nullable: false
       pdu_rc1_arm_plug_tt:
         db_column: pdu_rc1_arm_plug_tt
-        type: varchar(3)
+        type: varchar(5)
         nullable: false
       pdu_mech_safety_bus_a_volt:
         db_column: pdu_mech_safety_bus_a_volt
@@ -4127,7 +4123,7 @@ jobs:
         nullable: false
       pdu_rc2_arm_plug_tt:
         db_column: pdu_rc2_arm_plug_tt
-        type: varchar(3)
+        type: varchar(5)
         nullable: false
       pdu_mech_safety_bus_b_volt:
         db_column: pdu_mech_safety_bus_b_volt
@@ -4575,39 +4571,39 @@ jobs:
         nullable: false
       radio_status_ex_1_fault_status:
         db_column: radio_status_ex_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       radio_status_dsp_fault_status:
         db_column: radio_status_dsp_fault_status
-        type: varchar(6)
+        type: varchar(25)
         nullable: false
       radio_status_rx_1_fault_status:
         db_column: radio_status_rx_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       riu_1c_rf_swch_pos:
         db_column: riu_1c_rf_swch_pos
-        type: varchar(9)
+        type: varchar(17)
         nullable: false
       pdu_sspa_a_pwr_state:
         db_column: pdu_sspa_a_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_pwr_st:
         db_column: ilo_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_pwr_st:
         db_column: h90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       sc_pnl_surv_htrs_grp_3_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_3_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45_pwr_st:
         db_column: u45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       x2red_ctrl_lv_a_open_pulse_state:
         db_column: x2red_ctrl_lv_a_open_pulse_state
@@ -4619,15 +4615,15 @@ jobs:
         nullable: false
       idx_surv_htr_pwr_st:
         db_column: idx_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       glx_pwr_st:
         db_column: glx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_2_pwr_state:
         db_column: pdu_presxdcr_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_batt_htr_1_pwr_state:
         db_column: pdu_batt_htr_1_pwr_state
@@ -4647,35 +4643,35 @@ jobs:
         nullable: false
       pdu_pse_pwr_state:
         db_column: pdu_pse_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_pwr_st:
         db_column: idx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       sc_pnl_surv_htrs_grp_2_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       hit_pwr_st:
         db_column: hit_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       st_valve_htr_grp_1b_2b_pwr_state:
         db_column: st_valve_htr_grp_1b_2b_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_st_pwr_state:
         db_column: pdu_st_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       mag_pwr_st:
         db_column: mag_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_pwr_st:
         db_column: u90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_dep_decon_htr_pwr_st:
         db_column: idx_dep_decon_htr_pwr_st
@@ -4687,7 +4683,7 @@ jobs:
         nullable: false
       ilo_bps_surv_htr_pwr_st:
         db_column: ilo_bps_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_rf_swch_posa_mga_pulse_state:
         db_column: pdu_rf_swch_posa_mga_pulse_state
@@ -4695,7 +4691,7 @@ jobs:
         nullable: false
       swp_pwr_st:
         db_column: swp_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sspa_b_pwr_state:
         db_column: pdu_sspa_b_pwr_state
@@ -4703,11 +4699,11 @@ jobs:
         nullable: false
       cod_surv_htrs_pwr_st:
         db_column: cod_surv_htrs_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_pwr_st:
         db_column: cod_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       x1red_ctrl_lv_b_open_pulse_state:
         db_column: x1red_ctrl_lv_b_open_pulse_state
@@ -4719,19 +4715,19 @@ jobs:
         nullable: false
       h45_pwr_st:
         db_column: h45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_tof_surv_htr_pwr_st:
         db_column: ilo_tof_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_1_pwr_state:
         db_column: pdu_presxdcr_1_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sse_pwr_state:
         db_column: pdu_sse_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ed_htr_grp_1b_2b_3b_4b_pwr_state:
         db_column: ed_htr_grp_1b_2b_3b_4b_pwr_state
@@ -4751,11 +4747,11 @@ jobs:
         nullable: false
       sc_pnl_surv_htrs_grp_1_pwr_state:
         db_column: sc_pnl_surv_htrs_grp_1_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       st_valve_htr_grp_1a_2a_pwr_state:
         db_column: st_valve_htr_grp_1a_2a_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_pivot_pwr_st:
         db_column: ilo_pivot_pwr_st
@@ -4771,15 +4767,15 @@ jobs:
         nullable: false
       swe_pwr_st:
         db_column: swe_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_prop_htr_1_2_pwr_state:
         db_column: pdu_prop_htr_1_2_pwr_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45u90_surv_htr_pwr_st:
         db_column: u45u90_surv_htr_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       rf_swch_posb_mga_lga_pulse_state:
         db_column: rf_swch_posb_mga_lga_pulse_state
@@ -4787,11 +4783,11 @@ jobs:
         nullable: false
       status_rx_1_carrier_loop_sel:
         db_column: status_rx_1_carrier_loop_sel
-        type: varchar(13)
+        type: varchar(15)
         nullable: false
       riu_1c_loss_of_vacuum_state:
         db_column: riu_1c_loss_of_vacuum_state
-        type: varchar(14)
+        type: varchar(15)
         nullable: false
       riu_1c_rf_swch_posb_mga_lga:
         db_column: riu_1c_rf_swch_posb_mga_lga
@@ -4803,11 +4799,11 @@ jobs:
         nullable: false
       riu_1c_prop_lv_a:
         db_column: riu_1c_prop_lv_a
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       riu_1c_prop_lv_b:
         db_column: riu_1c_prop_lv_b
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       pse_coul_active_ctrlr_status:
         db_column: pse_coul_active_ctrlr_status
@@ -4915,19 +4911,19 @@ jobs:
         nullable: false
       pse_active_mon_if_status:
         db_column: pse_active_mon_if_status
-        type: varchar(6)
+        type: varchar(8)
         nullable: false
       ilo_deploy_pri_arm_st:
         db_column: ilo_deploy_pri_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ilo_deploy_red_arm_st:
         db_column: ilo_deploy_red_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       mag_boom_deploy_a_arm_st:
         db_column: mag_boom_deploy_a_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       pdu_presxdcr_1_brkr_set_state:
         db_column: pdu_presxdcr_1_brkr_set_state
@@ -5007,7 +5003,7 @@ jobs:
         nullable: false
       pdu_por_seq_inh_flag:
         db_column: pdu_por_seq_inh_flag
-        type: varchar(7)
+        type: varchar(9)
         nullable: false
       pdu_sep_majority_status:
         db_column: pdu_sep_majority_status
@@ -5015,7 +5011,7 @@ jobs:
         nullable: false
       pdu_single_thread_config_state:
         db_column: pdu_single_thread_config_state
-        type: varchar(6)
+        type: varchar(9)
         nullable: false
       pdu_subst_tlm_ena_state:
         db_column: pdu_subst_tlm_ena_state
@@ -5043,7 +5039,7 @@ jobs:
         nullable: false
       pdu_por_seq_done:
         db_column: pdu_por_seq_done
-        type: varchar(3)
+        type: varchar(5)
         nullable: false
       pdu_thrust_safety_bus_a_state:
         db_column: pdu_thrust_safety_bus_a_state
@@ -5051,7 +5047,7 @@ jobs:
         nullable: false
       pdu_rc1_fuse_tt:
         db_column: pdu_rc1_fuse_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       pdu_arm_plug_a_state:
         db_column: pdu_arm_plug_a_state
@@ -5071,7 +5067,7 @@ jobs:
         nullable: false
       pdu_rc2_fuse_tt:
         db_column: pdu_rc2_fuse_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       pdu_arm_plug_b_state:
         db_column: pdu_arm_plug_b_state
@@ -5111,7 +5107,7 @@ jobs:
         nullable: false
       pdu_sspa_a_pwr_set_state:
         db_column: pdu_sspa_a_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_brkr_trip_st:
         db_column: ilo_brkr_trip_st
@@ -5119,7 +5115,7 @@ jobs:
         nullable: false
       ilo_pwr_set_st:
         db_column: ilo_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_brkr_trip_st:
         db_column: h90_brkr_trip_st
@@ -5127,7 +5123,7 @@ jobs:
         nullable: false
       h90_pwr_set_st:
         db_column: h90_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       surv_htrs_grp_3_brkr_trip_state:
         db_column: surv_htrs_grp_3_brkr_trip_state
@@ -5135,7 +5131,7 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_3_pwr_set_state:
         db_column: nl_surv_htrs_grp_3_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_catbed_htr_grp_4a_ena_state:
         db_column: pdu_catbed_htr_grp_4a_ena_state
@@ -5159,7 +5155,7 @@ jobs:
         nullable: false
       u45_pwr_set_st:
         db_column: u45_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_surv_htr_brkr_set_st:
         db_column: idx_surv_htr_brkr_set_st
@@ -5211,7 +5207,7 @@ jobs:
         nullable: false
       idx_surv_htr_pwr_set_st:
         db_column: idx_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       lv_a_close_ena_st:
         db_column: lv_a_close_ena_st
@@ -5223,7 +5219,7 @@ jobs:
         nullable: false
       glx_pwr_set_st:
         db_column: glx_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_2_brkr_trip_state:
         db_column: pdu_presxdcr_2_brkr_trip_state
@@ -5231,7 +5227,7 @@ jobs:
         nullable: false
       pdu_presxdcr_2_pwr_set_state:
         db_column: pdu_presxdcr_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_batt_htr_1_brkr_trip_state:
         db_column: pdu_batt_htr_1_brkr_trip_state
@@ -5247,7 +5243,7 @@ jobs:
         nullable: false
       r_grp_1a_2a_3a_4a_brkr_set_state:
         db_column: r_grp_1a_2a_3a_4a_brkr_set_state
-        type: varchar(3)
+        type: varchar(8)
         nullable: false
       grp_1a_2a_3a_4a_brkr_trip_state:
         db_column: grp_1a_2a_3a_4a_brkr_trip_state
@@ -5303,7 +5299,7 @@ jobs:
         nullable: false
       pdu_pse_pwr_set_state:
         db_column: pdu_pse_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_brkr_trip_st:
         db_column: idx_brkr_trip_st
@@ -5311,7 +5307,7 @@ jobs:
         nullable: false
       idx_pwr_set_st:
         db_column: idx_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       surv_htrs_grp_2_brkr_trip_state:
         db_column: surv_htrs_grp_2_brkr_trip_state
@@ -5319,19 +5315,19 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_2_pwr_set_state:
         db_column: nl_surv_htrs_grp_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       aplo_hdrm_1_red_deploy_arm_state:
         db_column: aplo_hdrm_1_red_deploy_arm_state
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       aplo_hdrm_2_red_deploy_arm_state:
         db_column: aplo_hdrm_2_red_deploy_arm_state
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       idx_dep_decon_htr_arm_st:
         db_column: idx_dep_decon_htr_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       u45_decon_htr_ena_st:
         db_column: u45_decon_htr_ena_st
@@ -5343,7 +5339,7 @@ jobs:
         nullable: false
       hit_pwr_set_st:
         db_column: hit_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_st_brkr_set_state:
         db_column: pdu_st_brkr_set_state
@@ -5367,7 +5363,7 @@ jobs:
         nullable: false
       alve_htr_grp_1b_2b_pwr_set_state:
         db_column: alve_htr_grp_1b_2b_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       tac_thrust_bus_grp_1_ena_state:
         db_column: tac_thrust_bus_grp_1_ena_state
@@ -5379,7 +5375,7 @@ jobs:
         nullable: false
       pdu_st_pwr_set_state:
         db_column: pdu_st_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       plo_instr_bps_surv_htr_ena_state:
         db_column: plo_instr_bps_surv_htr_ena_state
@@ -5395,7 +5391,7 @@ jobs:
         nullable: false
       mag_pwr_set_st:
         db_column: mag_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_brkr_trip_st:
         db_column: u90_brkr_trip_st
@@ -5403,7 +5399,7 @@ jobs:
         nullable: false
       u90_pwr_set_st:
         db_column: u90_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       ilo_bps_surv_htr_brkr_set_st:
         db_column: ilo_bps_surv_htr_brkr_set_st
@@ -5447,7 +5443,7 @@ jobs:
         nullable: false
       ilo_bps_surv_htr_pwr_set_st:
         db_column: ilo_bps_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       rf_swch_posa_mga_brkr_trip_state:
         db_column: rf_swch_posa_mga_brkr_trip_state
@@ -5471,7 +5467,7 @@ jobs:
         nullable: false
       swp_pwr_set_st:
         db_column: swp_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_surv_htrs_brkr_set_st:
         db_column: cod_surv_htrs_brkr_set_st
@@ -5499,7 +5495,7 @@ jobs:
         nullable: false
       cod_surv_htrs_pwr_set_st:
         db_column: cod_surv_htrs_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_brkr_trip_st:
         db_column: cod_brkr_trip_st
@@ -5507,7 +5503,7 @@ jobs:
         nullable: false
       cod_pwr_set_st:
         db_column: cod_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_catbed_htr_grp_4b_ena_state:
         db_column: pdu_catbed_htr_grp_4b_ena_state
@@ -5571,7 +5567,7 @@ jobs:
         nullable: false
       h45_pwr_set_st:
         db_column: h45_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_lv_b_close_ena_state:
         db_column: pdu_lv_b_close_ena_state
@@ -5583,7 +5579,7 @@ jobs:
         nullable: false
       ilo_tof_surv_htr_pwr_set_st:
         db_column: ilo_tof_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_presxdcr_1_brkr_trip_state:
         db_column: pdu_presxdcr_1_brkr_trip_state
@@ -5591,15 +5587,15 @@ jobs:
         nullable: false
       pdu_presxdcr_1_pwr_set_state:
         db_column: pdu_presxdcr_1_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_sse_brkr_trip_state:
         db_column: pdu_sse_brkr_trip_state
-        type: varchar(3)
+        type: varchar(8)
         nullable: false
       pdu_sse_pwr_set_state:
         db_column: pdu_sse_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_lv_b_close_brkr_set_state:
         db_column: pdu_lv_b_close_brkr_set_state
@@ -5643,15 +5639,15 @@ jobs:
         nullable: false
       ilo_deploy_b_red_arm_st:
         db_column: ilo_deploy_b_red_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ilo_deploy_b_pri_arm_st:
         db_column: ilo_deploy_b_pri_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       mag_boom_deploy_b_arm_st:
         db_column: mag_boom_deploy_b_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       l_surv_htrs_grp_1_brkr_set_state:
         db_column: l_surv_htrs_grp_1_brkr_set_state
@@ -5675,7 +5671,7 @@ jobs:
         nullable: false
       nl_surv_htrs_grp_1_pwr_set_state:
         db_column: nl_surv_htrs_grp_1_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       pdu_prop_htr_2_ena_state:
         db_column: pdu_prop_htr_2_ena_state
@@ -5719,7 +5715,7 @@ jobs:
         nullable: false
       alve_htr_grp_1a_2a_pwr_set_state:
         db_column: alve_htr_grp_1a_2a_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       tac_thrust_bus_grp_2_ena_state:
         db_column: tac_thrust_bus_grp_2_ena_state
@@ -5759,7 +5755,7 @@ jobs:
         nullable: false
       swe_pwr_set_st:
         db_column: swe_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       swch_posb_mga_lga_brkr_set_state:
         db_column: swch_posb_mga_lga_brkr_set_state
@@ -5779,7 +5775,7 @@ jobs:
         nullable: false
       pdu_prop_htr_1_2_pwr_set_state:
         db_column: pdu_prop_htr_1_2_pwr_set_state
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45u90_surv_htr_brkr_trip_st:
         db_column: u45u90_surv_htr_brkr_trip_st
@@ -5787,7 +5783,7 @@ jobs:
         nullable: false
       u45u90_surv_htr_pwr_set_st:
         db_column: u45u90_surv_htr_pwr_set_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       wch_posb_mga_lga_brkr_trip_state:
         db_column: wch_posb_mga_lga_brkr_trip_state
@@ -5871,7 +5867,7 @@ jobs:
     id_mapping:
       epoch:
         db_column: id
-        type: integer
+        type: bigint
         nullable: false
     columns:
       hk_med_tpsh_met_sec:
@@ -5884,15 +5880,11 @@ jobs:
         nullable: false
       hk_med_tpsh_sbc_phys_id:
         db_column: hk_med_tpsh_sbc_phys_id
-        type: varchar(4)
-        nullable: false
-      fill6:
-        db_column: fill6
-        type: integer
+        type: varchar(5)
         nullable: false
       hk_curr_anti_replay_value:
         db_column: hk_curr_anti_replay_value
-        type: integer
+        type: bigint
         nullable: false
       fsw_cpu_hk_idler_task_cycles:
         db_column: fsw_cpu_hk_idler_task_cycles
@@ -5904,7 +5896,7 @@ jobs:
         nullable: false
       sv004_swclt_expiration_sclk:
         db_column: sv004_swclt_expiration_sclk
-        type: integer
+        type: bigint
         nullable: false
       fault_rolling_aut_rule_met_0:
         db_column: fault_rolling_aut_rule_met_0
@@ -6288,7 +6280,7 @@ jobs:
         nullable: false
       fault_rolling_aut_rule_num_0:
         db_column: fault_rolling_aut_rule_num_0
-        type: varchar(5)
+        type: varchar(30)
         nullable: false
       fsw_fi_hk_cdh_file_cnt:
         db_column: fsw_fi_hk_cdh_file_cnt
@@ -7916,11 +7908,11 @@ jobs:
         nullable: false
       fsw_fm_hk_dir_create_status:
         db_column: fsw_fm_hk_dir_create_status
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       fsw_fm_hk_ram_dir_create_status:
         db_column: fsw_fm_hk_ram_dir_create_status
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       fsw_pb_hk_auto_pb_curr_dir:
         db_column: fsw_pb_hk_auto_pb_curr_dir
@@ -7948,35 +7940,35 @@ jobs:
         nullable: false
       ilo_pwr_st:
         db_column: ilo_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h90_pwr_st:
         db_column: h90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u45_pwr_st:
         db_column: u45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       glx_pwr_st:
         db_column: glx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_pwr_st:
         db_column: idx_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       hit_pwr_st:
         db_column: hit_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       mag_pwr_st:
         db_column: mag_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_pwr_st:
         db_column: u90_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       idx_dep_decon_htr_pwr_st:
         db_column: idx_dep_decon_htr_pwr_st
@@ -7988,15 +7980,15 @@ jobs:
         nullable: false
       swp_pwr_st:
         db_column: swp_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       cod_pwr_st:
         db_column: cod_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       h45_pwr_st:
         db_column: h45_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       u90_decon_htr_pwr_st:
         db_column: u90_decon_htr_pwr_st
@@ -8008,7 +8000,7 @@ jobs:
         nullable: false
       swe_pwr_st:
         db_column: swe_pwr_st
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       status_rx_1_carrier_loop_sel:
         db_column: status_rx_1_carrier_loop_sel
@@ -8016,7 +8008,7 @@ jobs:
         nullable: false
       idx_dep_decon_htr_arm_st:
         db_column: idx_dep_decon_htr_arm_st
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       u45_decon_htr_ena_st:
         db_column: u45_decon_htr_ena_st
@@ -8156,15 +8148,15 @@ jobs:
         nullable: false
       hk_long_duration_cmd_active:
         db_column: hk_long_duration_cmd_active
-        type: varchar(3)
+        type: varchar(6)
         nullable: false
       hk_short_duration_cmd_active:
         db_column: hk_short_duration_cmd_active
-        type: varchar(3)
+        type: varchar(6)
         nullable: false
       hk_low_priority_cmd_active:
         db_column: hk_low_priority_cmd_active
-        type: varchar(3)
+        type: varchar(6)
         nullable: false
       fsw_fm_hk_long_duration_task_htb:
         db_column: fsw_fm_hk_long_duration_task_htb
@@ -8184,23 +8176,23 @@ jobs:
         nullable: false
       hk_ssr_dev_id_comp_fail_tt:
         db_column: hk_ssr_dev_id_comp_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_cmd_fs_test_tt:
         db_column: hk_cmd_rej_lp_cmd_fs_test_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_cmd_fs_clear_tt:
         db_column: hk_cmd_rej_lp_cmd_fs_clear_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_lp_cmd_aplffs_debug_tt:
         db_column: cmd_rej_lp_cmd_aplffs_debug_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_alloc_invalid_src_rcvd_tt:
         db_column: hk_cmd_alloc_invalid_src_rcvd_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_fs_create_attempt_tt:
         db_column: hk_cmd_fs_create_attempt_tt
@@ -8208,91 +8200,91 @@ jobs:
         nullable: false
       cmd_rej_lp_fs_file_sys_oper_tt:
         db_column: cmd_rej_lp_fs_file_sys_oper_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_fs_alloc_enforec_ena_tt:
         db_column: cmd_rej_fs_alloc_enforec_ena_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_abort_rt_dnl_tt:
         db_column: hk_cmd_rej_lp_fs_abort_rt_dnl_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_start_rt_dnl_tt:
         db_column: hk_cmd_rej_lp_fs_start_rt_dnl_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_fat_bbt_use_tt:
         db_column: hk_cmd_rej_lp_fs_fat_bbt_use_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_ssr_bbt_poke_tt:
         db_column: hk_cmd_rej_lp_ssr_bbt_poke_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_ssr_bbt_copy_tt:
         db_column: hk_cmd_rej_lp_ssr_bbt_copy_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_dismount_tt:
         db_column: hk_cmd_rej_lp_fs_dismount_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_cmd_rej_lp_fs_flush_tt:
         db_column: fsw_fm_hk_cmd_rej_lp_fs_flush_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_lp_fs_garbage_collect_tt:
         db_column: cmd_rej_lp_fs_garbage_collect_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_init_exist_tt:
         db_column: hk_cmd_rej_lp_fs_init_exist_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_create_new_tt:
         db_column: hk_cmd_rej_lp_fs_create_new_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_dir_list_tt:
         db_column: hk_cmd_rej_lp_fs_dir_list_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_ssr_debug_tt:
         db_column: hk_cmd_rej_lp_ssr_debug_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_block_needs_retiring_tt:
         db_column: cmd_rej_block_needs_retiring_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_ssr_destr_diag_tt:
         db_column: hk_cmd_rej_lp_ssr_destr_diag_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_ssr_read_bad_blk_mkr_tt:
         db_column: cmd_rej_ssr_read_bad_blk_mkr_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_ssr_flash_erase_tt:
         db_column: hk_cmd_rej_lp_ssr_flash_erase_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_fs_fat_bbt_get_tt:
         db_column: hk_cmd_rej_lp_fs_fat_bbt_get_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_cmd_rej_lp_fs_mount_tt:
         db_column: fsw_fm_hk_cmd_rej_lp_fs_mount_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_cmd_rej_lp_tt:
         db_column: fsw_fm_hk_cmd_rej_lp_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_flash_pwr:
         db_column: fsw_fm_hk_flash_pwr
-        type: varchar(2)
+        type: varchar(3)
         nullable: false
       fsw_fm_hk_erase_of_block_zero:
         db_column: fsw_fm_hk_erase_of_block_zero
@@ -8324,47 +8316,47 @@ jobs:
         nullable: false
       fsw_fm_hk_fs_reg_with_oper_sys:
         db_column: fsw_fm_hk_fs_reg_with_oper_sys
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_fs_mount_pt_created:
         db_column: fsw_fm_hk_fs_mount_pt_created
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_fs_dev_initialized:
         db_column: fsw_fm_hk_fs_dev_initialized
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_bbt_loaded:
         db_column: fsw_fm_hk_bbt_loaded
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_found_existing_dir:
         db_column: fsw_fm_hk_found_existing_dir
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_setup_dirs_success:
         db_column: fsw_fm_hk_setup_dirs_success
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_fs_create_success:
         db_column: fsw_fm_hk_fs_create_success
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_fs_ssr_volume_mounted:
         db_column: fsw_fm_hk_fs_ssr_volume_mounted
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_fs_ram_volume_mounted:
         db_column: fsw_fm_hk_fs_ram_volume_mounted
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_ram_found_existing_dir:
         db_column: fsw_fm_hk_ram_found_existing_dir
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_ram_setup_dirs_success:
         db_column: fsw_fm_hk_ram_setup_dirs_success
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_fm_hk_ssr_reg_state:
         db_column: fsw_fm_hk_ssr_reg_state
@@ -8408,63 +8400,63 @@ jobs:
         nullable: false
       ilo_vc_alive_tt:
         db_column: ilo_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       h45_vc_alive_tt:
         db_column: h45_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       h90_vc_alive_tt:
         db_column: h90_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       u45_vc_alive_tt:
         db_column: u45_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       u90_vc_alive_tt:
         db_column: u90_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       mag_vc_alive_tt:
         db_column: mag_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       cod_vc_alive_tt:
         db_column: cod_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       swp_vc_alive_tt:
         db_column: swp_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       hit_vc_alive_tt:
         db_column: hit_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       swe_vc_alive_tt:
         db_column: swe_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       idx_vc_alive_tt:
         db_column: idx_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       glx_vc_alive_tt:
         db_column: glx_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_itf_rdio_tlm_vc_alive_tt:
         db_column: fsw_itf_rdio_tlm_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_itf_pdu_tlm_vc_alive_tt:
         db_column: fsw_itf_pdu_tlm_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       fsw_itf_pse_tlm_vc_alive_tt:
         db_column: fsw_itf_pse_tlm_vc_alive_tt
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       nv_mem_hk_bank_1_write_ena_dis:
         db_column: nv_mem_hk_bank_1_write_ena_dis
@@ -8484,11 +8476,11 @@ jobs:
         nullable: false
       hk_copy_dump_oper_cmd_code_bit:
         db_column: hk_copy_dump_oper_cmd_code_bit
-        type: varchar(14)
+        type: varchar(16)
         nullable: false
       hk_copy_dump_src_phys_loc_bit:
         db_column: hk_copy_dump_src_phys_loc_bit
-        type: varchar(12)
+        type: varchar(16)
         nullable: false
       hk_copy_dump_dest_phys_loc_bit:
         db_column: hk_copy_dump_dest_phys_loc_bit
@@ -8540,23 +8532,23 @@ jobs:
         nullable: false
       hk_cmd_rej_lp_cfdp_mode_set_tt:
         db_column: hk_cmd_rej_lp_cfdp_mode_set_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_lp_cfdp_unack_cancel_tt:
         db_column: cmd_rej_lp_cfdp_unack_cancel_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       cmd_rej_lp_cfdp_xactn_cancel_tt:
         db_column: cmd_rej_lp_cfdp_xactn_cancel_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_file_start_tt:
         db_column: hk_cmd_rej_lp_file_start_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_pb_hk_cmd_rej_lp_tt:
         db_column: fsw_pb_hk_cmd_rej_lp_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rec_hk_record_ena_ssr:
         db_column: fsw_rec_hk_record_ena_ssr
@@ -8564,67 +8556,67 @@ jobs:
         nullable: false
       d_rej_lp_set_alloc_curr_usage_tt:
         db_column: d_rej_lp_set_alloc_curr_usage_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       rej_lp_pft_apid_mod_multiple_tt:
         db_column: rej_lp_pft_apid_mod_multiple_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       md_rej_lp_pft_apid_mod_single_tt:
         db_column: md_rej_lp_pft_apid_mod_single_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_file_close_all_tt:
         db_column: hk_cmd_rej_lp_file_close_all_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_file_close_tt:
         db_column: hk_cmd_rej_lp_file_close_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_file_open_tt:
         db_column: hk_cmd_rej_lp_file_open_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_rej_lp_record_ena_sel_tt:
         db_column: hk_cmd_rej_lp_record_ena_sel_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rec_hk_cmd_rej_lp_tt:
         db_column: fsw_rec_hk_cmd_rej_lp_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rec_hk_cmd_find_file_fail_tt:
         db_column: fsw_rec_hk_cmd_find_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rec_hk_cmd_move_file_fail_tt:
         db_column: fsw_rec_hk_cmd_move_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_cmd_close_file_fail_tt:
         db_column: hk_cmd_close_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rec_hk_cmd_open_file_fail_tt:
         db_column: fsw_rec_hk_cmd_open_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_auto_find_file_fail_tt:
         db_column: hk_auto_find_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_auto_move_file_fail_tt:
         db_column: hk_auto_move_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_auto_close_file_fail_tt:
         db_column: hk_auto_close_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_auto_open_file_fail_tt:
         db_column: hk_auto_open_file_fail_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       framer_task_sem_error_telltale:
         db_column: framer_task_sem_error_telltale
@@ -8828,19 +8820,19 @@ jobs:
         nullable: false
       ialirt_acs_data_rcvd_flag:
         db_column: ialirt_acs_data_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_aut_rules_tlm_rcvd_flag:
         db_column: ialirt_aut_rules_tlm_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_aut_tlm_rcvd_flag:
         db_column: ialirt_aut_tlm_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_itf_tlm_rcvd_flag:
         db_column: ialirt_itf_tlm_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_cod_lo_data_rcvd_flag:
         db_column: ialirt_cod_lo_data_rcvd_flag
@@ -8852,11 +8844,11 @@ jobs:
         nullable: false
       ialirt_swp_data_rcvd_flag:
         db_column: ialirt_swp_data_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_hit_data_rcvd_flag:
         db_column: ialirt_hit_data_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       ialirt_swe_data_rcvd_flag:
         db_column: ialirt_swe_data_rcvd_flag
@@ -8864,7 +8856,7 @@ jobs:
         nullable: false
       ialirt_mag_data_rcvd_flag:
         db_column: ialirt_mag_data_rcvd_flag
-        type: varchar(4)
+        type: varchar(5)
         nullable: false
       hk_tt_rx1_rcvd_null_ptr_tt:
         db_column: hk_tt_rx1_rcvd_null_ptr_tt
@@ -9164,83 +9156,83 @@ jobs:
         nullable: false
       fsw_rdio_hk_sent_req_err_tt:
         db_column: fsw_rdio_hk_sent_req_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_des_err_tt:
         db_column: hk_read_status_des_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       read_status_bad_hdr_crc_err_tt:
         db_column: read_status_bad_hdr_crc_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_bad_proto_err_tt:
         db_column: hk_read_status_bad_proto_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_bad_instr_err_tt:
         db_column: hk_read_status_bad_instr_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_bad_key_err_tt:
         db_column: hk_read_status_bad_key_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_bad_addr_err_tt:
         db_column: hk_read_status_bad_addr_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_bad_len_err_tt:
         db_column: hk_read_status_bad_len_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       read_status_bad_data_crc_err_tt:
         db_column: read_status_bad_data_crc_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       ead_status_inval_spw_addr_err_tt:
         db_column: ead_status_inval_spw_addr_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_unknown_err_tt:
         db_column: hk_read_status_unknown_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_rmap_seq_err_tt:
         db_column: hk_read_status_rmap_seq_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rdio_hk_sent_itf_sdu_err_tt:
         db_column: fsw_rdio_hk_sent_itf_sdu_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rdio_hk_req_stale_tt:
         db_column: fsw_rdio_hk_req_stale_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_tlm_des_err_tt:
         db_column: hk_read_status_tlm_des_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_ser_err_tt:
         db_column: hk_read_status_ser_err_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       hk_read_status_no_buf_tt:
         db_column: hk_read_status_no_buf_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rdio_hk_itf_sdu_no_buf_tt:
         db_column: fsw_rdio_hk_itf_sdu_no_buf_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rdio_hk_mode_cmd_no_buf_tt:
         db_column: fsw_rdio_hk_mode_cmd_no_buf_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       fsw_rdio_hk_mode_cmd_bad_send_tt:
         db_column: fsw_rdio_hk_mode_cmd_bad_send_tt
-        type: varchar(2)
+        type: varchar(5)
         nullable: false
       radio_status_modc_rng_ena:
         db_column: radio_status_modc_rng_ena
@@ -9260,7 +9252,7 @@ jobs:
         nullable: false
       radio_status_rx_1_carrier_lock:
         db_column: radio_status_rx_1_carrier_lock
-        type: varchar(6)
+        type: varchar(8)
         nullable: false
       radio_status_coherency_state:
         db_column: radio_status_coherency_state
@@ -10384,6 +10376,501 @@ jobs:
         nullable: true
     filename_to_column:
       template: imap_sc_l1_x286_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
+  imap_mag_l1_ehs-hkadc_v:
+    target_table: ehs-hkadc
+    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: integer
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(16)
+        nullable: false
+      p1v5v:
+        db_column: p1v5v
+        type: float
+        nullable: false
+      p1v8v:
+        db_column: p1v8v
+        type: float
+        nullable: false
+      p3v3v:
+        db_column: p3v3v
+        type: float
+        nullable: false
+      p2v5v:
+        db_column: p2v5v
+        type: float
+        nullable: false
+      p8v:
+        db_column: p8v
+        type: float
+        nullable: false
+      n8v:
+        db_column: n8v
+        type: float
+        nullable: false
+      icu_temp:
+        db_column: icu_temp
+        type: float
+        nullable: false
+      p2v4v:
+        db_column: p2v4v
+        type: float
+        nullable: false
+      p1v5i:
+        db_column: p1v5i
+        type: float
+        nullable: false
+      p1v8i:
+        db_column: p1v8i
+        type: float
+        nullable: false
+      p3v3i:
+        db_column: p3v3i
+        type: float
+        nullable: false
+      p2v5i:
+        db_column: p2v5i
+        type: float
+        nullable: false
+      p8vi:
+        db_column: p8vi
+        type: float
+        nullable: false
+      n8vi:
+        db_column: n8vi
+        type: float
+        nullable: false
+      fob_temp:
+        db_column: fob_temp
+        type: float
+        nullable: false
+      fib_temp:
+        db_column: fib_temp
+        type: float
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_ehs-hkadc_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_els-confld_v:
+    target_table: els-confld
+    filename_match: imap_mag_l1_els-confld_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(13)
+        nullable: false
+      addr:
+        db_column: addr
+        type: integer
+        nullable: false
+      crc_mram:
+        db_column: crc_mram
+        type: integer
+        nullable: false
+      crc_config:
+        db_column: crc_config
+        type: integer
+        nullable: false
+      icv_ver_mram:
+        db_column: icv_ver_mram
+        type: integer
+        nullable: false
+      icv_ver_asw:
+        db_column: icv_ver_asw
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_els-confld_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_els-itf_v:
+    target_table: els-itf
+    filename_match: imap_mag_l1_els-itf_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      itf_channel:
+        db_column: itf_channel
+        type: integer
+        nullable: false
+      itf_seq_num:
+        db_column: itf_seq_num
+        type: integer
+        nullable: false
+      itf_mesglen:
+        db_column: itf_mesglen
+        type: integer
+        nullable: false
+      failure_id0:
+        db_column: failure_id0
+        type: varchar(11)
+        nullable: false
+      failure_id1:
+        db_column: failure_id1
+        type: varchar(20)
+        nullable: false
+      failure_id2:
+        db_column: failure_id2
+        type: float
+        nullable: false
+      failure_id3:
+        db_column: failure_id3
+        type: float
+        nullable: false
+      failure_id4:
+        db_column: failure_id4
+        type: float
+        nullable: false
+      failure_id5:
+        db_column: failure_id5
+        type: float
+        nullable: false
+      failure_id6:
+        db_column: failure_id6
+        type: float
+        nullable: false
+      failure_id7:
+        db_column: failure_id7
+        type: float
+        nullable: false
+      failure_id8:
+        db_column: failure_id8
+        type: float
+        nullable: false
+      failure_id9:
+        db_column: failure_id9
+        type: float
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_els-itf_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_mem-chckrep_v:
+    target_table: mem-chckrep
+    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      mem_id:
+        db_column: mem_id
+        type: varchar(5)
+        nullable: false
+      strt_addr:
+        db_column: strt_addr
+        type: integer
+        nullable: false
+      dt_len:
+        db_column: dt_len
+        type: integer
+        nullable: false
+      mem_csum:
+        db_column: mem_csum
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_mem-chckrep_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_mag_l1_prog-btsucc_v:
+    target_table: prog-btsucc
+    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(14)
+        nullable: false
+      sw_verptch:
+        db_column: sw_verptch
+        type: varchar(11)
+        nullable: false
+      sw_verspare:
+        db_column: sw_verspare
+        type: integer
+        nullable: false
+      sw_verrel:
+        db_column: sw_verrel
+        type: varchar(7)
+        nullable: false
+      sw_vernum:
+        db_column: sw_vernum
+        type: integer
+        nullable: false
+      isv_ver:
+        db_column: isv_ver
+        type: integer
+        nullable: false
+      prom_csum:
+        db_column: prom_csum
+        type: integer
+        nullable: false
+      hw_model:
+        db_column: hw_model
+        type: varchar(2)
+        nullable: false
+      build_id:
+        db_column: build_id
+        type: bigint
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_prog-btsucc_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
+  imap_mag_l1_prog-mtran_v:
+    target_table: prog-mtran
+    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      event_id:
+        db_column: event_id
+        type: varchar(14)
+        nullable: false
+      prevm_id:
+        db_column: prevm_id
+        type: varchar(10)
+        nullable: false
+      currm_id:
+        db_column: currm_id
+        type: varchar(10)
+        nullable: false
+      tranrsn_id:
+        db_column: tranrsn_id
+        type: varchar(20)
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_prog-mtran_[date]_v[version].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_time_met_iso
+      columns:
+      - column: time_met_iso
+        order: DESC
+  imap_mag_l1_tcc-succ_v:
+    target_table: tcc-succ
+    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
+    id_mapping:
+      shcoarse:
+        db_column: shcoarse
+        type: integer
+        nullable: false
+    columns:
+      epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      pkt_id:
+        db_column: pkt_id
+        type: integer
+        nullable: false
+      pkt_seqcntrl:
+        db_column: pkt_seqcntrl
+        type: integer
+        nullable: false
+      pkt_opcode:
+        db_column: pkt_opcode
+        type: integer
+        nullable: false
+      pkt_type:
+        db_column: pkt_type
+        type: integer
+        nullable: false
+      pkt_subtype:
+        db_column: pkt_subtype
+        type: integer
+        nullable: false
+      src_seq_ctr:
+        db_column: src_seq_ctr
+        type: integer
+        nullable: false
+      pkt_len:
+        db_column: pkt_len
+        type: integer
+        nullable: false
+      time_met_iso:
+        db_column: time_met_iso
+        type: datetime
+        nullable: false
+      epoch_iso:
+        db_column: epoch_iso
+        type: text
+        nullable: true
+    filename_to_column:
+      template: imap_mag_l1_tcc-succ_[date]_v[version].csv
       columns:
         date:
           db_column: file_date

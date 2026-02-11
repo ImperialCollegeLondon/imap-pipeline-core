@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -10,7 +9,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import Environment
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from tests.util.miscellaneous import DATASTORE
-from tests.util.prefect import prefect_test_fixture  # noqa: F401
+from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 
 @pytest.mark.asyncio
@@ -25,10 +24,11 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         "hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv",
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v001.csv",
         "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v002.csv",
+        "hk/mag/l1/prog-mtran/2025/09/imap_mag_l1_prog-mtran_20250927_v002.csv",
+        "hk/mag/l1/prog-btsucc/2025/09/imap_mag_l1_prog-btsucc_20250927_v002.csv",
+        "hk/sc/l1/x286/2026/02/imap_sc_l1_x286_20260217_v001.csv",
+        "hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv",
     ]
-
-    # Use the test crump config file
-    crump_config_path = Path("tests/test_crump_config.yaml")
 
     # Set up test environment with a target database for crump to write to
     with PostgresContainer(driver="psycopg") as target_postgres:
@@ -37,7 +37,6 @@ async def test_upload_new_files_to_postgres_does_upload_files(
 
         with Environment(
             MAG_DATA_STORE=str(DATASTORE.absolute()),
-            MAG_POSTGRES_UPLOAD__CRUMP_CONFIG_PATH=str(crump_config_path.absolute()),
             TARGET_DATABASE_URL=target_db_url,
         ):
             # Insert test files into IMAP tracking database
@@ -83,7 +82,13 @@ async def test_upload_new_files_to_postgres_does_upload_files(
                 "Synced 24 rows from hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251102_v002.csv"
                 in capture_cli_logs.text
             )
-            assert "3 file(s) uploaded to PostgreSQL" in capture_cli_logs.text
+
+            assert (
+                "Synced 31 rows from hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv"
+                in capture_cli_logs.text
+            )
+
+            assert "7 file(s) uploaded to PostgreSQL" in capture_cli_logs.text
 
             # Verify data was uploaded to target database
             with target_engine.connect() as conn:

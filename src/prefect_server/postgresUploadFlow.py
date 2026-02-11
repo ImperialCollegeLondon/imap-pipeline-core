@@ -269,7 +269,7 @@ async def upload_new_files_to_postgres(
             uploaded_count += 1
 
         except Exception as e:
-            logger.error(f"Failed to sync {path_inside_datastore}: {e}")
+            logger.error(f"Failed to sync {path_inside_datastore}", exc_info=e)
             failed_count += 1
             continue
 
