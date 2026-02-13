@@ -1,22 +1,26 @@
+import logging
 import os
 
 from prefect import get_run_logger
 from prefect.blocks.system import Secret
+from prefect.exceptions import MissingContextError
 
 
 def get_cron_from_env(env_var_name: str, default: str | None = None) -> str | None:
+    logger = try_get_prefect_logger(__name__)
+
     cron = os.getenv(env_var_name, default)
 
     if cron is None or cron == "":
         return None
     else:
         cron = cron.strip(" '\"")
-        print(f"Using cron schedule: {env_var_name}={cron}")
+        logger.info(f"Using cron schedule: {env_var_name}={cron}")
         return cron
 
 
 async def get_secret_block(secret_name: str) -> str:
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
 
     logger.info(f"Retrieving secret block {secret_name}.")
 
@@ -38,7 +42,7 @@ async def get_secret_block(secret_name: str) -> str:
 
 
 async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
 
     auth_code: str | None = None
 
@@ -61,3 +65,14 @@ async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
         )
 
     return auth_code
+
+
+def try_get_prefect_logger(module_name: str):
+    try:
+        logger = get_run_logger()
+    except MissingContextError:
+        logger = logging.getLogger(
+            module_name
+        )  # Not running within a Prefect flow, use module-level logger
+
+    return logger

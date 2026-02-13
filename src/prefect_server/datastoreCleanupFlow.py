@@ -3,7 +3,7 @@
 import logging
 from datetime import UTC
 
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.states import Completed
 
 from imap_db.model import File
@@ -14,6 +14,7 @@ from imap_mag.io.DBIndexedDatastoreFileManager import (
     DBIndexedDatastoreFileManager,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.prefectUtils import try_get_prefect_logger
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ async def cleanup_datastore_flow(
         max_file_operations: Maximum number of file operations (archive/delete)
             before stopping. Default is 100.
     """
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
 
     app_settings = AppSettings()  # type: ignore
     db = Database()

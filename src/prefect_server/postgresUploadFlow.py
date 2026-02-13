@@ -15,6 +15,7 @@ from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.prefectUtils import try_get_prefect_logger
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,9 @@ async def upload_new_files_to_postgres(
         job_name: Optional specific job name from crump config to use.
                  If None, will auto-detect from file names patterns configured in the crump config file.
     """
+
+    logger = try_get_prefect_logger(__name__)
+
     app_settings = AppSettings()  # type: ignore
     db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
     started = datetime.now(tz=UTC)

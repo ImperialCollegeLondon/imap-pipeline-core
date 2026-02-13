@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.runtime import flow_run
 from pydantic import Field
 
@@ -21,6 +21,7 @@ from imap_mag.util import (
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import (
     get_secret_or_env_var,
+    try_get_prefect_logger,
 )
 
 
@@ -103,7 +104,7 @@ async def poll_hk_flow(
     Poll housekeeping data from WebPODA.
     """
 
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
     database = Database()
 
     auth_code = await get_secret_or_env_var(

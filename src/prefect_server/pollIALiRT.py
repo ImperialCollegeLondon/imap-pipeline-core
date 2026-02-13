@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 import pytz
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.events import Event, emit_event
 from prefect.runtime import flow_run
@@ -17,7 +17,7 @@ from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.prefectUtils import get_secret_or_env_var
+from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 
 
@@ -114,7 +114,7 @@ async def poll_ialirt_flow(
     Poll I-ALiRT data from SDC.
     """
 
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
     database = Database()
 
     auth_code = await get_secret_or_env_var(
