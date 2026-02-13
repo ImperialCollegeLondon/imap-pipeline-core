@@ -5964,11 +5964,11 @@ jobs:
         nullable: false
       hk_bytes_recorded_this_sec:
         db_column: hk_bytes_recorded_this_sec
-        type: integer
+        type: bigint
         nullable: false
       fsw_rec_hk_bytes_recorded_total:
         db_column: fsw_rec_hk_bytes_recorded_total
-        type: integer
+        type: bigint
         nullable: false
       fsw_to_hk_vc0_frame_cnt:
         db_column: fsw_to_hk_vc0_frame_cnt
@@ -6100,51 +6100,51 @@ jobs:
         nullable: false
       mag_ttag_free_bytes_in_buf_cnt:
         db_column: mag_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       glx_ttag_free_bytes_in_buf_cnt:
         db_column: glx_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       idx_ttag_free_bytes_in_buf_cnt:
         db_column: idx_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       swp_ttag_free_bytes_in_buf_cnt:
         db_column: swp_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       swe_ttag_free_bytes_in_buf_cnt:
         db_column: swe_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       hit_ttag_free_bytes_in_buf_cnt:
         db_column: hit_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       cod_ttag_free_bytes_in_buf_cnt:
         db_column: cod_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       ilo_ttag_free_bytes_in_buf_cnt:
         db_column: ilo_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       h90_ttag_free_bytes_in_buf_cnt:
         db_column: h90_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       h45_ttag_free_bytes_in_buf_cnt:
         db_column: h45_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       u90_ttag_free_bytes_in_buf_cnt:
         db_column: u90_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       u45_ttag_free_bytes_in_buf_cnt:
         db_column: u45_ttag_free_bytes_in_buf_cnt
-        type: integer
+        type: bigint
         nullable: false
       radio_status_rx_1_carrier_spe:
         db_column: radio_status_rx_1_carrier_spe
@@ -9256,7 +9256,7 @@ jobs:
         nullable: false
       radio_status_coherency_state:
         db_column: radio_status_coherency_state
-        type: varchar(6)
+        type: varchar(8)
         nullable: false
       status_rx_1_bb_cmd_ena_override:
         db_column: status_rx_1_bb_cmd_ena_override
