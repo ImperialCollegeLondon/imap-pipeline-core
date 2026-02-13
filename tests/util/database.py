@@ -11,15 +11,22 @@ from imap_mag.util import Environment
 @pytest.fixture(
     scope="session",
 )
-def test_database_server_engine():
+def test_database_container():
     with PostgresContainer(driver="psycopg") as postgres:
-        engine = create_engine(postgres.get_connection_url())
-        Base.metadata.create_all(engine)
+        yield postgres
 
-        with Environment(SQLALCHEMY_URL=postgres.get_connection_url()):
-            yield engine
 
-        engine.dispose()
+@pytest.fixture(
+    scope="session",
+)
+def test_database_server_engine(test_database_container):
+    engine = create_engine(test_database_container.get_connection_url())
+    Base.metadata.create_all(engine)
+
+    with Environment(SQLALCHEMY_URL=test_database_container.get_connection_url()):
+        yield engine
+
+    engine.dispose()
 
 
 @pytest.fixture(

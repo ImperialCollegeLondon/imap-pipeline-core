@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from crump import CrumpConfig, sync_file_to_db
-from prefect import flow, get_run_logger
+from crump.cdf_extractor import extract_cdf_to_tabular_file
+from prefect import flow
 from prefect.states import Completed, Failed
 from prefect_sqlalchemy import SqlAlchemyConnector
 
@@ -115,9 +116,6 @@ async def upload_new_files_to_postgres(
         job_name: Optional specific job name from crump config to use.
                  If None, will auto-detect from file names patterns configured in the crump config file.
     """
-
-    logger = get_run_logger()
-
     app_settings = AppSettings()  # type: ignore
     db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
     started = datetime.now(tz=UTC)
@@ -223,11 +221,17 @@ async def upload_new_files_to_postgres(
         try:
             logger.info(f"Syncing {path_inside_datastore} to database...")
 
+            filename_values = None
+            if detected_crump_job.filename_to_column:
+                filename_values = (
+                    detected_crump_job.filename_to_column.extract_values_from_filename(
+                        path_inc_datastore
+                    )
+                )
+
             # Handle CDF files by extracting to temporary CSV files first
             if path_inc_datastore.suffix.lower() in [".cdf"]:
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    from crump.cdf_extractor import extract_cdf_to_tabular_file
-
                     logger.info(f"Extracting CDF file {path_inc_datastore}...")
 
                     # Extract CDF to CSV
@@ -252,6 +256,7 @@ async def upload_new_files_to_postgres(
                             job=detected_crump_job,
                             db_connection_string=db_url,
                             enable_history=app_settings.postgres_upload.enable_history,
+                            filename_values=filename_values,
                         )
                         logger.info(
                             f"  Synced {rows_synced} rows from {result.output_file.name}"
@@ -263,6 +268,7 @@ async def upload_new_files_to_postgres(
                     job=detected_crump_job,
                     db_connection_string=db_url,
                     enable_history=app_settings.postgres_upload.enable_history,
+                    filename_values=filename_values,
                 )
                 logger.info(f"Synced {rows_synced} rows from {path_inside_datastore}")
 

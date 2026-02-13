@@ -6280,7 +6280,7 @@ jobs:
         nullable: false
       fault_rolling_aut_rule_num_0:
         db_column: fault_rolling_aut_rule_num_0
-        type: varchar(30)
+        type: varchar(32)
         nullable: false
       fsw_fi_hk_cdh_file_cnt:
         db_column: fsw_fi_hk_cdh_file_cnt
@@ -7828,7 +7828,7 @@ jobs:
         nullable: false
       to_table:
         db_column: to_table
-        type: varchar(28)
+        type: varchar(32)
         nullable: false
       hk_rule_suspend_level_lsb:
         db_column: hk_rule_suspend_level_lsb
@@ -7848,11 +7848,11 @@ jobs:
         nullable: false
       radio_status_encc_encoding_sel:
         db_column: radio_status_encc_encoding_sel
-        type: varchar(9)
+        type: varchar(15)
         nullable: false
       radio_status_mission_mode_sel:
         db_column: radio_status_mission_mode_sel
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       radio_status_modc_mod_sel:
         db_column: radio_status_modc_mod_sel
@@ -7924,7 +7924,7 @@ jobs:
         nullable: false
       radio_status_ex_1_fault_status:
         db_column: radio_status_ex_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       radio_status_dsp_fault_status:
         db_column: radio_status_dsp_fault_status
@@ -7936,7 +7936,7 @@ jobs:
         nullable: false
       radio_status_rx_1_fault_status:
         db_column: radio_status_rx_1_fault_status
-        type: varchar(6)
+        type: varchar(15)
         nullable: false
       ilo_pwr_st:
         db_column: ilo_pwr_st

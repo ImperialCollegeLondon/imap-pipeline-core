@@ -62,7 +62,7 @@ upload:
         - "*quicklook/*"
 
 postgres_upload:
-    crump_config_path: imap-db-injest-config.yaml
+    crump_config_path: imap-db-ingest-config.yaml
     database_url_env_var_or_block_name: 'imap-database'
     enable_history: true
     paths_to_match:

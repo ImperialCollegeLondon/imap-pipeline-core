@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -41,27 +41,7 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         ):
             # Insert test files into IMAP tracking database
             app_settings = AppSettings()
-            for file_path_str in test_files:
-                file_path = DATASTORE / file_path_str
-                # Extract version from filename (e.g., v001 -> 1, v002 -> 2)
-                version = int(file_path.stem.split("_v")[-1])
-                # Extract date from filename (e.g., 20251101 -> 2025-11-01)
-                date_str = file_path.stem.split("_")[-2]  # e.g., "20251101"
-                content_date = datetime(
-                    int(date_str[:4]),
-                    int(date_str[4:6]),
-                    int(date_str[6:8]),
-                    tzinfo=UTC,
-                )
-                test_database.insert_file(
-                    File.from_file(
-                        file_path,
-                        version,
-                        "NOT-REAL-HASH",
-                        content_date,
-                        app_settings,
-                    )
-                )
+            insert_test_files_into_database(target_postgres, test_files, app_settings)
 
             # Exercise - upload files to postgres
             await upload_new_files_to_postgres(
@@ -106,3 +86,102 @@ async def test_upload_new_files_to_postgres_does_upload_files(
 
             # Verify - should be no work to do
             assert "No work to do" in capture_cli_logs.text
+
+
+@pytest.mark.asyncio
+async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updated_by_later_version(
+    capture_cli_logs,
+    test_database,
+    test_database_server_engine,
+    test_database_container,
+):
+    # Set up test data in IMAP files database table
+    test_files = [
+        "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv",
+        # "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v002.csv"
+    ]
+
+    # Set up test environment with a target database for crump to write to
+    target_db_url = test_database_container.get_connection_url()
+
+    with Environment(
+        MAG_DATA_STORE=str(DATASTORE.absolute()),
+        TARGET_DATABASE_URL=target_db_url,
+        PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW="ignore",
+    ):
+        # Insert test files into IMAP tracking database
+        app_settings = AppSettings()
+        insert_test_files_into_database(test_database, test_files, app_settings)
+
+        # Exercise - upload files to postgres
+        await upload_new_files_to_postgres.fn(
+            find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
+            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
+        )
+
+        expected_rows = 3915
+        # Verify
+        assert (
+            f"Synced {expected_rows} rows from hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
+            in capture_cli_logs.text
+        )
+
+        # Verify data was uploaded to target database
+        with test_database_server_engine.connect() as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM hsk_pw"))
+            row_count = result.scalar()
+            assert row_count == expected_rows, (
+                f"Expected rows in hsk_procstat table, but found {row_count}"
+            )
+
+            result2 = conn.scalar(text("SELECT file_date FROM hsk_pw LIMIT 1"))
+            print(f"file_date value: {result2}")
+            assert result2 is not None, (
+                "Expected file_date to be populated, but it was None"
+            )
+            assert result2 == datetime(2025, 11, 2, tzinfo=UTC).date(), (
+                f"Expected file_date to be 2025-11-02, but got {result2}"
+            )
+
+        # second version of the packet csv file
+        test_files = ["hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v002.csv"]
+        insert_test_files_into_database(test_database, test_files, app_settings)
+
+        # Exercise - upload files to postgres
+        await upload_new_files_to_postgres.fn(
+            find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
+            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
+        )
+
+        expected_rows = 4320
+        # Verify
+        assert (
+            f"Synced {expected_rows} rows from hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v002.csv"
+            in capture_cli_logs.text
+        )
+
+
+def insert_test_files_into_database(test_database, test_files, app_settings):
+    last_modified_date = datetime(2026, 1, 1, tzinfo=UTC)
+    for file_path_str in test_files:
+        file_path = DATASTORE / file_path_str
+        # Extract version from filename (e.g., v001 -> 1, v002 -> 2)
+        version = int(file_path.stem.split("_v")[-1])
+        # Extract date from filename (e.g., 20251101 -> 2025-11-01)
+        date_str = file_path.stem.split("_")[-2]  # e.g., "20251101"
+        content_date = datetime(
+            int(date_str[:4]),
+            int(date_str[4:6]),
+            int(date_str[6:8]),
+            tzinfo=UTC,
+        )
+        last_modified_date += timedelta(seconds=1)
+        file = File.from_file(
+            file_path,
+            version,
+            "NOT-REAL-HASH",
+            content_date,
+            app_settings,
+        )
+        file.last_modified_date = last_modified_date
+        test_database.insert_file(file)

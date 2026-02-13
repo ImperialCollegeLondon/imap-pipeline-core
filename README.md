@@ -157,13 +157,13 @@ imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
 Example 1 - generate a config file for multiple files:
 
 ```bash
-crump prepare -c imap-db-injest-config.yaml ./tests/datastore/hk/**/*.csv
+crump prepare -c imap-db-ingest-config.yaml ./tests/datastore/hk/**/*.csv
 ```
 
 Example 2 - prepare a section in config file based on a data file:
 
 ```bash
-crump prepare -c imap-db-injest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
+crump prepare -c imap-db-ingest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
 ```
 
 Example 3 - crump command to ingest data based on a config file section:
@@ -171,13 +171,13 @@ Example 3 - crump command to ingest data based on a config file section:
 ```bash
 # remove dry-run if you are happy with results!
     DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/imap \
-        crump sync --job imap_mag_l1_hsk-procstat_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v*.csv imap-db-injest-config.yaml
+        crump sync --job imap_mag_l1_hsk-procstat_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v*.csv imap-db-ingest-config.yaml
 
-    crump sync --job imap_mag_l1_hsk-pw_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251101_v*.csv imap-db-injest-config.yaml
+    crump sync --job imap_mag_l1_hsk-pw_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251101_v*.csv imap-db-ingest-config.yaml
 
-    crump sync --job imap_mag_l1_hsk-sci_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-sci/2025/12/imap_mag_l1_hsk-sci_20251206_v001.csv  imap-db-injest-config.yaml
+    crump sync --job imap_mag_l1_hsk-sci_v --dry-run  ./tests/datastore/hk/mag/l1/hsk-sci/2025/12/imap_mag_l1_hsk-sci_20251206_v001.csv  imap-db-ingest-config.yaml
 
-    crump sync --job imap_mag_l1_hsk-sid15_v  ./tests/datastore/hk/mag/l1/hsk-sid15/2025/11/imap_mag_l1_hsk-sid15_20251101_v001.csv imap-db-injest-config.yaml
+    crump sync --job imap_mag_l1_hsk-sid15_v  ./tests/datastore/hk/mag/l1/hsk-sid15/2025/11/imap_mag_l1_hsk-sid15_20251101_v001.csv imap-db-ingest-config.yaml
 
-    crump sync -- job imap_mag_l1_hsk-status_v  ./tests/datastore/hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv imap-db-injest-config.yaml
+    crump sync -- job imap_mag_l1_hsk-status_v  ./tests/datastore/hk/mag/l1/hsk-status/2025/11/imap_mag_l1_hsk-status_20251101_v001.csv imap-db-ingest-config.yaml
 ```
