@@ -12,85 +12,137 @@ logger = logging.getLogger(__name__)
 
 
 class FetchScience:
-    """Manage SOC data."""
+    """Download MAG science data from the SDC."""
 
     __data_access: SDCDataAccess
-
-    __modes: list[ScienceMode]
-    __sensor: list[MAGSensor]
 
     def __init__(
         self,
         data_access: SDCDataAccess,
-        modes: list[ScienceMode] = [ScienceMode.Normal, ScienceMode.Burst],
-        sensors: list[MAGSensor] = [MAGSensor.IBS, MAGSensor.OBS],
     ) -> None:
-        """Initialize SDC interface."""
-
         self.__data_access = data_access
-        self.__modes = modes
-        self.__sensor = sensors
 
     def download_science(
         self,
         level: ScienceLevel,
         start_date: datetime,
         end_date: datetime,
-        reference_frame: ReferenceFrame | None = None,
+        reference_frames: list[ReferenceFrame] | None = None,
+        modes: list[ScienceMode] | None = None,
+        sensors: list[MAGSensor] | None = None,
         use_ingestion_date: bool = False,
+        max_downloads: int | None = None,
+        skip_items_count: int = 0,
     ) -> dict[Path, SciencePathHandler]:
         """Retrieve SDC data."""
 
         downloaded: dict[Path, SciencePathHandler] = dict()
+        max_downloads_reached = False
+
+        if max_downloads is not None and max_downloads <= 0:
+            raise ValueError("max_downloads must be greater than zero or None")
+
+        if skip_items_count < 0:
+            raise ValueError("skip_items_count must be zero or greater")
 
         dates: dict[str, datetime] = {
             "ingestion_start_date" if use_ingestion_date else "start_date": start_date,
             "ingestion_end_date" if use_ingestion_date else "end_date": end_date,
         }
-        frame_suffix = ("-" + reference_frame.value) if reference_frame else ""
 
-        if (level == ScienceLevel.l2) and (self.__sensor != [MAGSensor.OBS]):
-            logger.debug("Forcing download of only OBS (mago) sensor for L2 data.")
-            sensors: list[MAGSensor] = [MAGSensor.OBS]
-        else:
-            sensors = self.__sensor
+        for descriptor in self.get_descriptors(
+            level=level, modes=modes, sensors=sensors, reference_frames=reference_frames
+        ):
+            if max_downloads_reached:
+                break
 
-        for mode in self.__modes:
-            for sensor in sensors:
-                sensor_suffix = "-" + sensor.value
+            file_details = self.__data_access.query_sdc_files(
+                level=level.value,
+                descriptor=descriptor,
+                extension="cdf",
+                **dates,  # type: ignore
+            )
 
-                file_details = self.__data_access.get_filename(
-                    level=level.value,
-                    descriptor=mode.short_name
-                    + (frame_suffix if (level == ScienceLevel.l2) else sensor_suffix),
-                    extension="cdf",
-                    **dates,  # type: ignore
-                )
+            # sort by ingestion date to ensure we process in cronological order
+            file_details = sorted(
+                file_details,
+                key=lambda x: datetime.strptime(x["ingestion_date"], "%Y%m%d %H:%M:%S"),
+            )
 
-                if file_details is not None:
-                    for file in file_details:
-                        downloaded_file = self.__data_access.download(file["file_path"])
+            for file in file_details if file_details else []:
+                if skip_items_count > 0:
+                    skip_items_count -= 1
+                    logger.debug(
+                        f"Skipping file {file['file_path']} as part of skip_items_count."
+                    )
+                    continue
 
-                        if downloaded_file.stat().st_size > 0:
-                            logger.info(
-                                f"Downloaded file from SDC Data Access: {downloaded_file}"
-                            )
+                downloaded_file = self.__data_access.download(file["file_path"])
 
-                            downloaded[downloaded_file] = SciencePathHandler(
-                                level=level.value,
-                                descriptor=file["descriptor"],
-                                content_date=datetime.strptime(
-                                    file["start_date"], "%Y%m%d"
-                                ),
-                                ingestion_date=datetime.strptime(
-                                    file["ingestion_date"], "%Y%m%d %H:%M:%S"
-                                ),
-                                version=int(file["version"].lstrip("v")),
-                                extension="cdf",
-                            )
-                        else:
-                            logger.debug(
-                                f"Downloaded file {downloaded_file} is empty and will not be used."
-                            )
+                if downloaded_file.stat().st_size > 0:
+                    logger.info(
+                        f"Downloaded file from SDC Data Access: {downloaded_file}"
+                    )
+
+                    downloaded[downloaded_file] = SciencePathHandler(
+                        level=level.value,
+                        descriptor=file["descriptor"],
+                        content_date=datetime.strptime(file["start_date"], "%Y%m%d"),
+                        ingestion_date=datetime.strptime(
+                            file["ingestion_date"], "%Y%m%d %H:%M:%S"
+                        ),
+                        version=int(file["version"].lstrip("v")),
+                        extension="cdf",
+                    )
+                    max_downloads_reached = (
+                        max_downloads is not None and len(downloaded) >= max_downloads
+                    )
+                    if max_downloads_reached:
+                        logger.info(
+                            f"Reached current batch limit of downloads ({max_downloads})"
+                        )
+                        break
+                else:
+                    logger.debug(
+                        f"Downloaded file {downloaded_file} is empty and will not be used."
+                    )
 
         return downloaded
+
+    def get_descriptors(
+        self,
+        level: ScienceLevel | None,
+        modes: list[ScienceMode] | None,
+        sensors: list[MAGSensor] | None,
+        reference_frames: list[ReferenceFrame] | None,
+    ) -> list[str] | list[None]:
+        """Get list of descriptors based on modes and reference frames."""
+        descriptors: list[str] = []
+
+        if level in [ScienceLevel.l1d, ScienceLevel.l2]:
+            if (modes is not None and reference_frames is None) or (
+                modes is None and reference_frames is not None
+            ):
+                raise ValueError(
+                    "Both modes and reference_frames must be provided together."
+                )
+
+            if modes is not None and reference_frames is not None:
+                descriptors = [
+                    f"{m.short_name}-{rf.value}"
+                    for m in modes
+                    for rf in reference_frames
+                ]
+
+        elif level in [ScienceLevel.l1a, ScienceLevel.l1b, ScienceLevel.l1c]:
+            if (modes is not None and sensors is None) or (
+                modes is None and sensors is not None
+            ):
+                raise ValueError("Both modes and sensors must be provided together.")
+
+            if modes is not None and sensors is not None:
+                descriptors = [
+                    f"{m.short_name}-{s.value}" for m in modes for s in sensors
+                ]
+
+        return descriptors if descriptors else [None]

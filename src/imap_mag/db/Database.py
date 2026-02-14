@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, WorkflowProgress
@@ -127,6 +127,25 @@ class Database:
 
         return list(self.session().execute(statement).scalars().all())
 
+    def get_files_deleted_since(
+        self, last_modified_date: datetime, how_many: int | None = None
+    ) -> list[File]:
+        """Get files that have been marked as deleted since the given date."""
+        statement = (
+            select(File)
+            .where(
+                File.deletion_date > last_modified_date,
+            )
+            .order_by(File.deletion_date)
+        )
+
+        if how_many is not None:
+            statement = statement.limit(how_many)
+
+        logger.debug(f"Executing SQL statement: {statement}")
+
+        return list(self.session().execute(statement).scalars().all())
+
     @__session_manager(expire_on_commit=False)
     def get_workflow_progress(self, item_name: str) -> WorkflowProgress:
         session = self.__get_active_session()
@@ -150,6 +169,68 @@ class Database:
     def save(self, model: Base) -> None:
         session = self.__get_active_session()
         session.merge(model)
+
+    def get_all_active_files(self) -> list[File]:
+        """Get all files that have not been deleted."""
+        statement = select(File).where(File.deletion_date.is_(None))
+        return list(self.session().execute(statement).scalars().all())
+
+    def get_files_by_path_pattern(self, pattern: str) -> list[File]:
+        """Get all active files matching a path pattern (SQL LIKE pattern)."""
+        statement = select(File).where(
+            File.deletion_date.is_(None),
+            File.path.like(pattern),
+        )
+        return list(self.session().execute(statement).scalars().all())
+
+    def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
+        """Get all active files matching any of the given fnmatch patterns.
+
+        Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
+        and queries the database server-side.
+
+        Args:
+            patterns: List of fnmatch patterns (e.g., "*hk/mag/l1/*")
+
+        Returns:
+            List of matching File objects
+        """
+        if not patterns:
+            return []
+
+        # Convert fnmatch patterns to SQL LIKE patterns
+        like_patterns = [self._fnmatch_to_like(p) for p in patterns]
+
+        # Build OR condition for all patterns
+        pattern_conditions = [File.path.like(p) for p in like_patterns]
+
+        statement = select(File).where(
+            File.deletion_date.is_(None),
+            or_(*pattern_conditions),
+        )
+
+        return list(self.session().execute(statement).scalars().all())
+
+    @staticmethod
+    def _fnmatch_to_like(pattern: str) -> str:
+        """Convert an fnmatch pattern to a SQL LIKE pattern.
+
+        Converts:
+        - * -> % (match any sequence of characters)
+        - ? -> _ (match any single character)
+        - Escapes existing % and _ characters
+
+        Args:
+            pattern: fnmatch pattern
+
+        Returns:
+            SQL LIKE pattern
+        """
+        # Escape existing SQL LIKE special characters first
+        result = pattern.replace("%", r"\%").replace("_", r"\_")
+        # Convert fnmatch wildcards to SQL LIKE wildcards
+        result = result.replace("**", "%").replace("*", "%").replace("?", "_")
+        return result
 
 
 def update_database_with_progress(

@@ -1,0 +1,5 @@
+epoch,shcoarse,pus_spare1,pus_version,pus_spare2,pus_stype,pus_ssubtype,event_id,sw_verptch,sw_verspare,sw_verrel,sw_vernum,isv_ver,prom_csum,hw_model,build_id,fill,version,type,sec_hdr_flg,pkt_apid,seq_flgs,src_seq_ctr,pkt_len,time_met_iso,epoch_iso
+812245171184000000,496669107,0,1,0,5,1,bswBootSuccess,Unpatchable,0,Release,204,2,35732,FM,5044945097,0,0,0,1,1030,3,0,23,2025-09-27T11:38:27,
+812245293184000000,496669229,0,1,0,5,1,aswBootSuccess,Unpatchable,0,Release,405,2,0,FM,9179154424,0,0,0,1,1030,3,0,23,2025-09-27T11:40:29,
+812274890184000000,496698826,0,1,0,5,1,bswBootSuccess,Unpatchable,0,Release,204,2,35732,FM,5044945097,0,0,0,1,1030,3,0,23,2025-09-27T19:53:46,
+812274988184000000,496698924,0,1,0,5,1,aswBootSuccess,Unpatchable,0,Release,405,2,0,FM,9179154424,0,0,0,1,1030,3,0,23,2025-09-27T19:55:24,

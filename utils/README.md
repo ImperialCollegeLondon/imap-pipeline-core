@@ -5,10 +5,20 @@
 To generate XML file with XTCE tool (from [`imap_processing`](https://github.com/IMAP-Science-Operations-Center/imap_processing)):
 
 ``` shell
+# Or just use our forked copy that better handles the SC TLM file
+python utils/excel_to_xtce.py src/imap_mag/packet_def/TLM_SC.xlsx --output src/imap_mag/packet_def/tlm_sc_4.2.0-imapsc-111.xml
+# may need: poetry add --group=dev openpyxl
+
+# Or use the IMAP official version
 imap_xtce ../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/Instruments/MAG_Common/TLM_MAG.xls --output ../imap-pipeline-core/src/imap_mag/packet_def/mag_17.9.xml
+
+# can be done if not installed correctly with poetry:
+poetry run imap_xtce utils/TLM_SC.xlsx --output src/imap_mag/packet_def/tlm_sc_4.2.0-imapsc-111.xml
+
 ```
 
 > [!TIP]
+> Spacecraft HK definitions available from <https://lasp.colorado.edu/nucleus/projects/IMAPOPS/repos/ct_handbooks/browse>
 > For generating S/C HK XTCE files, use the `../IM-MAG-SW/acceptance-tests/gseos/IMAP.8.7.044/MOC/TLM_SC.xls`, after removing any page that is not needed.
 > Also make sure to remove any field including the type `STRING`, which is not supported by `imap_xtce`.
 

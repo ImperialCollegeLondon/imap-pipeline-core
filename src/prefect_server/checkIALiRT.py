@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.client.schemas.objects import State
 from prefect.runtime import flow_run
@@ -14,6 +14,7 @@ from imap_mag.cli.check.check_ialirt import check_ialirt
 from imap_mag.db import Database
 from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.prefectUtils import try_get_prefect_logger
 
 
 @flow(
@@ -45,7 +46,7 @@ async def check_ialirt_flow(
     Check I-ALiRT data store data for anomalies.
     """
 
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
 
     # If no files are provided, check data from yesterday to today
     start_date = DatetimeProvider.yesterday() if not files else None

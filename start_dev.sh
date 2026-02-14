@@ -83,7 +83,6 @@ deployToServer() {
         return
     fi
 
-
     echo "Deploying to server"
     prefect work-pool create default-pool --type process --overwrite
 

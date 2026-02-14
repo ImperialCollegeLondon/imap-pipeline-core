@@ -1,15 +1,17 @@
 class PREFECT_CONSTANTS:
-    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access,ialirt_data_access"
+    DEFAULT_LOGGERS = "imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access,ialirt_data_access,crump"
     DEFAULT_WORKPOOL = "default-pool"
 
     PREFECT_TAG = "NASA-IMAP"
 
     SKIPPED_STATE_NAME = "Skipped"
 
-    SHAREPOINT_BLOCK_NAME = "imap-sharepoint"
+    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-sharepoint"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
+
+    IMAP_DATABASE_BLOCK_NAME = "imap-database"
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
@@ -34,8 +36,11 @@ class PREFECT_CONSTANTS:
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1C_NORM"
         POLL_L1B_BURST_CRON = "IMAP_CRON_POLL_L1B_BURST"
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
+        POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
+        IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
+        IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -61,15 +66,21 @@ class PREFECT_CONSTANTS:
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
         SHAREPOINT_UPLOAD = "sharepoint-upload"
+        POSTGRES_UPLOAD = "postgres-upload"
+        DATASTORE_CLEANUP = "datastore-cleanup"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
         POLL_HK = "poll_hk"
+        POLL_SCIENCE = "poll_science"
         POLL_L1C_NORM = "poll_l1c_norm_science"
         POLL_L1B_BURST = "poll_l1b_burst_science"
         POLL_L2 = "poll_l2_science"
+        POLL_L1D = "poll_l1d_science"
         POLL_SPICE = "poll_spice"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
+        POSTGRES_UPLOAD = "postgres_upload"
+        DATASTORE_CLEANUP = "datastore_cleanup"

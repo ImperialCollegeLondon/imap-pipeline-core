@@ -69,3 +69,53 @@ upload:
         - "*ialirt/*"
         - "*quicklook/*"
         - "*spice/*"
+
+postgres_upload:
+    crump_config_path: imap-db-ingest-config.yaml
+    database_url_env_var_or_block_name: 'imap-database'
+    enable_history: true
+    paths_to_match:
+        - "*hk/mag/l1/hsk-pw/*"
+        - "*hk/mag/l1/hsk-sci/*"
+        - "*hk/mag/l1/hsk-procstat/*"
+        - "*hk/mag/l1/hsk-sid15/*"
+        - "*hk/mag/l1/hsk-status/*"
+        - "*hk/mag/l1/ehs-hkadc/*"
+        - "*hk/mag/l1/els-confld/*"
+        - "*hk/mag/l1/els-itf/*"
+        - "*hk/mag/l1/mem-chckrep/*"
+        - "*hk/mag/l1/prog-btsucc/*"
+        - "*hk/mag/l1/prog-mtran/*"
+        - "*hk/mag/l1/tcc-succ/*"
+        - "*hk/sc/l1/x285/*"
+        - "*hk/sc/l1/x286/*"
+
+datastore_cleanup:
+    dry_run: false
+    tasks:
+        - name: "delete-all-non-latest-hk-l1-versions"
+          paths_to_match:
+              - "*hk/mag/l1/*"
+              - "*hk/sc/l1/*"
+          files_older_than: "24h"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "delete-all-non-latest-l1d-versions"
+          paths_to_match:
+              - "*science/mag/l1d/*"
+          files_older_than: "24h"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "delete-30day-old-non-latest-science-versions"
+          paths_to_match:
+              - "*science/mag/l1b/*"
+              - "*science/mag/l1c/*"
+          files_older_than: "30d"
+          keep_latest_version_only: true
+          cleanup_mode: "delete"
+        - name: "delete-all-12week-old-quicklooks"
+          paths_to_match:
+              - "*quicklook/ialirt/**/*.png"
+          files_older_than: "90d"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"

@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 
+from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchBinary import FetchBinary
-from imap_mag.io import OutputManager
 from imap_mag.io.file import HKBinaryPathHandler
 from imap_mag.util import HKPacket
 
@@ -97,13 +97,15 @@ def fetch_binary(
     output_binaries: dict[Path, HKBinaryPathHandler] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
-        output_manager = OutputManager.CreateByMode(
+        datastore_manager = appUtils.getManagerByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
         for file, path_handler in downloaded_binaries.items():
-            (output_file, output_handler) = output_manager.add_file(file, path_handler)
+            (output_file, output_handler) = datastore_manager.add_file(
+                file, path_handler
+            )
             output_binaries[output_file] = output_handler
     else:
         logger.info("Files not published to data store based on config.")

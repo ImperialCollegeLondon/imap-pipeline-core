@@ -2,6 +2,8 @@ import prefect
 import prefect.docker
 from prefect import get_client
 from prefect_managedfiletransfer import RCloneConfigFileBlock
+from prefect_sqlalchemy import SqlAlchemyConnector
+from prefect_sqlalchemy.database import ConnectionComponents
 from pydantic import SecretStr
 
 from imap_db.main import create_db, upgrade_db
@@ -39,6 +41,8 @@ class ServerConfig:
     @staticmethod
     async def _create_queues(client, local_debug: bool):
         existing_queues = await client.read_work_queues()
+
+        print(f"Existing work queues: {[q.name for q in existing_queues]}")
 
         work_pool = PREFECT_CONSTANTS.DEFAULT_WORKPOOL if not local_debug else None
 
@@ -113,10 +117,25 @@ class ServerConfig:
                 ),
             ),
             (
-                PREFECT_CONSTANTS.SHAREPOINT_BLOCK_NAME,
+                PREFECT_CONSTANTS.DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME,
                 RCloneConfigFileBlock(
                     remote_name="imap_sharepoint",
                     config_file_contents=SAMPLE_RCLONE_FILE_CONTENTS,
+                ),
+            ),
+            (
+                PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
+                SqlAlchemyConnector(
+                    connection_info=ConnectionComponents(
+                        driver="postgresql+psycopg",
+                        database="imap",
+                        host="host.docker.internal",
+                        port=5432,
+                        username="postgres",
+                        password=SecretStr(
+                            "postgres"
+                        ),  # default dev database password, not prod!
+                    )
                 ),
             ),
         ]

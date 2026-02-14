@@ -56,7 +56,7 @@ class SDCDataAccess:
             logger.error(f"Upload failed: {e}")
             raise SDCUploadError(f"Failed to upload file {filename}") from e
 
-    def query(
+    def query_sdc_files(
         self,
         *,
         level: str | None = None,
@@ -67,8 +67,15 @@ class SDCDataAccess:
         ingestion_end_date: datetime | None = None,
         version: str | None = None,
         extension: str | None = None,
-    ) -> list[dict[str, str]]:
-        return imap_data_access.query(
+    ) -> list[dict[str, str]] | None:
+        logger.info(
+            f"Querying SDC for files with parameters: level={level}, descriptor={descriptor}, "
+            f"start_date={start_date}, end_date={end_date}, "
+            f"ingestion_start_date={ingestion_start_date}, ingestion_end_date={ingestion_end_date}, "
+            f"version={version}, extension={extension}"
+        )
+
+        file_details: list[dict[str, str]] = imap_data_access.query(
             instrument="mag",
             data_level=level,
             descriptor=descriptor,
@@ -86,31 +93,36 @@ class SDCDataAccess:
             extension=extension,
         )
 
-    def get_filename(
-        self,
-        *,
-        level: str | None = None,
-        descriptor: str | None = None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        ingestion_start_date: datetime | None = None,
-        ingestion_end_date: datetime | None = None,
-        version: str | None = None,
-        extension: str | None = None,
-    ) -> list[dict[str, str]] | None:
-        file_details: list[dict[str, str]] = self.query(
-            level=level,
-            descriptor=descriptor,
-            start_date=start_date,
-            end_date=end_date,
-            ingestion_start_date=ingestion_start_date,
-            ingestion_end_date=ingestion_end_date,
-            version=version,
-            extension=extension,
-        )
-
         file_names: str = ", ".join([value["file_path"] for value in file_details])
         logger.info(f"Found {len(file_details)} matching files:\n{file_names}")
+
+        # if we specified ingestion_start_date or end date then ignore any files that are outside that range
+        # because the query is only on date and not the full datetime
+        if ingestion_start_date or ingestion_end_date:
+            # If the end date does not have a time component then assume the end of the day
+            if (
+                ingestion_end_date
+                and ingestion_end_date.hour == 0
+                and ingestion_end_date.minute == 0
+            ):
+                ingestion_end_date = ingestion_end_date.replace(
+                    hour=23, minute=59, second=59
+                )
+
+            filtered_files: list[dict[str, str]] = []
+            for file in file_details:
+                ingestion_date = datetime.strptime(
+                    file["ingestion_date"], "%Y%m%d %H:%M:%S"
+                )
+                if ingestion_start_date and ingestion_date <= ingestion_start_date:
+                    continue
+                if ingestion_end_date and ingestion_date > ingestion_end_date:
+                    continue
+                filtered_files.append(file)
+            logger.info(
+                f"After filtering based on ingestion dates, {len(filtered_files)} files remain."
+            )
+            return filtered_files
 
         return file_details
 

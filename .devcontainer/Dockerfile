@@ -3,12 +3,12 @@
 # see https://github.com/devcontainers/images/blob/main/src/python/.devcontainer/Dockerfile
 
 ## we start with the version we want as the system version
-FROM mcr.microsoft.com/devcontainers/python:3.13-bullseye
+FROM mcr.microsoft.com/devcontainers/python:3.14-bookworm
 
 # install uv from the UV image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ARG PYTHON_VERSIONS="3.10 3.11 3.12 3.13"
+ARG PYTHON_VERSIONS="3.11 3.12 3.13 3.14"
 USER vscode
 
 # Install multiple Python versions using `uv` as the non-root user

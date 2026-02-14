@@ -1,8 +1,9 @@
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.runtime import flow_run
 from pydantic import Field
 
@@ -20,14 +21,20 @@ from imap_mag.util import (
     ScienceMode,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.prefectUtils import get_secret_or_env_var
+from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
+
+BATCH_SIZE = 30
+MAX_DOWNLOADS_PER_FLOW = 1000
 
 
 def generate_flow_run_name() -> str:
     parameters = flow_run.parameters
 
     level: ScienceLevel = parameters["level"]
-    modes: list[ScienceMode] = parameters["modes"]
+    modes: list[ScienceMode] = parameters["modes"] or [
+        ScienceMode.Normal,
+        ScienceMode.Burst,
+    ]
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%Y")
         if parameters["start_date"] is not None
@@ -53,24 +60,24 @@ async def poll_science_flow(
             }
         ),
     ] = ScienceLevel.l1c,
-    reference_frame: Annotated[
-        ReferenceFrame | None,
+    reference_frames: Annotated[
+        list[ReferenceFrame] | None,
         Field(
             json_schema_extra={
-                "title": "Reference frame",
-                "description": "Reference frame to download for L2. Only used if level is L2.",
+                "title": "Reference frame(s)",
+                "description": "Reference frame(s) to download for L2/L1D. None downloads all frames.",
             }
         ),
     ] = None,
     modes: Annotated[
-        list[ScienceMode],
+        list[ScienceMode] | None,
         Field(
             json_schema_extra={
                 "title": "Science modes to download",
-                "description": "List of science modes to download. Default is both Normal and Burst.",
+                "description": "List of science modes to download. Default (none) is both Normal and Burst.",
             }
         ),
-    ] = [ScienceMode.Normal, ScienceMode.Burst],
+    ] = None,
     start_date: Annotated[
         datetime | None,
         Field(
@@ -112,7 +119,7 @@ async def poll_science_flow(
     Poll science data from SDC.
     """
 
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
     database = Database()
 
     auth_code = await get_secret_or_env_var(
@@ -133,63 +140,146 @@ async def poll_science_flow(
     ) or automated_flow_run
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
 
-    for mode in modes:
-        packet_start_timestamp = DatetimeProvider.now()
-        progress_item_id = f"{mode.packet}_{level.value.upper()}"
+    if modes and len(modes) == 1:
+        progress_item_id = f"{modes[0].packet}_{level.value.upper()}"
+    else:
+        progress_item_id = f"ALL_MODES_{level.value.upper()}"
 
-        logger.info(f"---------- Downloading Packet {mode.packet} ----------")
+    packet_start_timestamp = DatetimeProvider.now()
+    frame_suffix = (
+        ("_" + "_".join([rf.value for rf in reference_frames]))
+        if reference_frames
+        else ""
+    )
+    progress_item_id += frame_suffix
 
-        date_manager = DownloadDateManager(progress_item_id, database)
+    logger.info(
+        f"Downloading {progress_item_id} from SDC '{start_date}' to '{end_date}' in batches of {BATCH_SIZE} files. "
+    )
 
-        packet_dates = date_manager.get_dates_for_download(
-            original_start_date=start_date,
-            original_end_date=end_date,
-            validate_with_database=use_database,
-        )
+    downloaded_science = []
 
-        if packet_dates is None:
-            logger.info(f"No dates for download of {progress_item_id} - skipping")
-            continue
-        else:
-            (packet_start_date, packet_end_date) = packet_dates
+    total_batches = MAX_DOWNLOADS_PER_FLOW // BATCH_SIZE
 
-        # Download files from SDC
+    date_manager = DownloadDateManager(progress_item_id, database)
+
+    packet_dates = date_manager.get_dates_for_download(
+        original_start_date=start_date,
+        original_end_date=end_date,
+        validate_with_database=use_database,
+    )
+
+    if packet_dates is None:
+        logger.info(f"No dates for download of {progress_item_id} - skipping")
+        return
+    else:
+        (packet_start_date, packet_end_date) = packet_dates
+
+    first_path_in_previous_batch = Path("")
+
+    for _ in range(total_batches):  # arbitrary large number to prevent infinite loops
         with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
-            downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
-                level=level,
-                reference_frame=reference_frame,
-                modes=[mode],
-                start_date=packet_start_date,
-                end_date=packet_end_date,
-                use_ingestion_date=use_ingestion_date,
-                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+            items = download_batch_of_science(
+                level,
+                reference_frames,
+                modes,
+                packet_start_date,
+                packet_end_date,
+                logger,
+                database,
+                use_database,
+                use_ingestion_date,
+                progress_item_id,
+                packet_start_timestamp,
+                BATCH_SIZE,
+                len(downloaded_science),
             )
+            if items:
+                downloaded_science.extend(items.keys())
 
-        if not downloaded_science:
-            logger.info(
-                f"No data downloaded for packet {mode.packet} from {packet_start_date} to {packet_end_date}."
+        if items is None or len(items) < BATCH_SIZE:
+            # No more items to download
+            break
+
+        first_path_in_batch = next(iter(items.keys()))
+        if first_path_in_batch == first_path_in_previous_batch:
+            logger.warning(
+                "First item in batch is the same as the previous batch. Stopping to avoid infinite loop."
             )
+            break
 
-        # Update database with latest ingestion date as progress (for science)
-        if use_database:
-            ingestion_dates: list[datetime] = [
-                metadata.ingestion_date
-                for metadata in downloaded_science.values()
-                if metadata.ingestion_date
-            ]
-            latest_ingestion_date: datetime | None = (
-                max(ingestion_dates) if ingestion_dates else None
+        first_path_in_previous_batch = first_path_in_batch
+
+        if len(downloaded_science) >= MAX_DOWNLOADS_PER_FLOW:
+            logger.warning(
+                "Downloaded 1000 or more files in this flow run. Stopping to avoid excessive downloads."
             )
+            break
 
-            update_database_with_progress(
-                progress_item_id=progress_item_id,
-                database=database,
-                checked_timestamp=packet_start_timestamp,
-                latest_timestamp=latest_ingestion_date,
-            )
-        else:
-            logger.info(f"Database not updated for {progress_item_id}.")
+        await asyncio.sleep(3)  # brief pause between batches
 
-        logger.info(
-            f"---------- Finished downloading Packet {progress_item_id} ----------"
+    logger.info(
+        f"Poll science flow complete. Downloaded total of {len(downloaded_science)} items."
+    )
+
+
+def download_batch_of_science(
+    level,
+    reference_frames,
+    modes,
+    start_date,
+    end_date,
+    logger,
+    database,
+    use_database,
+    use_ingestion_date,
+    progress_item_id,
+    packet_start_timestamp,
+    batch_size,
+    skip_items_count,
+) -> dict[Path, SciencePathHandler]:
+    logger.info(
+        f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
+    )
+
+    # Download files from SDC
+    downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
+        level=level,
+        reference_frames=reference_frames,
+        modes=modes,
+        start_date=start_date,
+        end_date=end_date,
+        use_ingestion_date=use_ingestion_date,
+        fetch_mode=FetchMode.DownloadAndUpdateProgress,
+        max_downloads=batch_size,
+        skip_items_count=skip_items_count,
+    )
+
+    # Update database with latest ingestion date as progress (for science)
+    if use_database:
+        latest_ingestion_date = get_latest_ingestion_date(downloaded_science)
+
+        update_database_with_progress(
+            progress_item_id=progress_item_id,
+            database=database,
+            checked_timestamp=packet_start_timestamp,
+            latest_timestamp=latest_ingestion_date,
         )
+        logger.info(f"Database updated for {progress_item_id}.")
+    else:
+        logger.info(f"Database not updated for {progress_item_id}.")
+
+    return downloaded_science
+
+
+def get_latest_ingestion_date(downloaded_science):
+    ingestion_dates: list[datetime] = [
+        metadata.ingestion_date
+        for metadata in downloaded_science.values()
+        if metadata.ingestion_date
+    ]
+    latest_ingestion_date: datetime | None = (
+        max(ingestion_dates) if ingestion_dates else None
+    )
+
+    return latest_ingestion_date

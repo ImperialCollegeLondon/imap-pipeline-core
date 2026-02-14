@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 
 from imap_mag.cli.check.check_ialirt import IALiRTAnomalyError
 from imap_mag.main import app
+from prefect_server.checkIALiRT import CONSTANTS
 from tests.util.miscellaneous import (  # noqa: F401
     DATASTORE,
     TEST_DATA,
@@ -115,9 +116,14 @@ def test_process_error_with_unsupported_file_type():
     "mode",
     [None, "downloadonly"],
 )
-def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
+def test_fetch_binary_downloads_hk_from_webpoda(
+    wiremock_manager, mode, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
+    expected_result = (
+        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
+    )
 
     wiremock_manager.add_file_mapping(
         "/packets/SID2/MAG_HSK_PW.bin?time%3E=2025-05-02T00:00:00&time%3C2025-05-03T00:00:00&project(packet)",
@@ -159,13 +165,11 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
 
     # Verify.
     assert result.exit_code == 0
-    assert Path(
-        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
-    ).exists()
+    assert Path(expected_result).exists()
 
     with (
         open(
-            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts",
+            expected_result,
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -177,7 +181,9 @@ def test_fetch_binary_downloads_hk_from_webpoda(wiremock_manager, mode):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_binary_downloads_hk_from_webpoda_with_ert(wiremock_manager):
+def test_fetch_binary_downloads_hk_from_webpoda_with_ert(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
 
@@ -321,7 +327,9 @@ def test_fetch_ialirt_downloads_data_from_sdc(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
+def test_fetch_science_downloads_cdf_from_sdc(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     query_response: list[dict[str, str]] = [
         {
@@ -341,7 +349,7 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     )
 
     wiremock_manager.add_string_mapping(
-        "/query?table=science&instrument=mag&data_level=l1b&descriptor=norm-magi&start_date=20250502&end_date=20250502&extension=cdf",
+        "/query?table=science&instrument=mag&data_level=l1b&start_date=20250502&end_date=20250502&extension=cdf",
         json.dumps(query_response),
         priority=1,
     )
@@ -402,7 +410,9 @@ def test_fetch_science_downloads_cdf_from_sdc(wiremock_manager):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
-def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manager):
+def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
+    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+):
     # Set up.
     query_response: list[dict[str, str]] = [
         {
@@ -455,6 +465,8 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(wiremock_manag
             "science",
             "--level",
             "l1b",
+            "--modes",
+            "norm",
             "--start-date",
             "2024-07-16",
             "--end-date",
@@ -509,6 +521,7 @@ def test_check_ialirt_with_issues(
     temp_datastore,  # noqa: F811
     capture_cli_logs,
 ):
+    CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
     # Exercise.
     result = runner.invoke(
         app,

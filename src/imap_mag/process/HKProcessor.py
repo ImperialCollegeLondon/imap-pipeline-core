@@ -1,14 +1,16 @@
 import collections
 import logging
 import re
+from collections.abc import Generator
 from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
+import space_packet_parser as spp
 import xarray as xr
 from rich.progress import track
-from space_packet_parser import definitions
+from space_packet_parser.exceptions import UnrecognizedPacketTypeError
 
 from imap_mag.io import DatastoreFileFinder
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
@@ -24,15 +26,6 @@ from imap_mag.util import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def add_or_concat_dataframe(
-    data_dict: dict[int, pd.DataFrame], key: int, value: pd.DataFrame
-) -> pd.DataFrame:
-    if key in data_dict:
-        return pd.concat([data_dict[key], value])
-    else:
-        return value
 
 
 class HKProcessor(FileProcessor):
@@ -52,14 +45,62 @@ class HKProcessor(FileProcessor):
             packet_definition
         )
 
-    def process(self, files: Path | list[Path]) -> dict[Path, IFilePathHandler]:
+    def _packet_generator(
+        self,
+        packet_file: str | Path,
+        xtce_packet_definition: str | Path,
+    ) -> Generator[tuple[spp.SpacePacket, int], None, None]:
+        """
+        Parse packets from a packet file.
+
+        Parameters
+        ----------
+        packet_file : str | Path
+            Path to data packet path with filename.
+        xtce_packet_definition : str | Path
+            Path to XTCE file with filename.
+
+        Yields
+        ------
+        packet : space_packet_parser.SpacePacket
+            Parsed packet dictionary.
+        """
+        # Set up the parser from the input packet definition
+        packet_definition = spp.load_xtce(xtce_packet_definition)
+
+        with open(packet_file, "rb") as binary_data:
+            for binary_packet in spp.ccsds_generator(binary_data):
+                try:
+                    packet = packet_definition.parse_bytes(binary_packet)
+                except UnrecognizedPacketTypeError as e:
+                    # NOTE: Not all of our definitions have all of the APIDs
+                    #       we may encounter, so we only want to process ones
+                    #       we can actually parse.
+                    logger.warning(e)
+                    continue
+                yield packet, binary_packet.apid
+
+    @staticmethod
+    def _add_or_concat_dataframe(
+        data_dict: dict[int, pd.DataFrame], key: int, value: pd.DataFrame
+    ) -> pd.DataFrame:
+        if key in data_dict:
+            return pd.concat([data_dict[key], value])
+        else:
+            return value
+
+    def process(
+        self, files: Path | list[Path], raise_on_error: bool = False
+    ) -> dict[Path, IFilePathHandler]:
         """Process HK with XTCE tools and create CSV file."""
 
         if isinstance(files, Path):
             files = [files]
 
         # Load input files.
-        input_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(files)
+        input_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(
+            files, raise_on_error=raise_on_error
+        )
 
         # Load data for each ApID.
         datastore_data = self.__load_datastore_data(input_data)
@@ -69,7 +110,7 @@ class HKProcessor(FileProcessor):
         combined_data = datastore_data
 
         for apid, data in input_data.items():
-            combined_data[apid] = add_or_concat_dataframe(
+            combined_data[apid] = self._add_or_concat_dataframe(
                 combined_data, apid, input_data[apid]
             )
 
@@ -127,7 +168,7 @@ class HKProcessor(FileProcessor):
         return processed_files
 
     def __load_datastore_data(
-        self, input_data: dict[int, pd.DataFrame]
+        self, input_data: dict[int, pd.DataFrame], raise_on_error: bool = False
     ) -> dict[int, pd.DataFrame]:
         """Load existing data from the datastore for each ApID and day."""
 
@@ -173,18 +214,18 @@ class HKProcessor(FileProcessor):
                     )
 
                 day_data: dict[int, pd.DataFrame] = self.__load_and_decommutate_files(
-                    day_files
+                    day_files, raise_on_error=raise_on_error
                 )
                 assert (apid in day_data) and (len(day_data) == 1)
 
-                datastore_data[apid] = add_or_concat_dataframe(
+                datastore_data[apid] = self._add_or_concat_dataframe(
                     datastore_data, apid, day_data[apid]
                 )
 
         return datastore_data
 
     def __load_and_decommutate_files(
-        self, files: list[Path]
+        self, files: list[Path], raise_on_error: bool = False
     ) -> dict[int, pd.DataFrame]:
         """Load and decommutate packets from binary files."""
 
@@ -194,7 +235,9 @@ class HKProcessor(FileProcessor):
             try:
                 results: dict[int, xr.Dataset] = self.__decommutate_packets(file)
             except Exception as e:
-                logger.error(f"Failed to decommutate packets from {file}:\n{e}")
+                logger.error(f"Failed to decommutate packets from {file}", exc_info=e)
+                if raise_on_error:
+                    raise e
                 continue
 
             logger.info(
@@ -202,7 +245,7 @@ class HKProcessor(FileProcessor):
             )
 
             for apid, data in results.items():
-                dataframe_by_apid[apid] = add_or_concat_dataframe(
+                dataframe_by_apid[apid] = self._add_or_concat_dataframe(
                     dataframe_by_apid, apid, data.to_dataframe()
                 )
 
@@ -230,35 +273,34 @@ class HKProcessor(FileProcessor):
         for subsystem in subsystems:
             logger.debug(f"Processing subsystem: {subsystem.name}")
 
-            packet_definition = definitions.XtcePacketDefinition(
-                self.__xtcePacketDefinitionFolder
-                / f"{subsystem.value}_{subsystem.tlm_db_version}.xml"
+            packet_definition_path = (
+                self.__xtcePacketDefinitionFolder / subsystem.tlm_db_file
             )
 
-            with open(file, "rb") as binary_data:
-                packet_generator = packet_definition.packet_generator(
-                    binary_data,
-                    show_progress=False,  # Prefect will log this every 0.001 seconds, which is insane
+            if not packet_definition_path.exists():
+                raise FileNotFoundError(
+                    f"Packet definition file not found for subsystem {subsystem.name} at expected path: {packet_definition_path}"
                 )
 
-                for packet in packet_generator:
-                    apid = packet.header["PKT_APID"].raw_value
-                    data_dict.setdefault(apid, collections.defaultdict(list))
+            for packet, apid in self._packet_generator(
+                packet_file=file, xtce_packet_definition=packet_definition_path
+            ):
+                data_dict.setdefault(apid, collections.defaultdict(list))
 
-                    packet_content = packet.user_data | packet.header
+                packet_content = packet.user_data | packet.header
 
-                    for key, value in packet_content.items():
-                        if value is None:
-                            value = value.raw_value
-                        elif hasattr(value, "decode"):
-                            value = int.from_bytes(value, byteorder="big")
+                for key, value in packet_content.items():
+                    if value is None:
+                        value = value.raw_value
+                    elif hasattr(value, "decode"):
+                        value = int.from_bytes(value, byteorder="big")
 
-                        match_packet_name_prefix_regex = r"^\w+?_\w+?\."
-                        packet_field_name = re.sub(
-                            match_packet_name_prefix_regex, "", key.lower()
-                        )
+                    match_packet_name_prefix_regex = r"^\w+?_\w+?\."
+                    packet_field_name = re.sub(
+                        match_packet_name_prefix_regex, "", key.lower()
+                    )
 
-                        data_dict[apid][packet_field_name].append(value)
+                    data_dict[apid][packet_field_name].append(value)
 
             # Convert data to xarray datasets.
             for apid, data in data_dict.items():

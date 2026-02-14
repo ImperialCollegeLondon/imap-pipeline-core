@@ -59,7 +59,6 @@ def define_available_data_sdc_mappings(
             "ingestion_date": ingestion_timestamp.strftime("%Y%m%d %H:%M:%S"),
         }
     ]
-
     wiremock_manager.add_string_mapping(
         f"/query?table=science&instrument=mag&data_level=l1c&descriptor={mode_str}-magi&{prefix}start_date={start_date_str}&{prefix}end_date={end_date_str}&extension=cdf",
         json.dumps(query_response),
@@ -147,7 +146,7 @@ def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: da
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-async def test_poll_science_autoflow_first_ever_run(
+async def test_poll_science_flow_has_correct_workflow_start_date_on_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
@@ -155,7 +154,7 @@ async def test_poll_science_autoflow_first_ever_run(
     clean_datastore,
 ):
     # Set up.
-    ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+    ingestion_timestamp = NOW - timedelta(hours=1)
 
     wiremock_manager.reset()
 
@@ -177,10 +176,9 @@ async def test_poll_science_autoflow_first_ever_run(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await poll_science_flow()
+        await poll_science_flow(modes=[ScienceMode.Normal])
 
     # Verify.
-    verify_not_available_modes(test_database, [ScienceMode.Burst])
     verify_available_modes(
         test_database,
         [ScienceMode.Normal],
@@ -231,10 +229,9 @@ async def test_poll_science_autoflow_continue_from_previous_download(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await poll_science_flow()
+        await poll_science_flow(modes=[ScienceMode.Normal])
 
     # Verify.
-    verify_not_available_modes(test_database, [ScienceMode.Burst])
     verify_available_modes(
         test_database,
         [ScienceMode.Normal],

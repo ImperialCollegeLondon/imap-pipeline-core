@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/maresb/check-json5
-    rev: v1.0.0
+    rev: v1.0.1
     hooks:
     - id: check-json5
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -16,26 +16,26 @@ repos:
         args: [--autofix, --indent, "4"]
         exclude: .devcontainer/devcontainer.json|.vscode/settings.json|.vscode/tasks.json|.vscode/launch.json
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.5
+    rev: v1.5.6
     hooks:
       - id: remove-crlf
       - id: remove-tabs
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: "0.35.0"
+    rev: "0.36.1"
     hooks:
       - id: check-github-workflows
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.7
+    rev: v0.14.14
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.46.0
+    rev: v0.47.0
     hooks:
       - id: markdownlint-fix
         args: [--ignore, LICENSE.md]
   - repo: https://github.com/python-poetry/poetry
-    rev: "2.2.1"
+    rev: "2.3.2"
     hooks:
     -   id: poetry-check
