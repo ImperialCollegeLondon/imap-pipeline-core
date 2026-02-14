@@ -42,6 +42,14 @@ class IFilePathHandler(abc.ABC):
     def get_filename(self) -> str:
         pass
 
+    @abc.abstractmethod
+    def add_metadata(self, metadata: dict) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metadata(self) -> dict | None:
+        pass
+
     @classmethod
     @abc.abstractmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:

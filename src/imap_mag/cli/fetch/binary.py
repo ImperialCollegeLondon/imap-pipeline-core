@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.WebPODA import WebPODA
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchBinary import FetchBinary
+from imap_mag.io import DatastoreFileManager
 from imap_mag.io.file import HKBinaryPathHandler
 from imap_mag.util import HKPacket
 
@@ -97,7 +97,7 @@ def fetch_binary(
     output_binaries: dict[Path, HKBinaryPathHandler] = dict()
 
     if app_settings.fetch_binary.publish_to_data_store:
-        datastore_manager = appUtils.getManagerByMode(
+        datastore_manager = DatastoreFileManager.CreateByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )

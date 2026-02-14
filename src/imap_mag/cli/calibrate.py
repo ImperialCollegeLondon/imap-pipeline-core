@@ -5,11 +5,10 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, CalibrationConfig, GradiometryConfig, SaveMode
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import DatastoreFileFinder, DatastoreFileManager
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -78,7 +77,7 @@ def gradiometry(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = appUtils.getManagerByMode(
+    outputManager = DatastoreFileManager.CreateByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 
@@ -167,7 +166,7 @@ def calibrate(
         calibration_handler, calibration_configuration
     )
 
-    outputManager = appUtils.getManagerByMode(
+    outputManager = DatastoreFileManager.CreateByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 

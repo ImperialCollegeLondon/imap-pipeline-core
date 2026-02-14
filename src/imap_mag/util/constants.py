@@ -8,6 +8,7 @@ class CONSTANTS:
     IMAP_EPOCH_DATETIME = datetime(2010, 1, 1, 0, 0, 0, tzinfo=UTC)
     J2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
     J2000_EPOCH_POSIX = datetime(2000, 1, 1, 11, 58, 55, 816000).timestamp()
+    IMAP_LAUNCH_DAY = datetime(2025, 9, 24, 0, 0, 0)
 
     MAG_APID_RANGE = (992, 1119)
     IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05.yaml"

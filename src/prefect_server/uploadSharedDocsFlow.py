@@ -178,7 +178,7 @@ def _get_workflow_progress(
         if find_files_after is None
         else find_files_after
     )
-    workflow_progress.update_last_checked_date(started)
+    workflow_progress.update_last_checked_timestamp(started)
 
     logger.info(
         f"Looking for {how_many if how_many else 'all'} files after {last_modified_date}"

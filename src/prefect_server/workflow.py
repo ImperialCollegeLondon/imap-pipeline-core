@@ -29,6 +29,7 @@ from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
+from prefect_server.spiceDownloadFlow import poll_spice_flow
 from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 
 
@@ -123,6 +124,13 @@ async def adeploy_flows(local_debug: bool = False):
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
         job_variables=shared_job_variables | {"mem_limit": "6G", "memswap_limit": "6G"},
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_spice_deployable = poll_spice_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPICE,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
+        job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
@@ -335,6 +343,7 @@ async def adeploy_flows(local_debug: bool = False):
     deployables = await asyncio.gather(
         poll_ialirt_deployable,
         poll_hk_deployable,
+        poll_spice_deployable,
         poll_science_deployable,
         publish_deployable,
         check_ialirt_deployable,

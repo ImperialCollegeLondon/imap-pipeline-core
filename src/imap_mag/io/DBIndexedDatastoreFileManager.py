@@ -77,20 +77,26 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
             version: int = (
                 path_handler.get_sequence()
-                if isinstance(path_handler, SequenceablePathHandler)
+                if path_handler.supports_sequencing()
+                and isinstance(
+                    path_handler,
+                    SequenceablePathHandler,
+                )
                 else 0
             )
 
             try:
-                self.__database.insert_file(
-                    File.from_file(
-                        file=destination_file,
-                        version=version,
-                        hash=original_hash,
-                        content_date=path_handler.get_content_date_for_indexing(),
-                        settings=self.__settings,
-                    )
+                new_file = File.from_file(
+                    file=destination_file,
+                    version=version,
+                    hash=original_hash,
+                    content_date=path_handler.get_content_date_for_indexing(),
+                    settings=self.__settings,
                 )
+
+                new_file.file_meta = path_handler.get_metadata()
+
+                self.__database.insert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 destination_file.unlink()

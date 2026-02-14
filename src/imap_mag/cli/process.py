@@ -4,10 +4,13 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
+from imap_mag.io import (
+    DatastoreFileFinder,
+    DatastoreFileManager,
+    FilePathHandlerSelector,
+)
 from imap_mag.io.file import IFilePathHandler
 from imap_mag.process import FileProcessor, dispatch
 
@@ -43,7 +46,7 @@ def process(
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
-    datastore_manager = appUtils.getManagerByMode(
+    datastore_manager = DatastoreFileManager.CreateByMode(
         app_settings,
         use_database=(save_mode == SaveMode.LocalAndDatabase),
     )

@@ -212,6 +212,12 @@ class CustomPathHandler(IFilePathHandler):
     def get_filename(self) -> str:
         return self.name
 
+    def add_metadata(self, metadata: dict) -> None:
+        raise NotImplementedError()
+
+    def get_metadata(self) -> dict | None:
+        return None
+
     @classmethod
     def from_filename(cls, filename: str | Path) -> "CustomPathHandler | None":
         return None

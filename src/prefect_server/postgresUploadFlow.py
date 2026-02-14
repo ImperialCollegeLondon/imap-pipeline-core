@@ -152,7 +152,7 @@ async def upload_new_files_to_postgres(
     # Get new files from database
     new_files_db = db.get_files_since(last_modified_date, how_many)
 
-    workflow_progress.update_last_checked_date(started)
+    workflow_progress.update_last_checked_timestamp(started)
 
     # Filter files by patterns
     files = [

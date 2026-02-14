@@ -1,17 +1,6 @@
 {
     "configurations": [
         {
-            "code": "import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PREFECT_API_URL": "http://127.0.0.1:4200/api",
-                "SQLALCHEMY_URL": "postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap"
-            },
-            "name": "Python Debugger: Prefect deploy and run",
-            "request": "launch",
-            "type": "debugpy"
-        },
-        {
             "console": "integratedTerminal",
             "justMyCode": false,
             "name": "Python: Debug Tests",
@@ -23,30 +12,29 @@
             "type": "debugpy"
         },
         {
+            "code": "import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)",
+            "cwd": "${workspaceFolder}",
+            // vscode will load .env file by default - so copy defaults.env to .env and edit locally
+            //"envFile": "${workspaceFolder}/defaults.env",
+            "name": "Python Debugger: Prefect deploy and run",
+            "request": "launch",
+            "type": "debugpy",
+            "preLaunchTask": "start_servers"
+        },
+        {
             "args": [
                 "process"
             ],
             "console": "integratedTerminal",
             "justMyCode": true,
             "name": "Python: Current File",
+            "cwd": "${workspaceFolder}",
             "program": "${file}",
             "request": "launch",
-            "type": "debugpy"
-        },
-        {
-            "name": "Docker: Python - General",
-            "preLaunchTask": "docker-run: debug",
-            "python": {
-                "pathMappings": [
-                    {
-                        "localRoot": "${workspaceFolder}",
-                        "remoteRoot": "/app"
-                    }
-                ],
-                "projectType": "general"
-            },
-            "request": "launch",
-            "type": "docker"
+            "type": "debugpy",
+            // vscode will load .env file by default - so copy defaults.env to .env
+            //"envFile": "${workspaceFolder}/defaults.env",
+            "preLaunchTask": "start_servers"
         }
     ],
     "version": "0.2.0"
