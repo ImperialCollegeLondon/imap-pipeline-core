@@ -10,7 +10,7 @@
 import json
 import logging
 import textwrap
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class MetaKernel:
 \\begintext
 
 This is the most up to date Metakernel as of
-{datetime.now(timezone.utc)}.
+{datetime.now(UTC)}.
 
 This attempts to cover data from
 {self.start_time_j2000} to {self.end_time_j2000}

@@ -5,12 +5,11 @@ from typing import Annotated
 
 import typer
 
-from imap_mag import appUtils
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchIALiRT import FetchIALiRT
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import DatastoreFileFinder, DatastoreFileManager
 from imap_mag.io.file import IALiRTPathHandler
 
 logger = logging.getLogger(__name__)
@@ -66,7 +65,7 @@ def fetch_ialirt(
     ialirt_files_and_handlers: dict[Path, IALiRTPathHandler] = dict()
 
     if app_settings.fetch_ialirt.publish_to_data_store:
-        datastore_manager = appUtils.getManagerByMode(
+        datastore_manager = DatastoreFileManager.CreateByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )

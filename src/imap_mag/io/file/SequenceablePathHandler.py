@@ -1,7 +1,6 @@
 import abc
 import re
 from dataclasses import dataclass
-from typing import final
 
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 

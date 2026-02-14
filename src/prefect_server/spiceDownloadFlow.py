@@ -10,7 +10,6 @@ from pydantic import Field
 from imap_db.main import create_db, upgrade_db
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.spice import fetch_spice
-from imap_mag.config import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import SPICEPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, TimeConversion

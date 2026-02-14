@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import TimeConversion
 
@@ -175,11 +174,8 @@ class SPICEPathHandler(VersionedPathHandler):
         if is_spice:
             # file is versioned if it has _v### before the file extension
             versioned_match = re.search(r"_v(\d{3,})\.", filename_only)
-            if versioned_match:
-                is_versioned_spice_file = True
-                version = int(versioned_match.group(1))
-            else:
-                is_versioned_spice_file = False
+            is_versioned_spice_file = versioned_match is not None
+            version = int(versioned_match.group(1)) if versioned_match else None
 
             if kernel_type is None:
                 logger.warning(
@@ -187,9 +183,13 @@ class SPICEPathHandler(VersionedPathHandler):
                 )
                 kernel_type = "unknown"
 
-            return cls(
+            handler = cls(
                 kernel_folder=kernel_type,
                 filename=filename_only,
             )
+            handler.is_versioned_spice_file = is_versioned_spice_file
+            if version is not None:
+                handler.version = version
+            return handler
 
         return None

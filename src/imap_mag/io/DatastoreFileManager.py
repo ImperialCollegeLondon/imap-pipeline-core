@@ -2,9 +2,13 @@ import hashlib
 import logging
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
+
+if TYPE_CHECKING:
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +113,20 @@ class DatastoreFileManager(IDatastoreFileManager):
             destination_file = updated_file
 
         return False
+
+    @classmethod
+    def CreateByMode(
+        cls, settings: "AppSettings", use_database: bool
+    ) -> IDatastoreFileManager:
+        """Retrieve output manager based on destination and mode."""
+
+        from imap_mag.io.DBIndexedDatastoreFileManager import (
+            DBIndexedDatastoreFileManager,
+        )
+
+        manager: IDatastoreFileManager = DatastoreFileManager(settings.data_store)
+
+        if use_database:
+            return DBIndexedDatastoreFileManager(manager, settings=settings)
+        else:
+            return manager

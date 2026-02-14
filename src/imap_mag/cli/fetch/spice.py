@@ -6,21 +6,18 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from pathlib import Path
-from typing import Annotated, Optional
 
 import spiceypy
-import typer
 
 from imap_db.model import File
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.config import AppSettings, FetchMode
+from imap_mag.config import AppSettings
 from imap_mag.db import Database
-from imap_mag.io.DatabaseFileOutputManager import IOutputManager
+from imap_mag.io import DatastoreFileManager, IDatastoreFileManager
 from imap_mag.io.file import SPICEPathHandler
-from imap_mag.io.OutputManager import OutputManager
 from imap_mag.process.metakernel import MetaKernel
-from imap_mag.util import CONSTANTS, DatetimeProvider
+from imap_mag.util import DatetimeProvider
 from imap_mag.util.Humaniser import Humaniser
 from imap_mag.util.TimeConversion import TimeConversion
 
@@ -296,11 +293,11 @@ def fetch_spice(
         data_access, ingest_start_day, spice_file_query_results
     )
 
-    output_manager: IOutputManager | None = None
+    output_manager: IDatastoreFileManager | None = None
     if not app_settings.fetch_spice.publish_to_data_store:
         logger.info("Files not published to data store based on config.")
     else:
-        output_manager = OutputManager.CreateByMode(
+        output_manager = DatastoreFileManager.CreateByMode(
             app_settings,
             use_database=use_database,
         )
@@ -433,7 +430,7 @@ def generate_spice_metakernel(
         work_folder
         / SPICEPathHandler.get_root_folder()
         / "mk"
-        / f"imag_mag_metakernel_{start_time.strftime("%Y%m%dT%H%M%S")}_{end_time.strftime("%Y%m%dT%H%M%S")}_v000.tm"
+        / f"imap_mag_metakernel_{start_time.strftime('%Y%m%dT%H%M%S')}_{end_time.strftime('%Y%m%dT%H%M%S')}_v000.tm"
     )
 
     if (require_coverage) and metakernel.contains_gaps():
@@ -466,7 +463,7 @@ def generate_spice_metakernel(
             logger.info(
                 f"Copying metakernel from work folder to output path {final_metakernel_path}"
             )
-            with open(metakernel_file_path, "r") as src_file:
+            with open(metakernel_file_path) as src_file:
                 with open(final_metakernel_path, "w") as dest_file:
                     dest_file.write(src_file.read())
 
@@ -488,7 +485,7 @@ def publish_spice_kernel(
     use_database: bool,
 ) -> Path:
     """Publish SPICE kernel to data store."""
-    output_manager: IOutputManager = OutputManager.CreateByMode(
+    output_manager: IDatastoreFileManager = DatastoreFileManager.CreateByMode(
         app_settings,
         use_database=use_database,
     )
@@ -500,7 +497,7 @@ def publish_spice_kernel(
             f"Downloaded SPICE file {kernal_file_path} could not be parsed into SPICEPathHandler"
         )
 
-    (output_file, output_handler) = output_manager.add_file(kernal_file_path, handler)
+    (output_file, _) = output_manager.add_file(kernal_file_path, handler)
 
     return output_file
 
@@ -510,7 +507,7 @@ def _metakernel_builder(
     end_time: datetime | None,
     files: list[File],
     spice_folder: Path,
-    file_types: Optional[set[str]] = None,
+    file_types: set[str] | None = None,
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
 

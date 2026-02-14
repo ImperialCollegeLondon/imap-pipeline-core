@@ -74,7 +74,7 @@ def test_update_database_no_update_needed_if_latest_timestamp_is_older_than_prog
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -106,7 +106,7 @@ def test_update_database_update_needed_no_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {YESTERDAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {YESTERDAY}."
         in capture_cli_logs.text
     )
 
@@ -138,7 +138,7 @@ def test_update_database_update_needed_old_data(
 
     # Verify
     assert (
-        f"Latest downloaded timestamp for packet MAG_SCI_NORM is {TODAY}."
+        f"Latest progress timestamp for MAG_SCI_NORM is {TODAY}."
         in capture_cli_logs.text
     )
 
