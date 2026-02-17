@@ -7,7 +7,7 @@ import typer
 
 from imap_mag.check import IALiRTAnomaly, check_ialirt_files
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
+from imap_mag.cli.ialirtUtils import fetch_ialirt_hk_files_for_work
 from imap_mag.config import AppSettings
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def check_ialirt(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    work_files = fetch_ialirt_files_for_work(
+    work_files = fetch_ialirt_hk_files_for_work(
         app_settings.data_store,
         work_folder,
         start_date=start_date,

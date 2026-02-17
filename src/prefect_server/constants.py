@@ -16,6 +16,7 @@ class PREFECT_CONSTANTS:
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_UPDATED = "imap_mag.ialirt.updated"
+        IALIRT_HK_UPDATED = "imap_mag.ialirt_hk.updated"
 
     class POLL_IALIRT:
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
@@ -31,6 +32,7 @@ class PREFECT_CONSTANTS:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
         POLL_IALIRT_CRON = "IMAP_CRON_POLL_IALIRT"
+        POLL_IALIRT_HK_CRON = "IMAP_CRON_POLL_IALIRT_HK"
         CHECK_IALIRT_CRON = "IMAP_CRON_CHECK_IALIRT"
         POLL_HK_CRON = "IMAP_CRON_POLL_HK"
         POLL_L1C_NORM_CRON = "IMAP_CRON_POLL_L1C_NORM"
@@ -55,6 +57,7 @@ class PREFECT_CONSTANTS:
 
     class FLOW_NAMES:
         POLL_IALIRT = "poll-ialirt"
+        POLL_IALIRT_HK = "poll-ialirt-hk"
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
@@ -71,6 +74,7 @@ class PREFECT_CONSTANTS:
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
+        POLL_IALIRT_HK = "poll_ialirt_hk"
         POLL_HK = "poll_hk"
         POLL_SCIENCE = "poll_science"
         POLL_L1C_NORM = "poll_l1c_norm_science"

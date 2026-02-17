@@ -82,7 +82,7 @@ def write_test_ialirt_packet_definition_file(folder: Path) -> Path:
 def write_test_ialirt_data_file(folder: Path) -> Path:
     file: Path = folder / "ialirt_data.csv"
     file.write_text(
-        "met_in_utc,danger_limit_param,warning_limit_param,both_limit_param,forbidden_param,forbidden_lookup_param,flag_param\n"
+        "time_utc,danger_limit_param,warning_limit_param,both_limit_param,forbidden_param,forbidden_lookup_param,flag_param\n"
         "2024-01-01T00:00:00,15,25,40,50,50,0\n"
         "2024-01-01T01:00:00,14,26,41,60,60,0\n"
         "2024-01-01T02:00:00,13,27,42,70,70,0\n"
@@ -253,7 +253,7 @@ def test_check_ialirt_files_unknown_validation_type(temp_folder_path, caplog) ->
 
     test_ialirt_data: Path = temp_folder_path / "ialirt_data.csv"
     test_ialirt_data.write_text(
-        "met_in_utc,known_param\n"
+        "time_utc,known_param\n"
         "2024-01-01T00:00:00,1\n"
         "2024-01-01T01:00:00,2\n"
         "2024-01-01T02:00:00,3\n"

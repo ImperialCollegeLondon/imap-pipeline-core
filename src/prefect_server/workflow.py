@@ -22,7 +22,7 @@ from prefect_server.performCalibration import (
     gradiometry_flow,
 )
 from prefect_server.pollHK import poll_hk_flow
-from prefect_server.pollIALiRT import poll_ialirt_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.pollSpice import poll_spice_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
@@ -121,6 +121,13 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+    )
+
+    poll_ialirt_hk_deployable = poll_ialirt_hk_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT_HK,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_HK_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
@@ -270,6 +277,13 @@ async def adeploy_flows(local_debug: bool = False):
                 },
             ),
             DeploymentEventTrigger(
+                name="Trigger upload after I-ALiRT HK poll",
+                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
+                match_related={
+                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT_HK
+                },
+            ),
+            DeploymentEventTrigger(
                 name="Trigger upload after science poll",
                 expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
@@ -368,6 +382,7 @@ async def adeploy_flows(local_debug: bool = False):
 
     deployables = await asyncio.gather(
         poll_ialirt_deployable,
+        poll_ialirt_hk_deployable,
         poll_hk_deployable,
         poll_spice_deployable,
         poll_science_deployable,

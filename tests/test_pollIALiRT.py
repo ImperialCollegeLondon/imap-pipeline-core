@@ -10,7 +10,7 @@ import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import poll_ialirt_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     END_OF_HOUR,
@@ -36,6 +36,36 @@ def define_available_ialirt_mappings(
     query_response: list[dict] = [
         {
             "mag_B_GSE": [-1.53, -3.033, 0.539],
+            "mag_theta_B_GSM": 25.017,
+            "time_utc": start_date_str,
+            "extra_field1": "extra_value1",
+        },
+        {
+            "mag_B_GSE": [4.187, 0.687, 0.757],
+            "mag_theta_B_GSM": 6.732,
+            "time_utc": end_date_str,
+            "extra_field2": "extra_value2",
+        },
+    ]
+
+    wiremock_manager.add_string_mapping(
+        f"/space-weather?instrument=mag&time_utc_start={quote(start_date_str)}&time_utc_end={quote(end_date_str)}",
+        json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
+        priority=1,
+    )
+
+
+def define_available_ialirt_hk_mappings(
+    wiremock_manager,
+    start_date: datetime,
+    end_date: datetime,
+):
+    start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
+    end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S")
+
+    query_response: list[dict] = [
+        {
+            "instrument": "mag_hk",
             "mag_hk_status": {
                 "fib_temp": 2464,
                 "mode": 6,
@@ -43,13 +73,10 @@ def define_available_ialirt_mappings(
                 "hk3v3": 2880,
                 "fob_range": 2,
             },
-            "mag_theta_B_GSM": 25.017,
-            "met_in_utc": start_date_str,
-            "last_modified": start_date_str,
-            "extra_field1": "extra_value1",
+            "time_utc": start_date_str,
         },
         {
-            "mag_B_GSE": [4.187, 0.687, 0.757],
+            "instrument": "mag_hk",
             "mag_hk_status": {
                 "fib_temp": 2464,
                 "mode": 5,
@@ -57,16 +84,15 @@ def define_available_ialirt_mappings(
                 "hk3v3": 2880,
                 "fob_range": 2,
             },
-            "mag_theta_B_GSM": 6.732,
-            "met_in_utc": end_date_str,
-            "last_modified": end_date_str,
-            "extra_field2": "extra_value2",
+            "time_utc": end_date_str,
         },
     ]
 
     wiremock_manager.add_string_mapping(
-        f"/ialirt-db-query?met_in_utc_start={quote(start_date_str)}&met_in_utc_end={quote(end_date_str)}",
-        json.dumps(query_response),
+        f"/space-weather?instrument=mag_hk&time_utc_start={quote(start_date_str)}&time_utc_end={quote(end_date_str)}",
+        json.dumps(
+            {"meta": {"count": 2, "instrument": "mag_hk"}, "data": query_response}
+        ),
         priority=1,
     )
 
@@ -83,13 +109,32 @@ def verify_available_ialirt(
     assert workflow_progress.get_progress_timestamp() == progress_timestamp
 
     # Files.
-    check_file_existence(actual_timestamp)
+    check_file_existence(actual_timestamp, "ialirt", "imap_ialirt")
 
 
-def check_file_existence(actual_timestamp: datetime):
+def verify_available_ialirt_hk(
+    database,
+    progress_timestamp: datetime,
+    actual_timestamp: datetime,
+):
+    # Database.
+    workflow_progress = database.get_workflow_progress("MAG_IALIRT_HK")
+
+    assert workflow_progress.get_last_checked_date() == NOW
+    assert workflow_progress.get_progress_timestamp() == progress_timestamp
+
+    # Files.
+    check_file_existence(actual_timestamp, "ialirt_hk", "imap_ialirt_hk")
+
+
+def check_file_existence(
+    actual_timestamp: datetime, folder_name: str, file_prefix: str
+):
     datastore = AppSettings().data_store  # type: ignore
-    data_folder = os.path.join(datastore, "ialirt", actual_timestamp.strftime("%Y/%m"))
-    cdf_file = f"imap_ialirt_{actual_timestamp.strftime('%Y%m%d')}.csv"
+    data_folder = os.path.join(
+        datastore, folder_name, actual_timestamp.strftime("%Y/%m")
+    )
+    cdf_file = f"{file_prefix}_{actual_timestamp.strftime('%Y%m%d')}.csv"
 
     assert os.path.exists(os.path.join(data_folder, cdf_file))
 
@@ -299,3 +344,76 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
 
     # Verify.
     mock_teams_webhook_block.notify.assert_called_once()
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_hk_autoflow_first_ever_run(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    # Set up.
+    wiremock_manager.reset()
+
+    define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
+
+    # Exercise.
+    with Environment(
+        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+        IALIRT_API_KEY="12345",
+    ):
+        await poll_ialirt_hk_flow(
+            wait_for_new_data_to_arrive=False,
+        )
+
+    # Verify.
+    verify_available_ialirt_hk(
+        test_database,
+        END_OF_HOUR.replace(microsecond=0),
+        TODAY,
+    )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_datetime_provider,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    # Set up.
+    start_date = datetime(2025, 4, 1)
+    end_date = datetime(2025, 4, 2)
+
+    wiremock_manager.reset()
+
+    define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
+
+    # Exercise.
+    with Environment(
+        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+        IALIRT_API_KEY="12345",
+    ):
+        await poll_ialirt_hk_flow(
+            wait_for_new_data_to_arrive=False,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    # Verify.
+    verify_available_ialirt_hk(
+        test_database,
+        end_date,
+        start_date,
+    )
