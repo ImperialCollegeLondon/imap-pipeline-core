@@ -251,36 +251,20 @@ def test_fetch_ialirt_downloads_data_from_sdc(
     query_response: list[dict] = [
         {
             "mag_B_GSE": [-1.53, -3.033, 0.539],
-            "mag_hk_status": {
-                "fib_temp": 2464,
-                "mode": 6,
-                "hk1v5c_warn": False,
-                "hk3v3": 2880,
-                "fob_range": 2,
-            },
             "mag_theta_B_GSM": 25.017,
-            "met_in_utc": "2025-10-14T03:00:00",
-            "last_modified": "2025-10-14T03:01:02",
+            "time_utc": "2025-10-14T03:00:00",
             "extra_field1": "extra_value1",
         },
         {
             "mag_B_GSE": [4.187, 0.687, 0.757],
-            "mag_hk_status": {
-                "fib_temp": 2464,
-                "mode": 5,
-                "hk1v5c_warn": False,
-                "hk3v3": 2880,
-                "fob_range": 2,
-            },
             "mag_theta_B_GSM": 6.732,
-            "met_in_utc": "2025-10-14T03:01:00",
-            "last_modified": "2025-10-14T03:02:03",
+            "time_utc": "2025-10-14T03:01:00",
             "extra_field2": "extra_value2",
         },
     ]
     wiremock_manager.add_string_mapping(
-        "/ialirt-db-query?met_in_utc_start=2025-10-14T03%3A00%3A00&met_in_utc_end=2025-10-14T03%3A01%3A00",
-        json.dumps(query_response),
+        "/space-weather?instrument=mag&time_utc_start=2025-10-14T03%3A00%3A00&time_utc_end=2025-10-14T03%3A01%3A00",
+        json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
         priority=1,
     )
 
@@ -505,7 +489,7 @@ def test_check_ialirt_no_issues(
             "check",
             "ialirt",
             "--files",
-            str(TEST_DATA / "ialirt_data_without_anomalies.csv"),
+            str(TEST_DATA / "ialirt_hk_data_without_anomalies.csv"),
         ],
         env={"MAG_DATA_STORE": str(temp_datastore)},
     )
@@ -529,7 +513,7 @@ def test_check_ialirt_with_issues(
             "check",
             "ialirt",
             "--files",
-            str(TEST_DATA / "ialirt_data_with_anomalies.csv"),
+            str(TEST_DATA / "ialirt_hk_data_with_anomalies.csv"),
         ],
         env={"MAG_DATA_STORE": str(temp_datastore)},
     )

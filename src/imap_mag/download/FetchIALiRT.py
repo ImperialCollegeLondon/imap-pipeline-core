@@ -1,4 +1,4 @@
-"""Program to retrieve and process MAG CDF files."""
+"""Program to retrieve and process MAG I-ALiRT data."""
 
 import logging
 from datetime import datetime
@@ -9,7 +9,8 @@ import yaml
 
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import DatastoreFileFinder
-from imap_mag.io.file import IALiRTPathHandler
+from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.process import get_packet_definition_folder
 from imap_mag.util.constants import CONSTANTS
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class FetchIALiRT:
     """Manage I-ALiRT data."""
 
-    __DATE_INDEX = "met_in_utc"
+    __DATE_INDEX = "time_utc"
     __IALIRT_PACKET_DEFINITION_FILE = CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
 
     def __init__(
@@ -36,29 +37,66 @@ class FetchIALiRT:
         self.__datastore_finder = datastore_finder
         self.__packetDefinitionFolder = get_packet_definition_folder(packet_definition)
 
-    def download_ialirt_to_csv(
+    def download_mag_to_csv(
         self,
         start_date: datetime,
         end_date: datetime,
     ) -> dict[Path, IALiRTPathHandler]:
-        """Retrieve I-ALiRT data."""
+        """Retrieve I-ALiRT MAG science data."""
 
-        downloaded_files: dict[Path, IALiRTPathHandler] = dict()
+        return self.__download_to_csv(
+            instrument="mag",
+            start_date=start_date,
+            end_date=end_date,
+            path_handler_factory=lambda content_date: IALiRTPathHandler(
+                content_date=content_date
+            ),
+            process_fn=lambda df: process_ialirt_mag_data(df),
+        )
+
+    def download_mag_hk_to_csv(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> dict[Path, IALiRTHKPathHandler]:
+        """Retrieve I-ALiRT MAG HK data."""
+
+        return self.__download_to_csv(
+            instrument="mag_hk",
+            start_date=start_date,
+            end_date=end_date,
+            path_handler_factory=lambda content_date: IALiRTHKPathHandler(
+                content_date=content_date
+            ),
+            process_fn=lambda df: process_ialirt_hk_data(
+                df,
+                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
+            ),
+        )
+
+    def __download_to_csv(
+        self,
+        instrument: str,
+        start_date: datetime,
+        end_date: datetime,
+        path_handler_factory,
+        process_fn,
+    ) -> dict[Path, IFilePathHandler]:
+        """Retrieve I-ALiRT data for a specific instrument."""
+
+        downloaded_files: dict[Path, IFilePathHandler] = dict()
 
         downloaded: list[dict] = self.__data_access.get_all_by_dates(
-            start_date=start_date, end_date=end_date
+            instrument=instrument, start_date=start_date, end_date=end_date
         )
 
         if downloaded:
             logger.info(
-                f"Downloaded {len(downloaded)} entries from I-ALiRT Data Access."
+                f"Downloaded {len(downloaded)} {instrument} entries from I-ALiRT Data Access."
             )
 
             downloaded_data = pd.DataFrame(downloaded)
-            downloaded_data = process_ialirt_data(
-                downloaded_data,
-                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
-            )
+            downloaded_data = process_fn(downloaded_data)
 
             # Aggregate data by multiple instruments per timestamp
             rules: dict = dict.fromkeys(downloaded_data, "first")
@@ -79,7 +117,7 @@ class FetchIALiRT:
             unique_dates = downloaded_dates.unique()
 
             logger.info(
-                f"Downloaded I-ALiRT data for {len(unique_dates)} days: {', '.join(d.strftime('%Y-%m-%d') for d in unique_dates)}"
+                f"Downloaded I-ALiRT {instrument} data for {len(unique_dates)} days: {', '.join(d.strftime('%Y-%m-%d') for d in unique_dates)}"
             )
 
             for day_info, daily_data in downloaded_data.groupby(downloaded_dates):
@@ -91,7 +129,7 @@ class FetchIALiRT:
                 min_daily_date = min(daily_dates)
                 max_daily_date = max(daily_dates)
 
-                path_handler = IALiRTPathHandler(content_date=max_daily_date)
+                path_handler = path_handler_factory(max_daily_date)
 
                 # Find file in datastore
                 file_path: Path | None = self.__datastore_finder.find_matching_file(
@@ -131,8 +169,8 @@ class FetchIALiRT:
                 else:
                     write_mode = "w"
 
-                # Sort data by MET and remove any duplicates (by keeping the latest entries)
-                # Use MET as index and reorder the columns alphabetically
+                # Sort data by time and remove any duplicates (by keeping the latest entries)
+                # Use time_utc as index and reorder the columns alphabetically
                 combined_data.drop_duplicates(
                     subset=self.__DATE_INDEX, keep="last", inplace=True
                 )
@@ -149,12 +187,12 @@ class FetchIALiRT:
                     file_path, mode=write_mode, header=(write_mode == "w"), index=True
                 )
                 logger.debug(
-                    f"I-ALiRT data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
+                    f"I-ALiRT {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
                 )
 
                 downloaded_files[file_path] = path_handler
         else:
-            logger.debug("No data downloaded from I-ALiRT Data Access.")
+            logger.debug(f"No {instrument} data downloaded from I-ALiRT Data Access.")
 
         return downloaded_files
 
@@ -162,8 +200,8 @@ class FetchIALiRT:
         return pd.to_datetime(data[self.__DATE_INDEX]).dt.to_pydatetime()
 
 
-def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.DataFrame:
-    """Process I-ALiRT file to expand list columns."""
+def process_ialirt_mag_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Process I-ALiRT MAG data to expand list columns."""
 
     df.columns = df.columns.str.strip()
 
@@ -194,47 +232,50 @@ def process_ialirt_data(df: pd.DataFrame, packet_definition_file: Path) -> pd.Da
 
         df = df.drop(columns=[column])
 
-    # Extract MAG HK
+    return df
+
+
+def process_ialirt_hk_data(
+    df: pd.DataFrame, packet_definition_file: Path
+) -> pd.DataFrame:
+    """Process I-ALiRT MAG HK data with engineering unit conversions."""
+
+    df.columns = df.columns.str.strip()
+
+    # Flatten nested mag_hk_status dict into individual columns with mag_hk_ prefix
+    if "mag_hk_status" in df.columns:
+        status_df = pd.json_normalize(df["mag_hk_status"])
+        status_df.columns = [f"mag_hk_{col}" for col in status_df.columns]
+        status_df.index = df.index
+        df = pd.concat([df.drop(columns=["mag_hk_status"]), status_df], axis=1)
+
     packet_definition: dict = yaml.safe_load(packet_definition_file.read_text())
     ialirt_packet_definition: dict = {
         col["name"]: col
         for col in packet_definition["ialirt_csv_conversion"]["columns"]
     }
 
-    if "mag_hk_status" in df.columns:
-        # drop rows without the status
-        df_notna = df[df["mag_hk_status"].notna()]
-        column_hk = df_notna["mag_hk_status"]
+    # Convert from engineering units
+    for col, conversion in ialirt_packet_definition.items():
+        if col in df.columns:
+            match conversion["type"]:
+                case "polynomial":
+                    coeffs = conversion["coefficients"]
 
-        # Convert to DataFrame and add prefix to column names
-        dict_df = pd.DataFrame(column_hk.tolist(), index=df_notna.index)
-        dict_df.columns = [f"mag_hk_{field}" for field in dict_df.columns]
+                    def polynomial_conversion(x, coeffs=coeffs):
+                        return sum(c * (x**i) for i, c in enumerate(coeffs))
 
-        # Convert from engineering units
-        for col, conversion in ialirt_packet_definition.items():
-            if col in dict_df.columns:
-                match conversion["type"]:
-                    case "polynomial":
-                        coeffs = conversion["coefficients"]
+                    df[col] = df[col].apply(polynomial_conversion)
+                case "mapping":
+                    mapping = conversion["lookup"]
 
-                        def polynomial_conversion(x):
-                            return sum(c * (x**i) for i, c in enumerate(coeffs))
+                    def mapping_conversion(x, mapping=mapping):
+                        return mapping[x]
 
-                        dict_df[col] = dict_df[col].apply(polynomial_conversion)
-                    case "mapping":
-                        mapping = conversion["lookup"]
-
-                        def mapping_conversion(x):
-                            return mapping[x]
-
-                        dict_df[col] = dict_df[col].apply(mapping_conversion)
-                    case _:
-                        raise ValueError(
-                            f"Unknown conversion type '{conversion['type']}' for column '{col}'."
-                        )
-
-        # Drop original column and concatenate new columns
-        df = df.drop(columns=["mag_hk_status"])
-        df = pd.concat([df, dict_df], axis="columns")
+                    df[col] = df[col].apply(mapping_conversion)
+                case _:
+                    raise ValueError(
+                        f"Unknown conversion type '{conversion['type']}' for column '{col}'."
+                    )
 
     return df

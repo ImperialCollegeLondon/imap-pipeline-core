@@ -27,12 +27,19 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     # Set up.
     wiremock_manager.reset()
 
-    test_data = TEST_DATA / "ialirt_plot_data.csv"
+    science_data = TEST_DATA / "ialirt_science_plot_data.csv"
+    hk_data = TEST_DATA / "ialirt_hk_plot_data.csv"
 
     (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
     shutil.copy(
-        test_data,
+        science_data,
         temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
+    )
+
+    (temp_datastore / "ialirt_hk" / "2025" / "10").mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        hk_data,
+        temp_datastore / "ialirt_hk" / "2025" / "10" / "imap_ialirt_hk_20251021.csv",
     )
 
     # Exercise.
