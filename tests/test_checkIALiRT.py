@@ -32,7 +32,7 @@ async def test_check_ialirt_no_issues(
     capture_cli_logs,
 ):
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_data_without_anomalies.csv"])
+    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -58,7 +58,7 @@ async def test_check_ialirt_with_issues(
     with pytest.raises(
         FailedRun, match=re.escape("Anomalies detected in I-ALiRT data.")
     ):
-        await check_ialirt_flow(files=[TEST_DATA / "ialirt_data_with_anomalies.csv"])
+        await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_with_anomalies.csv"])
 
     # Verify.
     assert "Detected 7 anomalies in I-ALiRT data:" in capture_cli_logs.text
@@ -79,7 +79,9 @@ async def test_check_ialirt_no_files_default_dates(
     await check_ialirt_flow()
 
     # Verify.
-    assert f"Loading I-ALiRT data from {YESTERDAY} to {TODAY}." in capture_cli_logs.text
+    assert (
+        f"Loading I-ALiRT HK data from {YESTERDAY} to {TODAY}." in capture_cli_logs.text
+    )
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
 
     ialirt_check_workflow = test_database.get_workflow_progress(
@@ -114,7 +116,7 @@ async def test_check_ialirt_first_monday_of_month_first_time(
     capture_cli_logs,
 ) -> None:
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_data_without_anomalies.csv"])
+    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -149,7 +151,7 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     test_database.save(ialirt_check_workflow)
 
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_data_without_anomalies.csv"])
+    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text

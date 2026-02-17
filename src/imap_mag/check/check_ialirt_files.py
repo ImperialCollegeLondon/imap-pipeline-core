@@ -29,7 +29,7 @@ def check_ialirt_files(
 
     for file in files:
         file_data: pd.DataFrame = pd.read_csv(
-            file, parse_dates=["met_in_utc"], index_col="met_in_utc"
+            file, parse_dates=["time_utc"], index_col="time_utc"
         )
         ialirt_data = pd.concat([ialirt_data, file_data])
 
