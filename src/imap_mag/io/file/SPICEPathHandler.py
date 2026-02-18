@@ -99,17 +99,33 @@ class SPICEPathHandler(VersionedPathHandler):
         return self.is_versioned_spice_file
 
     def get_unsequenced_pattern(self) -> re.Pattern:
+        logger.debug(
+            f"Getting unsequenced pattern for SPICE file with filename {self.filename} and version {self.version}. Versioned: {self.is_versioned_spice_file}"
+        )
+
         if not self.is_versioned_spice_file:
             raise ValueError(
                 "This SPICE file is not versioned; no unsequenced pattern available."
             )
 
-        super()._check_property_values("unsequenced pattern", ["filename", "version"])
+        super()._check_property_values(
+            f"unsequenced pattern for {self.filename}", ["filename", "version"]
+        )
+        assert self.filename
+        assert self.version is not None
 
         filename_extension = self.filename.split(".")[-1]
-        base_filename = self.filename[
-            : -len(f"_v{self.version:03}.{filename_extension}")
-        ]
+
+        end_of_filename_v = f"_v{self.version:03}.{filename_extension}"
+        end_of_filename_no_v = f"_{self.version:03}.{filename_extension}"
+        if self.filename.endswith(end_of_filename_v):
+            base_filename = self.filename[: -len(end_of_filename_v)]
+        elif self.filename.endswith(end_of_filename_no_v):
+            base_filename = self.filename[: -len(end_of_filename_no_v)]
+        else:
+            raise ValueError(
+                f"Filename {self.filename} does not end with expected version pattern for versioned SPICE file."
+            )
 
         return re.compile(
             rf"{re.escape(base_filename)}_v(?P<version>\d+)\.{filename_extension}"
@@ -138,7 +154,6 @@ class SPICEPathHandler(VersionedPathHandler):
 
         if metadata.get("version") is not None:
             self.version = int(metadata["version"])
-            self.is_versioned_spice_file = True
 
     def get_metadata(self) -> dict | None:
         return self.metadata
@@ -215,6 +230,10 @@ class SPICEPathHandler(VersionedPathHandler):
             handler.is_versioned_spice_file = is_versioned_spice_file
             if version is not None:
                 handler.version = version
+
+            logger.debug(
+                f"Created SPICEPathHandler for file {filename} with kernel type {kernel_type} and version {version if is_versioned_spice_file else 'N/A'}."
+            )
             return handler
 
         return None
