@@ -127,13 +127,6 @@ class SPICEPathHandler(VersionedPathHandler):
     def get_filename(self) -> str:
         super()._check_property_values("get_filename", ["filename"])
         assert self.filename
-
-        if self.supports_sequencing() and self.version_set_pending:
-            super()._check_property_values("get_filename", ["version"])
-            # Version has been set, we need to uprev the filename to reflect this
-            self.filename = re.sub(r"_v\d{3}\.", f"_v{self.version:03}.", self.filename)
-            self.version_set_pending = False
-
         return self.filename
 
     def add_metadata(self, metadata: dict) -> None:
@@ -149,6 +142,28 @@ class SPICEPathHandler(VersionedPathHandler):
 
     def get_metadata(self) -> dict | None:
         return self.metadata
+
+    def set_sequence(self, sequence: int) -> None:
+        if not self.supports_sequencing():
+            raise ValueError("This path handler does not support sequencing.")
+
+        self.version = sequence
+        self._regenerate_filename_with_version()
+
+    def increase_sequence(self) -> None:
+        if not self.supports_sequencing():
+            raise ValueError("This path handler does not support sequencing.")
+
+        self.version += 1
+
+        self._regenerate_filename_with_version()
+
+    def _regenerate_filename_with_version(self):
+        if self.filename:
+            # Version has been updated, we need to uprev the filename to reflect this
+            self.filename = re.sub(
+                r"_v\d{3}\.(\w+$)", f"_v{self.version:03}.\\1", self.filename
+            )
 
     @classmethod
     def from_filename(cls: type[T], filename: str | Path) -> T | None:

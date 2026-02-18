@@ -52,3 +52,17 @@ def test_spice_path_handler_succeeds_if_given_spice_file(filename):
         if isinstance(filename, str)
         else filename.name
     )
+
+
+def test_spice_path_handler_can_update_versions_of_metakernels():
+    provider = SPICEPathHandler.from_filename(
+        "imap_mag_metakernel_20251017000000_20251017235959_v001.tm"
+    )
+    assert provider is not None
+
+    provider.increase_sequence()
+
+    assert (
+        provider.get_filename()
+        == "imap_mag_metakernel_20251017000000_20251017235959_v002.tm"
+    )
