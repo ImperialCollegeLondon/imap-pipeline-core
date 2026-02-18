@@ -352,10 +352,10 @@ def download_spice_files_later_than(
         downloaded_file = data_access.download(file_meta["file_name"])  # type: ignore
         file_size = downloaded_file.stat().st_size
         if file_size > 0:
-            logger.info(
-                f"Downloaded {Humaniser.format_bytes(file_size)} {downloaded_file}"
-            )
             downloaded[downloaded_file] = file_meta
+            logger.info(
+                f"{len(downloaded)}/{len(spice_file_query_results)} Downloaded {Humaniser.format_bytes(file_size)} {downloaded_file}"
+            )
         else:
             logger.warning(
                 f"Downloaded file {downloaded_file} is empty and will not be used."
