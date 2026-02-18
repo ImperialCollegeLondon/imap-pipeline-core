@@ -99,11 +99,13 @@ class Database:
         return session.query(File).filter(*args).filter_by(**kwargs).all()
 
     @__session_manager(expire_on_commit=False)
-    def get_files_by_path(self, path: str) -> list[File]:
+    def get_files_by_path(self, path: str, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
         return (
             session.query(File)
             .filter(File.path.startswith(path))
+            .filter(*args)
+            .filter_by(**kwargs)
             .order_by(File.last_modified_date)
             .all()
         )

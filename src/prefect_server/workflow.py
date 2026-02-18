@@ -24,12 +24,12 @@ from prefect_server.performCalibration import (
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollScience import poll_science_flow
+from prefect_server.pollSpice import poll_spice_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
-from prefect_server.spiceDownloadFlow import poll_spice_flow
 from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 
 

@@ -2,12 +2,15 @@
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from pathlib import Path
+from typing import Annotated
 
 import spiceypy
+import typer
 
 from imap_db.model import File
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
@@ -16,6 +19,7 @@ from imap_mag.config import AppSettings
 from imap_mag.db import Database
 from imap_mag.io import DatastoreFileManager, IDatastoreFileManager
 from imap_mag.io.file import SPICEPathHandler
+from imap_mag.io.file.SPICEPathHandler import METAKERNEL_FILENAME_PREFIX
 from imap_mag.process.metakernel import MetaKernel
 from imap_mag.util import DatetimeProvider
 from imap_mag.util.Humaniser import Humaniser
@@ -36,7 +40,7 @@ MAXIMUM_SCLK_INTERVAL = [
 MAXIMUM_J2000_INTERVAL = [
     [315576066.1839245, 4575787269.183866]
 ]  # Calculated from the above datetimes seperately
-
+METAKERNEL_FOLDER = "mk"
 
 """
 Example SPICE file metadata from SDC API:
@@ -366,32 +370,34 @@ def download_spice_files_later_than(
 #      imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --publish-to-datastore
 #      imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --list-files
 def generate_spice_metakernel(
-    start_time: datetime
-    | None = None,  # TODO: what about datetimes not aligning with TDB seconds?
+    start_time: datetime | None = None,
     end_time: datetime | None = None,
     output_path: Path | None = None,
-    file_types: list[str] | None = None,  # TODO: define the types clearly
-    publish_to_datastore: bool = False,
-    list_files: bool = False,
-    require_coverage: bool = False,
+    file_types: list[str] | None = None,
+    publish_to_datastore: Annotated[
+        bool, typer.Option("--publish/--no-publish", "-p")
+    ] = False,
+    list_files: Annotated[bool, typer.Option("--list", "-l")] = False,
+    require_coverage: Annotated[
+        bool, typer.Option("--require-coverage/--no-require-coverage", "-c")
+    ] = False,
+    verify: Annotated[bool, typer.Option("--verify/--no-verify")] = True,
+    base_path: Path | None = None,
 ) -> Path | list[Path]:
     """Generate a SPICE metakernel file for the downloaded SPICE kernels.
 
     Args:
         start_time: Coverage start time
         end_time: Coverage end time
-        output_path: Path to save the generated metakernel file. If None the automated naming will be used.
+        output_path: folder in which to save the generated metakernel file. If None the automated naming will be used. Cannot use with publish_to_datastore
         file_types: Set of file types to include in the metakernel. If None, all types are included.
-        publish_to_datastore: Whether to publish the generated metakernel to the data store in the spice/mk folder.
+        publish_to_datastore: Whether to publish the generated metakernel to the data store in the spice/mk folder. Cannot use with output_path
         database: Database instance to use for retrieving SPICE files. If None, a new instance will be created.
         list_files: If True, return list of files in metakernel instead of generating the metakernel file.
 
     Returns:
         Path to the generated metakernel file.
     """
-    if file_types:
-        file_types = [type.strip().upper() for type in file_types]
-
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
     initialiseLoggingForCommand(
@@ -399,24 +405,34 @@ def generate_spice_metakernel(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
     database = Database()
 
+    if file_types:
+        file_types = [type.strip().upper() for type in file_types]
+
+    if output_path and publish_to_datastore:
+        raise ValueError(
+            "Cannot specify both output_path and publish_to_datastore - use one or other to avoid confusion about where the metakernel will be saved and paths in it."
+        )
+
     if publish_to_datastore and list_files:
         raise ValueError("Cannot both publish metakernel and list files.")
 
-    # get all SPICE files from the database
-    files = database.get_files_by_path(SPICEPathHandler.get_root_folder())
+    # get all SPICE files from the database except MK files
+    mk_folder = SPICEPathHandler.get_root_folder() + os.path.sep + METAKERNEL_FOLDER
+    files = database.get_files_by_path(
+        SPICEPathHandler.get_root_folder(), ~File.path.startswith(mk_folder)
+    )  # type: ignore
 
     if not files:
         logger.warning("No SPICE files found in the database to include in metakernel.")
         raise RuntimeError("No SPICE files found in the database.")
 
-    logger.debug(f"Generating SPICE metakernel from {len(files)} files.")
-    logger.debug(json.dumps([f.path for f in files], indent=2))
+    logger.debug(f"Queried {len(files)} files from DB")
 
     metakernel = _metakernel_builder(
         start_time,
         end_time,
         files,
-        spice_folder=Path(app_settings.data_store),
+        spice_folder=app_settings.data_store,
         file_types=set(file_types) if file_types else None,
     )
 
@@ -428,13 +444,16 @@ def generate_spice_metakernel(
 
     metakernel_file_path: Path = (
         work_folder
-        / SPICEPathHandler.get_root_folder()
-        / "mk"
-        / f"imap_mag_metakernel_{start_time.strftime('%Y%m%dT%H%M%S')}_{end_time.strftime('%Y%m%dT%H%M%S')}_v000.tm"
+        / mk_folder
+        / f"{METAKERNEL_FILENAME_PREFIX}_{start_time.strftime('%Y%m%dT%H%M%S')}_{end_time.strftime('%Y%m%dT%H%M%S')}_v001.tm"
     )
 
     if (require_coverage) and metakernel.contains_gaps():
         raise RuntimeError("Metakernel cannot be generated due to gaps in SPICE")
+    elif metakernel.contains_gaps():
+        logger.warning(
+            "Generated metakernel contains gaps in SPICE coverage. Use --require-coverage flag to raise an error instead."
+        )
 
     if list_files:
         metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
@@ -446,19 +465,53 @@ def generate_spice_metakernel(
 
         return output
     else:
-        spice_folder = (
-            Path(app_settings.data_store) / SPICEPathHandler.get_root_folder()
-        )
-        kernel_contents = metakernel.return_tm_file(base_path=spice_folder)
+        if publish_to_datastore:
+            output_path = (
+                app_settings.data_store
+                / SPICEPathHandler.get_root_folder()
+                / METAKERNEL_FOLDER
+            )
+
+        kernel_contents = metakernel.return_tm_file(base_path=base_path or Path("./"))
 
         if metakernel_file_path.parent.is_dir() is False:
             metakernel_file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        abs_metakernal_path = str(metakernel_file_path.resolve())
         with open(metakernel_file_path, "w") as metakernel_file:
             metakernel_file.write(kernel_contents)
+            logger.info(f"Generated SPICE metakernel file at {abs_metakernal_path}")
 
-        if output_path and output_path.is_dir():
+        if verify:
+            original_cwd = Path.cwd()
+            os.chdir(app_settings.data_store)
+            try:
+                spiceypy.kclear()
+                spiceypy.furnsh(abs_metakernal_path)
+                spiceypy.kclear()
+                logger.info(
+                    f"Verified generated metakernel can be furnished in SPICE from base {app_settings.data_store}"
+                )
+            finally:
+                os.chdir(original_cwd)
+        else:
+            logger.info("Skipping verification of generated metakernel")
+
+        should_copy_file_to_output_folder = (
+            output_path is not None
+            and not publish_to_datastore
+            and metakernel_file_path.parent.resolve() != output_path.resolve()
+        )
+        if should_copy_file_to_output_folder:
+            assert output_path is not None  # Type narrowing for mypy/pylance
             final_metakernel_path = output_path / metakernel_file_path.name
+
+            if final_metakernel_path.parent.is_dir() is False:
+                logger.info(
+                    f"Creating output directory for metakernel at {final_metakernel_path.parent}"
+                )
+                final_metakernel_path.parent.mkdir(parents=True, exist_ok=True)
+
             # copy metakernal_file_path to final output path
             logger.info(
                 f"Copying metakernel from work folder to output path {final_metakernel_path}"
@@ -466,17 +519,19 @@ def generate_spice_metakernel(
             with open(metakernel_file_path) as src_file:
                 with open(final_metakernel_path, "w") as dest_file:
                     dest_file.write(src_file.read())
+        else:
+            final_metakernel_path = metakernel_file_path
 
         if publish_to_datastore:
-            metakernel_file_path = publish_spice_kernel(
+            final_metakernel_path = publish_spice_kernel(
                 app_settings,
                 metakernel_file_path,
                 use_database=True,
             )
 
-        logger.info(f"Generated SPICE metakernel at {metakernel_file_path}")
+        logger.info(f"Generated SPICE metakernel at {final_metakernel_path}")
 
-        return metakernel_file_path
+        return final_metakernel_path
 
 
 def publish_spice_kernel(
@@ -521,8 +576,18 @@ def _metakernel_builder(
     latest_files: list[File] = []
     for file_list in files_grouped_by_path.values():
         # sort by version descending
-        file_list.sort(key=lambda f: int(f.file_meta.get("version", "1")), reverse=True)
-        latest_files.append(file_list[0])  # take the latest version only
+        # remove files missing the file_meta or version field as we cannot determine which is latest, and log a warning about this
+        file_list_with_version = [
+            f for f in file_list if f.file_meta and "version" in f.file_meta
+        ]
+        if len(file_list) != len(file_list_with_version):
+            logger.warning(
+                f"Found {len(file_list) - len(file_list_with_version)} files without version information for {file_list[0].path}. These files will be skipped as we cannot determine which is the latest version."
+            )
+        file_list_with_version.sort(
+            key=lambda f: int(f.file_meta.get("version", "1")), reverse=True
+        )
+        latest_files.append(file_list_with_version[0])  # take the latest version only
 
     # get the first leapseconds kernel if available
     leapseconds_kernels = [
@@ -568,6 +633,7 @@ def _metakernel_builder(
         )
 
     logger.info(f"Generating SPICE metakernel with {len(latest_files)} files.")
+    logger.info(json.dumps([f.path for f in files], indent=2))
 
     if not start_time:
         start_time = minimum_mission_time
@@ -594,10 +660,21 @@ def _metakernel_builder(
     logger.debug(
         f"Metakernel start time: {start_time}, end time: {end_time}, allowed spice types: {allowed_types}"
     )
+    latest_date = max(
+        [
+            TimeConversion.try_extract_iso_like_datetime(
+                f.metadata, SPICE_FILE_META_FIELD_INGESTION_DATE
+            )
+            or f.last_modified_date
+            for f in latest_files
+        ]
+    )
+
     metakernel = MetaKernel(
         int(TimeConversion.datetime_to_j2000(start_time)),
         int(TimeConversion.datetime_to_j2000(end_time)),
         allowed_spice_types=allowed_types,
+        latest_file_date=latest_date,
     )
 
     for spice_category in KernelCollection().imap_spice_load_order:
@@ -606,7 +683,6 @@ def _metakernel_builder(
                 continue  # Skip over the file if not in requested list
             metadata_of_spice_file_of_selected_type = [
                 {
-                    # TODO: May need to place the full path here, including the datastore root and spice folder
                     "file_name": f.path,
                     "file_intervals_j2000": f.file_meta["file_intervals_j2000"],
                     "timestamp": f.file_meta["timestamp"],

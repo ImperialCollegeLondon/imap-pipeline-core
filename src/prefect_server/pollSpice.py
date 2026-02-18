@@ -181,7 +181,7 @@ async def poll_spice_flow(
                 end_time=end_time,
                 kernel_type=kernel_type,
                 latest=latest,
-                use_database=use_database,
+                use_database=True,  # Prefect flow runs downloading SPICE should always index the files in the database,
             )
         )
 

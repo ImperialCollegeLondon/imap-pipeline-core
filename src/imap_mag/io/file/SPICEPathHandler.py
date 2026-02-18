@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 T = typing.TypeVar("T", bound="SPICEPathHandler")
 
+METAKERNEL_FILENAME_PREFIX = "imap_mag_metakernel"
+
 """
 See https://lasp.colorado.edu/galaxy/spaces/IMAP/pages/221734667/SDC+Expected+SPICE+File+List
 for expected SPICE file naming conventions:
@@ -90,6 +92,7 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_.*\.tf$", "fk"),
         (r"^imap_science_.*\.tf$", "fk"),
         (r"^imap_sclk_.*\.tsc$", "sclk"),
+        (rf"^{METAKERNEL_FILENAME_PREFIX}_.*\.tm$", "mk"),
     ]
 
     def supports_sequencing(self) -> bool:
@@ -122,7 +125,14 @@ class SPICEPathHandler(VersionedPathHandler):
         return (Path(self.get_root_folder()) / self.kernel_folder).as_posix()
 
     def get_filename(self) -> str:
+        super()._check_property_values("get_filename", ["filename"])
         assert self.filename
+
+        if self.supports_sequencing() and self.version_set_pending:
+            super()._check_property_values("get_filename", ["version"])
+            # Version has been set, we need to uprev the filename to reflect this
+            self.filename = re.sub(r"_v\d{3}\.", f"_v{self.version:03}.", self.filename)
+            self.version_set_pending = False
 
         return self.filename
 

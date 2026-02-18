@@ -120,13 +120,13 @@ class DatastoreFileManager(IDatastoreFileManager):
     ) -> IDatastoreFileManager:
         """Retrieve output manager based on destination and mode."""
 
-        from imap_mag.io.DBIndexedDatastoreFileManager import (
-            DBIndexedDatastoreFileManager,
-        )
-
         manager: IDatastoreFileManager = DatastoreFileManager(settings.data_store)
 
         if use_database:
+            from imap_mag.io.DBIndexedDatastoreFileManager import (
+                DBIndexedDatastoreFileManager,
+            )
+
             return DBIndexedDatastoreFileManager(manager, settings=settings)
         else:
             return manager

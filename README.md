@@ -86,8 +86,16 @@ docker run -it --rm \
 
 ## Get the prefect server running in a local dev env
 
-**EITHER** Use the dev_start.sh script to start a local prefect server and a local postgres database for the imap app to use.
-**OR** use the vscode task `start_servers` that does this for you - see [.vscode/tasks.json](.vscode/tasks.json)
+**EITHER** Use the start_dev.sh script to start a local prefect server and a local postgres database for the imap app to use.
+
+```bash
+start_dev.sh             # Start servers and then deploy all flows
+start_dev.sh --no-deploy # Start servers without deploying flows
+start_dev.sh --redeploy  # Redeploy flows to server without restarting servers (useful if you have made changes to the flows and just want to redeploy)
+```
+
+**OR** use the vscode tasks like `start_servers` that does this for you - see [.vscode/tasks.json](.vscode/tasks.json)
+
 **OR** do it manually as below:
 
 ```bash
@@ -156,6 +164,27 @@ imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.
 ```bash
 export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
+```
+
+### Downloading SPICE data from the SDC
+
+```bash
+# set keys using ENV vars then download all spice
+IMAP_API_KEY=KEY_HERE \
+ IMAP_DATA_ACCESS_URL=https://api.imap-mission.com/api-key \
+ imap-mag fetch spice \
+    --ingest-start-day 2025-09-01 \
+    --ingest-end-date 2026-12-31 --latest  # can also add --use-database
+
+# Can also set config using ENV files
+source defaults.env
+source .env
+
+export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap
+
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --output-path ./metakernels --file-types ck,spk --publish-to-datastore
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --publish-to-datastore
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --list-files
 ```
 
 ## Using crump to import data

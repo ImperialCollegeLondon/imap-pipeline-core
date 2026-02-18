@@ -1,8 +1,8 @@
 """Add metadata JSON column to files table
 
 Revision ID: 4fdab0d788f0
-Revises: 44799fd8de27
-Create Date: 2025-11-19 18:35:16.985261
+Revises: b2c3d4e5f6a7
+Create Date: 2026-02-17 18:35:16.985261
 
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "4fdab0d788f0"
-down_revision = "44799fd8de27"
+down_revision = "b2c3d4e5f6a7"
 branch_labels = None
 depends_on = None
 constraint = "UQ_workflow_progress_item_name"

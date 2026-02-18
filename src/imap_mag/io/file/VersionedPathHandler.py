@@ -12,15 +12,18 @@ class VersionedPathHandler(SequenceablePathHandler):
     """
 
     version: int = 1
+    version_set_pending: bool = False
 
     def get_sequence(self) -> int:
         return self.version
 
     def set_sequence(self, sequence: int) -> None:
         self.version = sequence
+        self.version_set_pending = True
 
     def increase_sequence(self) -> None:
         self.version += 1
+        self.version_set_pending = True
 
     @staticmethod
     def get_sequence_variable_name() -> str:

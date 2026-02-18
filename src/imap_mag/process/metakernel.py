@@ -25,6 +25,7 @@ class MetaKernel:
         end_time: int,
         allowed_spice_types: list[str],
         min_gap_time: int = 0,
+        latest_file_date: datetime = datetime.now(UTC),
     ):
         """Initialize the Metakernel.
 
@@ -56,7 +57,7 @@ class MetaKernel:
 \\begintext
 
 This is the most up to date Metakernel as of
-{datetime.now(UTC)}.
+{latest_file_date}.
 
 This attempts to cover data from
 {self.start_time_j2000} to {self.end_time_j2000}
@@ -185,6 +186,7 @@ seconds since J2000.
         lines = kernel_lines.splitlines()
         lines = [lines[0]] + [textwrap.indent(line, " " * 22) for line in lines[1:]]
         kernel_lines = "\n".join(lines)
+
         template_body = f"""
 \\begindata
 

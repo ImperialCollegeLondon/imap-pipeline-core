@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.spiceDownloadFlow import poll_spice_flow
+from prefect_server.pollSpice import poll_spice_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,

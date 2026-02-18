@@ -3,7 +3,10 @@
 # Start a development environment for the project
 # launch a prefect server
 # deploy the project to the server
-#start any other services like wiremock
+# start any other services like wiremock
+# start_dev.sh             : Start servers and then deploy all flows
+# start_dev.sh --no-deploy : Start servers without deploying flows
+# start_dev.sh --redeploy  : Redeploy flows to server without restarting servers (useful if you have made changes to the flows and just want to redeploy)
 
 set -e
 
@@ -63,7 +66,7 @@ runWiremock() {
 deployToServer() {
 
 
-    echo "Waiting for server to start up. Polling http://$DEV_SERVER:$DEV_SERVER_PORT/api/health"
+    echo "Pre-deploy - check server has started up. Polling http://$DEV_SERVER:$DEV_SERVER_PORT/api/health"
 
     # let the server startup
     until $(curl --output /dev/null --silent --fail http://$DEV_SERVER:$DEV_SERVER_PORT/api/health); do
@@ -96,5 +99,12 @@ if [ "$1" == "--no-deploy" ]; then
     SKIP_DEPLOY="--no-deploy"
 fi
 
-# ensure CTRL_C kills all the processes
-(trap 'kill 0' SIGINT; runServer & runDatabase & runWiremock & deployToServer & wait)
+if [ "$1" == "--redeploy" ]; then
+    echo "Redeploying flows to server"
+    (trap 'kill 0' SIGINT; deployToServer & wait)
+else
+    echo "Starting servers and deploying to server"
+    # ensure CTRL_C kills all the processes
+    (trap 'kill 0' SIGINT; runServer & runDatabase & runWiremock & deployToServer & wait)
+fi
+
