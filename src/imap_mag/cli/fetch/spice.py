@@ -622,10 +622,12 @@ def _metakernel_builder(
         ]
 
     latest_files.sort(
-        key=lambda f: TimeConversion.try_extract_iso_like_datetime(
-            f.metadata, SPICE_FILE_META_FIELD_INGESTION_DATE
+        key=lambda f: (
+            TimeConversion.try_extract_iso_like_datetime(
+                f.metadata, SPICE_FILE_META_FIELD_INGESTION_DATE
+            )
+            or f.last_modified_date
         )
-        or f.last_modified_date
     )
     if not latest_files:
         raise RuntimeError(

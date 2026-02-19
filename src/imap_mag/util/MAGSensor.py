@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class MAGSensor(str, Enum):
+class MAGSensor(StrEnum):
     IBS = "magi"
     OBS = "mago"

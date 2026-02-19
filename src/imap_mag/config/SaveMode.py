@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SaveMode(str, Enum):
+class SaveMode(StrEnum):
     LocalOnly = "LocalOnly"
     LocalAndDatabase = "LocalAndDatabase"

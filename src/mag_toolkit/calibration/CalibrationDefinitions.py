@@ -1,5 +1,5 @@
 from abc import ABC
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -90,17 +90,17 @@ class CalibrationMethod(Enum):
         raise ValueError(f"Unknown calibration method: {name}")
 
 
-class Sensor(str, Enum):
+class Sensor(StrEnum):
     MAGO = "MAGo"
     MAGI = "MAGi"
 
 
-class ValueType(str, Enum):
+class ValueType(StrEnum):
     VECTOR = "vector"
     INTERPOLATION_POINTS = "interpolation_points"
 
 
-class Mission(str, Enum):
+class Mission(StrEnum):
     IMAP = "IMAP"
 
 
