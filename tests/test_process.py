@@ -39,8 +39,9 @@ def mock_met_to_j2000_conversion_for_hk_power_to_span_two_days(monkeypatch):
     monkeypatch.setattr(
         TimeConversion,
         "convert_met_to_j2000ns",
-        lambda x, *args: original_method(x, *args)
-        + (timedelta(hours=20).seconds * 1e9),
+        lambda x, *args: (
+            original_method(x, *args) + (timedelta(hours=20).seconds * 1e9)
+        ),
     )
 
 

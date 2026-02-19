@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, model_validator
@@ -9,7 +9,7 @@ from imap_mag.util import DatetimeProvider
 from prefect_server.durationUtils import parse_duration
 
 
-class CleanupMode(str, Enum):
+class CleanupMode(StrEnum):
     """Mode for cleanup operations."""
 
     DELETE = "delete"

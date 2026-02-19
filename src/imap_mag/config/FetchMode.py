@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class FetchMode(str, Enum):
+class FetchMode(StrEnum):
     DownloadOnly = "DownloadOnly"
     DownloadAndUpdateProgress = "DownloadAndUpdateProgress"
