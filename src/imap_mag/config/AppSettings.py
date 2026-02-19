@@ -15,6 +15,7 @@ from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
     FetchIALiRTConfig,
     FetchScienceConfig,
+    FetchSpiceConfig,
 )
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
@@ -38,6 +39,7 @@ class AppSettings(BaseSettings):
         env_nested_max_split=2,
         env_prefix="MAG_",
         yaml_file=config_file,
+        extra="ignore",
     )
 
     # Global settings
@@ -50,6 +52,7 @@ class AppSettings(BaseSettings):
     fetch_binary: FetchBinaryConfig
     fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig
+    fetch_spice: FetchSpiceConfig
     plot_ialirt: QuicklookConfig
     process: CommandConfig
     publish: PublishConfig

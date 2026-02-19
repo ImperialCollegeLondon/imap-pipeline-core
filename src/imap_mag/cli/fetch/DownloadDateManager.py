@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from imap_mag.db.Database import Database
 from imap_mag.util.DatetimeProvider import DatetimeProvider
@@ -75,16 +75,16 @@ class DownloadDateManager:
     ) -> tuple[datetime, datetime] | None:
         if self.__progress_timestamp is None or self.__progress_timestamp <= start_date:
             logger.info(
-                f"Packet {self.__packet_name} is not up to date. Downloading from {start_date}."
+                f"Download of {self.__packet_name} is not up to date. Downloading from {start_date}."
             )
         elif self.__progress_timestamp >= end_date:
             logger.info(
-                f"Packet {self.__packet_name} is already up to date. Not downloading."
+                f"Download of {self.__packet_name} is already up to date. Not downloading."
             )
             return None
         else:
             logger.info(
-                f"Packet {self.__packet_name} is partially up to date. Downloading from {self.__progress_timestamp} (with buffer of {self.__progress_time_buffer})."
+                f"Download of {self.__packet_name} is partially up to date. Downloading from {self.__progress_timestamp} (with buffer of {self.__progress_time_buffer})."
             )
             start_date = self.__progress_timestamp + self.__progress_time_buffer
 
@@ -93,13 +93,25 @@ class DownloadDateManager:
     def get_dates_for_download(
         self,
         *,
-        original_start_date: datetime | None,
-        original_end_date: datetime | None,
+        original_start_date: datetime | date | None,
+        original_end_date: datetime | date | None,
         validate_with_database: bool,
     ) -> tuple[datetime, datetime] | None:
         workflow_progress = self.__database.get_workflow_progress(self.__packet_name)
         self.__last_checked_date = workflow_progress.get_last_checked_date()
         self.__progress_timestamp = workflow_progress.get_progress_timestamp()
+
+        if isinstance(original_start_date, date) and not isinstance(
+            original_start_date, datetime
+        ):
+            original_start_date = datetime.combine(
+                original_start_date, datetime.min.time()
+            )
+
+        if isinstance(original_end_date, date) and not isinstance(
+            original_end_date, datetime
+        ):
+            original_end_date = datetime.combine(original_end_date, datetime.min.time())
 
         start_date = self._get_start_date(original_start_date)
         end_date = self._get_end_date(original_end_date)

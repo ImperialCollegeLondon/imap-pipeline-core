@@ -1,11 +1,12 @@
 """Interact with SDC APIs to get MAG data via imap-data-access."""
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import imap_data_access
 import imap_data_access.io
+import requests
 from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
@@ -128,3 +129,77 @@ class SDCDataAccess:
     def download(self, filename: str) -> Path:
         logger.debug(f"Downloading {filename} from imap-data-access.")
         return imap_data_access.download(filename)
+
+    def spice_query(
+        self,
+        ingest_start_day: date | None = None,
+        ingest_end_date: date | None = None,
+        file_name: str | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+        kernel_type: str | None = None,
+        latest: bool = False,
+    ):
+        """Query SPICE kernels from the SDC API.
+
+        Args:
+            ingest_start_day: Start date for ingestion date filter
+            ingest_end_date: End date for ingestion date filter (exclusive)
+            file_name: Spice kernel file name filter
+            start_time: Coverage start time in TDB seconds
+            end_time: Coverage end time in TDB seconds
+            kernel_type: Spice kernel type filter. Accepted types are:
+                leapseconds, planetary_constants, science_frames, imap_frames,
+                spacecraft_clock, planetary_ephemeris, ephemeris_reconstructed,
+                ephemeris_nominal, ephemeris_predicted, ephemeris_90days,
+                ephemeris_long, ephemeris_launch, attitude_history,
+                attitude_predict, pointing_attitude
+            latest: If True, only return latest version of kernels matching query
+
+        Returns:
+            List of dictionaries containing SPICE kernel metadata
+        """
+        # Build query parameters
+        params = []
+
+        if ingest_start_day:
+            date_format = "%Y%m%d"
+            params.append(f"start_ingest_date={ingest_start_day.strftime(date_format)}")
+
+        if ingest_end_date:
+            date_format = "%Y%m%d"
+            params.append(f"end_ingest_date={ingest_end_date.strftime(date_format)}")
+
+        if file_name:
+            params.append(f"file_name={file_name}")
+
+        if start_time is not None:
+            params.append(f"start_time={start_time}")
+
+        if end_time is not None:
+            params.append(f"end_time={end_time}")
+
+        if kernel_type:
+            params.append(f"type={kernel_type}")
+
+        if latest:
+            params.append("latest=True")
+
+        # Construct URL
+        query_string = "&".join(params)
+        url = f"{self.get_url_base()}/spice-query?{query_string}"
+
+        logger.info("Querying SPICE files with URL: %s", url)
+
+        # Create a request with the provided URL
+        request = requests.Request("GET", url).prepare()
+
+        with imap_data_access.io._make_request(request) as response:
+            # Decode the JSON response as a list of items
+            items = response.json()
+            logger.debug("Received JSON: %s", items)
+
+        return items
+
+    def get_url_base(self):
+        return imap_data_access.config["DATA_ACCESS_URL"]

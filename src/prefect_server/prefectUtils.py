@@ -27,13 +27,13 @@ async def get_secret_block(secret_name: str) -> str:
     try:
         secret: Secret = await Secret.aload(secret_name)
     except ValueError as e:
-        logger.error(f"Block {secret_name} does not exist.")
+        logger.warning(f"Block {secret_name} does not exist.")
         raise e
 
     value = secret.get()
 
     if not value:
-        logger.error(f"Block {secret_name} is empty.")
+        logger.warning(f"Block {secret_name} is empty.")
         raise ValueError(f"Block {secret_name} is empty.")
 
     logger.debug(f"Block {secret_name} retrieved successfully.")

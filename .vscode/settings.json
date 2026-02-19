@@ -30,5 +30,5 @@
             "username": "postgres"
         }
     ],
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
 }

@@ -17,9 +17,15 @@ class VersionedPathHandler(SequenceablePathHandler):
         return self.version
 
     def set_sequence(self, sequence: int) -> None:
+        if not self.supports_sequencing():
+            raise ValueError("This path handler does not support sequencing.")
+
         self.version = sequence
 
     def increase_sequence(self) -> None:
+        if not self.supports_sequencing():
+            raise ValueError("This path handler does not support sequencing.")
+
         self.version += 1
 
     @staticmethod

@@ -1,7 +1,6 @@
 import abc
 import re
 from dataclasses import dataclass
-from typing import final
 
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 
@@ -15,7 +14,6 @@ class SequenceablePathHandler(IFilePathHandler):
     some sort of sequencing (e.g., versioning or part numbers).
     """
 
-    @final
     def supports_sequencing(self) -> bool:
         """Denotes whether this path handler supports sequence-like indexes."""
         return True
@@ -45,3 +43,9 @@ class SequenceablePathHandler(IFilePathHandler):
     def get_sequence_variable_name() -> str:
         """Get the name of the variable denoting a "sequence" in the class and patterns."""
         pass
+
+    def add_metadata(self, metadata: dict) -> None:
+        raise NotImplementedError()
+
+    def get_metadata(self) -> dict | None:
+        return None

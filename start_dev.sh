@@ -3,19 +3,37 @@
 # Start a development environment for the project
 # launch a prefect server
 # deploy the project to the server
-#start any other services like wiremock
+# start any other services like wiremock
+# start_dev.sh             : Start servers and then deploy all flows
+# start_dev.sh --no-deploy : Start servers without deploying flows
+# start_dev.sh --redeploy  : Redeploy flows to server without restarting servers (useful if you have made changes to the flows and just want to redeploy)
 
 set -e
 
-export DEV_SERVER=127.0.0.1
-export DEV_SERVER_PORT=4200
+# VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TASK IS STARTING
+echo "STARTING DEV SERVERS"
+source ./defaults.env
 
-export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap
+if [ -f ".env" ]; then
+    echo "Loading local .env overrides"
+    source .env
+else
+    echo "No local .env file found, skipping"
+fi
 
-export IMAP_DATA_FOLDER=tests/datastore
-export IMAP_WEBSITE_HOST=localhost
+# if .venv is missing, run poetry install
+if [ ! -d ".venv" ]; then
+    echo ".venv not found, running 'poetry install'"
+    poetry install -q
+fi
 
-export PREFECT_SERVER_LOGGING_LEVEL="INFO"
+# if prefect command is not available source the venv
+if ! command -v prefect &> /dev/null
+then
+    echo "prefect could not be found, sourcing venv"
+    source .venv/bin/activate
+fi
+
 
 echo "Configure prefect server to run at http://$DEV_SERVER:$DEV_SERVER_PORT"
 prefect config set PREFECT_API_URL="http://$DEV_SERVER:$DEV_SERVER_PORT/api"
@@ -27,8 +45,17 @@ runServer() {
 }
 
 runDatabase() {
+
     echo "Starting Postgres database for IMAP dev"
-    docker run --rm --name postgres_imap_dev -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:17-alpine
+    DB_CONTAINER=postgres_imap_dev
+    # remove it if needed
+    CONTAINER_ID=$(docker container ls --all --filter name=$DB_CONTAINER -q)
+    if [ ! -z "$CONTAINER_ID" ]; then
+        echo "Removing existing database container $DB_CONTAINER"
+        docker container rm -f $DB_CONTAINER
+    fi
+
+    docker run --rm --name $DB_CONTAINER -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:17-alpine
 }
 
 runWiremock() {
@@ -37,21 +64,47 @@ runWiremock() {
 }
 
 deployToServer() {
+
+
+    echo "Pre-deploy - check server has started up. Polling http://$DEV_SERVER:$DEV_SERVER_PORT/api/health"
+
     # let the server startup
-    sleep 20
+    until $(curl --output /dev/null --silent --fail http://$DEV_SERVER:$DEV_SERVER_PORT/api/health); do
+        printf '.'
+        sleep 5
+    done
+
+    # if the first arg is --no-deploy, skip deployment
+    if [ "$SKIP_DEPLOY" == "--no-deploy" ]; then
+
+        # since not doing the deployment we need to setup the database
+        imap-db create-db
+        imap-db upgrade-db
+
+        # VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TO PROCEED
+        echo "SERVERS HAVE STARTED - Skipping deployment to server"
+        return
+    fi
 
     echo "Deploying to server"
     prefect work-pool create default-pool --type process --overwrite
 
-    PREFECT_LOGGING_ROOT_LEVEL="INFO" \
-        PREFECT_LOGGING_EXTRA_LOGGERS="imap_mag,imap_db,mag_toolkit,prefect_server" \
-        PREFECT_LOGGING_LEVEL=DEBUG \
-        PREFECT_SERVER_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
-        PREFECT_INTERNAL_LOGGING_LEVEL=${PREFECT_SERVER_LOGGING_LEVEL} \
-            python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
+    python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
 
     echo "Deployment complete"
 }
 
-# ensure CTRL_C kills all the processes
-(trap 'kill 0' SIGINT; runServer & runDatabase & runWiremock & deployToServer & wait)
+SKIP_DEPLOY=""
+if [ "$1" == "--no-deploy" ]; then
+    SKIP_DEPLOY="--no-deploy"
+fi
+
+if [ "$1" == "--redeploy" ]; then
+    echo "Redeploying flows to server"
+    (trap 'kill 0' SIGINT; deployToServer & wait)
+else
+    echo "Starting servers and deploying to server"
+    # ensure CTRL_C kills all the processes
+    (trap 'kill 0' SIGINT; runServer & runDatabase & runWiremock & deployToServer & wait)
+fi
+

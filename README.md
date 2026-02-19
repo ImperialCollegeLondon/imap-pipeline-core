@@ -86,6 +86,18 @@ docker run -it --rm \
 
 ## Get the prefect server running in a local dev env
 
+**EITHER** Use the start_dev.sh script to start a local prefect server and a local postgres database for the imap app to use.
+
+```bash
+start_dev.sh             # Start servers and then deploy all flows
+start_dev.sh --no-deploy # Start servers without deploying flows
+start_dev.sh --redeploy  # Redeploy flows to server without restarting servers (useful if you have made changes to the flows and just want to redeploy)
+```
+
+**OR** use the vscode tasks like `start_servers` that does this for you - see [.vscode/tasks.json](.vscode/tasks.json)
+
+**OR** do it manually as below:
+
 ```bash
 # in the root of the repo, start a local dev prefect server in a terminal
 poetry install
@@ -97,8 +109,8 @@ docker run --name postgres_imap_dev -e POSTGRES_PASSWORD=postgres -e POSTGRES_US
 
 # in a third terminal, deploy the imap flows
 source .venv/bin/activate
-source defaults.env
-# [optional] source dev.env
+cp defaults.env .env
+source .env
 python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(local_debug=True)'
 # Or perhaps PYTHONPATH=src:$PYTHONPATH python -m prefect_server.workflow --local
 
@@ -109,6 +121,8 @@ python -c 'import prefect_server.workflow; prefect_server.workflow.deploy_flows(
 ## Debugging a prefect flow
 
 This is a the same as the above but instead of calling prefect_server.workflow.deploy_flows in the CLI above, you can use the launch profile "Prefect deploy and run" to do the same thing in vscode with a debugger attached and then run your flow from there.
+
+You can also setup flows to just deploy one at a time for debugging and then use "debug current file". Run F5 inside spiceDownloadFlow.py for example to debug that flow and see the code in the `if __main__` block at the bottom run.
 
 ## CLI Commands
 
@@ -150,6 +164,27 @@ imap-mag process data/hk/mag/l0/hsk-pw/2025/01/imap_mag_l0_hsk-pw_20250102_v000.
 ```bash
 export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
+```
+
+### Downloading SPICE data from the SDC
+
+```bash
+# set keys using ENV vars then download all spice
+IMAP_API_KEY=KEY_HERE \
+ IMAP_DATA_ACCESS_URL=https://api.imap-mission.com/api-key \
+ imap-mag fetch spice \
+    --ingest-start-day 2025-09-01 \
+    --ingest-end-date 2026-12-31 --latest  # can also add --use-database
+
+# Can also set config using ENV files
+source defaults.env
+source .env
+
+export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap
+
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --output-path ./metakernels --file-types ck,spk --publish-to-datastore
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --publish-to-datastore
+imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --list-files
 ```
 
 ## Using crump to import data

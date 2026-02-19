@@ -2,9 +2,13 @@ import hashlib
 import logging
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
+
+if TYPE_CHECKING:
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +36,10 @@ class DatastoreFileManager(IDatastoreFileManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
+        original_hash = generate_hash(original_file)
         skip_file_copy: bool = self.__get_next_available_version(
             path_handler,
-            original_hash=generate_hash(original_file),
+            original_hash=original_hash,
         )
         destination_file: Path = path_handler.get_full_path(self.location)
 
@@ -108,3 +113,20 @@ class DatastoreFileManager(IDatastoreFileManager):
             destination_file = updated_file
 
         return False
+
+    @classmethod
+    def CreateByMode(
+        cls, settings: "AppSettings", use_database: bool
+    ) -> IDatastoreFileManager:
+        """Retrieve output manager based on destination and mode."""
+
+        manager: IDatastoreFileManager = DatastoreFileManager(settings.data_store)
+
+        if use_database:
+            from imap_mag.io.DBIndexedDatastoreFileManager import (
+                DBIndexedDatastoreFileManager,
+            )
+
+            return DBIndexedDatastoreFileManager(manager, settings=settings)
+        else:
+            return manager
