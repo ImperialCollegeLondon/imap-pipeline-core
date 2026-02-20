@@ -126,7 +126,7 @@ async def adeploy_flows(local_debug: bool = False):
     poll_hk_deployable = poll_hk_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
-        job_variables=shared_job_variables | {"mem_limit": "6G", "memswap_limit": "6G"},
+        job_variables=shared_job_variables | {"mem_limit": "8G", "memswap_limit": "10G"},
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
