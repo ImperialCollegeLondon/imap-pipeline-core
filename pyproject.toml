@@ -34,7 +34,7 @@ psycopg = {extras = ["binary"], version = "^3.2.9"}
 prefect = {extras = ["shell"], version = "3.6.11"}
 prefect-docker = "0.7.1"
 spacepy = "^0.7.0"
-pydantic-settings = "^2.8.1"
+pydantic-settings = "^2.13.1"
 ccsdspy = "^1.4.2"
 crump = "0.5.1"
 prefect-managedfiletransfer = "^0.4.1"
