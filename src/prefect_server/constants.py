@@ -27,6 +27,9 @@ class PREFECT_CONSTANTS:
     class POLL_SCIENCE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
+    class POLL_WEBTCAD_LATIS:
+        WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
+
     class ENV_VAR_NAMES:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
@@ -38,6 +41,7 @@ class PREFECT_CONSTANTS:
         POLL_L2_CRON = "IMAP_CRON_POLL_L2"
         POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
+        POLL_WEBTCAD_LATIS_CRON = "IMAP_CRON_POLL_WEBTCAD_LATIS"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
@@ -58,6 +62,7 @@ class PREFECT_CONSTANTS:
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
+        POLL_WEBTCAD_LATIS = "poll-webtcad-latis"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -78,6 +83,7 @@ class PREFECT_CONSTANTS:
         POLL_L2 = "poll_l2_science"
         POLL_L1D = "poll_l1d_science"
         POLL_SPICE = "poll_spice"
+        POLL_WEBTCAD_LATIS = "poll_webtcad_latis"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
