@@ -75,6 +75,7 @@ class HKPacket(Enum):
     SCID_X285 = 645, "SCID_X285", Subsystem.SC  # currents
     SCID_X286 = 646, "SCID_X286", Subsystem.SC  # counters
     SCGLOBAL = 2047, "SCGLOBAL", Subsystem.SC  # temperatures
+    SCID_X251 = 0x251, "SCID_X251", Subsystem.SC  # Attitude and nutation
 
     @classmethod
     def names(cls) -> list[str]:
