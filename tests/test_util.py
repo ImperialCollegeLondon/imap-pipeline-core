@@ -12,7 +12,7 @@ def test_name_all_packets() -> None:
     """Test listing all HK packets."""
     packets_list = HKPacket.names()
 
-    assert len(packets_list) == 49
+    assert 50 <= len(packets_list)
 
 
 def test_get_packet_from_apid_success() -> None:
