@@ -210,6 +210,10 @@ jobs:
           name: Test Results (${{ matrix.python-versions }})
           path: "test-results.xml"
           reporter: java-junit
+          use-actions-summary: 'true'
+          fail-on-error: 'false'
+          fail-on-empty: 'true'
+
 
       - name: Coverage Report
         uses: 5monkeys/cobertura-action@v14
