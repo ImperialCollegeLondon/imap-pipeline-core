@@ -14,6 +14,10 @@ from mag_toolkit.calibration import (
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import TEST_DATA, copy_test_file
 
+# pycdf is not thread safe, so we need to ensure tests using it do not run in parallel with other tests using it
+#  apply mark to all tests in this file
+pytestmark = pytest.mark.xdist_group("spacepy")
+
 
 def verify_noop_20251017_results(datastore):
     output_l2_file = (
