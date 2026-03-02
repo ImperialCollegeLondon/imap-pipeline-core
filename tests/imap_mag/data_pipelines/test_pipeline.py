@@ -59,3 +59,81 @@ async def test_autorun_pipeline_can_be_created_and_processes_depth_first() -> No
     assert results.data_items[0].value == "value1_1_1"
     assert results.data_items[1].name == "item2"
     assert results.data_items[1].value == "value2_2_2"
+
+
+def test_build_raises_when_pipeline_is_already_running():
+    pipeline = dp.Pipeline()
+    pipeline.build(
+        run_parameters=dp.AutomaticRunParameters(),
+        stages=[TestSourceStage()],
+    )
+    pipeline.is_running = True
+
+    with pytest.raises(RuntimeError, match="Cannot build pipeline while it is running"):
+        pipeline.build(
+            run_parameters=dp.AutomaticRunParameters(),
+            stages=[TestSourceStage()],
+        )
+
+
+def test_build_raises_when_no_stages_provided():
+    pipeline = dp.Pipeline()
+
+    with pytest.raises(ValueError, match="Pipeline must have at least one stage"):
+        pipeline.build(
+            run_parameters=dp.AutomaticRunParameters(),
+            stages=[],
+        )
+
+
+def test_build_raises_when_stages_is_none():
+    pipeline = dp.Pipeline()
+
+    with pytest.raises(ValueError, match="Pipeline must have at least one stage"):
+        pipeline.build(
+            run_parameters=dp.AutomaticRunParameters(),
+            stages=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_raises_when_not_built():
+    pipeline = dp.Pipeline()
+
+    with pytest.raises(ValueError, match="Pipeline run parameters not set"):
+        await pipeline.run()
+
+
+def test_get_results_raises_when_not_completed():
+    pipeline = dp.Pipeline()
+    pipeline.build(
+        run_parameters=dp.AutomaticRunParameters(),
+        stages=[TestSourceStage()],
+    )
+
+    with pytest.raises(
+        RuntimeError, match="Cannot get results from pipeline that has not completed"
+    ):
+        pipeline.get_results()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_merges_initial_context():
+    """Test that initial_context values are available to stages during run."""
+    received_context = {}
+
+    class ContextCapturingStage(dp.SourceStage):
+        async def start(self, context: dict, **kwargs):
+            received_context.update(context)
+            await self.publish_next(dp.Record(value="done"), context, **kwargs)
+
+    pipeline = dp.Pipeline()
+    pipeline.initial_context = {"custom_key": "custom_value"}
+    pipeline.build(
+        run_parameters=dp.AutomaticRunParameters(),
+        stages=[ContextCapturingStage()],
+    )
+    await pipeline.run()
+
+    assert received_context.get("custom_key") == "custom_value"
+    assert dp.Pipeline.STARTED_CONTEXT_KEY in received_context
