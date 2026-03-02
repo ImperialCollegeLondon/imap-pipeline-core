@@ -1,10 +1,10 @@
 import re
+import threading
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pytest
-from spacepy import pycdf
 
 from imap_mag.cli.apply import CalibrationApplicator, apply
 from mag_toolkit.calibration import (
@@ -14,12 +14,13 @@ from mag_toolkit.calibration import (
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import TEST_DATA, copy_test_file
 
-# pycdf is not thread safe, so we need to ensure tests using it do not run in parallel with other tests using it
-#  apply mark to all tests in this file
-pytestmark = pytest.mark.xdist_group("spacepy")
+with threading.Lock():
+    # seems to have a horrible race condition when run in parallel, so ensure tests using it do not run in parallel with other tests using it
+    from spacepy import pycdf
 
 
 def verify_noop_20251017_results(datastore):
+
     output_l2_file = (
         datastore
         / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
