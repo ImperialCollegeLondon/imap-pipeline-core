@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from imap_mag.db.Database import Database
 from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 
@@ -116,7 +117,10 @@ class DatastoreFileManager(IDatastoreFileManager):
 
     @classmethod
     def CreateByMode(
-        cls, settings: "AppSettings", use_database: bool
+        cls,
+        settings: "AppSettings",
+        use_database: bool,
+        database: "Database | None" = None,
     ) -> IDatastoreFileManager:
         """Retrieve output manager based on destination and mode."""
 
@@ -127,6 +131,8 @@ class DatastoreFileManager(IDatastoreFileManager):
                 DBIndexedDatastoreFileManager,
             )
 
-            return DBIndexedDatastoreFileManager(manager, settings=settings)
+            return DBIndexedDatastoreFileManager(
+                manager, settings=settings, database=database
+            )
         else:
             return manager

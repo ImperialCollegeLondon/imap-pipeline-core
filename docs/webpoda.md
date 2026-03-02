@@ -1,5 +1,8 @@
 # Example PODA queries
 
+SID1 - flight
+SID2 - pre-flight
+
 All queries have the form below with different URLs
 curl --location '<https://lasp.colorado.edu/ops/imap/poda/dap2/packets/SID2/>...' --header 'Authorization: Basic YOUR_USER_PASS_HERE'
 

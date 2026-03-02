@@ -36,7 +36,7 @@
     },
     "postCreateCommand": "pip install --user -U pre-commit && pre-commit install-hooks && pre-commit autoupdate",
     // install poetry in first startup in vscode
-    "postStartCommand": "poetry install",
+    "postStartCommand": "poetry install --all-groups",
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.

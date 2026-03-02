@@ -23,6 +23,13 @@ class WebPodaApiSource(ApiSource):
     )
 
 
+class WebTCADLaTiSApiSource(ApiSource):
+    auth_code: SecretStr | None = Field(
+        validation_alias=CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE, default=None
+    )
+    system_id: str  # "SID1" or "SID2", to distinguish between flight and preflight data
+
+
 class SdcApiSource(ApiSource):
     url_base: str = Field(validation_alias=CONSTANTS.ENV_VAR_NAMES.SDC_URL)
     auth_code: SecretStr | None = Field(

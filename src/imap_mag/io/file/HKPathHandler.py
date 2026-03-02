@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import HKPacket
 
@@ -53,7 +54,7 @@ class HKPathHandler(IFilePathHandler):
         return {
             HKPathHandler.convert_packet_to_descriptor(hk.packet_name).partition("-")[0]
             for hk in HKPacket
-        }
+        } | {hk.descriptor for hk in HKWebTCADItems}
 
     @staticmethod
     def convert_packet_to_descriptor(packet: str) -> str:
