@@ -36,6 +36,7 @@ def test_plot_ialirt(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
     mock_datetime_provider,  # noqa: F811
+    dynamic_work_folder,
 ) -> None:
     # Set up.
     test_data = TEST_DATA / "ialirt_plot_data.csv"
@@ -96,6 +97,7 @@ def test_plot_ialirt_todays_data_copies_to_latest_figure(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
     mock_datetime_provider_today_20251021,
+    dynamic_work_folder,
 ) -> None:
     # Set up.
     test_data = TEST_DATA / "ialirt_plot_data.csv"
@@ -121,6 +123,7 @@ def test_plot_ialirt_todays_data_added_to_database(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
     mock_datetime_provider_today_20251021,
+    dynamic_work_folder,
 ) -> None:
     # Set up.
     test_data = TEST_DATA / "ialirt_plot_data.csv"
