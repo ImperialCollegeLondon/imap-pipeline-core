@@ -157,7 +157,7 @@ class WebTCADLaTiS:
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
-                f"Response containes {len(response.content)} bytes and {len(response.text.splitlines())} lines"
+                f"Response contains {len(response.content)} bytes and {len(response.text.splitlines())} lines"
             )
 
         return response.text

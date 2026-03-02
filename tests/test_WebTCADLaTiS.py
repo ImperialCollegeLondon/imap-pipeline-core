@@ -5,6 +5,12 @@ import pytest
 from pydantic import SecretStr
 
 from imap_mag.client.WebTCADLaTiS import WebTCADLaTiS
+from imap_mag.config.ApiSource import (
+    WebTCADLaTiSApiSource,
+)
+from imap_mag.config.FetchConfig import (
+    FetchWebTCADLaTiSConfig,
+)
 from tests.util.miscellaneous import mock_datetime_provider  # noqa: F401
 
 
@@ -32,10 +38,7 @@ def test_download_csv(wiremock_manager):
 
     wiremock_manager.add_string_mapping(url, expected_csv, priority=1)
 
-    client = WebTCADLaTiS(
-        auth_code=SecretStr("test-auth-code"),
-        base_url=wiremock_manager.get_url(),
-    )
+    client = build_client_under_test(wiremock_manager)
 
     result = client.download_imap_lo_pivot_platform_angle_to_csv_file(
         start_date=start_date,
@@ -43,6 +46,18 @@ def test_download_csv(wiremock_manager):
     )
 
     assert result == expected_csv
+
+
+def build_client_under_test(wiremock_manager):
+    return WebTCADLaTiS(
+        fetch_webtcad_config=FetchWebTCADLaTiSConfig(
+            api=WebTCADLaTiSApiSource(
+                url_base=wiremock_manager.get_url(),
+                system_id="SID1",
+                auth_code=SecretStr("test-auth-code"),
+            )
+        ),
+    )
 
 
 @pytest.mark.skipif(
@@ -67,10 +82,7 @@ def test_download_csv_raises_on_error(wiremock_manager):
 
     wiremock_manager.add_string_mapping(url, "Unauthorized", status=401, priority=1)
 
-    client = WebTCADLaTiS(
-        auth_code=SecretStr("bad-auth-code"),
-        base_url=wiremock_manager.get_url(),
-    )
+    client = build_client_under_test(wiremock_manager)
 
     with pytest.raises(Exception):
         client.download_imap_lo_pivot_platform_angle_to_csv_file(
@@ -101,10 +113,7 @@ def test_download_csv_empty_response(wiremock_manager):
 
     wiremock_manager.add_string_mapping(url, "time,value\n", priority=1)
 
-    client = WebTCADLaTiS(
-        auth_code=SecretStr("test-auth-code"),
-        base_url=wiremock_manager.get_url(),
-    )
+    client = build_client_under_test(wiremock_manager)
 
     result = client.download_imap_lo_pivot_platform_angle_to_csv_file(
         start_date=start_date,

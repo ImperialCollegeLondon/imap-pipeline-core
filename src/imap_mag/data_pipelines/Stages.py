@@ -8,11 +8,11 @@ from imap_mag.data_pipelines.Record import Record
 from imap_mag.data_pipelines.RunParameters import PipelineRunParameters
 
 
-def _log_stage(func):
+def _log_stage_async(func):
     """Decorator that logs the start and end of abstract method implementations."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper_async(*args, **kwargs):
         method_name = func.__name__
         class_name = args[0].__class__.__name__ if args else "Unknown"
         class_module_name = args[0].__class__.__module__
@@ -22,7 +22,7 @@ def _log_stage(func):
             class_name == "EndStage"
             and class_module_name == "imap_mag.data_pipelines.Stages"
         ):
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
 
         logger = logging.getLogger(f"{class_module_name}.{class_name}")
         index = getattr(args[0], "_index", None) if len(args) > 0 else None
@@ -40,14 +40,14 @@ def _log_stage(func):
 
         logger.info(f"{log_prefix}{method_name}({logged_args}{kwargs_str})")
         try:
-            result = func(*args, **kwargs)
+            result = await func(*args, **kwargs)
             logger.info(f"{log_prefix} {method_name} completed")
             return result
         except Exception as e:
             logger.error(f"{log_prefix}Error in {method_name}", exc_info=e)
             raise
 
-    return wrapper
+    return wrapper_async
 
 
 class _LoggingABCMeta(ABCMeta):
@@ -58,11 +58,17 @@ class _LoggingABCMeta(ABCMeta):
 
     def __new__(mcs, name, bases, namespace, **kwargs):
         for attr_name, attr_value in namespace.items():
+            is_async = asyncio.iscoroutinefunction(attr_value)
             # if attr_name in abstract_methods and callable(attr_value):
             if attr_name in _LoggingABCMeta.logged_method_names and callable(
                 attr_value
             ):
-                namespace[attr_name] = _log_stage(attr_value)
+                if is_async:
+                    namespace[attr_name] = _log_stage_async(attr_value)
+                else:
+                    raise ValueError(
+                        f"Logging decorator can only be applied to async methods, but {attr_name} in {name} is not async"
+                    )
 
         return super().__new__(mcs, name, bases, namespace, **kwargs)
 

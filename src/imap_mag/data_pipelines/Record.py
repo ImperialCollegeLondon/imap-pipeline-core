@@ -6,7 +6,7 @@ from pathlib import Path
 @dataclass
 class Record:
     def __init__(self, value=None, **kwargs):
-        if not value and not kwargs:
+        if value is None and not kwargs:
             raise ValueError(
                 "Record must have at least a value or some additional attributes"
             )
@@ -29,5 +29,5 @@ class Record:
 
 class FileRecord(Record):
     def __init__(self, file_path: Path, content_date: datetime):
-        super().__init__(value=file_path.name)
+        super().__init__(value=file_path.name, content_date=content_date)
         self.file_path = file_path

@@ -27,12 +27,12 @@ class Pipeline:
     def build(
         self,
         run_parameters: PipelineRunParameters = AutomaticRunParameters(),
-        stages: list[Stage] = [],
+        stages: list[Stage] | None = None,
     ):
         if self.is_running:
             raise RuntimeError("Cannot build pipeline while it is running.")
 
-        if len(stages) == 0:
+        if not stages or len(stages) == 0:
             raise ValueError("Pipeline must have at least one stage.")
 
         self._run_parameters = run_parameters

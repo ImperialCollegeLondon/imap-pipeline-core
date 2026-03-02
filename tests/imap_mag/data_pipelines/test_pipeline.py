@@ -19,7 +19,7 @@ class TestSourceStage(dp.SourceStage):
         )
 
 
-class TestProcesingStage(dp.Stage):
+class TestProcessingStage(dp.Stage):
     __test__ = False  # prevent pytest collecting this as a test
 
     def __init__(self):
@@ -42,8 +42,8 @@ async def test_autorun_pipeline_can_be_created_and_processes_depth_first() -> No
         run_parameters=dp.AutomaticRunParameters(),
         stages=[
             TestSourceStage(),
-            TestProcesingStage(),
-            TestProcesingStage(),
+            TestProcessingStage(),
+            TestProcessingStage(),
         ],
     )
 

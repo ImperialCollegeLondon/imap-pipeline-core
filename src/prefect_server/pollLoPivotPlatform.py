@@ -6,7 +6,7 @@ from pydantic import Field, SecretStr
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import AutomaticRunParameters, FetchByDatesRunParameters
-from imap_mag.data_pipelines.LoPivotPLatformPipeline import LoPivotPlatformPipeline
+from imap_mag.data_pipelines.LoPivotPlatformPipeline import LoPivotPlatformPipeline
 from imap_mag.db import Database
 from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -17,13 +17,13 @@ def generate_flow_run_name() -> str:
     parameters = flow_run.parameters["run_parameters"]
 
     start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%Y")
-        if hasattr(parameters, "start_date") and parameters["start_date"] is not None
+        parameters.start_date.strftime("%d-%m-%Y")
+        if hasattr(parameters, "start_date") and parameters.start_date is not None
         else "last-update"
     )
     end_date = (
-        parameters["end_date"]
-        if hasattr(parameters, "end_date") and parameters["end_date"] is not None
+        parameters.end_date
+        if hasattr(parameters, "end_date") and parameters.end_date is not None
         else DatetimeProvider.end_of_today()
     )
 

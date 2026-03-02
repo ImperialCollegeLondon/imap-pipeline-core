@@ -26,9 +26,9 @@ class SaveProcessingDatesStage(Stage):
             )
 
     async def process(self, item: Record, context: dict, **kwargs):
-        # progres timestamp could come from more than one place:
+        # progress timestamp could come from more than one place:
         # - try context first
-        # - then the content dat of the file
+        # - then the content date of the file
         # TODO: Need to get the latest record date from the last file
 
         progress_date_context: datetime | None = (

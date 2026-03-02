@@ -11,7 +11,7 @@ from imap_mag.data_pipelines import (
     FetchByDatesRunParameters,
     ProgressUpdateMode,
 )
-from imap_mag.data_pipelines.LoPivotPLatformPipeline import LoPivotPlatformPipeline
+from imap_mag.data_pipelines.LoPivotPlatformPipeline import LoPivotPlatformPipeline
 from imap_mag.util import Environment
 from imap_mag.util.Subsystem import Subsystem
 from prefect_server.pollLoPivotPlatform import (
@@ -77,10 +77,11 @@ def define_unavailable_latis_mapping(wiremock_manager):
 
 
 def check_file_existence(date: datetime, negate=False):
+    """Verify that a CSV file exists in the datastore for the given date."""
+
     datastore_path = AppSettings().data_store
     imap_lo_file_start = f"imap_{Subsystem.LO.short_name}_l1_{HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.descriptor}"
 
-    """Verify that a CSV file exists in the datastore for the given date."""
     csv_folder = os.path.join(
         datastore_path,
         "hk/lo/l1",
