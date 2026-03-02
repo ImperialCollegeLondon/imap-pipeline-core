@@ -23,6 +23,7 @@ from prefect_server.performCalibration import (
 )
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow
+from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.pollSpice import poll_spice_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
@@ -134,6 +135,15 @@ async def adeploy_flows(local_debug: bool = False):
     poll_spice_deployable = poll_spice_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPICE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_lo_pivot_platform_deployable = poll_lo_pivot_platform_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_LO_PIVOT_PLATFORM,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_LO_PIVOT_PLATFORM_CRON
+        ),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
@@ -372,6 +382,7 @@ async def adeploy_flows(local_debug: bool = False):
         poll_hk_deployable,
         poll_spice_deployable,
         poll_science_deployable,
+        poll_lo_pivot_platform_deployable,
         publish_deployable,
         check_ialirt_deployable,
         quicklook_ialirt_deployable,

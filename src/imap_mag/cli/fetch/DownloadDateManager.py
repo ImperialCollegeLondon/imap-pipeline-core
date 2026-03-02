@@ -1,6 +1,7 @@
 import logging
 from datetime import date, datetime, timedelta
 
+from imap_db.model import WorkflowProgress
 from imap_mag.db.Database import Database
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 
@@ -11,7 +12,7 @@ class DownloadDateManager:
     def __init__(
         self,
         packet_name: str,
-        database: Database,
+        database: Database | None,
         *,
         earliest_date: datetime | None = None,
         progress_time_buffer: timedelta = timedelta(),
@@ -96,8 +97,13 @@ class DownloadDateManager:
         original_start_date: datetime | date | None,
         original_end_date: datetime | date | None,
         validate_with_database: bool,
+        workflow_progress: WorkflowProgress | None = None,
     ) -> tuple[datetime, datetime] | None:
-        workflow_progress = self.__database.get_workflow_progress(self.__packet_name)
+        workflow_progress = (
+            self.__database.get_workflow_progress(self.__packet_name)
+            if workflow_progress is None and self.__database
+            else workflow_progress or WorkflowProgress(item_name=self.__packet_name)
+        )
         self.__last_checked_date = workflow_progress.get_last_checked_date()
         self.__progress_timestamp = workflow_progress.get_progress_timestamp()
 

@@ -11,13 +11,13 @@ from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider, Environment
 
 NOW = datetime(2025, 6, 3, 12, 37, 9)  # should not be first Monday of month
-TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
-TOMORROW = TODAY + timedelta(days=1)
-YESTERDAY = TODAY - timedelta(days=1)
+TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)  # 2025-06-03
+TOMORROW = TODAY + timedelta(days=1)  # 2025-06-04
+YESTERDAY = TODAY - timedelta(days=1)  # 2025-06-02
 START_OF_HOUR = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
 END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=999999)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
-BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)
+BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)  # 2025-06-01
 
 
 DATASTORE = Path("tests/datastore")

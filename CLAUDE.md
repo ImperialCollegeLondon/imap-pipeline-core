@@ -84,7 +84,7 @@ CLI commands are documented in the README.md in the project root.
 
 ## Code Style
 
-- Ruff for linting (E, F, I, UP, RUF rules) and formatting
+- You just run `poetry run ruff check --fix` and `poetry run ruff format` to ensure code style is consistent after changing and code and before committing or deciding a task is finished
 - Google-style docstrings
 - Double quotes, 4-space indentation
 - Pre-commit hooks enforce style and run tests before commits

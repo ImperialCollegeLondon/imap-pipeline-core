@@ -1,4 +1,9 @@
-from imap_mag.config.ApiSource import IALiRTApiSource, SdcApiSource, WebPodaApiSource
+from imap_mag.config.ApiSource import (
+    IALiRTApiSource,
+    SdcApiSource,
+    WebPodaApiSource,
+    WebTCADLaTiSApiSource,
+)
 from imap_mag.config.CommandConfig import CommandConfig
 
 
@@ -19,4 +24,9 @@ class FetchScienceConfig(CommandConfig):
 
 class FetchSpiceConfig(CommandConfig):
     api: SdcApiSource
+    publish_to_data_store: bool = True
+
+
+class FetchWebTCADLaTiSConfig(CommandConfig):
+    api: WebTCADLaTiSApiSource
     publish_to_data_store: bool = True

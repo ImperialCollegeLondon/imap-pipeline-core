@@ -15,6 +15,7 @@
         "xtce",
         "xtcedef"
     ],
+    "python.pythonPath":"${workspaceFolder}/.venv/bin/python",
     "python.analysis.extraPaths": [
         "./src"
     ],
@@ -30,5 +31,6 @@
             "username": "postgres"
         }
     ],
-    "python-envs.pythonProjects": [],
+    "python-envs.defaultEnvManager": "ms-python.python:poetry",
+    "python-envs.defaultPackageManager": "ms-python.python:poetry",
 }

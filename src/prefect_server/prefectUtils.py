@@ -42,16 +42,23 @@ async def get_secret_block(secret_name: str) -> str:
 
 
 async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
+    from prefect.context import FlowRunContext, TaskRunContext
+
+    in_prefect_flow = (
+        FlowRunContext.get() is not None or TaskRunContext.get() is not None
+    )
+
     logger = try_get_prefect_logger(__name__)
 
     auth_code: str | None = None
 
-    try:
-        auth_code = await get_secret_block(secret_name)
-    except ValueError:
-        logger.info(
-            f"{secret_name} not found or empty. Using environment variable {env_var_name}."
-        )
+    if in_prefect_flow:
+        try:
+            auth_code = await get_secret_block(secret_name)
+        except ValueError:
+            logger.info(
+                f"{secret_name} not found or empty. Using environment variable {env_var_name}."
+            )
 
     if not auth_code:
         auth_code = os.getenv(env_var_name)

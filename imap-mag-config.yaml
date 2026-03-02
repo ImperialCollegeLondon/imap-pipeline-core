@@ -42,6 +42,15 @@ fetch_spice:
     work_sub_folder: spice
     publish_to_data_store: true
 
+fetch_webtcad:
+    api:
+        # Example URL: https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/AnalogTelemetryItem_SID1.csv?TMID=58350&time,value&time%3E=2026-02-11T13:43:32.000Z&time%3C=2026-02-12T13:43:32.000Z&format_time(yyyy-MM-dd%27T%27HH:mm:ss.SSS)&limit(10)
+        url_base: 'https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/'
+        auth_code:
+        system_id: 'SID1' # SID1 is flight, SID2 is preflight
+    work_sub_folder:
+    publish_to_data_store: true
+
 plot_ialirt:
     work_sub_folder:
     publish_to_data_store: true

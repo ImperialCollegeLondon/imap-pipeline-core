@@ -18,6 +18,10 @@ from mag_toolkit.calibration import (
 from mag_toolkit.calibration.CalibrationDefinitions import Sensor, Validity, ValueType
 from tests.util.miscellaneous import DATASTORE, TEST_DATA
 
+# pycdf is not thread safe, so we need to ensure tests using it do not run in parallel with other tests using it
+#  apply mark to all tests in this file
+pytestmark = pytest.mark.xdist_group("spacepy")
+
 
 def test_science_layer_calculates_magnitude_correctly():
     science_value = ScienceValue(

@@ -16,6 +16,7 @@ from imap_mag.config.FetchConfig import (
     FetchIALiRTConfig,
     FetchScienceConfig,
     FetchSpiceConfig,
+    FetchWebTCADLaTiSConfig,
 )
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
@@ -50,6 +51,7 @@ class AppSettings(BaseSettings):
     # Command settings
     check_ialirt: CommandConfig
     fetch_binary: FetchBinaryConfig
+    fetch_webtcad: FetchWebTCADLaTiSConfig
     fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig
     fetch_spice: FetchSpiceConfig
