@@ -76,6 +76,7 @@ upload:
         - "*science/mag/l2-burst-offsets/*"
         - "*hk/mag/l1/*"
         - "*hk/sc/l1/*"
+        - "*hk/lo/l1/*"
         - "*ialirt/*"
         - "*quicklook/*"
         - "*spice/*"
