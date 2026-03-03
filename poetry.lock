@@ -973,14 +973,14 @@ pytz = ">2021.1"
 
 [[package]]
 name = "crump"
-version = "0.5.1"
+version = "0.6.0"
 description = "Csv/cdf Read and dUMP - Sync CSV, Parquet, and CDF science files into PostgreSQL database"
 optional = false
-python-versions = ">=3.11"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "crump-0.5.1-py3-none-any.whl", hash = "sha256:ede144845361829a43b55724353e7623da4bab38685c11e068f149f97663935f"},
-    {file = "crump-0.5.1.tar.gz", hash = "sha256:8297142cfba7e89c25205302c4dd68884986d456d400365d95c6b713ff2ff067"},
+    {file = "crump-0.6.0-py3-none-any.whl", hash = "sha256:ba29bfc2eabec881f2495a14ae6ec0669d2f5c1043cdf64bd8bd0a353f0a5096"},
+    {file = "crump-0.6.0.tar.gz", hash = "sha256:1e77c8ad0a8168352c87ec92df3acd49e8e83529106a1da1658e7ea960c0ad83"},
 ]
 
 [package.dependencies]
@@ -5733,4 +5733,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "115c111cc753594d37826a3f9fc2e65de793fc33e864d53c3e01e597a48828af"
+content-hash = "13a14479bdb782e042a7f391874e61e4af73c7b48d324767f9c58cd4e4baff63"
