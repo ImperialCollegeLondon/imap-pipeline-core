@@ -206,7 +206,7 @@ jobs:
 
       - name: Test Report
         uses: dorny/test-reporter@v2
-        if:  ${{ !cancelled() }} && ${{ hashFiles('test-results.xml') != '' }}
+        if:  ${{ !cancelled() && hashFiles('test-results.xml') != '' }}
         with:
           name: Test Results (${{ matrix.python-versions }})
           path: "test-results.xml"
