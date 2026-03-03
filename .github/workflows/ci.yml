@@ -139,6 +139,7 @@ jobs:
         with:
           context: .
           file: deploy/Dockerfile
+          build-args: PYTHON_VERSION=${{ matrix.python-versions }}
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
