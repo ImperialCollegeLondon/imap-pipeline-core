@@ -11,7 +11,7 @@
     "ignore": [
         "src/oldstuff"
     ],
-    "pythonVersion": "3.12",
+    "pythonVersion": "3.14",
     "reportMissingImports": true,
     "reportMissingTypeStubs": false
 }

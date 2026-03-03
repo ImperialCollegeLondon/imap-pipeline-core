@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION="3.12"
+ARG PYTHON_VERSION="3.14"
 
 FROM python:${PYTHON_VERSION}-slim AS compile-image
 
@@ -56,4 +56,4 @@ ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 COPY src/ /app/
 
 # Now the imap-mag CLI is available on the path and
-# the 3.12 python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
+# the 3.x python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
