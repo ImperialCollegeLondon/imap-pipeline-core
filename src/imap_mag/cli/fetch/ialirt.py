@@ -78,8 +78,6 @@ def fetch_ialirt(
 
     fetch = _create_fetch_ialirt(app_settings)
 
-    logger.info(f"Downloading I-ALiRT MAG from {start_date} to {end_date}.")
-
     downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch.download_mag_to_csv(
         start_date=start_date,
         end_date=end_date,

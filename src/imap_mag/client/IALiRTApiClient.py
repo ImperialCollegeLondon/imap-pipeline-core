@@ -34,6 +34,7 @@ class IALiRTApiClient:
         instrument: str,
         start_date: datetime,
         end_date: datetime,
+        max_hours_per_chunk: int | None = None,
     ) -> list[dict]:
         """Download data from I-ALiRT via ialirt-data-access for a specific instrument."""
 
@@ -41,8 +42,18 @@ class IALiRTApiClient:
         latest_date: datetime = start_date
 
         while (end_date - latest_date) > timedelta(seconds=4):
+            end_date_this_chunk = (
+                min(end_date, latest_date + timedelta(hours=max_hours_per_chunk))
+                if max_hours_per_chunk is not None
+                else end_date
+            )
+
+            logger.info(
+                f"GET {instrument} from {latest_date} to {end_date_this_chunk}."
+            )
+
             data_chunk: list[dict] = self.__do_download(
-                instrument, latest_date, end_date
+                instrument, latest_date, end_date_this_chunk
             )
             whole_data.extend(data_chunk)
 
@@ -56,6 +67,11 @@ class IALiRTApiClient:
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
                 )
                 latest_date = max_chunk_date + timedelta(seconds=1)
+            elif end_date_this_chunk < end_date:
+                logger.debug(
+                    f"No data downloaded between {latest_date} and {end_date_this_chunk}, but end date not reached. Advancing latest_date to {end_date_this_chunk} to continue downloading."
+                )
+                latest_date = end_date_this_chunk
             else:
                 logger.debug(
                     f"No more data to download between {latest_date} and {end_date}."
