@@ -31,7 +31,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PREFERED_PYTHON_VERSION: "3.12"
+  PREFERED_PYTHON_VERSION: "3.14"
   CALIBRATION_TAG: "v0.2.0"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"

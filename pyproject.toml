@@ -1,7 +1,7 @@
 [project]
 requires-python = ">=3.11"
 name = "imap-mag"
-version = "4.11.0"
+version = "4.11.1"
 
 [tool.poetry]
 name = "imap-mag"
@@ -31,7 +31,7 @@ pandas = "^2.2.2"
 imap-data-access = "^0.37.1"
 cdflib = "^1.3.6"
 psycopg = {extras = ["binary"], version = "^3.2.9"}
-prefect = {extras = ["shell"], version = "3.6.11"}
+prefect = {extras = ["shell"], version = "3.6.20"}
 prefect-docker = "0.7.1"
 spacepy = "^0.7.0"
 pydantic-settings = "^2.8.1"
