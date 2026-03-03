@@ -58,7 +58,8 @@ def test_fetch_ialirt_no_data(
     mock_ialirt_data_access.get_all_by_dates.assert_called_once_with(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+        end_date=datetime(2025, 5, 3, 0, 0),
+        max_hours_per_chunk=4,
     )
 
     assert actual_downloaded == dict()
@@ -94,7 +95,8 @@ def test_fetch_ialirt_single_day_no_existing_data(
     mock_ialirt_data_access.get_all_by_dates.assert_called_once_with(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+        end_date=datetime(2025, 5, 3, 0, 0),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1
