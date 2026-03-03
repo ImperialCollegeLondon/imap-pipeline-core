@@ -151,6 +151,7 @@ def test_fetch_ialirt_multiple_days_no_existing_data(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 3
@@ -215,6 +216,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1
@@ -284,6 +286,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_colu
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1
@@ -360,6 +363,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_col
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1
@@ -429,6 +433,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1
@@ -515,6 +520,7 @@ def test_fetch_ialirt_duplicate_timestamps_different_instruments(
         instrument="mag",
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
+        max_hours_per_chunk=4,
     )
 
     assert len(actual_downloaded) == 1

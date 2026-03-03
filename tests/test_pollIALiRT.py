@@ -3,7 +3,6 @@ import os
 import sys
 from datetime import UTC, datetime, timedelta
 from unittest import mock
-from urllib.parse import quote
 
 import pytest
 import pytz
@@ -48,9 +47,12 @@ def define_available_ialirt_mappings(
         },
     ]
 
+    # Use pattern matching so chunked requests (any date range) for mag instrument are handled.
+    # Including end_date_str in the response causes the chunking loop to terminate after one chunk.
     wiremock_manager.add_string_mapping(
-        f"/space-weather?instrument=mag&time_utc_start={quote(start_date_str)}&time_utc_end={quote(end_date_str)}",
+        r"/space-weather\?instrument=mag&.*",
         json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
+        is_pattern=True,
         priority=1,
     )
 
@@ -88,11 +90,14 @@ def define_available_ialirt_hk_mappings(
         },
     ]
 
+    # Use pattern matching so chunked requests (any date range) for mag_hk instrument are handled.
+    # Including end_date_str in the response causes the chunking loop to terminate after one chunk.
     wiremock_manager.add_string_mapping(
-        f"/space-weather?instrument=mag_hk&time_utc_start={quote(start_date_str)}&time_utc_end={quote(end_date_str)}",
+        r"/space-weather\?instrument=mag_hk&.*",
         json.dumps(
             {"meta": {"count": 2, "instrument": "mag_hk"}, "data": query_response}
         ),
+        is_pattern=True,
         priority=1,
     )
 
