@@ -78,6 +78,7 @@ upload:
         - "*hk/sc/l1/*"
         - "*hk/lo/l1/*"
         - "*ialirt/*"
+        - "*ialirt_hk/*"
         - "*quicklook/*"
         - "*spice/*"
 
@@ -100,6 +101,8 @@ postgres_upload:
         - "*hk/mag/l1/tcc-succ/*"
         - "*hk/sc/l1/x285/*"
         - "*hk/sc/l1/x286/*"
+        - "*ialirt_hk/*"
+        - "*ialirt/*"
 
 datastore_cleanup:
     dry_run: false

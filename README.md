@@ -200,7 +200,7 @@ crump prepare -c imap-db-ingest-config.yaml ./tests/datastore/hk/**/*.csv
 Example 2 - prepare a section in config file based on a data file:
 
 ```bash
-crump prepare -c imap-db-ingest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
+crump prepare -c imap-db-ingest-config.yaml --job imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
 ```
 
 Example 3 - crump command to ingest data based on a config file section:

@@ -10881,3 +10881,231 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+  imap_ialirt_hk:
+    target_table: ialirt_mag_hk
+    filename_match: imap_ialirt_hk_*.csv
+    id_mapping:
+      time_utc:
+        db_column: time_utc
+        type: datetime
+        nullable: false
+    columns:
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      mag_hk_fib_range:
+        db_column: fib_range
+        type: integer
+        nullable: false
+      mag_hk_fib_saturated:
+        db_column: fib_saturated
+        type: boolean
+        nullable: false
+      mag_hk_fib_temp:
+        db_column: fib_temp
+        type: float
+        nullable: false
+      mag_hk_fob_range:
+        db_column: fob_range
+        type: integer
+        nullable: false
+      mag_hk_fob_saturated:
+        db_column: fob_saturated
+        type: boolean
+        nullable: false
+      mag_hk_fob_temp:
+        db_column: fob_temp
+        type: float
+        nullable: false
+      mag_hk_hk1v5_danger:
+        db_column: hk1v5_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk1v5_warn:
+        db_column: hk1v5_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk1v5c_danger:
+        db_column: hk1v5c_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk1v5c_warn:
+        db_column: hk1v5c_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk1v8_danger:
+        db_column: hk1v8_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk1v8_warn:
+        db_column: hk1v8_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk1v8c_danger:
+        db_column: hk1v8c_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk1v8c_warn:
+        db_column: hk1v8c_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk2v5_danger:
+        db_column: hk2v5_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk2v5_warn:
+        db_column: hk2v5_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk2v5c_danger:
+        db_column: hk2v5c_danger
+        type: boolean
+        nullable: false
+      mag_hk_hk2v5c_warn:
+        db_column: hk2v5c_warn
+        type: boolean
+        nullable: false
+      mag_hk_hk3v3:
+        db_column: hk3v3
+        type: float
+        nullable: false
+      mag_hk_hk3v3_current:
+        db_column: hk3v3_current
+        type: float
+        nullable: false
+      mag_hk_hkn8v5:
+        db_column: hkn8v5
+        type: float
+        nullable: false
+      mag_hk_hkn8v5_current:
+        db_column: hkn8v5_current
+        type: float
+        nullable: false
+      mag_hk_hkp8v5_danger:
+        db_column: hkp8v5_danger
+        type: boolean
+        nullable: false
+      mag_hk_hkp8v5_warn:
+        db_column: hkp8v5_warn
+        type: boolean
+        nullable: false
+      mag_hk_hkp8v5c_danger:
+        db_column: hkp8v5c_danger
+        type: boolean
+        nullable: false
+      mag_hk_hkp8v5c_warn:
+        db_column: hkp8v5c_warn
+        type: boolean
+        nullable: false
+      mag_hk_icu_temp:
+        db_column: icu_temp
+        type: float
+        nullable: false
+      mag_hk_mode:
+        db_column: mode
+        type: varchar(6)
+        nullable: false
+      mag_hk_multbit_errs:
+        db_column: multbit_errs
+        type: boolean
+        nullable: false
+      mag_hk_pri_isvalid:
+        db_column: pri_isvalid
+        type: boolean
+        nullable: false
+      mag_hk_sec_isvalid:
+        db_column: sec_isvalid
+        type: boolean
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_hk_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  imap_ialirt:
+    target_table: ialirt_mag
+    filename_match: imap_ialirt_*.csv
+    id_mapping:
+      time_utc:
+        db_column: time_utc
+        type: datetime
+        nullable: false
+    columns:
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      mag_B_GSE_x:
+        db_column: B_GSE_x
+        type: float
+        nullable: false
+      mag_B_GSE_y:
+        db_column: B_GSE_y
+        type: float
+        nullable: false
+      mag_B_GSE_z:
+        db_column: B_GSE_z
+        type: float
+        nullable: false
+      mag_B_GSM_x:
+        db_column: B_GSM_x
+        type: float
+        nullable: false
+      mag_B_GSM_y:
+        db_column: B_GSM_y
+        type: float
+        nullable: false
+      mag_B_GSM_z:
+        db_column: B_GSM_z
+        type: float
+        nullable: false
+      mag_B_RTN_n:
+        db_column: B_RTN_n
+        type: float
+        nullable: false
+      mag_B_RTN_r:
+        db_column: B_RTN_r
+        type: float
+        nullable: false
+      mag_B_RTN_t:
+        db_column: B_RTN_t
+        type: float
+        nullable: false
+      mag_B_magnitude:
+        db_column: B_magnitude
+        type: float
+        nullable: false
+      mag_epoch:
+        db_column: epoch
+        type: bigint
+        nullable: false
+      mag_phi_B_GSE:
+        db_column: phi_B_GSE
+        type: float
+        nullable: false
+      mag_phi_B_GSM:
+        db_column: phi_B_GSM
+        type: float
+        nullable: false
+      mag_theta_B_GSE:
+        db_column: theta_B_GSE
+        type: float
+        nullable: false
+      mag_theta_B_GSM:
+        db_column: theta_B_GSM
+        type: float
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
