@@ -1,7 +1,6 @@
 from unittest import mock
 
 import pytest
-from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.testing.utilities import prefect_test_harness
 
 from imap_mag.util import Environment
@@ -17,12 +16,14 @@ def prefect_test_fixture():
 
 @pytest.fixture
 def mock_teams_webhook_block(mocker) -> mock.Mock:
-    mock_block = mock.AsyncMock(spec=MicrosoftTeamsWebhook)
+    mock_block = mock.AsyncMock()
+    mock_block.notify = mock.AsyncMock()
     mock_block.notify_type = "info"
+    mock_aload = mock.AsyncMock(return_value=mock_block)
 
     mocker.patch(
         "prefect.blocks.notifications.MicrosoftTeamsWebhook.aload",
-        new=mock.AsyncMock(return_value=mock_block),
+        new=mock_aload,
     )
 
     return mock_block
