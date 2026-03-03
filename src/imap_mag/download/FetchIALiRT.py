@@ -52,6 +52,7 @@ class FetchIALiRT:
                 content_date=content_date
             ),
             process_fn=lambda df: process_ialirt_mag_data(df),
+            max_hours_per_chunk=4,  # Limit to 4 hours per chunk to avoid 400 error
         )
 
     def download_mag_hk_to_csv(
@@ -72,6 +73,7 @@ class FetchIALiRT:
                 df,
                 self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
             ),
+            max_hours_per_chunk=2,  # Limit to 3 hours per chunk to avoid 400 error
         )
 
     def __download_to_csv(
@@ -81,13 +83,17 @@ class FetchIALiRT:
         end_date: datetime,
         path_handler_factory,
         process_fn,
+        max_hours_per_chunk: int | None = None,
     ) -> dict[Path, IFilePathHandler]:
         """Retrieve I-ALiRT data for a specific instrument."""
 
         downloaded_files: dict[Path, IFilePathHandler] = dict()
 
         downloaded: list[dict] = self.__data_access.get_all_by_dates(
-            instrument=instrument, start_date=start_date, end_date=end_date
+            instrument=instrument,
+            start_date=start_date,
+            end_date=end_date,
+            max_hours_per_chunk=max_hours_per_chunk,
         )
 
         if downloaded:

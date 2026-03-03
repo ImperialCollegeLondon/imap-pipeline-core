@@ -22,8 +22,8 @@ from prefect_server.performCalibration import (
     gradiometry_flow,
 )
 from prefect_server.pollHK import poll_hk_flow
-from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.pollSpice import poll_spice_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
