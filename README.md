@@ -132,7 +132,9 @@ All core functionality and logic should be available as simnple CLI commands as 
 
 ```bash
 export IALIRT_API_KEY=[YOUR_SECRET_HERE!]
-imap-mag fetch ialirt --start-date 2025-10-02 --end-date '2025-10-03 23:59:59'
+export MAG_FETCH_IALIRT_API_URL_BASE=https://ialirt.imap-mission.com/api-key
+imap-mag fetch ialirt --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
+imap-mag fetch ialirt-hk --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
 ```
 
 ### Fetch Binary HK from WebPODA
@@ -198,7 +200,7 @@ crump prepare -c imap-db-ingest-config.yaml ./tests/datastore/hk/**/*.csv
 Example 2 - prepare a section in config file based on a data file:
 
 ```bash
-crump prepare -c imap-db-ingest-config.yaml --job-name imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
+crump prepare -c imap-db-ingest-config.yaml --job imap_sc_l1_x286_v ./tests/datastore/hk/**/imap_sc_l1_x286_20251109_v001.csv
 ```
 
 Example 3 - crump command to ingest data based on a config file section:

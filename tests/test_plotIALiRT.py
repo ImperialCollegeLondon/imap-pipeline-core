@@ -32,6 +32,29 @@ def mock_datetime_provider_today_20251021(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 21))
 
 
+def _setup_ialirt_datastore(
+    temp_datastore: Path,  # noqa: F811
+    date_str: str,
+    date_fmt: str,
+):
+    """Set up both science and HK files in the datastore for a given date."""
+
+    science_data = TEST_DATA / "ialirt_science_plot_data.csv"
+    hk_data = TEST_DATA / "ialirt_hk_plot_data.csv"
+
+    (temp_datastore / "ialirt" / date_fmt).mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        science_data,
+        temp_datastore / "ialirt" / date_fmt / f"imap_ialirt_{date_str}.csv",
+    )
+
+    (temp_datastore / "ialirt_hk" / date_fmt).mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        hk_data,
+        temp_datastore / "ialirt_hk" / date_fmt / f"imap_ialirt_hk_{date_str}.csv",
+    )
+
+
 def test_plot_ialirt(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
@@ -39,17 +62,8 @@ def test_plot_ialirt(
     dynamic_work_folder,
 ) -> None:
     # Set up.
-    test_data = TEST_DATA / "ialirt_plot_data.csv"
-
-    (temp_datastore / "ialirt" / TODAY.strftime("%Y/%m")).mkdir(
-        parents=True, exist_ok=True
-    )
-    shutil.copy(
-        test_data,
-        temp_datastore
-        / "ialirt"
-        / TODAY.strftime("%Y/%m")
-        / f"imap_ialirt_{TODAY.strftime('%Y%m%d')}.csv",
+    _setup_ialirt_datastore(
+        temp_datastore, TODAY.strftime("%Y%m%d"), TODAY.strftime("%Y/%m")
     )
 
     ialirt_progress = test_database.get_workflow_progress(
@@ -100,13 +114,7 @@ def test_plot_ialirt_todays_data_copies_to_latest_figure(
     dynamic_work_folder,
 ) -> None:
     # Set up.
-    test_data = TEST_DATA / "ialirt_plot_data.csv"
-
-    (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
-    shutil.copy(
-        test_data,
-        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
-    )
+    _setup_ialirt_datastore(temp_datastore, "20251021", "2025/10")
 
     # Execute.
     generated_plots = plot_ialirt(
@@ -126,13 +134,7 @@ def test_plot_ialirt_todays_data_added_to_database(
     dynamic_work_folder,
 ) -> None:
     # Set up.
-    test_data = TEST_DATA / "ialirt_plot_data.csv"
-
-    (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
-    shutil.copy(
-        test_data,
-        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
-    )
+    _setup_ialirt_datastore(temp_datastore, "20251021", "2025/10")
 
     assert len(test_database.get_files()) == 0
 

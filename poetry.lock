@@ -973,14 +973,14 @@ pytz = ">2021.1"
 
 [[package]]
 name = "crump"
-version = "0.5.1"
+version = "0.6.0"
 description = "Csv/cdf Read and dUMP - Sync CSV, Parquet, and CDF science files into PostgreSQL database"
 optional = false
-python-versions = ">=3.11"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "crump-0.5.1-py3-none-any.whl", hash = "sha256:ede144845361829a43b55724353e7623da4bab38685c11e068f149f97663935f"},
-    {file = "crump-0.5.1.tar.gz", hash = "sha256:8297142cfba7e89c25205302c4dd68884986d456d400365d95c6b713ff2ff067"},
+    {file = "crump-0.6.0-py3-none-any.whl", hash = "sha256:ba29bfc2eabec881f2495a14ae6ec0669d2f5c1043cdf64bd8bd0a353f0a5096"},
+    {file = "crump-0.6.0.tar.gz", hash = "sha256:1e77c8ad0a8168352c87ec92df3acd49e8e83529106a1da1658e7ea960c0ad83"},
 ]
 
 [package.dependencies]
@@ -1701,13 +1701,13 @@ files = [
 
 [[package]]
 name = "ialirt-data-access"
-version = "0.5.0"
+version = "0.6.0"
 description = "I-ALiRT Data Access"
 optional = false
 python-versions = "<4,>=3.9"
 groups = ["main"]
 files = [
-    {file = "ialirt_data_access-0.5.0.tar.gz", hash = "sha256:02e3cf508e74c0997b372a10a5f87049788b77617d90a864af033464b9c08477"},
+    {file = "ialirt_data_access-0.6.0.tar.gz", hash = "sha256:530bf8f65bd8d78c84f5369473e2f6d3ae4fb4dc6429e48fb2345c09d7d6d467"},
 ]
 
 [package.extras]
@@ -5733,4 +5733,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "c3f753daee2b2c3358dd43f5cc9beee575edd422314a8ce5df4b72d253ea9d99"
+content-hash = "13a14479bdb782e042a7f391874e61e4af73c7b48d324767f9c58cd4e4baff63"

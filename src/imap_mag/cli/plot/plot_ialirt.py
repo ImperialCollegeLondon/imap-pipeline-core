@@ -6,7 +6,10 @@ from typing import Annotated
 import typer
 
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.cli.ialirtUtils import fetch_ialirt_files_for_work
+from imap_mag.cli.ialirtUtils import (
+    fetch_ialirt_files_for_work,
+    fetch_ialirt_hk_files_for_work,
+)
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import DatastoreFileManager
 from imap_mag.io.file import IALiRTQuicklookPathHandler, LatestFilePathHandler
@@ -58,7 +61,7 @@ def plot_ialirt(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    work_files = fetch_ialirt_files_for_work(
+    science_files = fetch_ialirt_files_for_work(
         app_settings.data_store,
         work_folder,
         start_date=start_date,
@@ -66,16 +69,25 @@ def plot_ialirt(
         files=files,
     )
 
-    if len(work_files) == 0:
+    hk_files = fetch_ialirt_hk_files_for_work(
+        app_settings.data_store,
+        work_folder,
+        start_date=start_date,
+        end_date=end_date,
+        files=None,  # HK files are auto-fetched by date range
+    )
+
+    if len(science_files) == 0 and len(hk_files) == 0:
         return {}
 
+    all_files = science_files + hk_files
     logger.info(
-        f"Plotting I-ALiRT data from {len(work_files)} files:\n{', '.join(f.as_posix() for f in work_files)}"
+        f"Plotting I-ALiRT data from {len(all_files)} files:\n{', '.join(f.as_posix() for f in all_files)}"
     )
 
     # Generate plots
     generated_figure: dict[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
-        work_files, save_folder=work_folder, combine_plots=combined_plot
+        science_files, hk_files, save_folder=work_folder, combine_plots=combined_plot
     )
 
     ialirt_file_and_handler: dict[Path, IALiRTQuicklookPathHandler] = {}

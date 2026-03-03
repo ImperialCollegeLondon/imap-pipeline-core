@@ -18,6 +18,7 @@ class IALiRTApiClient:
     """
 
     __DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
+    __DATE_INDEX = "time_utc"
 
     def __init__(self, auth_code: SecretStr | None, sdc_url: str | None = None) -> None:
         """Initialize SDC API client."""
@@ -30,21 +31,35 @@ class IALiRTApiClient:
     def get_all_by_dates(
         self,
         *,
+        instrument: str,
         start_date: datetime,
         end_date: datetime,
+        max_hours_per_chunk: int | None = None,
     ) -> list[dict]:
-        """Download MAG data from I-ALiRT via ialirt-data-access."""
+        """Download data from I-ALiRT via ialirt-data-access for a specific instrument."""
 
         whole_data: list[dict] = []
         latest_date: datetime = start_date
 
         while (end_date - latest_date) > timedelta(seconds=4):
-            data_chunk: list[dict] = self.__do_download(latest_date, end_date)
+            end_date_this_chunk = (
+                min(end_date, latest_date + timedelta(hours=max_hours_per_chunk))
+                if max_hours_per_chunk is not None
+                else end_date
+            )
+
+            logger.info(
+                f"GET {instrument} from {latest_date} to {end_date_this_chunk}."
+            )
+
+            data_chunk: list[dict] = self.__do_download(
+                instrument, latest_date, end_date_this_chunk
+            )
             whole_data.extend(data_chunk)
 
             if data_chunk:
                 max_chunk_date = max(
-                    datetime.strptime(d["met_in_utc"], self.__DATE_FORMAT)
+                    datetime.strptime(d[self.__DATE_INDEX], self.__DATE_FORMAT)
                     for d in data_chunk
                 )
 
@@ -52,6 +67,11 @@ class IALiRTApiClient:
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
                 )
                 latest_date = max_chunk_date + timedelta(seconds=1)
+            elif end_date_this_chunk < end_date:
+                logger.debug(
+                    f"No data downloaded between {latest_date} and {end_date_this_chunk}, but end date not reached. Advancing latest_date to {end_date_this_chunk} to continue downloading."
+                )
+                latest_date = end_date_this_chunk
             else:
                 logger.debug(
                     f"No more data to download between {latest_date} and {end_date}."
@@ -60,8 +80,16 @@ class IALiRTApiClient:
 
         return whole_data
 
-    def __do_download(self, start_date: datetime, end_date: datetime) -> list[dict]:
-        return ialirt_data_access.data_product_query(
-            met_in_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
-            met_in_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+    def __do_download(
+        self, instrument: str, start_date: datetime, end_date: datetime
+    ) -> list[dict]:
+        result = ialirt_data_access.data_product_query(
+            instrument=instrument,
+            time_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+            time_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
         )
+
+        if isinstance(result, dict):
+            return result.get("data", [])
+
+        return result

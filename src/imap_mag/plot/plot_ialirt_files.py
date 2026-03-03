@@ -16,43 +16,70 @@ logger = logging.getLogger(__name__)
 
 
 def plot_ialirt_files(
-    files: list[Path], save_folder: Path, combine_plots: bool = False
+    science_files: list[Path],
+    hk_files: list[Path],
+    save_folder: Path,
+    combine_plots: bool = False,
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Generate I-ALiRT plots for the specified files."""
 
     generated_files: dict[Path, IALiRTQuicklookPathHandler] = {}
 
+    # Load all science data
+    science_data = _load_csv_files(science_files)
+
+    # Load all HK data
+    hk_data = _load_csv_files(hk_files)
+
+    # Merge science and HK data on time_utc index
+    ialirt_data = _merge_science_and_hk(science_data, hk_data)
+
+    if ialirt_data.empty:
+        logger.info("No I-ALiRT data present in files.")
+        return generated_files
+
     if combine_plots:
-        # Combine I-ALiRT data from all files into a single plot
-        ialirt_data = pd.DataFrame()
-
-        for file in files:
-            file_data: pd.DataFrame = pd.read_csv(
-                file, parse_dates=["met_in_utc"], index_col="met_in_utc"
-            )
-            ialirt_data = pd.concat([ialirt_data, file_data])
-
-        if ialirt_data.empty:
-            logger.info("No I-ALiRT data present in files.")
-            return generated_files
-
         (output_file, output_handler) = create_figure(ialirt_data, save_folder)
         generated_files[output_file] = output_handler
     else:
-        # Generate individual plots for each I-ALiRT file
-        for file in files:
-            ialirt_data: pd.DataFrame = pd.read_csv(
-                file, parse_dates=["met_in_utc"], index_col="met_in_utc"
-            )
-
-            if ialirt_data.empty:
-                logger.info(f"No I-ALiRT data available in {file}.")
+        # Generate individual plots per date
+        for date, daily_data in ialirt_data.groupby(ialirt_data.index.date):
+            if daily_data.empty:
                 continue
 
-            (output_file, output_handler) = create_figure(ialirt_data, save_folder)
+            (output_file, output_handler) = create_figure(daily_data, save_folder)
             generated_files[output_file] = output_handler
 
     return generated_files
+
+
+def _load_csv_files(files: list[Path]) -> pd.DataFrame:
+    """Load and concatenate CSV files."""
+
+    data = pd.DataFrame()
+
+    for file in files:
+        file_data: pd.DataFrame = pd.read_csv(
+            file, parse_dates=["time_utc"], index_col="time_utc"
+        )
+        data = pd.concat([data, file_data])
+
+    return data
+
+
+def _merge_science_and_hk(
+    science_data: pd.DataFrame, hk_data: pd.DataFrame
+) -> pd.DataFrame:
+    """Merge science and HK data on time_utc index."""
+
+    if science_data.empty and hk_data.empty:
+        return pd.DataFrame()
+    elif science_data.empty:
+        return hk_data
+    elif hk_data.empty:
+        return science_data
+    else:
+        return science_data.join(hk_data, how="outer", rsuffix="_hk")
 
 
 def create_figure(
