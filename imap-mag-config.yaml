@@ -101,8 +101,8 @@ postgres_upload:
         - "*hk/mag/l1/tcc-succ/*"
         - "*hk/sc/l1/x285/*"
         - "*hk/sc/l1/x286/*"
-        - "*ialirt_hk/*"
-        - "*ialirt/*"
+        - "ialirt_hk/**/imap_ialirt_hk*.csv"
+        - "ialirt/**/imap_ialirt_*.csv"
 
 datastore_cleanup:
     dry_run: false
