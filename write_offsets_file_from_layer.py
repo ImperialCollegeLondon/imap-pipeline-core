@@ -2,17 +2,17 @@ from pathlib import Path
 
 from src.mag_toolkit.calibration import CalibrationLayer
 
-norm_or_burst = "norm"  # "burst" or "norm"
+norm_or_burst = "burst"  # "burst" or "norm"
 version = str(1).zfill(3)
 
-for day in range(13, 14):
+for day in range(20, 28):
     year = 2025
-    month = 11
+    month = 12
     day = str(day).zfill(2)
 
     layer = CalibrationLayer.from_file(
         Path(
-            f"test_data_store/calibration/layers/{year}/{month}/imap_mag_manual-{norm_or_burst}-layer_{year}{month}{day}_v004.json"
+            f"test_data_store/calibration/layers/{year}/{month}/imap_mag_manual-{norm_or_burst}-layer_{year}{month}{day}_v008.json"
         ),
         load_contents=True,
     )
