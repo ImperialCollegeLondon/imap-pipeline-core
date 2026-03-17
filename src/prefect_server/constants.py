@@ -68,6 +68,7 @@ class PREFECT_CONSTANTS:
         POLL_NOAA_CRON = "IMAP_CRON_POLL_NOAA"
 
         DATABASE_CLEANUP_CRON = "IMAP_CRON_DATABASE_CLEANUP"
+        IMAP_CRON_FILE_INDEX = "IMAP_CRON_FILE_INDEX"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -105,6 +106,7 @@ class PREFECT_CONSTANTS:
         DATASTORE_INDEXER = "datastore-indexer"
         POLL_NOAA = "poll-noaa"
         DATABASE_CLEANUP = "database-cleanup"
+        FILE_INDEX = "file-index"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
@@ -134,3 +136,4 @@ class PREFECT_CONSTANTS:
         DATASTORE_INDEXER = "datastore_indexer"
         POLL_NOAA = "poll_noaa"
         DATABASE_CLEANUP = "database_cleanup"
+        FILE_INDEX = "file_index"
