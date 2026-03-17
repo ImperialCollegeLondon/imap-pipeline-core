@@ -104,6 +104,39 @@ postgres_upload:
         - "ialirt_hk/**/imap_ialirt_hk*.csv"
         - "ialirt/**/imap_ialirt_*.csv"
 
+file_index:
+  paths_to_match:
+    - "science/mag/**/*.cdf"
+    - "hk/mag/**/*.csv"
+    - "hk/sc/**/*.csv"
+  file_patterns:
+    - pattern: "science/mag/l1c/**/**/imap_mag_l1c_*.cdf"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:00:04"
+      cdf_attributes_to_index:
+        - "Parents"
+        - "ground_software_version"
+        - "missing_sequences"
+        - "vectors_per_second"
+      columns_to_check:
+        - column_name: "vector_magnitude"
+          check_for_empty: false
+          check_for_bad_data: true
+          match_as_bad_data: ["-9.999999848243207e+30", "NA", "N/A", "-"]
+          expected_range: [-100000, 100000]
+    - pattern: "science/mag/l1d/**/**/imap_mag_l1d_*.cdf"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:00:00.5"
+      cdf_attributes_to_index:
+        - "Parents"
+        - "ground_software_version"
+      columns_to_check:
+        - column_name: "magnitude"
+          check_for_empty: false
+          check_for_bad_data: true
+          match_as_bad_data: ["-9.999999848243207e+30"]
+          expected_range: [-1000, 1000]
+
 datastore_cleanup:
     dry_run: false
     tasks:

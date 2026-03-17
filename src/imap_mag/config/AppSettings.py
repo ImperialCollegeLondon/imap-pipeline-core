@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import ClassVar
 
+from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -18,6 +19,7 @@ from imap_mag.config.FetchConfig import (
     FetchSpiceConfig,
     FetchWebTCADLaTiSConfig,
 )
+from imap_mag.config.FileIndexConfig import FileIndexConfig
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
 from imap_mag.config.PublishConfig import PublishConfig
@@ -61,6 +63,7 @@ class AppSettings(BaseSettings):
     upload: UploadConfig
     postgres_upload: PostgresUploadConfig
     datastore_cleanup: DatastoreCleanupConfig
+    file_index: FileIndexConfig = Field(default_factory=FileIndexConfig)
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

@@ -6,8 +6,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Self
 
-from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Interval,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
@@ -192,6 +201,44 @@ class File(Base):
             latest_files.append(file_list[0][0])  # Append the file object
 
         return latest_files
+
+
+class FileIndex(Base):
+    """Stores indexed metadata about data files (CSV and CDF)."""
+
+    __tablename__ = "file_index"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    file_id: Mapped[int] = mapped_column(
+        ForeignKey("files.id", ondelete="CASCADE"), unique=True
+    )
+    indexed_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    record_count: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    first_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    has_gaps: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
+    has_missing_data: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
+    has_bad_data: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
+    total_time_without_gaps: Mapped[object | None] = mapped_column(
+        Interval(), nullable=True
+    )
+    total_gap_duration: Mapped[object | None] = mapped_column(Interval(), nullable=True)
+    gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    nan_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    missing_data_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    cdf_attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    column_stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    file: Mapped["File"] = relationship("File", backref="file_index")
+
+    def __repr__(self) -> str:
+        return f"<FileIndex {self.id} (file_id={self.file_id}, record_count={self.record_count})>"
 
 
 class WorkflowProgress(Base):

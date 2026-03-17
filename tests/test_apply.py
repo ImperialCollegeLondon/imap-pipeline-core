@@ -20,7 +20,6 @@ with threading.Lock():
 
 
 def verify_noop_20251017_results(datastore):
-
     output_l2_file = (
         datastore
         / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-mago_20251017_v000.cdf"
