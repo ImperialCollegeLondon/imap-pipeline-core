@@ -10,9 +10,9 @@ from prefect_server.pollSpice import poll_spice_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
-    END_OF_TODAY,
     NOW,
     TODAY,
+    TOMORROW,
     mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
@@ -115,7 +115,7 @@ async def test_poll_spice_autoflow_first_ever_run(
     define_available_spice_data_sdc_mappings(
         wiremock_manager,
         BEGINNING_OF_IMAP,
-        END_OF_TODAY,
+        TOMORROW,
         ingestion_timestamp,
         test_spice_file,
     )
@@ -218,7 +218,7 @@ async def test_poll_spice_autoflow_download_newer_file(
     define_available_spice_data_sdc_mappings(
         wiremock_manager,
         previous_progress_timestamp,
-        END_OF_TODAY,
+        TOMORROW,
         new_ingestion_timestamp,
         test_spice_file,
     )
