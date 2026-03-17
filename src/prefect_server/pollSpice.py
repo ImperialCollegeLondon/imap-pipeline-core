@@ -158,6 +158,10 @@ async def poll_spice_flow(
     if safe_download_dates is None:
         raise ValueError(f"No dates for download of {progress_item_id}")
 
+    if safe_download_dates[1] == DatetimeProvider.end_of_today():
+        # SDC API is exclusive on end dates!
+        safe_download_dates = (safe_download_dates[0], DatetimeProvider.tomorrow())
+
     if (
         safe_download_dates[0] != ingest_start_day
         or safe_download_dates[1] != ingest_end_date
