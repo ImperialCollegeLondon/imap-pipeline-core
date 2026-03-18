@@ -249,3 +249,66 @@ def test_pipeline_indexes_cdf_bad_data(test_database, test_database_container):
         assert idx is not None
         assert idx.has_bad_data is True
         assert idx.record_count == 172800
+
+
+# ---------------------------------------------------------------------------
+# Workflow progress tracking
+# ---------------------------------------------------------------------------
+
+
+def test_automatic_mode_updates_workflow_progress_after_run(
+    test_database, test_database_container
+):
+    """After an automatic run, workflow progress timestamp must advance so the same
+    files are NOT re-indexed on the next automatic run."""
+    with Environment(MAG_DATA_STORE=str(DATASTORE.absolute())):
+        from imap_mag.config.AppSettings import AppSettings
+
+        settings = AppSettings()  # type: ignore
+        rel_path = "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+        file = _insert_file(
+            test_database, rel_path, settings, modified_offset_seconds=10
+        )
+
+        # First automatic run
+        _build_and_run_pipeline(test_database, settings, AutomaticRunParameters())
+
+        progress = test_database.get_workflow_progress(
+            FileIndexPipeline.PROGRESS_ITEM_ID
+        )
+        assert progress.progress_timestamp is not None
+        assert progress.progress_timestamp >= file.last_modified_date
+
+        # Second automatic run should find nothing new
+        _build_and_run_pipeline(test_database, settings, AutomaticRunParameters())
+
+        # File should still have exactly one index entry (no duplicate)
+        idx = test_database.get_file_index_by_file_id(file.id)
+        assert idx is not None
+
+
+def test_manual_run_does_not_update_workflow_progress(
+    test_database, test_database_container
+):
+    """Manual runs (IndexByIds) must NOT advance workflow progress so automatic
+    scheduling is unaffected."""
+    with Environment(MAG_DATA_STORE=str(DATASTORE.absolute())):
+        from imap_mag.config.AppSettings import AppSettings
+
+        settings = AppSettings()  # type: ignore
+        rel_path = "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+        file = _insert_file(test_database, rel_path, settings)
+
+        progress_before = test_database.get_workflow_progress(
+            FileIndexPipeline.PROGRESS_ITEM_ID
+        )
+        ts_before = progress_before.progress_timestamp
+
+        _build_and_run_pipeline(
+            test_database, settings, IndexByIdsRunParameters(file_ids=[file.id])
+        )
+
+        progress_after = test_database.get_workflow_progress(
+            FileIndexPipeline.PROGRESS_ITEM_ID
+        )
+        assert progress_after.progress_timestamp == ts_before
