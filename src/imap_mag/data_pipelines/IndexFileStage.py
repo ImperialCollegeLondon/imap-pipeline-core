@@ -97,165 +97,178 @@ class IndexFileStage(Stage):
         """Index a CDF file."""
         import cdflib
 
-        cdf = cdflib.CDF(str(file_path))
-        info = cdf.cdf_info()
-        variables = info.zVariables
+        with cdflib.CDF(str(file_path)) as cdf:
+            info = cdf.cdf_info()
+            variables = info.zVariables
 
-        # Find the datetime column
-        datetime_col = self._find_datetime_column_cdf(variables, pattern_config)
+            # Find the datetime column
+            datetime_col = self._find_datetime_column_cdf(variables, pattern_config)
 
-        timestamps = None
-        record_count = None
-        first_timestamp = None
-        last_timestamp = None
+            timestamps = None
+            record_count = None
+            first_timestamp = None
+            last_timestamp = None
 
-        if datetime_col:
-            try:
-                epoch_data = cdf.varget(datetime_col)
-                if epoch_data is not None and len(epoch_data) > 0:
-                    record_count = len(epoch_data)
-                    # Convert CDF epoch to datetime
-                    times = cdflib.cdfepoch.to_datetime(epoch_data)
-                    timestamps = pd.to_datetime([str(t) for t in times], utc=True)
-                    if len(timestamps) > 0:
-                        first_timestamp = timestamps[0].to_pydatetime()
-                        last_timestamp = timestamps[-1].to_pydatetime()
-                    self.logger.info(
-                        f"CDF file {file_path_relative}: {record_count} records, "
-                        f"{first_timestamp} to {last_timestamp}"
-                    )
-            except Exception as e:
-                self.logger.warning(
-                    f"Failed to read datetime column '{datetime_col}' from {file_path_relative}: {e}"
-                )
-
-        # If we didn't get record count from epoch, try using variables
-        if record_count is None and variables:
-            try:
-                first_var_data = cdf.varget(variables[0])
-                if first_var_data is not None:
-                    record_count = len(first_var_data)
-            except Exception:
-                pass
-
-        # Calculate gaps
-        gaps: list[dict] = []
-        has_gaps = None
-        total_time_without_gaps = None
-        total_gap_duration = None
-
-        if timestamps is not None and len(timestamps) > 1:
-            gaps, has_gaps, total_time_without_gaps, total_gap_duration = (
-                self._calculate_gaps(timestamps, pattern_config)
-            )
-
-        # Check for NaN / bad data
-        has_bad_data = None
-        nan_gaps = []
-
-        # Check for missing data
-        has_missing_data = None
-        missing_data_gaps = []
-
-        # Column stats
-        column_stats = {}
-
-        if pattern_config and pattern_config.columns_to_check:
-            for col_check in pattern_config.columns_to_check:
-                col_name = col_check.column_name
-                if col_name not in variables:
-                    self.logger.debug(
-                        f"Column '{col_name}' not found in CDF variables for {file_path_relative}"
-                    )
-                    continue
+            if datetime_col:
                 try:
-                    col_data = cdf.varget(col_name)
-                    if col_data is None:
-                        continue
-
-                    col_array = np.asarray(col_data, dtype=float)
-                    stats = self._compute_column_stats(col_array, col_check)
-                    column_stats[col_name] = stats
-
-                    if (
-                        col_check.check_for_bad_data
-                        and stats.get("bad_data_count", 0) > 0
-                    ):
-                        has_bad_data = True
-                        if timestamps is not None:
-                            nan_gaps_for_col = self._find_nan_gaps(
-                                timestamps, col_array, col_name
-                            )
-                            nan_gaps.extend(nan_gaps_for_col)
-
-                    if col_check.check_for_empty and stats.get("null_count", 0) > 0:
-                        has_missing_data = True
-                        if timestamps is not None:
-                            missing_gaps_for_col = self._find_missing_data_gaps(
-                                timestamps, col_array, col_name
-                            )
-                            missing_data_gaps.extend(missing_gaps_for_col)
+                    epoch_data = cdf.varget(datetime_col)
+                    if epoch_data is not None and len(epoch_data) > 0:
+                        record_count = len(epoch_data)
+                        # Convert CDF epoch to datetime
+                        times = cdflib.cdfepoch.to_datetime(epoch_data)
+                        timestamps = pd.to_datetime([str(t) for t in times], utc=True)
+                        if len(timestamps) > 0:
+                            first_timestamp = timestamps[0].to_pydatetime()
+                            last_timestamp = timestamps[-1].to_pydatetime()
+                        self.logger.info(
+                            f"CDF file {file_path_relative}: {record_count} records, "
+                            f"{first_timestamp} to {last_timestamp}"
+                        )
                 except Exception as e:
                     self.logger.warning(
-                        f"Failed to check column '{col_name}' in {file_path_relative}: {e}"
+                        f"Failed to read datetime column '{datetime_col}' from {file_path_relative}: {e}"
                     )
 
-        if has_bad_data is None and nan_gaps:
-            has_bad_data = True
-        if has_missing_data is None and missing_data_gaps:
-            has_missing_data = True
+            # If we didn't get record count from epoch, try using variables
+            if record_count is None and variables:
+                try:
+                    first_var_data = cdf.varget(variables[0])
+                    if first_var_data is not None:
+                        record_count = len(first_var_data)
+                except Exception:
+                    pass
 
-        # Extract CDF global attributes
-        cdf_attributes_data = None
-        if pattern_config and pattern_config.cdf_attributes_to_index:
-            try:
-                gattrs = cdf.globalattsget()
-                cdf_attributes_data: dict[
-                    str, list[str | int | float | None] | str | int | float | None
-                ] = {}
-                for attr_name in pattern_config.cdf_attributes_to_index:
-                    if attr_name in gattrs:
-                        attr_val = gattrs[attr_name]
-                        # Convert to serializable
-                        if isinstance(attr_val, list):
-                            cdf_attributes_data[attr_name] = [
-                                str(v)
-                                if not isinstance(v, str | int | float | bool | None)
-                                else v
-                                for v in attr_val
-                            ]
-                        else:
-                            cdf_attributes_data[attr_name] = (
-                                str(attr_val)
-                                if not isinstance(
-                                    attr_val, str | int | float | bool | None
-                                )
-                                else attr_val
-                            )
-            except Exception as e:
-                self.logger.warning(
-                    f"Failed to read CDF attributes from {file_path_relative}: {e}"
+            # Calculate gaps
+            gaps: list[dict] = []
+            has_gaps = None
+            total_time_without_gaps = None
+            total_gap_duration = None
+            min_delta = None
+            max_delta = None
+            avg_delta = None
+            median_delta = None
+
+            if timestamps is not None and len(timestamps) > 1:
+                gaps, has_gaps, total_time_without_gaps, total_gap_duration = (
+                    self._calculate_gaps(timestamps, pattern_config)
+                )
+                min_delta, max_delta, avg_delta, median_delta = (
+                    self._calculate_timestamp_deltas(timestamps)
                 )
 
-        return FileIndex(
-            file_id=file_id,
-            indexed_date=datetime.now(tz=UTC),
-            record_count=record_count,
-            first_timestamp=first_timestamp,
-            last_timestamp=last_timestamp,
-            has_gaps=has_gaps
-            if has_gaps is not None
-            else (True if gaps else False if timestamps is not None else None),
-            has_missing_data=has_missing_data,
-            has_bad_data=has_bad_data,
-            total_time_without_gaps=total_time_without_gaps,
-            total_gap_duration=total_gap_duration,
-            gaps=gaps if gaps else None,
-            nan_gaps=nan_gaps if nan_gaps else None,
-            missing_data_gaps=missing_data_gaps if missing_data_gaps else None,
-            cdf_attributes=cdf_attributes_data,
-            column_stats=column_stats if column_stats else None,
-        )
+            # Check for NaN / bad data
+            has_bad_data = None
+            nan_gaps = []
+
+            # Check for missing data
+            has_missing_data = None
+            missing_data_gaps = []
+
+            # Column stats
+            column_stats = {}
+
+            if pattern_config and pattern_config.columns_to_check:
+                for col_check in pattern_config.columns_to_check:
+                    col_name = col_check.column_name
+                    if col_name not in variables:
+                        self.logger.debug(
+                            f"Column '{col_name}' not found in CDF variables for {file_path_relative}"
+                        )
+                        continue
+                    try:
+                        col_data = cdf.varget(col_name)
+                        if col_data is None:
+                            continue
+
+                        col_array = np.asarray(col_data, dtype=float)
+                        stats = self._compute_column_stats(col_array, col_check)
+                        column_stats[col_name] = stats
+
+                        if (
+                            col_check.check_for_bad_data
+                            and stats.get("bad_data_count", 0) > 0
+                        ):
+                            has_bad_data = True
+                            if timestamps is not None:
+                                nan_gaps_for_col = self._find_nan_gaps(
+                                    timestamps, col_array, col_name
+                                )
+                                nan_gaps.extend(nan_gaps_for_col)
+
+                        if col_check.check_for_empty and stats.get("null_count", 0) > 0:
+                            has_missing_data = True
+                            if timestamps is not None:
+                                missing_gaps_for_col = self._find_missing_data_gaps(
+                                    timestamps, col_array, col_name
+                                )
+                                missing_data_gaps.extend(missing_gaps_for_col)
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to check column '{col_name}' in {file_path_relative}: {e}"
+                        )
+
+            if has_bad_data is None and nan_gaps:
+                has_bad_data = True
+            if has_missing_data is None and missing_data_gaps:
+                has_missing_data = True
+
+            # Extract CDF global attributes
+            cdf_attributes_data = None
+            if pattern_config and pattern_config.cdf_attributes_to_index:
+                try:
+                    gattrs = cdf.globalattsget()
+                    cdf_attributes_data: dict[
+                        str, list[str | int | float | None] | str | int | float | None
+                    ] = {}
+                    for attr_name in pattern_config.cdf_attributes_to_index:
+                        if attr_name in gattrs:
+                            attr_val = gattrs[attr_name]
+                            # Convert to serializable
+                            if isinstance(attr_val, list):
+                                cdf_attributes_data[attr_name] = [
+                                    str(v)
+                                    if not isinstance(
+                                        v, str | int | float | bool | None
+                                    )
+                                    else v
+                                    for v in attr_val
+                                ]
+                            else:
+                                cdf_attributes_data[attr_name] = (
+                                    str(attr_val)
+                                    if not isinstance(
+                                        attr_val, str | int | float | bool | None
+                                    )
+                                    else attr_val
+                                )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to read CDF attributes from {file_path_relative}: {e}"
+                    )
+
+            return FileIndex(
+                file_id=file_id,
+                indexed_date=datetime.now(tz=UTC),
+                record_count=record_count,
+                first_timestamp=first_timestamp,
+                last_timestamp=last_timestamp,
+                has_gaps=has_gaps
+                if has_gaps is not None
+                else (True if gaps else False if timestamps is not None else None),
+                has_missing_data=has_missing_data,
+                has_bad_data=has_bad_data,
+                total_time_without_gaps=total_time_without_gaps,
+                total_gap_duration=total_gap_duration,
+                min_delta_between_timestamps=min_delta,
+                max_delta_between_timestamps=max_delta,
+                avg_delta_between_timestamps=avg_delta,
+                median_delta_between_timestamps=median_delta,
+                gaps=gaps if gaps else None,
+                nan_gaps=nan_gaps if nan_gaps else None,
+                missing_data_gaps=missing_data_gaps if missing_data_gaps else None,
+                cdf_attributes=cdf_attributes_data,
+                column_stats=column_stats if column_stats else None,
+            )
 
     def _index_csv_file(
         self,
@@ -279,7 +292,29 @@ class IndexFileStage(Stage):
 
         if datetime_col:
             try:
-                ts_series = pd.to_datetime(df[datetime_col], utc=True, errors="coerce")
+                # For "epoch" columns, try CDF epoch conversion first (TT2000/CDF_EPOCH format)
+                if datetime_col.lower() == "epoch":
+                    try:
+                        import cdflib
+
+                        epoch_values = df[datetime_col].to_numpy()
+                        times = cdflib.cdfepoch.to_datetime(epoch_values)
+                        ts_series = pd.Series(
+                            pd.to_datetime([str(t) for t in times], utc=True)
+                        )
+                    except Exception as cdf_err:
+                        self.logger.debug(
+                            f"CDF epoch conversion failed for '{datetime_col}' in "
+                            f"{file_path_relative}: {cdf_err}. "
+                            "Falling back to pandas datetime parsing."
+                        )
+                        ts_series = pd.to_datetime(
+                            df[datetime_col], utc=True, errors="coerce"
+                        )
+                else:
+                    ts_series = pd.to_datetime(
+                        df[datetime_col], utc=True, errors="coerce"
+                    )
                 ts_series = ts_series.dropna()
                 if len(ts_series) > 0:
                     timestamps = ts_series
@@ -299,10 +334,17 @@ class IndexFileStage(Stage):
         has_gaps = None
         total_time_without_gaps = None
         total_gap_duration = None
+        min_delta = None
+        max_delta = None
+        avg_delta = None
+        median_delta = None
 
         if timestamps is not None and len(timestamps) > 1:
             gaps, has_gaps, total_time_without_gaps, total_gap_duration = (
                 self._calculate_gaps(timestamps, pattern_config)
+            )
+            min_delta, max_delta, avg_delta, median_delta = (
+                self._calculate_timestamp_deltas(timestamps)
             )
 
         # Check for bad data and missing data
@@ -322,9 +364,21 @@ class IndexFileStage(Stage):
                 )
                 continue
             try:
-                col_series = df[col_name]
+                col_series = df[col_name].copy()
 
-                # Try numeric conversion for NaN checks
+                # Flag string sentinels as bad data BEFORE numeric coercion so
+                # values like "NA" / "-" are not silently absorbed into missing data.
+                string_bad_mask = pd.Series(False, index=col_series.index)
+                if col_check.check_for_bad_data and col_check.match_as_bad_data:
+                    str_series = col_series.astype(str).str.strip()
+                    for sentinel in col_check.match_as_bad_data:
+                        string_bad_mask |= str_series == sentinel
+                    if string_bad_mask.any():
+                        has_bad_data = True
+                        # Replace string sentinels with NaN so numeric coercion is clean
+                        col_series = col_series.where(~string_bad_mask, other=np.nan)
+
+                # Try numeric conversion for remaining NaN/sentinel checks
                 try:
                     col_array = pd.to_numeric(col_series, errors="coerce").to_numpy(
                         dtype=float
@@ -334,11 +388,16 @@ class IndexFileStage(Stage):
                     col_array = None
                     has_numeric = False
 
-                stats = {}
+                stats: dict[str, int | float] = {}
                 if has_numeric and col_array is not None:
                     stats = self._compute_column_stats(col_array, col_check)
+                    # Add string-sentinel bad count on top of numeric sentinel count
+                    stats["bad_data_count"] = int(stats.get("bad_data_count", 0)) + int(
+                        string_bad_mask.sum()
+                    )
                 else:
                     stats["null_count"] = int(col_series.isna().sum())
+                    stats["bad_data_count"] = int(string_bad_mask.sum())
 
                 column_stats[col_name] = stats
 
@@ -382,6 +441,10 @@ class IndexFileStage(Stage):
             has_bad_data=has_bad_data,
             total_time_without_gaps=total_time_without_gaps,
             total_gap_duration=total_gap_duration,
+            min_delta_between_timestamps=min_delta,
+            max_delta_between_timestamps=max_delta,
+            avg_delta_between_timestamps=avg_delta,
+            median_delta_between_timestamps=median_delta,
             gaps=gaps if gaps else None,
             nan_gaps=nan_gaps if nan_gaps else None,
             missing_data_gaps=missing_data_gaps if missing_data_gaps else None,
@@ -494,7 +557,31 @@ class IndexFileStage(Stage):
             gaps,
             has_gaps,
             total_time_without_gaps,
-            total_gap_duration if total_gap_duration.total_seconds() > 0 else None,
+            total_gap_duration,
+        )
+
+    def _calculate_timestamp_deltas(
+        self, timestamps: pd.Series
+    ) -> tuple[timedelta | None, timedelta | None, timedelta | None, timedelta | None]:
+        """Calculate min, max, average, and median deltas between consecutive timestamps.
+
+        Args:
+            timestamps: Series of timestamps (must have >= 2 elements).
+
+        Returns:
+            Tuple of (min_delta, max_delta, avg_delta, median_delta) as timedelta objects,
+            or (None, None, None, None) if fewer than 2 timestamps.
+        """
+        if len(timestamps) < 2:
+            return None, None, None, None
+
+        ts_series = pd.Series(timestamps.values)
+        diffs = ts_series.diff().dropna()
+        return (
+            diffs.min().to_pytimedelta(),
+            diffs.max().to_pytimedelta(),
+            diffs.mean().to_pytimedelta(),
+            diffs.median().to_pytimedelta(),
         )
 
     def _compute_column_stats(self, data: np.ndarray, col_check) -> dict:

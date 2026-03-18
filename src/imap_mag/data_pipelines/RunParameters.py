@@ -67,7 +67,12 @@ class FetchByDatesRunParameters(PipelineRunParameters):
 
 @dataclass
 class IndexByIdsRunParameters(PipelineRunParameters):
-    """Manually index specific files by their database IDs."""
+    """Manually index specific files by their database IDs.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
 
     file_ids: Annotated[
         list[int],
@@ -82,7 +87,12 @@ class IndexByIdsRunParameters(PipelineRunParameters):
 
 @dataclass
 class IndexByDateRangeRunParameters(PipelineRunParameters):
-    """Manually index files modified within a date range."""
+    """Manually index files modified within a date range.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
 
     modified_after: Annotated[
         datetime | None,
@@ -107,7 +117,12 @@ class IndexByDateRangeRunParameters(PipelineRunParameters):
 
 @dataclass
 class IndexByFileNamesRunParameters(PipelineRunParameters):
-    """Manually index files matching specific path patterns or exact paths."""
+    """Manually index files matching specific path patterns or exact paths.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
 
     file_paths: Annotated[
         list[str],

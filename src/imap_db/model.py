@@ -2,7 +2,7 @@ import hashlib
 import logging
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Self
 
@@ -16,7 +16,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
@@ -225,17 +225,33 @@ class FileIndex(Base):
     has_gaps: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
     has_missing_data: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
     has_bad_data: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
-    total_time_without_gaps: Mapped[object | None] = mapped_column(
+    total_time_without_gaps: Mapped[timedelta | None] = mapped_column(
         Interval(), nullable=True
     )
-    total_gap_duration: Mapped[object | None] = mapped_column(Interval(), nullable=True)
+    total_gap_duration: Mapped[timedelta | None] = mapped_column(
+        Interval(), nullable=True
+    )
+    min_delta_between_timestamps: Mapped[timedelta | None] = mapped_column(
+        Interval(), nullable=True
+    )
+    max_delta_between_timestamps: Mapped[timedelta | None] = mapped_column(
+        Interval(), nullable=True
+    )
+    avg_delta_between_timestamps: Mapped[timedelta | None] = mapped_column(
+        Interval(), nullable=True
+    )
+    median_delta_between_timestamps: Mapped[timedelta | None] = mapped_column(
+        Interval(), nullable=True
+    )
     gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
     nan_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
     missing_data_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
     cdf_attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     column_stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    file: Mapped["File"] = relationship("File", backref="file_index")
+    file: Mapped["File"] = relationship(
+        "File", backref=backref("file_index", uselist=False)
+    )
 
     def __repr__(self) -> str:
         return f"<FileIndex {self.id} (file_id={self.file_id}, record_count={self.record_count})>"

@@ -65,8 +65,9 @@ def test_csv_detects_epoch_datetime_column():
 
 
 def test_csv_timestamps_parsed_successfully():
-    """Epoch column values are integers; pandas parses them as nanoseconds since 1970.
-    The key assertion is that first and last timestamps are ordered correctly."""
+    """Epoch column contains CDF TT2000 integer nanoseconds. The code converts
+    them via cdflib to UTC datetimes, so the timestamps should reflect the actual
+    data date (2025-11-02)."""
     stage = _make_stage()
     path = DATASTORE / "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
     result = stage._index_file(
@@ -74,7 +75,9 @@ def test_csv_timestamps_parsed_successfully():
     )
     assert result.first_timestamp is not None
     assert result.last_timestamp is not None
-    assert result.first_timestamp < result.last_timestamp
+    assert result.first_timestamp.year == 2025
+    assert result.first_timestamp.month == 11
+    assert result.first_timestamp.day == 2
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +399,7 @@ def test_calculate_gaps_no_gaps_within_threshold():
     gaps, has_gaps, _, duration = stage._calculate_gaps(timestamps, None)
     assert gaps == []
     assert has_gaps is False
-    assert duration is None  # no gap duration to report
+    assert duration == timedelta(0)  # zero, not None, when there are no gaps
 
 
 def test_calculate_gaps_detects_gap_above_threshold():
@@ -471,6 +474,104 @@ def test_calculate_gaps_multiple_gaps():
 
 
 # ---------------------------------------------------------------------------
+# _calculate_timestamp_deltas unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_calculate_timestamp_deltas_uniform_intervals():
+    """Uniform 1-second spacing: min=max=avg=median=1s."""
+    stage = _make_stage()
+    timestamps = _make_timestamps(5, datetime(2026, 1, 1, tzinfo=UTC), 1.0)
+    min_d, max_d, avg_d, median_d = stage._calculate_timestamp_deltas(timestamps)
+    assert min_d == timedelta(seconds=1)
+    assert max_d == timedelta(seconds=1)
+    assert abs(avg_d.total_seconds() - 1.0) < 1e-6
+    assert abs(median_d.total_seconds() - 1.0) < 1e-6
+
+
+def test_calculate_timestamp_deltas_variable_intervals():
+    """Variable spacing: 1s, 1s, 10s, 1s → min=1s, max=10s, avg=3.25s, median=1s."""
+    stage = _make_stage()
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    ts_list = [base + timedelta(seconds=i) for i in [0, 1, 2, 12, 13]]
+    timestamps = pd.Series(pd.to_datetime(ts_list, utc=True))
+    min_d, max_d, avg_d, median_d = stage._calculate_timestamp_deltas(timestamps)
+    assert min_d == timedelta(seconds=1)
+    assert max_d == timedelta(seconds=10)
+    assert abs(avg_d.total_seconds() - 3.25) < 1e-6
+    assert abs(median_d.total_seconds() - 1.0) < 1e-6
+
+
+def test_calculate_timestamp_deltas_single_record():
+    """Single timestamp: all deltas are None."""
+    stage = _make_stage()
+    timestamps = _make_timestamps(1, datetime(2026, 1, 1, tzinfo=UTC), 1.0)
+    result = stage._calculate_timestamp_deltas(timestamps)
+    assert result == (None, None, None, None)
+
+
+def test_calculate_timestamp_deltas_returned_in_file_index():
+    """CDF file indexing populates min/max/avg/median delta fields."""
+    stage = _make_stage()
+    path = (
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+    )
+    result = stage._index_file(
+        2, path, "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
+    )
+    assert result.min_delta_between_timestamps is not None
+    assert result.max_delta_between_timestamps is not None
+    assert result.avg_delta_between_timestamps is not None
+    assert result.median_delta_between_timestamps is not None
+    assert result.min_delta_between_timestamps <= result.max_delta_between_timestamps
+
+
+# ---------------------------------------------------------------------------
+# CSV epoch conversion
+# ---------------------------------------------------------------------------
+
+
+def test_csv_epoch_column_uses_cdf_converter(tmp_path):
+    """A CSV with an 'epoch' column containing TT2000 integers is parsed as UTC via cdflib."""
+    import cdflib
+
+    # Compute TT2000 values for two known moments 1 second apart
+    t1 = cdflib.cdfepoch.compute_tt2000([2025, 4, 21, 0, 0, 0, 0, 0, 0])
+    t2 = cdflib.cdfepoch.compute_tt2000([2025, 4, 21, 0, 0, 1, 0, 0, 0])
+
+    csv_path = tmp_path / "test_epoch.csv"
+    csv_path.write_text(f"epoch,value\n{t1},1.0\n{t2},2.0\n")
+
+    stage = _make_stage()
+    result = stage._index_file(1, csv_path, "test_epoch.csv")
+
+    assert result.first_timestamp is not None
+    assert result.first_timestamp.year == 2025
+    assert result.first_timestamp.month == 4
+    assert result.first_timestamp.day == 21
+    assert result.last_timestamp is not None
+    # 1-second gap between the two records
+    assert (
+        abs((result.last_timestamp - result.first_timestamp).total_seconds() - 1.0)
+        < 0.01
+    )
+
+
+def test_csv_non_epoch_column_uses_pandas_parser(tmp_path):
+    """A CSV with a non-epoch datetime column is still parsed by pandas, not cdflib."""
+    csv_path = tmp_path / "test_time.csv"
+    csv_path.write_text(
+        "timestamp,value\n2025-04-21T00:00:00Z,1.0\n2025-04-21T00:00:01Z,2.0\n"
+    )
+
+    stage = _make_stage()
+    result = stage._index_file(1, csv_path, "test_time.csv")
+
+    assert result.first_timestamp is not None
+    assert result.first_timestamp.year == 2025
+
+
+# ---------------------------------------------------------------------------
 # Best-effort: unsupported file type
 # ---------------------------------------------------------------------------
 
@@ -484,17 +585,34 @@ def test_unsupported_file_type_returns_minimal_index(tmp_path):
     assert result.record_count is None
 
 
-def test_index_file_error_returns_minimal_index(tmp_path):
-    """IndexFileStage should not raise even if reading fails (e.g. corrupted file)."""
+@pytest.mark.asyncio
+async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
+    """process() must not raise even when the file cannot be parsed.
+    The outer try/except in process() catches the error and produces a minimal FileIndex."""
+
     stage = _make_stage()
-    # A .csv file containing garbage data will fail pandas read, triggering best-effort fallback
+    # Wire a minimal next-stage to collect what process() publishes
+    collected: list = []
+
+    class _Sink:
+        async def process(self, item, context, **kwargs):
+            collected.append(item)
+
+    stage._next_stage = _Sink()  # type: ignore[assignment]
+
     bad = tmp_path / "bad.csv"
-    bad.write_bytes(b"\x00\x01\x02\x03 not csv")
-    # Call via _index_file directly - the outer try/except in process() handles errors;
-    # _index_file itself may propagate or not, but the pipeline layer always catches it.
-    # Here we verify the parquet branch (unsupported type) returns minimal gracefully.
-    fake = tmp_path / "file.parquet"
-    fake.write_bytes(b"not real data")
-    result = stage._index_file(99, fake, "file.parquet")
-    assert result.file_id == 99
-    assert result.record_count is None
+    bad.write_bytes(b"\x00\x01\x02\x03 not valid csv at all \x00")
+
+    record = __import__("imap_mag.data_pipelines.Record", fromlist=["Record"]).Record(
+        file_id=99,
+        file_path=bad,
+        file_path_relative="bad.csv",
+        last_modified_date=None,
+    )
+
+    await stage.process(record, context={})
+
+    assert len(collected) == 1
+    fi = collected[0].file_index
+    assert fi.file_id == 99
+    # record_count may be None or an integer - the key guarantee is no exception was raised
