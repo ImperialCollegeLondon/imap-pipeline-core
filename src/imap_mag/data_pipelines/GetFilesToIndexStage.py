@@ -1,9 +1,9 @@
 import fnmatch
 from datetime import UTC, datetime
 
-from imap_db.model import File
+from imap_db.model import File, WorkflowProgress
 from imap_mag.config.AppSettings import AppSettings
-from imap_mag.data_pipelines import SourceStage
+from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, SourceStage
 from imap_mag.data_pipelines.Record import Record
 from imap_mag.data_pipelines.RunParameters import (
     AutomaticRunParameters,
@@ -37,6 +37,19 @@ class GetFilesToIndexStage(SourceStage):
 
         run_params = self._run_parameters
 
+        progress_item_name = context.get("progress_item_name")
+        if progress_item_name is None:
+            raise ValueError(
+                "progress_item_name must be provided in context for GetFilesToIndexStage"
+            )
+
+        workflow_progress = (
+            self.database.get_workflow_progress(progress_item_name)
+            if self.database
+            else WorkflowProgress(item_name=progress_item_name)
+        )
+        context["workflow_progress"] = workflow_progress
+
         if isinstance(run_params, IndexByIdsRunParameters):
             files = await self._get_files_by_ids(run_params.file_ids)
         elif isinstance(run_params, IndexByFileNamesRunParameters):
@@ -65,11 +78,18 @@ class GetFilesToIndexStage(SourceStage):
                 )
                 continue
 
+            # Keep PROGRESS_DATE_CONTEXT_KEY at the latest file modification date seen
+            if file.last_modified_date:
+                existing = context.get(PROGRESS_DATE_CONTEXT_KEY)
+                if existing is None or file.last_modified_date > existing:
+                    context[PROGRESS_DATE_CONTEXT_KEY] = file.last_modified_date
+
             await self.publish_next(
                 Record(
                     file_id=file.id,
                     file_path=file_path,
                     file_path_relative=file.path,
+                    last_modified_date=file.last_modified_date,
                 ),
                 context=context,
             )
@@ -130,12 +150,10 @@ class GetFilesToIndexStage(SourceStage):
             )
             return []
 
-        progress_item_name = context.get("progress_item_name")
         last_modified_date: datetime | None = None
 
-        if progress_item_name:
-            workflow_progress = self.database.get_workflow_progress(progress_item_name)
-            context["workflow_progress"] = workflow_progress
+        workflow_progress = context.get("workflow_progress")
+        if workflow_progress:
             last_modified_date = workflow_progress.progress_timestamp
 
         if last_modified_date is None:

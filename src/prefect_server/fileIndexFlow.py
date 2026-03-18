@@ -11,6 +11,7 @@ from imap_mag.data_pipelines import (
     IndexByFileNamesRunParameters,
     IndexByIdsRunParameters,
     PipelineRunParameters,
+    ProgressUpdateMode,
 )
 from imap_mag.data_pipelines.FileIndexPipeline import FileIndexPipeline
 from imap_mag.db import Database
@@ -32,13 +33,20 @@ def _build_run_parameters(
     If no manual inputs are given, uses AutomaticRunParameters (progress-based).
     """
     if files:
-        return IndexByIdsRunParameters(file_ids=files)
+        return IndexByIdsRunParameters(
+            file_ids=files,
+            progress_mode=ProgressUpdateMode.NEVER_UPDATE_PROGRESS,
+        )
     if file_paths:
-        return IndexByFileNamesRunParameters(file_paths=file_paths)
+        return IndexByFileNamesRunParameters(
+            file_paths=file_paths,
+            progress_mode=ProgressUpdateMode.NEVER_UPDATE_PROGRESS,
+        )
     if modified_after is not None or modified_before is not None:
         return IndexByDateRangeRunParameters(
             modified_after=modified_after,
             modified_before=modified_before,
+            progress_mode=ProgressUpdateMode.NEVER_UPDATE_PROGRESS,
         )
     return AutomaticRunParameters()
 

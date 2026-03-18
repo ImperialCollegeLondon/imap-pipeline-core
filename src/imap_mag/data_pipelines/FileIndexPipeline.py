@@ -3,6 +3,7 @@ from imap_mag.data_pipelines import Pipeline, PipelineRunParameters
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
 from imap_mag.data_pipelines.IndexFileStage import IndexFileStage
 from imap_mag.data_pipelines.SaveFileIndexStage import SaveFileIndexStage
+from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
 
 
@@ -16,7 +17,7 @@ class FileIndexPipeline(Pipeline):
         self.initial_context = {"progress_item_name": self.PROGRESS_ITEM_ID}
         self._database = database
 
-    def build(self, run_parameters: PipelineRunParameters, **kwargs):  # type: ignore[override]
+    def build(self, run_parameters: PipelineRunParameters, **_kwargs):  # type: ignore[override]
         super().build(
             run_parameters=run_parameters,
             stages=[
@@ -26,5 +27,6 @@ class FileIndexPipeline(Pipeline):
                 ),
                 IndexFileStage(settings=self._settings),
                 SaveFileIndexStage(database=self._database),
+                SaveProcessingDatesStage(database=self._database),
             ],
         )
