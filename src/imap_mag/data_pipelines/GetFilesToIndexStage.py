@@ -1,7 +1,7 @@
 import fnmatch
 from datetime import UTC, datetime
 
-from imap_db.model import File, WorkflowProgress
+from imap_db.model import File, FileIndex, WorkflowProgress
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, SourceStage
 from imap_mag.data_pipelines.Record import Record
@@ -84,12 +84,19 @@ class GetFilesToIndexStage(SourceStage):
                 if existing is None or file.last_modified_date > existing:
                     context[PROGRESS_DATE_CONTEXT_KEY] = file.last_modified_date
 
+            existing_file_index: FileIndex | None = (
+                self.database.get_file_index_by_file_id(file.id)
+                if self.database
+                else None
+            )
+
             await self.publish_next(
                 Record(
                     file_id=file.id,
                     file_path=file_path,
                     file_path_relative=file.path,
                     last_modified_date=file.last_modified_date,
+                    file_index=existing_file_index,
                 ),
                 context=context,
             )
