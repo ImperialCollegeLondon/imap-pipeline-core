@@ -117,6 +117,7 @@ class IndexFileStage(Stage):
                         # Convert CDF epoch to datetime
                         times = cdflib.cdfepoch.to_datetime(epoch_data)
                         timestamps = pd.to_datetime([str(t) for t in times], utc=True)
+                        del epoch_data, times  # free large intermediate arrays
                         if len(timestamps) > 0:
                             first_timestamp = timestamps[0].to_pydatetime()
                             last_timestamp = timestamps[-1].to_pydatetime()
@@ -135,6 +136,7 @@ class IndexFileStage(Stage):
                     first_var_data = cdf.varget(variables[0])
                     if first_var_data is not None:
                         record_count = len(first_var_data)
+                    del first_var_data
                 except Exception:
                     pass
 
@@ -202,6 +204,7 @@ class IndexFileStage(Stage):
                                     timestamps, col_array, col_name
                                 )
                                 missing_data_gaps.extend(missing_gaps_for_col)
+                        del col_data, col_array  # free column data after processing
                     except Exception as e:
                         self.logger.warning(
                             f"Failed to check column '{col_name}' in {file_path_relative}: {e}"
@@ -211,6 +214,11 @@ class IndexFileStage(Stage):
                 has_bad_data = True
             if has_missing_data is None and missing_data_gaps:
                 has_missing_data = True
+
+            # Free timestamps - no longer needed; record whether they existed for the return value
+            has_timestamps = timestamps is not None
+            if timestamps is not None:
+                del timestamps
 
             # Extract CDF global attributes
             cdf_attributes_data = None
@@ -254,7 +262,7 @@ class IndexFileStage(Stage):
                 last_timestamp=last_timestamp,
                 has_gaps=has_gaps
                 if has_gaps is not None
-                else (True if gaps else False if timestamps is not None else None),
+                else (True if gaps else False if has_timestamps else None),
                 has_missing_data=has_missing_data,
                 has_bad_data=has_bad_data,
                 total_time_without_gaps=total_time_without_gaps,
@@ -418,6 +426,7 @@ class IndexFileStage(Stage):
                             timestamps, col_array, col_name
                         )
                         missing_data_gaps.extend(missing_gaps_for_col)
+                del col_series, col_array  # free column data after processing
             except Exception as e:
                 self.logger.warning(
                     f"Failed to check column '{col_name}' in {file_path_relative}: {e}"
@@ -428,6 +437,12 @@ class IndexFileStage(Stage):
         if has_missing_data is None and missing_data_gaps:
             has_missing_data = True
 
+        # Free large data structures - no longer needed after column processing
+        del df
+        has_timestamps = timestamps is not None
+        if timestamps is not None:
+            del timestamps
+
         return FileIndex(
             file_id=file_id,
             indexed_date=datetime.now(tz=UTC),
@@ -436,7 +451,7 @@ class IndexFileStage(Stage):
             last_timestamp=last_timestamp,
             has_gaps=has_gaps
             if has_gaps is not None
-            else (True if gaps else False if timestamps is not None else None),
+            else (True if gaps else False if has_timestamps else None),
             has_missing_data=has_missing_data,
             has_bad_data=has_bad_data,
             total_time_without_gaps=total_time_without_gaps,
