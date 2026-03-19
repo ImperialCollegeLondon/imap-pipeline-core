@@ -200,12 +200,14 @@ class Database:
     def get_files_by_ids(self, file_ids: list[int]) -> list[File]:
         """Get files by their IDs."""
         statement = select(File).where(File.id.in_(file_ids))
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_file_index_by_file_id(self, file_id: int) -> FileIndex | None:
         """Get the file index entry for a given file ID."""
         statement = select(FileIndex).where(FileIndex.file_id == file_id)
-        return self.session().execute(statement).scalars().first()
+        with self.session() as session:
+            return session.execute(statement).scalars().first()
 
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
