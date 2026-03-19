@@ -32,11 +32,14 @@ class IndexFileStage(Stage):
         file_id = item.file_id
         file_path: Path = item.file_path
         file_path_relative: str = item.file_path_relative
+        existing_file_index: FileIndex | None = getattr(item, "file_index", None)
 
         self.logger.info(f"Indexing file: {file_path_relative}")
 
         try:
-            file_index = self._index_file(file_id, file_path, file_path_relative)
+            file_index = self._index_file(
+                file_id, file_path, file_path_relative, existing_file_index
+            )
         except Exception as e:
             self.logger.error(
                 f"Failed to index file {file_path_relative}: {e}", exc_info=e
@@ -46,6 +49,8 @@ class IndexFileStage(Stage):
                 file_id=file_id,
                 indexed_date=datetime.now(tz=UTC),
             )
+            if existing_file_index is not None and existing_file_index.id is not None:
+                file_index.id = existing_file_index.id
 
         await self.publish_next(
             Record(file_id=file_id, file_index=file_index),
@@ -53,30 +58,45 @@ class IndexFileStage(Stage):
         )
 
     def _index_file(
-        self, file_id: int, file_path: Path, file_path_relative: str
+        self,
+        file_id: int,
+        file_path: Path,
+        file_path_relative: str,
+        existing_file_index: FileIndex | None = None,
     ) -> FileIndex:
-        """Index a file and return a FileIndex object."""
+        """Index a file and return a FileIndex object.
+
+        If ``existing_file_index`` is supplied the returned record carries the
+        same primary key so that ``database.save()`` updates the existing row
+        rather than inserting a new one.
+        """
         suffix = file_path.suffix.lower()
 
         # Find matching pattern config
         pattern_config = self._find_pattern_config(file_path_relative)
 
         if suffix == ".cdf":
-            return self._index_cdf_file(
+            result = self._index_cdf_file(
                 file_id, file_path, file_path_relative, pattern_config
             )
         elif suffix == ".csv":
-            return self._index_csv_file(
+            result = self._index_csv_file(
                 file_id, file_path, file_path_relative, pattern_config
             )
         else:
             self.logger.warning(
                 f"Unsupported file type: {suffix} for {file_path_relative}"
             )
-            return FileIndex(
+            result = FileIndex(
                 file_id=file_id,
                 indexed_date=datetime.now(tz=UTC),
             )
+
+        # Preserve the existing primary key so the database save is an update
+        if existing_file_index is not None and existing_file_index.id is not None:
+            result.id = existing_file_index.id
+
+        return result
 
     def _find_pattern_config(
         self, file_path_relative: str

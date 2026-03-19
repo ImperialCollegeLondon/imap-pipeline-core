@@ -187,31 +187,6 @@ class Database:
         statement = select(FileIndex).where(FileIndex.file_id == file_id)
         return self.session().execute(statement).scalars().first()
 
-    @__session_manager(expire_on_commit=False)
-    def upsert_file_index(self, file_index: FileIndex) -> None:
-        """Upsert a FileIndex entry (insert or update based on file_id)."""
-        session = self.__get_active_session()
-        file_id = file_index.file_id
-        existing = session.query(FileIndex).filter_by(file_id=file_id).first()
-        if existing is not None:
-            # Update existing record
-            existing.indexed_date = file_index.indexed_date
-            existing.record_count = file_index.record_count
-            existing.first_timestamp = file_index.first_timestamp
-            existing.last_timestamp = file_index.last_timestamp
-            existing.has_gaps = file_index.has_gaps
-            existing.has_missing_data = file_index.has_missing_data
-            existing.has_bad_data = file_index.has_bad_data
-            existing.total_time_without_gaps = file_index.total_time_without_gaps
-            existing.total_gap_duration = file_index.total_gap_duration
-            existing.gaps = file_index.gaps
-            existing.nan_gaps = file_index.nan_gaps
-            existing.missing_data_gaps = file_index.missing_data_gaps
-            existing.cdf_attributes = file_index.cdf_attributes
-            existing.column_stats = file_index.column_stats
-        else:
-            session.add(file_index)
-
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
         statement = select(File).where(

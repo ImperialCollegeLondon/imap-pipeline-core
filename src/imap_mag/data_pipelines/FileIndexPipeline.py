@@ -2,7 +2,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import Pipeline, PipelineRunParameters
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
 from imap_mag.data_pipelines.IndexFileStage import IndexFileStage
-from imap_mag.data_pipelines.SaveFileIndexStage import SaveFileIndexStage
+from imap_mag.data_pipelines.SaveDatabaseItemsStage import SaveDatabaseItemsStage
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
 
@@ -26,7 +26,7 @@ class FileIndexPipeline(Pipeline):
                     settings=self._settings,
                 ),
                 IndexFileStage(settings=self._settings),
-                SaveFileIndexStage(database=self._database),
+                SaveDatabaseItemsStage(database=self._database),
                 SaveProcessingDatesStage(database=self._database),
             ],
         )
