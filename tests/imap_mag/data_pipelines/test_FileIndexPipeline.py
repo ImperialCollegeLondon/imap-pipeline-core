@@ -39,7 +39,7 @@ def _build_and_run_pipeline(db, settings, run_params):
 
     pipeline = FileIndexPipeline(database=db, settings=settings)
     pipeline.build(run_parameters=run_params)
-    asyncio.get_event_loop().run_until_complete(pipeline.run())
+    asyncio.run(pipeline.run())
     return pipeline
 
 
