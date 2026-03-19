@@ -15,6 +15,7 @@ from imap_mag.util import CONSTANTS
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
+from prefect_server.fileIndexFlow import file_index_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -344,6 +345,16 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    file_index_deployable = file_index_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_INDEX,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_INDEX),
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "4g"
     matlab_shared_job_variables["memswap_limit"] = "4g"
@@ -404,6 +415,7 @@ async def adeploy_flows(local_debug: bool = False):
         upload_deployable,
         postgres_upload_deployable,
         datastore_cleanup_deployable,
+        file_index_deployable,
     )
 
     if local_debug:

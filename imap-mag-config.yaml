@@ -104,6 +104,101 @@ postgres_upload:
         - "ialirt_hk/**/imap_ialirt_hk*.csv"
         - "ialirt/**/imap_ialirt_*.csv"
 
+file_index:
+  paths_to_match:
+    - "science/mag/**/*.cdf"
+    - "hk/mag/**/*.csv"
+    - "hk/sc/**/*.csv"
+    - "hk/lo/**/*.csv"
+  file_patterns:
+    - pattern: "science/mag/**/imap_mag_*norm*.cdf"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:00:01"
+      cdf_attributes_to_index:
+        - "Parents"
+        - "ground_software_version"
+        - "missing_sequences"
+        - "vectors_per_second"
+        - "is_active"
+        - "is_mago"
+        - "Data_level"
+        - "Logical_file_id"
+      columns_to_check:
+        - column_name: "vector_magnitude"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-100000, 100000]
+        - column_name: "magnitude"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-100000, 100000]
+        - column_name: "epoch"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+    - pattern: "science/mag/**/imap_mag_*burst*.cdf"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:00:00.200"
+      cdf_attributes_to_index:
+        - "Parents"
+        - "ground_software_version"
+        - "missing_sequences"
+        - "vectors_per_second"
+        - "is_active"
+        - "is_mago"
+        - "Data_level"
+        - "Logical_file_id"
+      columns_to_check:
+        - column_name: "vector_magnitude"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-100000, 100000]
+        - column_name: "magnitude"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-100000, 100000]
+        - column_name: "epoch"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+    - pattern: "hk/mag/**/*.csv"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:01:00"
+      columns_to_check:
+        - column_name: "epoch"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+    - pattern: "hk/sc/**/*.csv"
+      datetime_column: "epoch"
+      expected_time_between_records: "00:01:00"
+      columns_to_check:
+        - column_name: "epoch"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+        - column_name: "shcourse"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+    - pattern: "hk/lo/**/*.csv"
+      datetime_column: "time (yyyy-MM-dd'T'HH:mm:ss.SSS)"
+      expected_time_between_records: "00:00:05"
+      columns_to_check:
+        - column_name: "time (yyyy-MM-dd'T'HH:mm:ss.SSS)"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+        - column_name: "ILOGLOBAL.PPM_NHK_POT_PRI (deg)"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [0, 360]
+
 datastore_cleanup:
     dry_run: false
     tasks:
