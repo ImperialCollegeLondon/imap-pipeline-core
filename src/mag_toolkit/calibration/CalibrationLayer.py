@@ -49,12 +49,10 @@ class CalibrationLayer(Layer):
             return
 
         logger.debug("Converting epoch values to raw epoch format.")
-        string_conversion = self._contents
         self._contents[CONSTANTS.CSV_VARS.RAW_EPOCH] = lib.cdfepoch.parse(
-            string_conversion[CONSTANTS.CSV_VARS.EPOCH]
-            .astype(str)
-            .str.replace(" ", "T")
-            .tolist()
+            np.datetime_as_string(
+                self._contents[CONSTANTS.CSV_VARS.EPOCH], unit="ns"
+            ).tolist()
         )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
