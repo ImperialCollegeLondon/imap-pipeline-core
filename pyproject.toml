@@ -44,7 +44,7 @@ spiceypy = "^8.0.0"
 prefect-sqlalchemy = "^0.5.3"
 imap-processing = "^1.0.0"
 polars = "^1.34.0"
-pyarrow = "^21.0.0"
+pyarrow = "23.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
