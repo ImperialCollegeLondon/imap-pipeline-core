@@ -96,7 +96,7 @@ class CalibrationApplicator:
         day_to_process: datetime,
         layer_files: list[Path],
         rotation: Path | None,
-        dataFile,
+        dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
         outputCalibrationFile: Path,
         outputScienceFile: Path,
     ) -> tuple[Path, Path]:

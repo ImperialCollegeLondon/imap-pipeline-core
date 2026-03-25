@@ -182,14 +182,17 @@ def apply(
 
     if layers:
         (L2_file, cal_file) = applier.apply(
-            workLayers, workRotationFile, workDataFile, workCalFile, workL2File
+            day_to_process=date,
+            layer_files=workLayers,
+            rotation=workRotationFile,
+            dataFile=workDataFile,
+            outputCalibrationFile=workCalFile,
+            outputScienceFile=workL2File,
         )
 
         outputManager.add_file(L2_file, l2_path_handler)
         outputManager.add_file(cal_file, cal_path_handler)
-    elif workRotationFile:
-        L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
-        outputManager.add_file(L2_file, l2_path_handler)
+
     else:
         logger.error("No calibration layers or rotation file provided.")
         raise ValueError("No calibration layers or rotation file provided.")
