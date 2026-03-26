@@ -4,7 +4,9 @@ import pytest
 from spacepy import pycdf
 
 from mag_toolkit.calibration import (
+    CalibrationLayer,
     CalibrationMetadata,
+    CalibrationMethod,
     Mission,
     ScienceLayer,
     ScienceValue,
@@ -177,34 +179,38 @@ def test_science_layer_writes_to_csv(tmp_path):
     assert df.time.iloc[0] == science_layer._contents.time[0]
 
 
-# def test_calibration_layer_loads_csv_correctly():
-#     # Set up.
-#     calibration_layer = (
-#         DATASTORE / "calibration/layers/2025/10/imap_mag_noop-layer_20251017_v001.json"
-#     )
+def test_calibration_layer_loads_csv_correctly():
+    # Set up.
+    calibration_layer = (
+        DATASTORE
+        / "calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv"
+    )
 
-#     # Exercise.
-#     cl = CalibrationLayer.from_file(calibration_layer)
+    # Exercise.
+    cl = CalibrationLayer.from_file(calibration_layer)
 
-#     # Verify metadata.
-#     assert cl.mission == Mission.IMAP
-#     assert cl.validity.start == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
-#      assert np.datetime64('2025-10-17T02:11:51.521000000') == np.datetime64('2025-10-17T02:11:51.521309000')
-#     assert cl.validity.end == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
-#     assert cl.sensor == Sensor.MAGO
-#     assert cl.version == 0
-#     assert cl.metadata.dependencies == []
-#     assert cl.metadata.science == []
-#     assert cl.metadata.data_filename == calibration_layer
-#     assert cl.metadata.creation_timestamp is not None
-#     assert cl.value_type == ValueType.VECTOR
-#     assert cl.method == CalibrationMethod.NOOP
-#     assert cl._contents is not None
+    # Verify metadata.
+    assert cl.mission == Mission.IMAP
+    assert cl.validity.start == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
+    assert cl.validity.end == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
+    assert cl.sensor == Sensor.MAGO
+    assert cl.version == 0
+    assert cl.metadata.dependencies == []
+    assert cl.metadata.science == []
+    assert cl.metadata.data_filename == calibration_layer
+    assert cl.metadata.creation_timestamp is not None
+    assert cl.value_type == ValueType.VECTOR
+    assert cl.method == CalibrationMethod.NOOP
+    assert cl._contents is not None
 
-#     # Verify values.
-#     assert len(cl._contents) == 16
-#     assert cl._contents.time[0] == np.datetime64("2025-10-17T02:11:51.521309000", "ns")
-#     assert cl._contents.time[-1] == np.datetime64("2025-10-17T02:11:59.021309000", "ns")
+    # Verify values.
+    assert len(cl._contents) == 16
+    assert cl._contents.time.iloc[0] == np.datetime64(
+        "2025-10-17T02:11:51.521309000", "ns"
+    )
+    assert cl._contents.time.iloc[-1] == np.datetime64(
+        "2025-10-17T02:11:59.021309000", "ns"
+    )
 
 
 # def test_calibration_layer_warning_on_overwriting_existing_data(

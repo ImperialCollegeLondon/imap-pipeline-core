@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
+    CalibrationMethod,
     Mission,
     Sensor,
     Validity,

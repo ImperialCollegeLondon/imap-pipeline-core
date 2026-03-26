@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
@@ -19,6 +20,7 @@ from .CalibrationDefinitions import (
 )
 from .CalibrationLayer import CalibrationLayer
 from .ScienceLayer import ScienceLayer
+from .CalibrationMatrix import CalibrationMatrix
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ class CalibrationApplicator:
             raise ValueError("Offsets layer contents not loaded")
 
         validity = Validity(
-            start=offsets._contents[0].time, end=offsets._contents[-1].time
+            start=offsets._contents.time.iloc[0], end=offsets._contents.time.iloc[-1]
         )
 
         offsets_metadata = CalibrationMetadata(
@@ -115,9 +117,14 @@ class CalibrationApplicator:
 
         del science
 
+        if rotation is None:
+            rotationCalibrationDatasets = CalibrationMatrix.get_zero_rotation_dataset()
+        else:
+            rotationCalibrationDatasets = CalibrationMatrix.get_rotation_dataset_by_cdf_file(rotation)
+
         datasets = mag_l2.mag_l2(
             input_data=cdf_to_xarray(str(dataFile), to_datetime=False),
-            calibration_dataset=cdf_to_xarray(str(rotation), to_datetime=False),
+            calibration_dataset=rotationCalibrationDatasets,
             offsets_dataset=cdf_to_xarray(str(cal_filepath), to_datetime=False),
             mode=mag_l2_data.DataMode.NORM,
             day_to_process=np.datetime64(day_to_process),

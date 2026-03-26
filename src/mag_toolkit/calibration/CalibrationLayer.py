@@ -7,13 +7,18 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
+from pydantic import PrivateAttr
 
+from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
+    CalibrationMetadata,
     CalibrationMethod,
+    Mission,
+    Sensor,
     ValueType,
 )
-from mag_toolkit.calibration.Layer import Layer
+from mag_toolkit.calibration.Layer import Layer, Validity
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +26,19 @@ logger = logging.getLogger(__name__)
 class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: ValueType
+    _contents: pd.DataFrame | None = PrivateAttr(default=None)
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
         raise NotImplementedError(
             "CSV output not implemented for CalibrationLayer. Use CDF or JSON instead."
         )
+
+    def get_epochs(self) -> pd.Series:
+        """Get the epochs from the calibration layer contents."""
+        self.load_contents()
+        if self._contents is None:
+            raise ValueError("No contents loaded to get epochs from.")
+        return self._contents[CONSTANTS.CSV_VARS.EPOCH]
 
     def compatible(self, other: Layer) -> bool:
         """Check if another calibration layer is time compatible with this one."""
@@ -50,9 +63,7 @@ class CalibrationLayer(Layer):
 
         logger.debug("Converting epoch values to raw epoch format.")
         self._contents[CONSTANTS.CSV_VARS.RAW_EPOCH] = lib.cdfepoch.parse(
-            np.datetime_as_string(
-                self._contents[CONSTANTS.CSV_VARS.EPOCH], unit="ns"
-            ).tolist()
+            np.datetime_as_string(self.get_epochs(), unit="ns").tolist()
         )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
@@ -151,6 +162,13 @@ class CalibrationLayer(Layer):
         return self
 
     @classmethod
+    def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
+        if path.suffix == ".csv":
+            return cls._from_csv(path)
+        else:
+            return super().from_file(path, load_contents)
+
+    @classmethod
     def _values_from_csv(cls, path: Path) -> pd.DataFrame:
         df = pd.read_csv(
             path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
@@ -158,3 +176,40 @@ class CalibrationLayer(Layer):
         if df.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
         return df
+
+    @classmethod
+    def _from_csv(cls, path: Path):
+        df = cls._values_from_csv(path)
+
+        validity = Validity(
+            start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
+            end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+        )
+
+        calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
+
+        method: CalibrationMethod = (
+            CalibrationMethod.from_string(calibration_metadata_handler.descriptor)
+            if (
+                calibration_metadata_handler and calibration_metadata_handler.descriptor
+            )
+            else CalibrationMethod.NOOP
+        )
+
+        instance = cls(
+            id="",
+            mission=Mission.IMAP,
+            validity=validity,
+            sensor=Sensor.MAGO,
+            version=0,
+            metadata=CalibrationMetadata(
+                dependencies=[],
+                science=[],
+                data_filename=path,
+                creation_timestamp=np.datetime64("now"),
+            ),
+            value_type=ValueType.VECTOR,
+            method=method,
+        )
+        instance._contents = df
+        return instance
