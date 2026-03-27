@@ -1,57 +1,88 @@
+import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import numpy as np
-from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
-from imap_processing.mag.l2 import mag_l2, mag_l2_data
-
-from mag_toolkit.calibration.CalibrationDefinitions import (
-    CONSTANTS,
-)
-from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
-
-import numpy.typing as npt
 import xarray as xr
-import logging
+from cdflib.xarray import cdf_to_xarray
 
 logger = logging.getLogger(__name__)
 
+epoch_dimension = "epoch"  # Same as imap_processing AncillaryCombiner.time_variable
 
 
 class CalibrationMatrix:
-
-	@classmethod
+    @classmethod
     def get_combined_epoch_dataset_for_imap_processing(
-        cls, mag_l2_dataset: xr.Dataset, start_date: datetime, end_date: datetime
+        cls,
+        calibration_dataset: xr.Dataset,
+        calibration_dataset_start_date: datetime,
+        calibration_dataset_end_date: datetime,
+        calibration_dataset_version: int = 0,
     ) -> xr.Dataset:
-		# Need to epochs to cal files so that mag_l2 cdf code in imap_processing knows to apply the cals
-        
+        # Need to epochs to cal files so that mag_l2 cdf code in imap_processing knows to apply the cals
+        # this method re-implments the logic in imap_processing AncillaryCombiner._combine_input_datasets() for a single cal file dataset
+
         output_dataset = xr.Dataset()
         epoch_data = xr.date_range(
-            start_date, end_date, freq="D"
+            calibration_dataset_start_date, calibration_dataset_end_date, freq="D"
         ).values.astype("datetime64[D]")
-        output_dataset = output_dataset.assign_coords({self.time_variable: epoch_data})
+        output_dataset = output_dataset.assign_coords({epoch_dimension: epoch_data})
+
+        for data_var in calibration_dataset.data_vars:
+            shape = calibration_dataset[data_var].shape
+            var_type = calibration_dataset[data_var].dtype
+            if issubclass(var_type.type, np.integer):
+                maxval = np.iinfo(var_type).max
+            else:
+                maxval = np.iinfo(np.int32).max
+            output_dataset[data_var] = xr.DataArray(
+                np.full((len(epoch_data), *shape), maxval, dtype=var_type),
+                dims=[epoch_dimension]
+                + [f"{data_var}_dim_{i}" for i in range(len(shape))],
+            )
+
+        output_dataset["input_file_version"] = xr.DataArray(
+            np.zeros((len(epoch_data),)), dims=[epoch_dimension]
+        )
+
+        for date in xr.date_range(
+            calibration_dataset_start_date, calibration_dataset_end_date, freq="D"
+        ):
+            np_date = np.datetime64(date, "D")
+            for data_var in output_dataset.data_vars.keys():
+                # find the index in output_dataset where date is equal to epoch
+                index = output_dataset.get_index(epoch_dimension).get_loc(np_date)
+                # For each data_var, fill the date in output_dataset with the
+                # data_var from the input dataset.
+                if str(data_var) in "input_file_version":
+                    output_dataset["input_file_version"].data[index] = (
+                        calibration_dataset_version
+                    )
+                else:
+                    output_dataset[data_var].data[index] = calibration_dataset[
+                        data_var
+                    ].data
+
+        return output_dataset
 
     @classmethod
     def get_rotation_dataset_by_cdf_file(cls, cdf_file_path: Path):
-
         if not cdf_file_path.exists():
             raise FileNotFoundError(
                 f"Rotation/calibration matrix file {cdf_file_path!s} not found"
             )
 
         referenceDataset = cdf_to_xarray(
-            cdf_file_path,
+            str(cdf_file_path),
             to_datetime=False,
         )
 
         logger.info(
-                f"Using rotation file {cdf_file_path!s} for calibration application."
-            )
+            f"Using rotation file {cdf_file_path!s} for calibration application."
+        )
 
         return referenceDataset
-
 
     @classmethod
     def get_zero_rotation_dataset(cls):
@@ -72,9 +103,9 @@ class CalibrationMatrix:
             "Discipline": ["Space Physics>Heliospheric Physics"],
             "Data_type": ["L2-calibration>Level-2 calibration matrices"],
             "Descriptor": ["MAG>Magnetometer"],
-            "Data_version": ["v004"],
-            "Generation_date": ["20250327"],
-            "Logical_file_id": ["imap_mag_l2-calibration_20251017"],
+            "Data_version": ["v000"],
+            "Generation_date": ["20250101"],
+            "Logical_file_id": ["imap_mag_l2-calibration_20250101"],
             "Logical_source": ["imap_mag_l2_calibration"],
             "Logical_source_description": ["Level 2 Calibration Data"],
             "Mission_group": ["IMAP"],
@@ -86,50 +117,54 @@ class CalibrationMatrix:
             ],
         }
 
-        # Coordinate: range (uint8, values 0-3)
-        range_coord = xr.Variable("range", np.array([0, 1, 2, 3], dtype=np.uint8))
+        sensor_coord = xr.Variable("sensor", np.array(["MAGo", "MAGi"], dtype="<U4"))
+        range_coord = xr.Variable("range", np.array([0, 1, 2, 3], dtype=np.int8))
+        axis_coord = xr.Variable("axis", np.array(["x", "y", "z"], dtype="<U1"))
 
-        # EXAMPLE of a slight rotation:
-        # # URFTOORFO: 4x3x3 float32 calibration matrices (outer-sensor URF to ORF)
-        # urftoorfo_data = np.array(
-        #     [
-        #         [
-        #             [1.001621, -0.024766, -0.051825],
-        #             [0.0, 1.000979, 0.044276],
-        #             [0.0, 0.0, 1.0],
-        #         ],
-        #         [
-        #             [0.999963, -0.024759, -0.009875],
-        #             [0.0166231, 1.000706, 0.044109],
-        #             [0.0, 0.0, 0.9998],
-        #         ],
-        #         [
-        #             [1.02786, 0.003252, -0.018275],
-        #             [0.0, 0.987654, 0.003198],
-        #             [0.0, 0.015278, 0.993245],
-        #         ],
-        #         [
-        #             [0.998997, -0.016221, 0.007253],
-        #             [0.010803, 1.026376, 0.087256],
-        #             [-0.03247, 0.0, 1.000561],
-        #         ],
-        #     ],
-        #     dtype=np.float32,
-        # )
+        offsets_data = np.array(
+            [
+                [  # MAGO (range 0-3)
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+                [  # MAGI (range 0-3)
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+            ],
+            dtype=np.float64,
+        )
 
-        # 4x3x3 float32 identity matrices (inner-sensor URF to ORF)
-        urftoorfo_data = np.tile(np.eye(3, dtype=np.float32), (4, 1, 1))
-        urftoorfi_data = np.tile(np.eye(3, dtype=np.float32), (4, 1, 1))
+        created_coord_vars: dict[str, xr.Variable] = {
+            "sensor": sensor_coord,
+            "range": range_coord,
+            "axis": axis_coord,
+        }
 
-        created_coord_vars: dict[str, xr.Variable] = {"range": range_coord}
+        i = np.eye(3, 3)
+        urftoorfo_data = np.stack([i, i, i, i], axis=2)
+        urftoorfi_data = np.stack([i, i, i, i], axis=2)
 
+        valid_start_datetime = (
+            (datetime(2025, 9, 26) - datetime(2000, 1, 1, 12, 0)).total_seconds() * 1e9
+        )  # in nanoseconds since 2000-01-01T12:00:00, which is the CDF epoch time used in the files
+
+        # Commented out vars are L1D cal options that are not used here but left for reference
         created_data_vars: dict[str, xr.Variable] = {
-            "URFTOORFO": xr.Variable(
-                ("range", "dim0", "dim0"), urftoorfo_data, attrs={"DEPEND_0": "range"}
-            ),
-            "URFTOORFI": xr.Variable(
-                ("range", "dim0", "dim0"), urftoorfi_data, attrs={"DEPEND_0": "range"}
-            ),
+            "valid_start_datetime": xr.Variable((), np.int64(valid_start_datetime)),
+            # "gradiometer_factor": xr.Variable(
+            #     ("dim0", "dim0"), np.zeros((3, 3), dtype=np.float64)
+            # ),
+            "offsets": xr.Variable(("sensor", "range", "axis"), offsets_data),
+            # "spin_average_application_factor": xr.Variable((), np.float64(1.0)),
+            # "number_of_spins": xr.Variable((), np.uint32(240)),
+            # "quality_flag_threshold": xr.Variable((), np.float64(0.0)),
+            "URFTOORFO": xr.Variable(("record0", "dim0", "dim1"), urftoorfo_data),
+            "URFTOORFI": xr.Variable(("record0", "dim0", "dim1"), urftoorfi_data),
         }
 
         dataset = xr.Dataset(
@@ -139,7 +174,7 @@ class CalibrationMatrix:
         )
 
         logger.info(
-                f"Using unity matrix (so zero rotation) for calibration application."
-            )
+            "Using unity matrix (so zero rotation) for calibration application."
+        )
 
         return dataset

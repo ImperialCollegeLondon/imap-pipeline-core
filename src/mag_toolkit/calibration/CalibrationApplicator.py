@@ -1,12 +1,16 @@
 import logging
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 import numpy as np
+import spiceypy
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
 
+from imap_mag.cli.fetch.spice import generate_spice_metakernel
+from imap_mag.config import AppSettings
+from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
 )
@@ -19,13 +23,16 @@ from .CalibrationDefinitions import (
     ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
-from .ScienceLayer import ScienceLayer
 from .CalibrationMatrix import CalibrationMatrix
+from .ScienceLayer import ScienceLayer
 
 logger = logging.getLogger(__name__)
 
 
 class CalibrationApplicator:
+    def __init__(self, app_settings: AppSettings = AppSettings()):
+        self.app_settings = app_settings
+
     def _create_offsets_file(
         self,
         layers: list[Path],
@@ -118,20 +125,80 @@ class CalibrationApplicator:
         del science
 
         if rotation is None:
-            rotationCalibrationDatasets = CalibrationMatrix.get_zero_rotation_dataset()
+            rotationCalibrationDataset = CalibrationMatrix.get_zero_rotation_dataset()
+            version = 0
         else:
-            rotationCalibrationDatasets = CalibrationMatrix.get_rotation_dataset_by_cdf_file(rotation)
+            handler = AncillaryPathHandler.from_filename(rotation)
+            if not handler:
+                raise ValueError(f"Could not parse rotation file name: {rotation}")
+            version = handler.version
+            rotationCalibrationDataset = (
+                CalibrationMatrix.get_rotation_dataset_by_cdf_file(rotation)
+            )
 
-        datasets = mag_l2.mag_l2(
-            input_data=cdf_to_xarray(str(dataFile), to_datetime=False),
-            calibration_dataset=rotationCalibrationDatasets,
-            offsets_dataset=cdf_to_xarray(str(cal_filepath), to_datetime=False),
-            mode=mag_l2_data.DataMode.NORM,
-            day_to_process=np.datetime64(day_to_process),
+        calibration_dataset = (
+            CalibrationMatrix.get_combined_epoch_dataset_for_imap_processing(
+                rotationCalibrationDataset, day_to_process, day_to_process, version
+            )
+        )
+
+        # need to get the spice furnished as the l2 step does time truncation needed clock kernels and rotations
+        path_to_mk = generate_spice_metakernel(
+            start_time=day_to_process + timedelta(hours=-12),
+            end_time=day_to_process
+            + timedelta(
+                days=1, hours=12
+            ),  # ensure we have plenty of spice coverage around it
+            file_types=[
+                "leapseconds",
+                "planetary_constants",
+                "science_frames",
+                "imap_frames",
+                "spacecraft_clock",
+                "attitude_history",
+                "pointing_attitude",
+            ],
+            verify=False,
+            # base_path=Path(".") # TODO: work out if we need to path the MK
+        )
+        resolved_mk_path: str = str(path_to_mk.resolve())  # type: ignore
+
+        logger.info(f"furnishing spice metakernel at {resolved_mk_path}")
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(self.app_settings.data_store)
+            spiceypy.kclear()
+            spiceypy.furnsh(resolved_mk_path)
+            datasets = mag_l2.mag_l2(
+                input_data=cdf_to_xarray(str(dataFile), to_datetime=False),
+                calibration_dataset=calibration_dataset,
+                offsets_dataset=cdf_to_xarray(str(cal_filepath), to_datetime=False),
+                mode=mag_l2_data.DataMode.NORM,
+                day_to_process=np.datetime64(day_to_process),
+            )
+
+        finally:
+            os.chdir(original_cwd)
+            spiceypy.kclear()
+
+        # these are the datasets in order created by mag_l2,
+        # for frame in [
+        #     ValidFrames.SRF,
+        #     ValidFrames.GSE,
+        #     ValidFrames.GSM,
+        #     ValidFrames.RTN,
+        #     ValidFrames.DSRF,
+        # ]:
+
+        # log paths to all files
+        logger.info(
+            f"Applied calibration layer(s) and create {len(datasets)} output dataset(s)"
         )
 
         for ds in datasets:
             ds.attrs["Logical_file_id"] = outputScienceFile.name
+            logger.info(f"Writing output science file to {outputScienceFile}")
             xarray_to_cdf(ds, str(outputScienceFile))
             break  # only write one file for now
 

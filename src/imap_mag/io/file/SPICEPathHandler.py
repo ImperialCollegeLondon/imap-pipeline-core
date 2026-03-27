@@ -42,6 +42,24 @@ imap_sclk_####.tsc
 """
 
 
+"""
+Files have file_meta={"kernel_type": "attitude_history"}, where kernel_type is one of:
+leapseconds - naif####.tls
+planetary_constants - pck#####.tpc
+science_frames - imap_science_####.tf
+imap_frames - imap_###.tf
+spacecraft_clock - imap_sclk_####.tsc
+attitude_history - imap_yyyy_doy_yyyy_doy_##.ah.bc and imap_yyyy_doy_yyyy_doy_##.ah.a
+pointing_attitude - imap_dps_yyyy_doy_yyyy_doy_v###.ah.bc
+attitude_predict - imap_yyyy_doy_yyyy_doy_##.ap.bc or imap_yyyy_doy_yyyy_doy_##.ap.a
+planetary_ephemeris - de###.bsp
+ephemeris_reconstructed - imap_recon_yyyymmdd_yyyymmdd_v##.bsp
+ephemeris_predicted - imap_pred_yyyymmdd_yyyymmdd_v
+ephemeris_long - imap_long_yyyymmdd_yyyymmdd_v##.bsp
+ephemeris_launch - imap_launch_yyyymmdd_yyyymmdd_v##.bsp
+"""
+
+
 @dataclass
 class SPICEPathHandler(VersionedPathHandler):
     """
