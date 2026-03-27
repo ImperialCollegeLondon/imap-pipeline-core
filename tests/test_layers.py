@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -213,42 +215,53 @@ def test_calibration_layer_loads_csv_correctly():
     )
 
 
-# def test_calibration_layer_warning_on_overwriting_existing_data(
-#     tmp_path, capture_cli_logs
-# ):
-#     # Set up.
-#     metadata_file = TEST_DATA / "metadata_file_with_values_and_data_file.json"
-#     data_file = (
-#         DATASTORE
-#         / "calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv"
-#     )
+def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
+    # Set up.
+    empty_csv = tmp_path / "empty.csv"
+    empty_csv.touch()
 
-#     shutil.copy(metadata_file, tmp_path / "metadata_file.json")
-#     shutil.copy(data_file, tmp_path / "data_file.csv")
+    empty_csv.write_text(
+        "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n"
+    )
 
-#     # Exercise.
-#     cl = CalibrationLayer.from_file(tmp_path / "metadata_file.json")
-
-#     # Verify.
-#     assert (
-#         f"Existing calibration values will be overwritten with data in {tmp_path / 'data_file.csv'!s}."
-#         in capture_cli_logs.text
-#     )
-
-#     assert len(cl.values) == 16
+    # Exercise and verify.
+    with pytest.raises(
+        ValueError, match=re.escape("CSV file is empty or does not contain valid data")
+    ):
+        CalibrationLayer._from_csv(empty_csv)
 
 
-# def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
-#     # Set up.
-#     empty_csv = tmp_path / "empty.csv"
-#     empty_csv.touch()
+def test_calibration_layer_create_zero_offset_from_science():
+    sl = ScienceLayer.from_file(
+        DATASTORE / "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf",
+        load_contents=True,
+    )
 
-#     empty_csv.write_text(
-#         "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n"
-#     )
+    cl: CalibrationLayer = CalibrationLayer.create_zero_offset_layer_from_science(sl)
 
-#     # Exercise and verify.
-#     with pytest.raises(
-#         ValueError, match=re.escape("CSV file is empty or does not contain valid data")
-#     ):
-#         CalibrationLayer._from_csv(empty_csv)
+    assert cl.mission == Mission.IMAP
+    assert cl.validity.start == sl.validity.start
+    assert cl.validity.end == sl.validity.end
+    assert cl.sensor == sl.sensor
+    assert cl.version == 0
+    assert (
+        cl.metadata.data_filename is not None
+        and cl.metadata.data_filename.name.endswith(".csv")
+    )
+    assert cl.metadata.creation_timestamp is not None
+    assert cl.value_type == ValueType.VECTOR
+    assert cl.method == CalibrationMethod.NOOP
+    assert cl.metadata.science == [sl.science_file]
+
+    assert cl._contents is not None
+    # CSV looks like: time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask
+    #                 2025-10-17T02:11:51.521309000,0,0,0,0,0,0
+    assert len(cl._contents) == len(sl._contents)
+    assert cl.compatible(sl)  # checks all times match
+
+    assert (cl._contents[CONSTANTS.CSV_VARS.OFFSET_X] == 0).all()
+    assert (cl._contents[CONSTANTS.CSV_VARS.OFFSET_Y] == 0).all()
+    assert (cl._contents[CONSTANTS.CSV_VARS.OFFSET_Z] == 0).all()
+    assert (cl._contents[CONSTANTS.CSV_VARS.TIMEDELTA] == 0).all()
+    assert (cl._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0).all()
+    assert (cl._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0).all()

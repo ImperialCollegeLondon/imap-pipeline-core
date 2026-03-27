@@ -118,6 +118,10 @@ class ScienceLayer(Layer):
                 CONSTANTS.CSV_VARS.RANGE: data[:, 3],
             }
         )
+        del dataset  # Free memory from xarray dataset since we've loaded contents into pandas DataFrame
+        del data
+        del raw_epoch
+        del epoch
 
         return self
 
@@ -191,8 +195,14 @@ class ScienceLayer(Layer):
             value_type=ValueType.VECTOR,
             science_file=str(path),
         )
+        science_layer._set_content_date_from_filepath(path)
         science_layer._set_data_path(path)
         if load_contents and contents is not None:
             science_layer._set_contents(contents)
+
+        del dataset  # Free memory from xarray dataset since we've loaded contents into pandas DataFrame
+        del data
+        del raw_epoch
+        del epoch
 
         return science_layer

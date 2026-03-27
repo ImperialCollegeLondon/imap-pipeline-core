@@ -118,6 +118,11 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     data_filename: Path | None = None
     dependencies: list[str]
     science: list[str]
+    content_date: Annotated[
+        np.datetime64 | None,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ] = None
     creation_timestamp: Annotated[
         np.datetime64,
         BeforeValidator(convert_time),

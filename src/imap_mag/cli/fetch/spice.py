@@ -634,8 +634,9 @@ def _metakernel_builder(
             "No SPICE files found in the database matching the time range."
         )
 
-    logger.info(f"Generating SPICE metakernel with {len(latest_files)} files.")
-    logger.info(json.dumps([f.path for f in files], indent=2))
+    logger.info(
+        f"Generating SPICE metakernel with {len(latest_files)} files\n{json.dumps([f.path for f in latest_files], indent=2)}"
+    )
 
     if not start_time:
         start_time = minimum_mission_time

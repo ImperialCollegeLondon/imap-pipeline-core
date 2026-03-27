@@ -13,7 +13,7 @@ from imap_mag.io.file import IFilePathHandler
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag publish imap_mag_l2-calibration_20251017_v004.cdf
+# E.g., imap-mag publish imap_mag_l2-calibration_20250926_v002.cdf
 def publish(
     files: Annotated[
         list[Path],

@@ -113,6 +113,42 @@ class SPICEPathHandler(VersionedPathHandler):
         (rf"^{METAKERNEL_FILENAME_PREFIX}_.*\.tm$", "mk"),
     ]
 
+    kernel_type_patterns: typing.ClassVar[list[tuple[str, str]]] = [
+        # More specific patterns must come first to avoid wrong matches
+        (r"^naif.*\.tls$", "leapseconds"),
+        (r"^pck.*\.tpc$", "planetary_constants"),
+        (r"^imap_science_.*\.tf$", "science_frames"),  # before generic imap_*.tf
+        (r"^imap_sclk_.*\.tsc$", "spacecraft_clock"),
+        (r"^imap_dps_.*\.ah\.bc$", "pointing_attitude"),  # before generic imap_*.ah.bc
+        (r"^imap_.*\.ah\.bc$", "attitude_history"),
+        (r"^imap_.*\.ah\.a$", "attitude_history"),
+        (r"^imap_.*\.ap\.bc$", "attitude_predict"),
+        (r"^imap_.*\.ap\.a$", "attitude_predict"),
+        (r"^imap_.*\.tf$", "imap_frames"),
+        (r"^de.*\.bsp$", "planetary_ephemeris"),
+        (r"^L1_de.*\.bsp$", "planetary_ephemeris"),
+        (r"^imap_recon_.*\.bsp$", "ephemeris_reconstructed"),
+        (r"^imap_pred_.*\.bsp$", "ephemeris_predicted"),
+        (r"^imap_long_.*\.bsp$", "ephemeris_long"),
+        (r"^imap_launch_.*\.bsp$", "ephemeris_launch"),
+        (r"^imap_nom_.*\.bsp$", "ephemeris_nominal"),
+        (r"^imap_noburn_.*\.bsp$", "ephemeris_nominal"),
+    ]
+
+    @staticmethod
+    def get_kernel_type_from_filename(filename: "str | Path") -> "str | None":
+        """Return the semantic kernel_type string for a SPICE kernel filename.
+
+        Returns None if the filename does not match any known pattern.
+        """
+        filename_only = (
+            filename.name if isinstance(filename, Path) else Path(filename).name
+        )
+        for pattern, kernel_type in SPICEPathHandler.kernel_type_patterns:
+            if re.match(pattern, filename_only):
+                return kernel_type
+        return None
+
     def supports_sequencing(self) -> bool:
         return self.is_versioned_spice_file
 

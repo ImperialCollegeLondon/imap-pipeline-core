@@ -1,5 +1,6 @@
 import logging
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import cdflib as lib
@@ -19,6 +20,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     ValueType,
 )
 from mag_toolkit.calibration.Layer import Layer, Validity
+from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +31,14 @@ class CalibrationLayer(Layer):
     _contents: pd.DataFrame | None = PrivateAttr(default=None)
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
-        raise NotImplementedError(
-            "CSV output not implemented for CalibrationLayer. Use CDF or JSON instead."
-        )
+        if self._contents is None:
+            raise ValueError("No contents loaded to write to CSV.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Writing calibration layer CSV to {filepath!s}.")
+        self._contents.to_csv(filepath, index=False)
+        return filepath
 
     def get_epochs(self) -> pd.Series:
         """Get the epochs from the calibration layer contents."""
@@ -67,7 +74,7 @@ class CalibrationLayer(Layer):
         )
 
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
-        logger.info("Writing calibration layer to CDF file.")
+        logger.info(f"Writing calibration layer to CDF file: {filepath!s}")
         skeleton_cdf = cdf_to_xarray(
             str(CONSTANTS.OFFSET_SKELETON_CDF), to_datetime=False
         )
@@ -151,7 +158,36 @@ class CalibrationLayer(Layer):
 
         return filepath
 
-    def _load_data_file(self, path: Path, generator=True) -> "CalibrationLayer":
+    def set_metadata(
+        self,
+        dependencies: list[str],
+        original_science: ScienceLayer,
+        calibration_id: str,
+        method: CalibrationMethod = CalibrationMethod.SUM,
+    ):
+        """Set the metadata for the offsets layer based on the original science layer."""
+        if self._contents is None:
+            raise ValueError("Offsets layer contents not loaded")
+
+        self.validity = Validity(
+            start=original_science.validity.start,
+            end=original_science.validity.end,
+        )
+
+        self.metadata = CalibrationMetadata(
+            dependencies=dependencies,
+            science=[original_science.science_file],
+            creation_timestamp=np.datetime64("now"),
+            content_date=original_science.metadata.content_date,
+        )
+        self.id = calibration_id
+        self.version = 1
+        self.method = method
+        self.value_type = ValueType.VECTOR
+        self.sensor = original_science.sensor
+        self.mission = original_science.mission
+
+    def _load_data_file(self, path: Path) -> "CalibrationLayer":
         logger.debug(f"Loading calibration layer data from {path!s}.")
         if self._contents is not None:
             logger.warning(
@@ -160,6 +196,21 @@ class CalibrationLayer(Layer):
 
         self._contents = self._values_from_csv(path)
         return self
+
+    def _write_to_json(self, filepath: Path, createDirectory=False):
+        created = super()._write_to_json(filepath, createDirectory)
+        if self._contents is not None:
+            if self.metadata.data_filename is None:
+                self.metadata.data_filename = Path(
+                    CalibrationLayerPathHandler.from_filename(filepath)
+                    .get_equivalent_data_handler()
+                    .get_filename()
+                )
+
+            self._write_to_csv(
+                filepath.parent / self.metadata.data_filename, createDirectory
+            )
+        return created
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
@@ -212,4 +263,71 @@ class CalibrationLayer(Layer):
             method=method,
         )
         instance._contents = df
+        instance._set_content_date_from_filepath(path)
         return instance
+
+    @classmethod
+    def create_zero_offset_layer_from_science(cls, science_layer: ScienceLayer):
+        if not science_layer:
+            raise ValueError(
+                "Science layer must be provided to create zero offset layer."
+            )
+
+        science_layer.load_contents()
+        if science_layer._contents is None:
+            raise ValueError(
+                "Science layer contents must be loaded to create zero offset layer."
+            )
+
+        zero_offsets_df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: science_layer._contents[
+                    CONSTANTS.CSV_VARS.EPOCH
+                ],
+                CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
+                CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
+                CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
+                CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
+            }
+        )
+
+        validity = Validity(
+            start=science_layer.validity.start,
+            end=science_layer.validity.end,
+        )
+
+        content_date: datetime = (
+            science_layer.metadata.content_date.astype(datetime)
+            if science_layer.metadata.content_date is not None
+            else None
+        )
+        datefilename = None
+        if content_date:
+            calibration_handler = CalibrationLayerPathHandler(
+                descriptor=CalibrationMethod.NOOP.short_name, content_date=content_date
+            )
+            datefilehandler = calibration_handler.get_equivalent_data_handler()
+            datefilename = Path(datefilehandler.get_filename())
+
+        metadata = CalibrationMetadata(
+            dependencies=[],
+            science=[science_layer.science_file] if science_layer.science_file else [],
+            creation_timestamp=np.datetime64("now"),
+            data_filename=datefilename,
+            content_date=science_layer.metadata.content_date,
+        )
+
+        zero_offset_layer = cls(
+            id="",
+            mission=science_layer.mission,
+            validity=validity,
+            sensor=science_layer.sensor,
+            version=0,
+            metadata=metadata,
+            value_type=ValueType.VECTOR,
+            method=CalibrationMethod.NOOP,
+        )
+        zero_offset_layer._contents = zero_offsets_df
+        return zero_offset_layer

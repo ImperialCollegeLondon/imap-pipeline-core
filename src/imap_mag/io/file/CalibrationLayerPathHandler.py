@@ -62,7 +62,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         cls, filename: str | Path
     ) -> "CalibrationLayerPathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)?-layer_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+)?-layer(?P<extra_descr>[^_]+)?_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -74,6 +74,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         else:
             return cls(
                 descriptor=match["descr"],
+                extra_descriptor=match["extra_descr"] or "",
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 version=int(match["version"]),
                 extension=match["ext"],

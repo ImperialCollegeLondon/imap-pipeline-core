@@ -3,13 +3,14 @@ import typing
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 from pydantic import BaseModel
 
+from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
-    CalibrationMethod,
     Mission,
     Sensor,
     Validity,
@@ -48,10 +49,19 @@ class Layer(BaseModel, ABC):
         if not data_file.exists():
             raise FileNotFoundError(f"Layer data file {data_file!s} not found.")
 
+        model._set_content_date_from_filepath(data_file)
+
         logger.debug(f"Calibration layer data defined in separate file: {data_file!s}")
         if load_contents:
             model._load_data_file(data_file)
         return model
+
+    def _set_content_date_from_filepath(self, filepath: Path) -> None:
+        handler = FilePathHandlerSelector.find_by_path(filepath)
+        if handler:
+            self.metadata.content_date = np.datetime64(
+                handler.get_content_date_for_indexing()
+            )
 
     def clear_contents(self: T) -> T:
         self._contents = None
@@ -86,6 +96,7 @@ class Layer(BaseModel, ABC):
         if createDirectory:
             filepath.parent.mkdir(parents=True, exist_ok=True)
 
+        logger.info(f"Writing calibration layer metadata to {filepath!s}.")
         with open(filepath, "w+") as f:
             f.write(json)
 

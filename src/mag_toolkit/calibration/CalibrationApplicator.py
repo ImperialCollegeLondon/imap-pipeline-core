@@ -10,6 +10,7 @@ from imap_processing.mag.l2 import mag_l2, mag_l2_data
 
 from imap_mag.cli.fetch.spice import generate_spice_metakernel
 from imap_mag.config import AppSettings
+from imap_mag.io.file import SciencePathHandler
 from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -17,10 +18,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
 
 from .CalibrationDefinitions import (
-    CalibrationMetadata,
     CalibrationMethod,
-    Validity,
-    ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
 from .CalibrationMatrix import CalibrationMatrix
@@ -58,47 +56,16 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
-        offsets_layer = self._set_metadata(
-            offsets,
+        offsets.set_metadata(
             [science.science_file],
             science,
             outputCalibrationFile.name,
+            method=CalibrationMethod.SUM,
         )
 
-        cal_filepath = offsets_layer.writeToFile(outputCalibrationFile)
+        cal_filepath = offsets.writeToFile(outputCalibrationFile)
 
         return cal_filepath
-
-    def _set_metadata(
-        self,
-        offsets: CalibrationLayer,
-        dependencies: list[str],
-        original_science: ScienceLayer,
-        calibration_id: str,
-    ) -> CalibrationLayer:
-        """Set the metadata for the offsets layer based on the original science layer."""
-        if offsets._contents is None:
-            raise ValueError("Offsets layer contents not loaded")
-
-        validity = Validity(
-            start=offsets._contents.time.iloc[0], end=offsets._contents.time.iloc[-1]
-        )
-
-        offsets_metadata = CalibrationMetadata(
-            dependencies=dependencies,
-            science=[original_science.science_file],
-            creation_timestamp=np.datetime64("now"),
-        )
-        offsets.metadata = offsets_metadata
-        offsets.validity = validity
-        offsets.id = calibration_id
-        offsets.version = 1
-        offsets.method = CalibrationMethod.SUM
-        offsets.value_type = ValueType.VECTOR
-        offsets.sensor = original_science.sensor
-        offsets.mission = original_science.mission
-
-        return offsets
 
     def apply(
         self,
@@ -106,19 +73,32 @@ class CalibrationApplicator:
         layer_files: list[Path],
         rotation: Path | None,
         dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
-        outputCalibrationFile: Path,
-        outputScienceFile: Path,
-    ) -> tuple[Path, Path]:
+        outputOffsetsFile: Path,
+        outputScienceFolder: Path,
+    ) -> tuple[list[Path], Path]:
         """Currently operating on unprocessed data."""
 
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
 
+        if not outputScienceFolder.exists():
+            raise ValueError(
+                f"Output science folder does not exist: {outputScienceFolder}"
+            )
+
+        if not dataFile.exists():
+            raise ValueError(f"Input science file does not exist: {dataFile}")
+
+        if outputOffsetsFile.exists():
+            logger.warning(
+                f"Output calibration file already exists and will be overwritten: {outputOffsetsFile}"
+            )
+
         science = ScienceLayer.from_file(dataFile, load_contents=True)
 
         cal_filepath = self._create_offsets_file(
             layer_files,
-            outputCalibrationFile,
+            outputOffsetsFile,
             science=science,
         )
 
@@ -157,6 +137,8 @@ class CalibrationApplicator:
                 "spacecraft_clock",
                 "attitude_history",
                 "pointing_attitude",
+                "planetary_ephemeris",
+                "ephemeris_reconstructed",
             ],
             verify=False,
             # base_path=Path(".") # TODO: work out if we need to path the MK
@@ -181,6 +163,7 @@ class CalibrationApplicator:
         finally:
             os.chdir(original_cwd)
             spiceypy.kclear()
+            os.remove(resolved_mk_path)  # clean up the generated metakernel
 
         # these are the datasets in order created by mag_l2,
         # for frame in [
@@ -196,13 +179,33 @@ class CalibrationApplicator:
             f"Applied calibration layer(s) and create {len(datasets)} output dataset(s)"
         )
 
+        files_created = []
         for ds in datasets:
-            ds.attrs["Logical_file_id"] = outputScienceFile.name
-            logger.info(f"Writing output science file to {outputScienceFile}")
-            xarray_to_cdf(ds, str(outputScienceFile))
-            break  # only write one file for now
+            logical_source = str(ds.attrs.get("Logical_source"))
+            if not logical_source:
+                logger.warning(
+                    "No Logical_source attribute found in dataset, skipping file naming"
+                )
+                continue
+            if "_l2_" in logical_source and "l2-pre" not in logical_source:
+                logical_source = logical_source.replace(
+                    "l2", "l2-pre"
+                )  # set level to l2-pre for the output file naming, as it's pre-release l2
 
-        return (outputScienceFile, cal_filepath)
+            filename = SciencePathHandler.generate_filename_from_logical_source(
+                logical_source=logical_source,
+                content_date=day_to_process,
+                version=0,
+                extension="cdf",
+            )
+            filepath = outputScienceFolder / filename
+
+            ds.attrs["Logical_file_id"] = filename
+            logger.info(f"Writing output science file to {filepath}")
+            xarray_to_cdf(ds, str(filepath))
+            files_created.append(filepath)
+
+        return (files_created, cal_filepath)
 
     def _sum_layers(
         self,
