@@ -109,7 +109,7 @@ def apply(
         datetime,
         typer.Option("--from", help="Date of the input file data"),
     ],
-    calibration_output_type: Annotated[
+    offset_file_output_type: Annotated[
         str, typer.Option(help="Output type of the calibration file")
     ] = FileType.CDF.value,
     l2_output_type: Annotated[
@@ -174,7 +174,7 @@ def apply(
         start_date=date,
         end_date=date,
         version=0,
-        extension=calibration_output_type,
+        extension=offset_file_output_type,
     )
 
     offset_file_path = app_settings.work_folder / offset_file_handler.get_filename()

@@ -28,7 +28,6 @@ class Layer(BaseModel, ABC):
     sensor: Sensor
     version: int
     metadata: CalibrationMetadata
-    rotation: list[list[list[float]]] | None = None
     _data_path: Path | None = None
     _contents: pd.DataFrame | None = None
 

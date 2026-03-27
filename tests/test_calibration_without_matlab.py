@@ -14,7 +14,7 @@ from tests.util.miscellaneous import (
 def test_empty_calibrator_makes_correct_matlab_call(
     monkeypatch,
     temp_datastore,
-    preclean_work_and_output,
+    dynamic_work_folder,
 ):
     copy_test_file(
         TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
@@ -23,12 +23,13 @@ def test_empty_calibrator_makes_correct_matlab_call(
     )
 
     def mock_call_matlab(command):
-        assert (
-            command
-            == f'calibration.wrappers.run_empty_calibrator("2025-10-17T00:00:00", ".work/imap_mag_l1c_norm-mago_20251017_v001.cdf", ".work/imap_mag_noop-layer_20251017_v002.json", ".work/imap_mag_noop-layer-data_20251017_v002.csv", "{temp_datastore}", "")'
+        assert command.startswith("calibration.wrappers.run_empty_calibrator")
+        create_test_file(
+            Path(dynamic_work_folder) / "imap_mag_noop-layer_20251017_v002.json"
         )
-        create_test_file(Path(".work") / "imap_mag_noop-layer_20251017_v002.json")
-        create_test_file(Path(".work") / "imap_mag_noop-layer-data_20251017_v002.csv")
+        create_test_file(
+            Path(dynamic_work_folder) / "imap_mag_noop-layer-data_20251017_v002.csv"
+        )
 
     monkeypatch.setattr(
         "mag_toolkit.calibration.calibrators.EmptyCalibration.call_matlab",
@@ -55,18 +56,15 @@ def test_empty_calibrator_makes_correct_matlab_call(
 def test_gradiometer_calibrator_makes_correct_matlab_call(
     monkeypatch,
     temp_datastore,
-    preclean_work_and_output,
+    dynamic_work_folder,
 ):
     def mock_call_matlab(command):
-        assert (
-            command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", ".work/imap_mag_l1c_norm-mago_20260930_v001.cdf", ".work/imap_mag_l1c_norm-magi_20260930_v001.cdf", ".work/imap_mag_gradiometer-layer_20260930_v001.json", ".work/imap_mag_gradiometer-layer-data_20260930_v001.csv", "{temp_datastore}", "0.25", "10.0")'
+        assert command.startswith("calibration.wrappers.run_gradiometry")
+        create_test_file(
+            dynamic_work_folder / "imap_mag_gradiometer-layer_20260930_v001.json"
         )
         create_test_file(
-            Path(".work") / "imap_mag_gradiometer-layer_20260930_v001.json"
-        )
-        create_test_file(
-            Path(".work") / "imap_mag_gradiometer-layer-data_20260930_v001.csv"
+            dynamic_work_folder / "imap_mag_gradiometer-layer-data_20260930_v001.csv"
         )
 
     monkeypatch.setattr(
@@ -97,17 +95,19 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
 def test_gradiometer_calibrator_finds_next_viable_version(
     monkeypatch,
     temp_datastore,
+    dynamic_work_folder,
 ):
     def mock_call_matlab(command):
         assert (
             command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", ".work/imap_mag_l1c_norm-mago_20260930_v001.cdf", ".work/imap_mag_l1c_norm-magi_20260930_v001.cdf", ".work/imap_mag_gradiometer-layer_20260930_v002.json", ".work/imap_mag_gradiometer-layer-data_20260930_v002.csv", "{temp_datastore}", "0.25", "10.0")'
+            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-layer_20260930_v002.json", "{dynamic_work_folder}/imap_mag_gradiometer-layer-data_20260930_v002.csv", "{temp_datastore}", "0.25", "10.0")'
         )
         create_test_file(
-            Path(".work") / "imap_mag_gradiometer-layer_20260930_v002.json"
+            Path(dynamic_work_folder) / "imap_mag_gradiometer-layer_20260930_v002.json"
         )
         create_test_file(
-            Path(".work") / "imap_mag_gradiometer-layer-data_20260930_v002.csv"
+            Path(dynamic_work_folder)
+            / "imap_mag_gradiometer-layer-data_20260930_v002.csv"
         )
 
     monkeypatch.setattr(

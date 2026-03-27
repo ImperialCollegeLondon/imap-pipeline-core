@@ -13,6 +13,7 @@ from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import DATASTORE
 
@@ -58,7 +59,7 @@ def matlab_test_setup():
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore, dynamic_work_folder
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -173,10 +174,9 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     except Exception as e:
         pytest.fail(f"Calibration layer created did not conform to standards: {e}")
 
-    assert cal_layer.values[1].value == [
-        -20.948437287498678,
-        287.80371538145209,
-        350.14540002089052,
-    ]
-    assert cal_layer.values[1].quality_bitmask == 2
+    assert cal_layer._contents is not None
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_X][1] == -20.948437287498678
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_Y][1] == 287.80371538145209
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_Z][1] == 350.14540002089052
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK][1] == 2
     assert cal_layer.metadata.comment == "Gradiometer layer with kappa value: 0.25"
