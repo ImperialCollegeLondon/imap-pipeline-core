@@ -17,7 +17,7 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     SciencePathHandler,
 )
-from imap_mag.util import ScienceMode
+from imap_mag.util import ReferenceFrame
 from mag_toolkit.calibration import (
     CalibrationApplicator,
     CalibrationLayer,
@@ -99,7 +99,6 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     return None
 
 
-# E.g., imap-mag apply --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
     layers: Annotated[
         list[str],
@@ -107,7 +106,7 @@ def apply(
     ],
     date: Annotated[
         datetime,
-        typer.Option("--from", help="Date of the input file data"),
+        typer.Option("--date", help="Date of the input file data"),
     ],
     offset_file_output_type: Annotated[
         str, typer.Option(help="Output type of the calibration file")
@@ -121,12 +120,31 @@ def apply(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    spice_metakernel: Annotated[
+        Path | None,
+        typer.Option(
+            help="Path to spice metakernel file to be used. Will query database and generate one if none provided"
+        ),
+    ] = None,
+    reference_frames: Annotated[
+        list[ReferenceFrame],
+        typer.Option(
+            "--frames",
+            help="Reference frames (SPICE) to generate L2 files in. Defaults to all frames.",
+        ),
+    ] = [
+        ReferenceFrame.SRF,
+        ReferenceFrame.GSE,
+        ReferenceFrame.GSM,
+        ReferenceFrame.RTN,
+        ReferenceFrame.DSRF,
+    ],
 ):
     """
     Apply calibration rotation and layers to an input science file.
 
-    imap-mag calibration apply --date [date] --rotation [rotation] [layers] [input]
-    e.g. imap-mag calibration apply --date --rotation imap_mag_l2-calibration_20250926_v002.cdf imap_mag_noop-layer_20251017_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
+    imap-mag calibration apply --date [date] --rotation [rotation] --layers [layers] [input]
+    e.g. imap-mag calibration apply --date 2026-01-16 --rotation imap_mag_l2-calibration_20250926_v002.cdf --layers imap_mag_manual-burst-layer_20260116_v000.json --spice-metakernel tests/datastore/spice/mk/metakernel.txt  imap_mag_l1b_burst-mago_20260116_v002.cdf
     """
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.calibration)
@@ -163,14 +181,8 @@ def apply(
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
-    norm_or_burst = (
-        ScienceMode.Burst.short_name
-        if original_input_handler.descriptor
-        and ScienceMode.Burst.short_name in original_input_handler.descriptor
-        else ScienceMode.Normal.short_name
-    )
     offset_file_handler = AncillaryPathHandler(
-        descriptor=f"l2-{norm_or_burst}-offsets",
+        descriptor=f"l2-{original_input_handler.get_mode().short_name}-offsets",
         start_date=date,
         end_date=date,
         version=0,
@@ -200,6 +212,8 @@ def apply(
         dataFile=workScienceFile,
         outputOffsetsFile=offset_file_path,
         outputScienceFolder=app_settings.work_folder,
+        spice_metakernel=spice_metakernel,
+        reference_frames=reference_frames,
     )
     outputManager.add_file(offset_file, offset_file_handler)
     for L2_file in L2_files:

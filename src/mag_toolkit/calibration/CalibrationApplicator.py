@@ -12,6 +12,8 @@ from imap_mag.cli.fetch.spice import generate_spice_metakernel
 from imap_mag.config import AppSettings
 from imap_mag.io.file import SciencePathHandler
 from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
+from imap_mag.util import ScienceMode
+from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
 )
@@ -75,6 +77,14 @@ class CalibrationApplicator:
         dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
         outputOffsetsFile: Path,
         outputScienceFolder: Path,
+        spice_metakernel: Path | None = None,
+        reference_frames: list[ReferenceFrame] = [
+            ReferenceFrame.SRF,
+            ReferenceFrame.GSE,
+            ReferenceFrame.GSM,
+            ReferenceFrame.RTN,
+            ReferenceFrame.DSRF,
+        ],
     ) -> tuple[list[Path], Path]:
         """Currently operating on unprocessed data."""
 
@@ -86,8 +96,11 @@ class CalibrationApplicator:
                 f"Output science folder does not exist: {outputScienceFolder}"
             )
 
-        if not dataFile.exists():
-            raise ValueError(f"Input science file does not exist: {dataFile}")
+        science_handler = SciencePathHandler.from_filename(dataFile.name)
+        if not dataFile.exists() or not science_handler:
+            raise ValueError(
+                f"Input science file does not exist or could not be parsed: {dataFile}"
+            )
 
         if outputOffsetsFile.exists():
             logger.warning(
@@ -96,13 +109,19 @@ class CalibrationApplicator:
 
         science = ScienceLayer.from_file(dataFile, load_contents=True)
 
-        cal_filepath = self._create_offsets_file(
+        created_offsets_filepath = self._create_offsets_file(
             layer_files,
             outputOffsetsFile,
             science=science,
         )
 
         del science
+
+        if not reference_frames:
+            logger.info(
+                "No reference frames specified, only offsets have been created, skipping L2 file generation"
+            )
+            return [], created_offsets_filepath
 
         if rotation is None:
             rotationCalibrationDataset = CalibrationMatrix.get_zero_rotation_dataset()
@@ -123,27 +142,35 @@ class CalibrationApplicator:
         )
 
         # need to get the spice furnished as the l2 step does time truncation needed clock kernels and rotations
-        path_to_mk = generate_spice_metakernel(
-            start_time=day_to_process + timedelta(hours=-12),
-            end_time=day_to_process
-            + timedelta(
-                days=1, hours=12
-            ),  # ensure we have plenty of spice coverage around it
-            file_types=[
-                "leapseconds",
-                "planetary_constants",
-                "science_frames",
-                "imap_frames",
-                "spacecraft_clock",
-                "attitude_history",
-                "pointing_attitude",
-                "planetary_ephemeris",
-                "ephemeris_reconstructed",
-            ],
-            verify=False,
-            # base_path=Path(".") # TODO: work out if we need to path the MK
+        path_to_mk = (
+            generate_spice_metakernel(
+                start_time=day_to_process + timedelta(hours=-12),
+                end_time=day_to_process
+                + timedelta(
+                    days=1, hours=12
+                ),  # ensure we have plenty of spice coverage around it
+                file_types=[
+                    "leapseconds",
+                    "planetary_constants",
+                    "science_frames",
+                    "imap_frames",
+                    "spacecraft_clock",
+                    "attitude_history",
+                    "pointing_attitude",
+                    "planetary_ephemeris",
+                    "ephemeris_reconstructed",
+                ],
+                verify=False,
+            )
+            if spice_metakernel is None
+            else Path(spice_metakernel)
         )
         resolved_mk_path: str = str(path_to_mk.resolve())  # type: ignore
+
+        if not Path(resolved_mk_path).exists():
+            raise ValueError(
+                f"Resolved spice metakernel path does not exist: {resolved_mk_path}"
+            )
 
         logger.info(f"furnishing spice metakernel at {resolved_mk_path}")
 
@@ -152,32 +179,45 @@ class CalibrationApplicator:
             os.chdir(self.app_settings.data_store)
             spiceypy.kclear()
             spiceypy.furnsh(resolved_mk_path)
+            os.chdir(original_cwd)
+            logger.info("Kernels furnished. Loading data ready for L2 file generation")
+            science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
+            created_offsets_data = cdf_to_xarray(
+                str(created_offsets_filepath), to_datetime=False
+            )
+            mode = (
+                mag_l2_data.DataMode.NORM
+                if science_handler.get_mode() == ScienceMode.Normal
+                else mag_l2_data.DataMode.BURST
+            )
+            logger.info(
+                f"Using calibration to create L2 file(s) for {dataFile.name} in {mode.value} mode in frames {reference_frames} using imap_processing.mag.l2.mag_l2"
+            )
             datasets = mag_l2.mag_l2(
-                input_data=cdf_to_xarray(str(dataFile), to_datetime=False),
+                input_data=science_data,
                 calibration_dataset=calibration_dataset,
-                offsets_dataset=cdf_to_xarray(str(cal_filepath), to_datetime=False),
-                mode=mag_l2_data.DataMode.NORM,
+                offsets_dataset=created_offsets_data,
+                mode=mode,
                 day_to_process=np.datetime64(day_to_process),
             )
 
         finally:
             os.chdir(original_cwd)
             spiceypy.kclear()
-            os.remove(resolved_mk_path)  # clean up the generated metakernel
-
-        # these are the datasets in order created by mag_l2,
-        # for frame in [
-        #     ValidFrames.SRF,
-        #     ValidFrames.GSE,
-        #     ValidFrames.GSM,
-        #     ValidFrames.RTN,
-        #     ValidFrames.DSRF,
-        # ]:
+            os.remove(
+                resolved_mk_path
+            ) if spice_metakernel is None else None  # clean up the generated metakernel
+            del science_data
+            del created_offsets_data
 
         # log paths to all files
         logger.info(
-            f"Applied calibration layer(s) and create {len(datasets)} output dataset(s)"
+            f"Applied calibration layer(s) and created {len(datasets)} output dataset(s). Filtering to frames {reference_frames} and writing to CDF files in {outputScienceFolder}"
         )
+
+        allowed_frame_descriptor_segments = [
+            f"-{frame.value}_" for frame in reference_frames
+        ]
 
         files_created = []
         for ds in datasets:
@@ -187,6 +227,15 @@ class CalibrationApplicator:
                     "No Logical_source attribute found in dataset, skipping file naming"
                 )
                 continue
+            if not any(
+                segment in logical_source
+                for segment in allowed_frame_descriptor_segments
+            ):
+                logger.info(
+                    f"Skipping dataset with Logical_source {logical_source} as it does not match allowed frames {reference_frames}"
+                )
+                continue
+
             if "_l2_" in logical_source and "l2-pre" not in logical_source:
                 logical_source = logical_source.replace(
                     "l2", "l2-pre"
@@ -205,7 +254,7 @@ class CalibrationApplicator:
             xarray_to_cdf(ds, str(filepath))
             files_created.append(filepath)
 
-        return (files_created, cal_filepath)
+        return (files_created, created_offsets_filepath)
 
     def _sum_layers(
         self,
