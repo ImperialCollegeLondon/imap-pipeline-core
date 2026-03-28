@@ -140,3 +140,4 @@ site/
 src/matlab
 dev.env
 debug
+tests/datastore/spice/spk/de440.bsp

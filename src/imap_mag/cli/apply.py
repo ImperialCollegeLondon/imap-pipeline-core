@@ -17,8 +17,13 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     SciencePathHandler,
 )
-from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationApplicator, CalibrationLayer
+from imap_mag.util import ReferenceFrame
+from mag_toolkit.calibration import (
+    CalibrationApplicator,
+    CalibrationLayer,
+    CalibrationMethod,
+    ScienceLayer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +35,9 @@ class FileType(Enum):
 
 
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
-def prepare_layers_for_application(layers: list[str], appSettings: AppSettings):
+def prepare_layers_for_application(
+    layers: list[str], appSettings: AppSettings
+) -> list[Path]:
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
@@ -92,7 +99,6 @@ def prepare_rotation_layer_for_application(rotation, appSettings):
     return None
 
 
-# E.g., imap-mag apply --calibration calibration.json imap_mag_l1a_norm-mago_20250502_v000.cdf
 def apply(
     layers: Annotated[
         list[str],
@@ -100,9 +106,9 @@ def apply(
     ],
     date: Annotated[
         datetime,
-        typer.Option("--from", help="Date of the input file data"),
+        typer.Option("--date", help="Date of the input file data"),
     ],
-    calibration_output_type: Annotated[
+    offset_file_output_type: Annotated[
         str, typer.Option(help="Output type of the calibration file")
     ] = FileType.CDF.value,
     l2_output_type: Annotated[
@@ -114,15 +120,34 @@ def apply(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    spice_metakernel: Annotated[
+        Path | None,
+        typer.Option(
+            help="Path to spice metakernel file to be used. Will query database and generate one if none provided"
+        ),
+    ] = None,
+    reference_frames: Annotated[
+        list[ReferenceFrame],
+        typer.Option(
+            "--frames",
+            help="Reference frames (SPICE) to generate L2 files in. Defaults to all frames.",
+        ),
+    ] = [
+        ReferenceFrame.SRF,
+        ReferenceFrame.GSE,
+        ReferenceFrame.GSM,
+        ReferenceFrame.RTN,
+        ReferenceFrame.DSRF,
+    ],
 ):
     """
     Apply calibration rotation and layers to an input science file.
 
-    imap-mag calibration apply --date [date] --rotation [rotation] [layers] [input]
-    e.g. imap-mag calibration apply --date --rotation imap_mag_l2-calibration_20251017_v004.cdf imap_mag_noop-layer_20251017_v000.json imap_mag_l1b_norm-mago_20251017_v002.cdf
+    imap-mag calibration apply --date [date] --rotation [rotation] --layers [layers] [input]
+    e.g. imap-mag calibration apply --date 2026-01-16 --rotation imap_mag_l2-calibration_20250926_v002.cdf --layers imap_mag_manual-burst-layer_20260116_v000.json --spice-metakernel tests/datastore/spice/mk/metakernel.txt  imap_mag_l1b_burst-mago_20260116_v002.cdf
     """
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.calibration)
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -133,46 +158,40 @@ def apply(
         logger.error(f"Could not parse metadata from input file: {input}")
         raise ValueError(f"Could not parse metadata from input file: {input}")
 
+    if l2_output_type != FileType.CDF.value:
+        raise NotImplementedError(f"Unsupported L2 output file type: {l2_output_type}")
+
+    if not layers and not rotation:
+        raise ValueError(
+            "At least one of calibration layers or rotation file must be provided."
+        )
+
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
-    versioned_file = datastore_finder.find_matching_file(
+    versioned_science_file = datastore_finder.find_matching_file(
         path_handler=original_input_handler,
         throw_if_not_found=True,
     )
 
-    logger.info(f"Applying layers to input file {versioned_file}")
+    logger.info(f"Applying layers to input file {versioned_science_file}")
 
-    workDataFile: Path = fetch_file_for_work(
-        versioned_file, app_settings.work_folder, throw_if_not_found=True
+    workScienceFile: Path = fetch_file_for_work(
+        versioned_science_file, app_settings.work_folder, throw_if_not_found=True
     )
 
     workLayers = prepare_layers_for_application(layers, app_settings)
     workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
 
-    l2_path_handler = SciencePathHandler(
-        level="l2-pre",
-        content_date=date,
-        descriptor=original_input_handler.descriptor,
-        version=0,
-        extension=l2_output_type,
-    )
-    norm_or_burst = (
-        ScienceMode.Burst.short_name
-        if original_input_handler.descriptor
-        and ScienceMode.Burst.short_name in original_input_handler.descriptor
-        else ScienceMode.Normal.short_name
-    )
-    cal_path_handler = AncillaryPathHandler(
-        descriptor=f"l2-{norm_or_burst}-offsets",
+    offset_file_handler = AncillaryPathHandler(
+        descriptor=f"l2-{original_input_handler.get_mode().short_name}-offsets",
         start_date=date,
         end_date=date,
         version=0,
-        extension=calibration_output_type,
+        extension=offset_file_output_type,
     )
 
-    workCalFile = app_settings.work_folder / cal_path_handler.get_filename()
-    workL2File = app_settings.work_folder / l2_path_handler.get_filename()
+    offset_file_path = app_settings.work_folder / offset_file_handler.get_filename()
 
-    applier = CalibrationApplicator()
+    applier = CalibrationApplicator(app_settings)
     rotateInfo = f"with rotation from {rotation}" if rotation else ""
     logger.info(f"Applying offsets from {layers} to {input} {rotateInfo}")
 
@@ -180,16 +199,63 @@ def apply(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 
-    if layers:
-        (L2_file, cal_file) = applier.apply(
-            workLayers, workRotationFile, workDataFile, workCalFile, workL2File
+    if not workLayers:
+        logger.info(
+            "No calibration layers provided, proceeding with apply using only rotation. A temporary zero offset layer will be created."
         )
+        workLayers = [_setup_zero_calibration_layer(work_folder, workScienceFile, date)]
 
-        outputManager.add_file(L2_file, l2_path_handler)
-        outputManager.add_file(cal_file, cal_path_handler)
-    elif workRotationFile:
-        L2_file = applier.apply_rotation(workRotationFile, workDataFile, workL2File)
-        outputManager.add_file(L2_file, l2_path_handler)
-    else:
-        logger.error("No calibration layers or rotation file provided.")
-        raise ValueError("No calibration layers or rotation file provided.")
+    (L2_files, offset_file) = applier.apply(
+        day_to_process=date,
+        layer_files=workLayers,
+        rotation=workRotationFile,
+        dataFile=workScienceFile,
+        outputOffsetsFile=offset_file_path,
+        outputScienceFolder=app_settings.work_folder,
+        spice_metakernel=spice_metakernel,
+        reference_frames=reference_frames,
+    )
+    outputManager.add_file(offset_file, offset_file_handler)
+    for L2_file in L2_files:
+        l2_handler = SciencePathHandler.from_filename(L2_file.name)
+
+        if not l2_handler:
+            logger.warning(
+                f"Could not parse metadata from output L2 file: {L2_file}, skipping saving to database"
+            )
+            continue
+
+        l2_handler.level = "l2-pre"  # set level to l2-pre for the output file naming, as it's pre-release l2
+        l2_handler.version = 0  # set version to 0 for the output file naming
+        outputManager.add_file(L2_file, l2_handler)
+
+
+def _setup_zero_calibration_layer(
+    work_folder: Path, workScienceFile: Path, content_date: datetime
+) -> Path:
+    logger.info(
+        "No calibration layers provided, setting up a zero calibration layer for application."
+    )
+
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.NOOP.short_name, content_date=content_date
+    )
+    new_layer_file = work_folder / calibration_handler.get_filename()
+    if new_layer_file.exists():
+        logger.warning(
+            f"Zero calibration layer file already exists and will be overwritten: {new_layer_file}"
+        )
+        new_layer_file.unlink()
+
+    science_layer = ScienceLayer.from_file(workScienceFile, load_contents=True)
+    zero_offset_layer = CalibrationLayer.create_zero_offset_layer_from_science(
+        science_layer
+    )
+    del science_layer
+
+    zero_offset_layer.writeToFile(
+        new_layer_file, False
+    )  # json and also writes CSV for us automatically
+
+    del zero_offset_layer
+    return new_layer_file

@@ -105,7 +105,7 @@ def calibrate_and_apply_flow(
     configuration: CalibrationConfig | None,
     mode: ScienceMode,
     sensor: Sensor = Sensor.MAGO,
-    calibration_output_type: FileType = FileType.CDF,
+    offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
 ):
     """
@@ -124,7 +124,7 @@ def calibrate_and_apply_flow(
         cal_layer=cal_layer,
         file=Path(science_input),
         date=date,
-        calibration_output_type=calibration_output_type,
+        offset_file_output_type=offset_file_output_type,
         L2_output_type=L2_output_type,
     )
 
@@ -138,14 +138,14 @@ def apply_flow(
     cal_layer: Path,
     file: Path,
     date: datetime,
-    calibration_output_type: FileType = FileType.CDF,
+    offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
 ):
     apply(
         [str(cal_layer)],
         date=date,
         input=str(file),
-        calibration_output_type=calibration_output_type.value,
+        offset_file_output_type=offset_file_output_type.value,
         l2_output_type=L2_output_type.value,
         save_mode=SaveMode.LocalAndDatabase,
     )

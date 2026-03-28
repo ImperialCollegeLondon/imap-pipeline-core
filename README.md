@@ -26,7 +26,7 @@ To use WebPODA APIs, an access token needs to be defined in the environment as `
 3. Activate the virtual environment (alternatively, ensure any python-related command is preceded by `poetry run`):
 
     ```bash
-    poetry shell
+    source .venv/bin/activate
     ```
 
 4. Install the git hooks:

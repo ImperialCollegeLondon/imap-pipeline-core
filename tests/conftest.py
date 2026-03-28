@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 pytest_plugins = (
     "tests.util.database",
     "tests.util.miscellaneous",
+    "tests.util.spice",
 )
 
 

@@ -42,6 +42,24 @@ imap_sclk_####.tsc
 """
 
 
+"""
+Files have file_meta={"kernel_type": "attitude_history"}, where kernel_type is one of:
+leapseconds - naif####.tls
+planetary_constants - pck#####.tpc
+science_frames - imap_science_####.tf
+imap_frames - imap_###.tf
+spacecraft_clock - imap_sclk_####.tsc
+attitude_history - imap_yyyy_doy_yyyy_doy_##.ah.bc and imap_yyyy_doy_yyyy_doy_##.ah.a
+pointing_attitude - imap_dps_yyyy_doy_yyyy_doy_v###.ah.bc
+attitude_predict - imap_yyyy_doy_yyyy_doy_##.ap.bc or imap_yyyy_doy_yyyy_doy_##.ap.a
+planetary_ephemeris - de###.bsp
+ephemeris_reconstructed - imap_recon_yyyymmdd_yyyymmdd_v##.bsp
+ephemeris_predicted - imap_pred_yyyymmdd_yyyymmdd_v
+ephemeris_long - imap_long_yyyymmdd_yyyymmdd_v##.bsp
+ephemeris_launch - imap_launch_yyyymmdd_yyyymmdd_v##.bsp
+"""
+
+
 @dataclass
 class SPICEPathHandler(VersionedPathHandler):
     """
@@ -94,6 +112,42 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_sclk_.*\.tsc$", "sclk"),
         (rf"^{METAKERNEL_FILENAME_PREFIX}_.*\.tm$", "mk"),
     ]
+
+    kernel_type_patterns: typing.ClassVar[list[tuple[str, str]]] = [
+        # More specific patterns must come first to avoid wrong matches
+        (r"^naif.*\.tls$", "leapseconds"),
+        (r"^pck.*\.tpc$", "planetary_constants"),
+        (r"^imap_science_.*\.tf$", "science_frames"),  # before generic imap_*.tf
+        (r"^imap_sclk_.*\.tsc$", "spacecraft_clock"),
+        (r"^imap_dps_.*\.ah\.bc$", "pointing_attitude"),  # before generic imap_*.ah.bc
+        (r"^imap_.*\.ah\.bc$", "attitude_history"),
+        (r"^imap_.*\.ah\.a$", "attitude_history"),
+        (r"^imap_.*\.ap\.bc$", "attitude_predict"),
+        (r"^imap_.*\.ap\.a$", "attitude_predict"),
+        (r"^imap_.*\.tf$", "imap_frames"),
+        (r"^de.*\.bsp$", "planetary_ephemeris"),
+        (r"^L1_de.*\.bsp$", "planetary_ephemeris"),
+        (r"^imap_recon_.*\.bsp$", "ephemeris_reconstructed"),
+        (r"^imap_pred_.*\.bsp$", "ephemeris_predicted"),
+        (r"^imap_long_.*\.bsp$", "ephemeris_long"),
+        (r"^imap_launch_.*\.bsp$", "ephemeris_launch"),
+        (r"^imap_nom_.*\.bsp$", "ephemeris_nominal"),
+        (r"^imap_noburn_.*\.bsp$", "ephemeris_nominal"),
+    ]
+
+    @staticmethod
+    def get_kernel_type_from_filename(filename: "str | Path") -> "str | None":
+        """Return the semantic kernel_type string for a SPICE kernel filename.
+
+        Returns None if the filename does not match any known pattern.
+        """
+        filename_only = (
+            filename.name if isinstance(filename, Path) else Path(filename).name
+        )
+        for pattern, kernel_type in SPICEPathHandler.kernel_type_patterns:
+            if re.match(pattern, filename_only):
+                return kernel_type
+        return None
 
     def supports_sequencing(self) -> bool:
         return self.is_versioned_spice_file

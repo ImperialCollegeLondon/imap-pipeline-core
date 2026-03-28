@@ -56,6 +56,7 @@ class AppSettings(BaseSettings):
     fetch_science: FetchScienceConfig
     fetch_spice: FetchSpiceConfig
     plot_ialirt: QuicklookConfig
+    calibration: CommandConfig
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig
