@@ -82,6 +82,7 @@ class CalibrationMethod(Enum):
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
     MANUAL = "manual", "Manual offsets"
+    SET_QUALITY_AND_NAN = "set-quality-and-nan", "Set Quality and NaN"
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":

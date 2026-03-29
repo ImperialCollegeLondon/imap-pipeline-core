@@ -17,6 +17,7 @@ from mag_toolkit.calibration import (
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
     Sensor,
+    SetQualityAndNaNCalibrationJob,
 )
 
 app = typer.Typer()
@@ -178,6 +179,10 @@ def _calibrate_for_date(
             calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
         case CalibrationMethod.GRADIOMETER:
             calibrator = GradiometerCalibrationJob(
+                calibration_job_parameters, work_folder
+            )
+        case CalibrationMethod.SET_QUALITY_AND_NAN:
+            calibrator = SetQualityAndNaNCalibrationJob(
                 calibration_job_parameters, work_folder
             )
         case _:

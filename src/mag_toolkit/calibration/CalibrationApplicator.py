@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import logging
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import pandas
 import spiceypy
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
@@ -21,6 +24,7 @@ from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityErr
 
 from .CalibrationDefinitions import (
     CalibrationMethod,
+    ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
 from .CalibrationMatrix import CalibrationMatrix
@@ -42,7 +46,12 @@ class CalibrationApplicator:
         if len(layers) < 1:
             raise ValueError("No calibration layers provided")
 
+        science.load_contents()
+        science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
+
         offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
+        if offsets.value_type == ValueType.INTERPOLATION_POINTS:
+            offsets = self._expand_interpolation_layer(offsets, science_epochs)
 
         if not offsets.compatible(science):
             raise CalibrationValidityError(
@@ -52,6 +61,8 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
+            if layer.value_type == ValueType.INTERPOLATION_POINTS:
+                layer = self._expand_interpolation_layer(layer, science_epochs)
             offsets = self._sum_layers(offsets, layer)
             del layer
 
@@ -216,7 +227,7 @@ class CalibrationApplicator:
         )
 
         allowed_frame_descriptor_segments = [
-            f"-{frame.value}_" for frame in reference_frames
+            f"-{frame.value}" for frame in reference_frames
         ]
 
         files_created = []
@@ -255,6 +266,61 @@ class CalibrationApplicator:
             files_created.append(filepath)
 
         return (files_created, created_offsets_filepath)
+
+    def _expand_interpolation_layer(
+        self,
+        layer: CalibrationLayer,
+        science_epochs: pandas.Series,
+    ) -> CalibrationLayer:
+        """Expand an INTERPOLATION_POINTS layer to match science timestamps using forward-fill."""
+        import pandas as pd
+
+        layer.load_contents()
+        if layer._contents is None:
+            raise ValueError("Interpolation layer has no contents to expand.")
+
+        change_points = layer._contents.copy()
+        change_points[CONSTANTS.CSV_VARS.EPOCH] = pd.to_datetime(
+            change_points[CONSTANTS.CSV_VARS.EPOCH]
+        )
+        change_points = change_points.set_index(CONSTANTS.CSV_VARS.EPOCH)
+
+        science_index = pd.DatetimeIndex(science_epochs)
+        first_science_epoch = science_index[0]
+        first_change_time = change_points.index[0]
+
+        if first_change_time > first_science_epoch:
+            zero_row = pd.DataFrame(
+                {
+                    CONSTANTS.CSV_VARS.OFFSET_X: [0.0],
+                    CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
+                    CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
+                    CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+                },
+                index=pd.DatetimeIndex([first_science_epoch]),
+            )
+            change_points = pd.concat([zero_row, change_points])
+
+        expanded = change_points.reindex(science_index, method="ffill")
+
+        expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
+            expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG].fillna(0).astype(int)
+        )
+        expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
+            expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int)
+        )
+        expanded[CONSTANTS.CSV_VARS.TIMEDELTA] = expanded[
+            CONSTANTS.CSV_VARS.TIMEDELTA
+        ].fillna(0.0)
+
+        expanded = expanded.reset_index()
+        expanded = expanded.rename(columns={"index": CONSTANTS.CSV_VARS.EPOCH})
+
+        layer._contents = expanded
+        layer.value_type = ValueType.VECTOR
+        return layer
 
     def _sum_layers(
         self,
