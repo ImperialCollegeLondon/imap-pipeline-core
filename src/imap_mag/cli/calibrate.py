@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -92,9 +92,15 @@ def gradiometry(
     return output_calibration_path
 
 
-# E.g., imap-mag calibrate --method SpinAxisCalibrator imap_mag_l1b_norm-mago_20250502_v000.cdf
 def calibrate(
     date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
+    end_date: Annotated[
+        datetime | None,
+        typer.Option(
+            "--end-date",
+            help="End date for calibrating a date range (inclusive)",
+        ),
+    ] = None,
     method: Annotated[
         CalibrationMethod, typer.Option(help="Calibration method")
     ] = CalibrationMethod.KEPKO,
@@ -117,11 +123,38 @@ def calibrate(
 ) -> Path:
     """
     Generate calibration parameters for a given input file.
-    imap-mag calibrate --from [date] --to [date] --method [method] [input]
 
-    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop imap_mag_l1b_norm-mago_20251017_v002.cdf
+    Supports date ranges with --end-date to calibrate multiple days.
 
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop
+    e.g. imap-mag calibrate --date 2025-10-17 --end-date 2025-10-20 --method noop
     """
+    effective_end = end_date or date
+    current = date
+    result: Path | None = None
+    while current <= effective_end:
+        result = _calibrate_for_date(
+            date=current,
+            method=method,
+            mode=mode,
+            sensor=sensor,
+            configuration=configuration,
+            save_mode=save_mode,
+        )
+        current += timedelta(days=1)
+    assert result is not None
+    return result
+
+
+def _calibrate_for_date(
+    date: datetime,
+    method: CalibrationMethod,
+    mode: ScienceMode,
+    sensor: Sensor,
+    configuration: str | None,
+    save_mode: SaveMode,
+) -> Path:
+    """Run calibration for a single date."""
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
     initialiseLoggingForCommand(
