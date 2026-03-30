@@ -39,7 +39,7 @@ def datastore(tmp_path):
 class TestResolveLayerPatterns:
     def test_exact_filename_passes_through(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["imap_mag_noop-layer_20260116_v001.json"],
             datetime(2026, 1, 16),
         )
@@ -47,7 +47,7 @@ class TestResolveLayerPatterns:
 
     def test_wildcard_returns_highest_version_per_descriptor(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["*noop*"],
             datetime(2026, 1, 16),
         )
@@ -56,7 +56,7 @@ class TestResolveLayerPatterns:
 
     def test_wildcard_star_returns_all_descriptors_highest_versions(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["*"],
             datetime(2026, 1, 16),
         )
@@ -67,7 +67,7 @@ class TestResolveLayerPatterns:
 
     def test_no_match_returns_empty(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["*nonexistent*"],
             datetime(2026, 1, 16),
         )
@@ -75,7 +75,7 @@ class TestResolveLayerPatterns:
 
     def test_missing_directory_returns_empty(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["*"],
             datetime(2025, 3, 15),
         )
@@ -83,7 +83,7 @@ class TestResolveLayerPatterns:
 
     def test_mixed_exact_and_wildcard(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.resolve_layer_patterns(
+        result = finder.find_layers(
             ["imap_mag_noop-layer_20260116_v001.json", "*set-quality*"],
             datetime(2026, 1, 16),
         )
@@ -101,7 +101,7 @@ class TestKeepHighestVersions:
             "imap_mag_noop-layer_20260116_v002.json",
             "imap_mag_noop-layer_20260116_v000.json",
         ]
-        result = DatastoreFileFinder._keep_highest_versions(filenames)
+        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
         assert result == ["imap_mag_noop-layer_20260116_v002.json"]
 
     def test_multiple_descriptors(self):
@@ -111,20 +111,20 @@ class TestKeepHighestVersions:
             "imap_mag_set-quality-and-nan-layer_20260116_v000.json",
             "imap_mag_set-quality-and-nan-layer_20260116_v001.json",
         ]
-        result = DatastoreFileFinder._keep_highest_versions(filenames)
+        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
         assert len(result) == 2
         assert "imap_mag_noop-layer_20260116_v003.json" in result
         assert "imap_mag_set-quality-and-nan-layer_20260116_v001.json" in result
 
     def test_empty_list(self):
-        assert DatastoreFileFinder._keep_highest_versions([]) == []
+        assert DatastoreFileFinder._keep_highest_version_layers_only([]) == []
 
     def test_unparseable_filenames_skipped(self):
         filenames = [
             "imap_mag_noop-layer_20260116_v001.json",
             "not_a_valid_layer_file.json",
         ]
-        result = DatastoreFileFinder._keep_highest_versions(filenames)
+        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
         assert result == ["imap_mag_noop-layer_20260116_v001.json"]
 
 

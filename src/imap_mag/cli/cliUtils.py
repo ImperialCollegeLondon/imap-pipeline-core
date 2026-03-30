@@ -25,6 +25,11 @@ def initialiseLoggingForCommand(folder):
         console_log_line_template = (
             "%(color_on)s[%(asctime)s] [%(levelname)-8s] %(message)s%(color_off)s"
         )
+        logging.getLogger("mag_toolkit").setLevel(logging.DEBUG)
+        logging.getLogger("imap_processing").setLevel(logging.DEBUG)
+        logging.getLogger("imap_mag").setLevel(logging.DEBUG)
+        logging.getLogger("imap_data_access").setLevel(logging.DEBUG)
+        logging.getLogger("ialirt_data_access").setLevel(logging.DEBUG)
 
     if not AppLogging.set_up_logging(
         console_log_output="stdout",

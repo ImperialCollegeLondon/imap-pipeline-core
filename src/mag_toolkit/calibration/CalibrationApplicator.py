@@ -50,8 +50,10 @@ class CalibrationApplicator:
         science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
 
         offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
-        if offsets.value_type == ValueType.INTERPOLATION_POINTS:
-            offsets = self._expand_interpolation_layer(offsets, science_epochs)
+        if offsets.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
+            offsets = self._expand_boundary_changes_to_every_epoch(
+                offsets, science_epochs
+            )
 
         if not offsets.compatible(science):
             raise CalibrationValidityError(
@@ -61,8 +63,10 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
-            if layer.value_type == ValueType.INTERPOLATION_POINTS:
-                layer = self._expand_interpolation_layer(layer, science_epochs)
+            if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
+                layer = self._expand_boundary_changes_to_every_epoch(
+                    layer, science_epochs
+                )
             offsets = self._sum_layers(offsets, layer)
             del layer
 
@@ -115,7 +119,10 @@ class CalibrationApplicator:
 
         if outputOffsetsFile.exists():
             logger.warning(
-                f"Output calibration file already exists and will be overwritten: {outputOffsetsFile}"
+                f"Output calibration file already exists and would be overwritten: {outputOffsetsFile}"
+            )
+            raise FileExistsError(
+                f"Output calibration file already exists and would be overwritten: {outputOffsetsFile}"
             )
 
         science = ScienceLayer.from_file(dataFile, load_contents=True)
@@ -262,22 +269,29 @@ class CalibrationApplicator:
 
             ds.attrs["Logical_file_id"] = filename
             logger.info(f"Writing output science file to {filepath}")
+            if filepath.exists():
+                logger.warning(
+                    f"Output science file already exists and would be overwritten: {filepath}"
+                )
+                raise FileExistsError(
+                    f"Output science file already exists and would be overwritten: {filepath}"
+                )
             xarray_to_cdf(ds, str(filepath))
             files_created.append(filepath)
 
         return (files_created, created_offsets_filepath)
 
-    def _expand_interpolation_layer(
+    def _expand_boundary_changes_to_every_epoch(
         self,
         layer: CalibrationLayer,
         science_epochs: pandas.Series,
     ) -> CalibrationLayer:
-        """Expand an INTERPOLATION_POINTS layer to match science timestamps using forward-fill."""
+        """Expand an BOUNDARY_CHANGES_ONLY layer to match science timestamps using forward-fill."""
         import pandas as pd
 
         layer.load_contents()
         if layer._contents is None:
-            raise ValueError("Interpolation layer has no contents to expand.")
+            raise ValueError("Boundary changes layer has no contents to expand.")
 
         change_points = layer._contents.copy()
         change_points[CONSTANTS.CSV_VARS.EPOCH] = pd.to_datetime(

@@ -117,7 +117,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 data_filename=Path(data_handler.get_filename()),
                 content_date=np.datetime64(date),
             ),
-            value_type=ValueType.INTERPOLATION_POINTS,
+            value_type=ValueType.BOUNDARY_CHANGES_ONLY,
             method=CalibrationMethod.SET_QUALITY_AND_NAN,
         )
         layer._contents = df
@@ -133,7 +133,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
 
     def _get_science_time_range(
         self, science_file: Path | None
-    ) -> tuple[datetime, datetime]:
+    ) -> tuple[np.datetime64, np.datetime64]:
         """Get the first and last timestamps from the science data file.
 
         Falls back to logical day boundaries if no science file is available.
@@ -146,34 +146,31 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             logger.warning(
                 "No science file available, using logical day boundaries for change points"
             )
-            return day_start, day_end
+            return np.datetime64(day_start), np.datetime64(day_end)
 
         science_layer = ScienceLayer.from_file(Path(science_file), load_contents=True)
         if science_layer._contents is None:
-            return day_start, day_end
+            return np.datetime64(day_start), np.datetime64(day_end)
 
-        epochs = pd.to_datetime(science_layer._contents[CONSTANTS.CSV_VARS.EPOCH])
-        first_epoch = epochs.iloc[0].to_pydatetime()
-        last_epoch = epochs.iloc[-1].to_pydatetime()
-        del science_layer
-
-        return first_epoch, last_epoch
+        return np.datetime64(
+            science_layer._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[0]
+        ), np.datetime64(science_layer._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[-1])
 
     def _generate_change_points(
         self,
         input_df: pd.DataFrame,
         date: datetime,
-        science_start: datetime,
-        science_end: datetime,
+        science_start: np.datetime64,
+        science_end: np.datetime64,
     ) -> list[dict]:
-        day_start = datetime(date.year, date.month, date.day)
-        day_end = day_start + timedelta(days=1)
+        day_start = np.datetime64(datetime(date.year, date.month, date.day))
+        day_end = day_start + np.timedelta64(1, "D")
 
         change_points: list[dict] = []
 
         for _, row in input_df.iterrows():
-            start = row["start_date"].to_pydatetime()
-            end = row["end_date"].to_pydatetime()
+            start = np.datetime64(row["start_date"].to_pydatetime())
+            end = np.datetime64(row["end_date"].to_pydatetime())
 
             # Skip windows entirely outside the science data range
             if start > science_end or end < science_start:

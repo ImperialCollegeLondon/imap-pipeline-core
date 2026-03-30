@@ -55,6 +55,33 @@ class CalibrationLayer(Layer):
         if self._contents is None or other._contents is None:
             raise ValueError("One of the layers has no data.")
 
+        # print the data types of both epoch columns for debugging
+        logger.debug(
+            f"Self epochs dtype: {self._contents[CONSTANTS.CSV_VARS.EPOCH].dtype}, "
+            f"Other epochs dtype: {other._contents[CONSTANTS.CSV_VARS.EPOCH].dtype}"
+        )
+
+        # compare the lenth of the epoch columns first for a quick check
+        if len(self._contents[CONSTANTS.CSV_VARS.EPOCH]) != len(
+            other._contents[CONSTANTS.CSV_VARS.EPOCH]
+        ):
+            logger.warning(
+                "Epoch columns have different lengths, layers are not compatible."
+            )
+            return False
+
+        # compare the first and last epoch values as a quick check before doing a full comparison
+        if (
+            self._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[0]
+            != other._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[0]
+            or self._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[-1]
+            != other._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[-1]
+        ):
+            logger.warning(
+                "Epoch columns have different start or end times, layers are not compatible."
+            )
+            return False
+
         return all(
             self._contents[CONSTANTS.CSV_VARS.EPOCH]
             == other._contents[CONSTANTS.CSV_VARS.EPOCH]

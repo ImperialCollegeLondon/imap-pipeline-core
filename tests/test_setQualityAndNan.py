@@ -37,7 +37,7 @@ def quality_csv(tmp_path):
     return csv_path
 
 
-def test_calibration_job_creates_interpolation_layer(quality_csv, tmp_path):
+def test_calibration_job_creates_quality_flag_layer(quality_csv, tmp_path):
     """Verify the calibration job creates correct change-point rows."""
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16),
@@ -65,7 +65,7 @@ def test_calibration_job_creates_interpolation_layer(quality_csv, tmp_path):
     assert datafile.exists()
 
     layer = CalibrationLayer.from_file(calfile, load_contents=True)
-    assert layer.value_type == ValueType.INTERPOLATION_POINTS
+    assert layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY
     assert layer.method == CalibrationMethod.SET_QUALITY_AND_NAN
 
     df = pd.read_csv(datafile, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])

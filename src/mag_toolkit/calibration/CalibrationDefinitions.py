@@ -100,7 +100,7 @@ class Sensor(StrEnum):
 
 class ValueType(StrEnum):
     VECTOR = "vector"
-    INTERPOLATION_POINTS = "interpolation_points"
+    BOUNDARY_CHANGES_ONLY = "boundary_changes"
 
 
 class Mission(StrEnum):

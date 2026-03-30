@@ -111,12 +111,13 @@ class DatastoreFileFinder:
         else:
             return None
 
-    def resolve_layer_patterns(
+    def find_layers(
         self,
         layers: list[str],
-        start_date: datetime,
+        date: datetime,
+        throw_if_not_found: bool = False,
     ) -> list[str]:
-        """Resolve layer pattern strings to actual layer filenames.
+        """Resolve layer pattern strings to actual layer filenames. Expect one layer file per item in layers.
 
         Each entry in layers can be:
         - An exact filename (e.g. "imap_mag_noop-layer_20260116_v001.json")
@@ -126,42 +127,55 @@ class DatastoreFileFinder:
 
         Returns resolved filenames in the order the patterns were provided.
         """
-        handler = CalibrationLayerPathHandler(content_date=start_date, descriptor="x")
-        layer_dir = self.location / handler.get_folder_structure()
-        date_str = start_date.strftime("%Y%m%d")
+        handler = CalibrationLayerPathHandler(
+            content_date=date,
+            descriptor=CalibrationLayerPathHandler.DESCRIPTOR_WILDCARD,
+        )
 
         resolved: list[str] = []
         for layer in layers:
+            fnmatch_pattern = None
             if "*" in layer or "?" in layer:
-                if not layer_dir.exists():
-                    logger.warning(
-                        f"Layer directory {layer_dir} does not exist, skipping pattern {layer}"
-                    )
-                    continue
-                matched = []
-                for f in sorted(layer_dir.iterdir()):
-                    if (
-                        f.is_file()
-                        and f.suffix == ".json"
-                        and date_str in f.name
-                        and fnmatch.fnmatch(f.name, layer)
-                    ):
-                        matched.append(f.name)
+                fnmatch_pattern = layer
 
-                matched = self._keep_highest_versions(matched)
+            all_matching_files_with_version: list[tuple[str, int]] = (
+                self.__find_files_and_sequences(
+                    handler,
+                    throw_if_not_found=throw_if_not_found,
+                    fnmatch_pattern=fnmatch_pattern,
+                    filename_only=True,
+                )
+            )
 
-                if not matched:
-                    logger.warning(
-                        f"No layer files matched pattern '{layer}' for date {date_str} in {layer_dir}"
+            if not fnmatch_pattern:
+                # must match exactly by filename, so filter to that file only
+                all_matching_files_with_version = [
+                    (f, v)
+                    for f, v in all_matching_files_with_version
+                    if Path(f).name == layer
+                ]
+
+            if all_matching_files_with_version:
+                if layer == "*":
+                    resolved.extend(
+                        self._keep_highest_version_layers_only(
+                            [f for f, v in all_matching_files_with_version]
+                        )
                     )
-                resolved.extend(matched)
-            else:
-                resolved.append(layer)
+                else:  # just take the highest version match
+                    resolved.append(all_matching_files_with_version[0][0])
+            elif throw_if_not_found:
+                logger.error(
+                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
+                )
+                raise FileNotFoundError(
+                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
+                )
 
         return resolved
 
     @staticmethod
-    def _keep_highest_versions(filenames: list[str]) -> list[str]:
+    def _keep_highest_version_layers_only(filenames: list[str]) -> list[str]:
         """Given a list of layer filenames, keep only the highest version per descriptor+date."""
         best: dict[str, tuple[str, int]] = {}
         for name in filenames:
@@ -173,7 +187,7 @@ class DatastoreFileFinder:
                 best[key] = (name, handler.version)
         return [name for name, _ in best.values()]
 
-    def find_science_file(self, start_date: datetime, mode: ScienceMode) -> str:
+    def find_science_file(self, date: datetime, mode: ScienceMode) -> str:
         """Find the highest version science file for a given date and mode.
 
         For burst mode, only L1B files are used.
@@ -181,7 +195,7 @@ class DatastoreFileFinder:
 
         Returns the filename of the highest version match.
         """
-        date_str = start_date.strftime("%Y%m%d")
+        date_str = date.strftime("%Y%m%d")
         science_dir = self.location / "science" / "mag"
 
         if not science_dir.exists():
@@ -193,12 +207,7 @@ class DatastoreFileFinder:
             levels_to_search = ["l1c", "l1b"]
 
         for level in levels_to_search:
-            date_dir = (
-                science_dir
-                / level
-                / start_date.strftime("%Y")
-                / start_date.strftime("%m")
-            )
+            date_dir = science_dir / level / date.strftime("%Y") / date.strftime("%m")
             if not date_dir.exists():
                 continue
 
@@ -216,18 +225,20 @@ class DatastoreFileFinder:
             if candidates:
                 candidates.sort(key=lambda x: x[1], reverse=True)
                 logger.info(
-                    f"Discovered science file {candidates[0][0]} for date {start_date.strftime('%Y-%m-%d')} mode {mode.value} at level {level}"
+                    f"Discovered science file {candidates[0][0]} for date {date.strftime('%Y-%m-%d')} mode {mode.value} at level {level}"
                 )
                 return candidates[0][0]
 
         raise FileNotFoundError(
-            f"No science file found for date {start_date.strftime('%Y-%m-%d')} and mode {mode.value}"
+            f"No science file found for date {date.strftime('%Y-%m-%d')} and mode {mode.value}"
         )
 
     def __find_files_and_sequences(
         self,
         path_handler: SequenceablePathHandler,
+        fnmatch_pattern: str | None = None,
         throw_if_not_found: bool = True,
+        filename_only: bool = False,
     ) -> list[tuple[str, int]]:
         pattern = path_handler.get_unsequenced_pattern()
         folder = self.location / path_handler.get_folder_structure()
@@ -238,6 +249,14 @@ class DatastoreFileFinder:
             for filename in glob.glob(folder.as_posix() + "/*")
             if pattern.search(filename)
         ]
+
+        if fnmatch_pattern is not None:
+            all_matching_files = [
+                (filename, seq)
+                for filename, seq in all_matching_files
+                if fnmatch.fnmatch(Path(filename).name, fnmatch_pattern)
+            ]
+
         all_matching_files.sort(key=lambda x: x[1], reverse=True)
 
         if len(all_matching_files) == 0:
@@ -253,5 +272,11 @@ class DatastoreFileFinder:
                     f"No files found matching pattern {pattern.pattern} in folder {folder.as_posix()}."
                 )
                 return []
+
+        if filename_only:
+            return [
+                (Path(filename).name, version)
+                for filename, version in all_matching_files
+            ]
 
         return all_matching_files

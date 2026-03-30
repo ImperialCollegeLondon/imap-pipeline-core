@@ -121,23 +121,23 @@ class CalibrationMatrix:
         range_coord = xr.Variable("range", np.array([0, 1, 2, 3], dtype=np.int8))
         axis_coord = xr.Variable("axis", np.array(["x", "y", "z"], dtype="<U1"))
 
-        offsets_data = np.array(
-            [
-                [  # MAGO (range 0-3)
-                    [0, 0, 0],
-                    [0, 0, 0],
-                    [0, 0, 0],
-                    [0, 0, 0],
-                ],
-                [  # MAGI (range 0-3)
-                    [0, 0, 0],
-                    [0, 0, 0],
-                    [0, 0, 0],
-                    [0, 0, 0],
-                ],
-            ],
-            dtype=np.float64,
-        )
+        # offsets_data = np.array(
+        #     [
+        #         [  # MAGO (range 0-3)
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #         ],
+        #         [  # MAGI (range 0-3)
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #             [0, 0, 0],
+        #         ],
+        #     ],
+        #     dtype=np.float64,
+        # )
 
         created_coord_vars: dict[str, xr.Variable] = {
             "sensor": sensor_coord,
@@ -159,7 +159,7 @@ class CalibrationMatrix:
             # "gradiometer_factor": xr.Variable(
             #     ("dim0", "dim0"), np.zeros((3, 3), dtype=np.float64)
             # ),
-            "offsets": xr.Variable(("sensor", "range", "axis"), offsets_data),
+            # "offsets": xr.Variable(("sensor", "range", "axis"), offsets_data),
             # "spin_average_application_factor": xr.Variable((), np.float64(1.0)),
             # "number_of_spins": xr.Variable((), np.uint32(240)),
             # "quality_flag_threshold": xr.Variable((), np.float64(0.0)),

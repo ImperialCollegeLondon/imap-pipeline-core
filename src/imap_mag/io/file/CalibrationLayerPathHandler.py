@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
@@ -14,6 +15,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     """
     Path handler for calibration layers.
     Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
+    E.g filemnames like
+        imap_mag_noop-layer_20251017_v001.csv
+        imap_mag_noop-layer-data_20251017_v001.csv
     """
 
     mission: str = "imap"
@@ -22,6 +26,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
+
+    DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
     def get_folder_structure(self) -> str:
         super()._check_property_values("folder structure", ["content_date"])
@@ -44,8 +50,15 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         super()._check_property_values("pattern", ["descriptor", "content_date"])
         assert self.descriptor and self.content_date
 
+        if self.descriptor == CalibrationLayerPathHandler.DESCRIPTOR_WILDCARD:
+            full_descriptor = rf".+-layer{re.escape(self.extra_descriptor)}"
+        else:
+            full_descriptor = (
+                f"{re.escape(self.descriptor)}-layer{re.escape(self.extra_descriptor)}"
+            )
+
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{re.escape(self.descriptor)}\-layer{re.escape(self.extra_descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{full_descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
 
     def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":

@@ -34,34 +34,14 @@ class FileType(Enum):
     JSON = "json"
 
 
-def resolve_layer_patterns(
-    layers: list[str], start_date: datetime, datastore: Path
-) -> list[str]:
-    """Resolve layer pattern strings to actual layer filenames.
-
-    Delegates to DatastoreFileFinder.resolve_layer_patterns().
-    """
-    finder = DatastoreFileFinder(datastore)
-    return finder.resolve_layer_patterns(layers, start_date)
-
-
-def find_science_file(start_date: datetime, mode: ScienceMode, datastore: Path) -> str:
-    """Find the highest version science file in the datastore for a given date and mode.
-
-    Delegates to DatastoreFileFinder.find_science_file().
-    """
-    finder = DatastoreFileFinder(datastore)
-    return finder.find_science_file(start_date, mode)
-
-
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
-def prepare_layers_for_application(
-    layers: list[str], appSettings: AppSettings
+def _prepare_layers_for_application(
+    layers: list[str], datastore_finder: DatastoreFileFinder, appSettings: AppSettings
 ) -> list[Path]:
     """
     Prepare the calibration layers for application by fetching the versioned files.
     """
-    datastore_finder = DatastoreFileFinder(appSettings.data_store)
+
     work_layers = []
     for layer in layers:
         cal_handler = CalibrationLayerPathHandler.from_filename(layer)
@@ -99,7 +79,7 @@ def prepare_layers_for_application(
     return work_layers
 
 
-def prepare_rotation_layer_for_application(rotation, appSettings):
+def _prepare_rotation_layer_for_application(rotation, appSettings):
     """
     Prepare the rotation layer for application by fetching the versioned file.
     """
@@ -126,9 +106,16 @@ def apply(
             help="Calibration layers (filenames or glob patterns like '*noop*') to apply"
         ),
     ],
+    date: Annotated[
+        datetime | None,
+        typer.Option(
+            "--date",
+            help="Exact date of the input file data - cannot be combined with --start-date or --end-date",
+        ),
+    ] = None,
     start_date: Annotated[
         datetime | None,
-        typer.Option("--date", help="Start date of the input file data"),
+        typer.Option("--start-date", help="Start date of the input file data"),
     ] = None,
     end_date: Annotated[
         datetime | None,
@@ -188,16 +175,22 @@ def apply(
     imap-mag calibration apply --date [date] --layers [layers] [input]
     e.g. imap-mag calibration apply --date 2026-01-16 --layers '*noop*'
     e.g. imap-mag calibration apply --date 2026-01-16 --end-date 2026-01-20 --layers '*' --mode norm
+    e.g. imap-mag -v calibration apply --layers "*manual*" --start-date 2026-01-16 --end-date 2026-01-16 --mode norm --rotation imap_mag_l2-calibration_20260101_v003.cdf --frames srf --frames gse --spice-metakernel tests/datastore/spice/mk/metakernel.txt
     """
-    if start_date is None:
-        raise typer.BadParameter("A date must be provided via --date or --start-date.")
+    if (start_date is None and date is None) or (
+        start_date is not None and date is not None
+    ):
+        raise typer.BadParameter(
+            "A date must be provided via --date or --start-date, but not both."
+        )
 
-    effective_end = end_date or start_date
-    current = start_date
+    current = start_date or date
+    assert current is not None  # for mypy
+    effective_end = end_date or current
     while current <= effective_end:
         _apply_for_date(
             layers=layers,
-            start_date=current,
+            date=current,
             mode=mode,
             input=input,
             offset_file_output_type=offset_file_output_type,
@@ -212,7 +205,7 @@ def apply(
 
 def _apply_for_date(
     layers: list[str],
-    start_date: datetime,
+    date: datetime,
     mode: ScienceMode | None,
     input: str | None,
     offset_file_output_type: str,
@@ -230,8 +223,11 @@ def _apply_for_date(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     # Resolve layer patterns to actual filenames
-    resolved_layers = resolve_layer_patterns(
-        layers, start_date, app_settings.data_store
+    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    resolved_layers = (
+        datastore_finder.find_layers(layers, date, throw_if_not_found=True)
+        if layers
+        else []  # ensure we throw if a layer is passed in but not found
     )
 
     # Discover science file if not provided
@@ -241,7 +237,7 @@ def _apply_for_date(
                 "Either an input science file or a mode (norm/burst) must be provided "
                 "so the science file can be discovered."
             )
-        input = find_science_file(start_date, mode, app_settings.data_store)
+        input = datastore_finder.find_science_file(date, mode)
 
     original_input_handler = SciencePathHandler.from_filename(input)
 
@@ -257,7 +253,6 @@ def _apply_for_date(
             "At least one of calibration layers or rotation file must be provided."
         )
 
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
     versioned_science_file = datastore_finder.find_matching_file(
         path_handler=original_input_handler,
         throw_if_not_found=True,
@@ -269,14 +264,16 @@ def _apply_for_date(
         versioned_science_file, app_settings.work_folder, throw_if_not_found=True
     )
 
-    workLayers = prepare_layers_for_application(resolved_layers, app_settings)
-    workRotationFile = prepare_rotation_layer_for_application(rotation, app_settings)
+    workLayers = _prepare_layers_for_application(
+        resolved_layers, datastore_finder, app_settings
+    )
+    workRotationFile = _prepare_rotation_layer_for_application(rotation, app_settings)
 
     offset_file_handler = AncillaryPathHandler(
         descriptor=f"l2-{original_input_handler.get_mode().short_name}-offsets",
-        start_date=start_date,
-        end_date=start_date,
-        version=0,
+        start_date=date,
+        end_date=date,
+        version=1,
         extension=offset_file_output_type,
     )
 
@@ -294,12 +291,10 @@ def _apply_for_date(
         logger.info(
             "No calibration layers provided, proceeding with apply using only rotation. A temporary zero offset layer will be created."
         )
-        workLayers = [
-            _setup_zero_calibration_layer(work_folder, workScienceFile, start_date)
-        ]
+        workLayers = [_setup_zero_calibration_layer(work_folder, workScienceFile, date)]
 
     (L2_files, offset_file) = applier.apply(
-        day_to_process=start_date,
+        day_to_process=date,
         layer_files=workLayers,
         rotation=workRotationFile,
         dataFile=workScienceFile,
