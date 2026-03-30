@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from prefect import flow
@@ -88,7 +88,7 @@ def gradiometry_flow(
     """
 
     gradiometry(
-        date=start_date,
+        start_date=start_date,
         mode=mode,
         kappa=kappa,
         sc_interference_threshold=sc_interference_threshold,
@@ -103,29 +103,23 @@ def gradiometry_flow(
 )
 def calibrate_flow(
     start_date: datetime,
-    mode: ScienceMode,
-    method: CalibrationMethod,
-    configuration: CalibrationConfig | None,
-    sensor: Sensor = Sensor.MAGO,
     end_date: datetime | None = None,
+    method: CalibrationMethod = CalibrationMethod.KEPKO,
+    mode: ScienceMode = ScienceMode.Normal,
+    configuration: CalibrationConfig | None = None,
+    sensor: Sensor = Sensor.MAGO,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
 ) -> list[Path]:
     """Calibrate for a date or date range. Returns a list of calibration layer paths."""
-    effective_end = end_date or start_date
-    current = start_date
-    results: list[Path] = []
-    while current <= effective_end:
-        result = calibrate(
-            date=current,
-            method=method,
-            mode=mode,
-            sensor=sensor,
-            configuration=configuration.model_dump_json() if configuration else None,
-            save_mode=save_mode,
-        )
-        results.append(result)
-        current += timedelta(days=1)
-    return results
+    return calibrate(
+        start_date=start_date,
+        end_date=end_date,
+        method=method,
+        mode=mode,
+        sensor=sensor,
+        configuration=configuration.model_dump_json() if configuration else None,
+        save_mode=save_mode,
+    )
 
 
 @flow(
@@ -135,11 +129,11 @@ def calibrate_flow(
 )
 def calibrate_and_apply_flow(
     start_date: datetime,
-    method: CalibrationMethod,
-    configuration: CalibrationConfig | None,
-    mode: ScienceMode,
-    sensor: Sensor = Sensor.MAGO,
     end_date: datetime | None = None,
+    method: CalibrationMethod = CalibrationMethod.KEPKO,
+    configuration: CalibrationConfig | None = None,
+    mode: ScienceMode = ScienceMode.Normal,
+    sensor: Sensor = Sensor.MAGO,
     offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
@@ -147,33 +141,28 @@ def calibrate_and_apply_flow(
     """
     Calibrate and apply the calibration in one flow, for a date or date range.
     """
-    effective_end = end_date or start_date
-    current = start_date
-    while current <= effective_end:
-        # Calibrate for this date
-        cal_layer: Path = calibrate(
-            date=current,
-            method=method,
-            mode=mode,
-            sensor=sensor,
-            configuration=configuration.model_dump_json() if configuration else None,
-            save_mode=save_mode,
-        )
+    cal_layer_paths: list[Path] = calibrate(
+        start_date=start_date,
+        end_date=end_date,
+        method=method,
+        mode=mode,
+        sensor=sensor,
+        configuration=configuration.model_dump_json() if configuration else None,
+        save_mode=save_mode,
+    )
 
-        layer = CalibrationLayer.from_file(cal_layer)
+    for cal_layer_path in cal_layer_paths:
+        layer = CalibrationLayer.from_file(cal_layer_path)
         science_input = layer.metadata.science[0]
 
-        # Apply the calibration for this date
         apply(
-            layers=[str(cal_layer)],
-            date=current,
+            layers=[str(cal_layer_path)],
+            start_date=layer.metadata.content_date.astype(datetime),
             input=science_input,
             offset_file_output_type=offset_file_output_type.value,
             l2_output_type=L2_output_type.value,
             save_mode=save_mode,
         )
-
-        current += timedelta(days=1)
 
 
 @flow(
@@ -201,16 +190,13 @@ def apply_flow(
         file: Science filename. If None, discovered using mode and date.
         save_mode: Where to save output files.
     """
-    effective_end = end_date or start_date
-    current = start_date
-    while current <= effective_end:
-        apply(
-            layers,
-            date=current,
-            mode=mode,
-            input=file,
-            offset_file_output_type=offset_file_output_type.value,
-            l2_output_type=L2_output_type.value,
-            save_mode=save_mode,
-        )
-        current += timedelta(days=1)
+    apply(
+        layers,
+        start_date=start_date,
+        end_date=end_date,
+        mode=mode,
+        input=file,
+        offset_file_output_type=offset_file_output_type.value,
+        l2_output_type=L2_output_type.value,
+        save_mode=save_mode,
+    )

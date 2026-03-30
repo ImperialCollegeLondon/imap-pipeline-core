@@ -140,6 +140,254 @@ def test_calibration_job_splits_across_days(tmp_path):
     assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
 
 
+def test_generate_change_points_uses_science_end_timestamp(tmp_path):
+    """When science data extends past midnight, the last change point should use
+    the science end timestamp, not the logical day boundary."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T20:00:00,2026-01-17T06:00:00,4,5,False,True,True\n"
+    )
+    csv_path = tmp_path / "quality.csv"
+    csv_path.write_text(csv_content)
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    input_df = pd.read_csv(csv_path)
+    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
+    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
+    for col in ["nan_x", "nan_y", "nan_z"]:
+        input_df[col] = input_df[col].astype(bool)
+
+    # Science data ends at 00:30 on 17th Jan
+    science_start = datetime(2026, 1, 16, 0, 0, 0)
+    science_end = datetime(2026, 1, 17, 0, 30, 0)
+
+    change_points = job._generate_change_points(
+        input_df, datetime(2026, 1, 16), science_start, science_end
+    )
+
+    assert (
+        len(change_points) == 1
+    )  # Only start, no end (window extends past science end)
+    assert change_points[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp(
+        "2026-01-16T20:00:00"
+    )
+    assert change_points[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 4
+
+
+def test_generate_change_points_window_ends_within_science_range(tmp_path):
+    """When a window ends within the science data range, both start and end
+    change points should be created."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:00:00,2026-01-16T04:00:00,2,3,True,False,False\n"
+    )
+    csv_path = tmp_path / "quality.csv"
+    csv_path.write_text(csv_content)
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    input_df = pd.read_csv(csv_path)
+    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
+    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
+    for col in ["nan_x", "nan_y", "nan_z"]:
+        input_df[col] = input_df[col].astype(bool)
+
+    science_start = datetime(2026, 1, 16, 0, 0, 0)
+    science_end = datetime(2026, 1, 17, 0, 30, 0)
+
+    change_points = job._generate_change_points(
+        input_df, datetime(2026, 1, 16), science_start, science_end
+    )
+
+    assert len(change_points) == 2
+    # Start: flagged
+    assert change_points[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 2
+    assert np.isnan(change_points[0][CONSTANTS.CSV_VARS.OFFSET_X])
+    # End: reset to zero
+    assert change_points[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert change_points[1][CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
+
+
+def test_run_calibration_raises_without_config(tmp_path):
+    """Verify run_calibration raises when set_quality_and_nan config is None."""
+    from imap_mag.io.file import CalibrationLayerPathHandler
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    config = CalibrationConfig()  # no set_quality_and_nan
+
+    with pytest.raises(ValueError, match="requires a set_quality_and_nan"):
+        job.run_calibration(handler, config)
+
+
+def test_run_calibration_raises_for_missing_csv(tmp_path):
+    """Verify run_calibration raises when CSV file does not exist."""
+    from imap_mag.io.file import CalibrationLayerPathHandler
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
+    )
+
+    with pytest.raises(FileNotFoundError, match="CSV file not found"):
+        job.run_calibration(handler, config)
+
+
+def test_run_calibration_raises_for_no_overlapping_windows(tmp_path):
+    """Verify run_calibration raises when no windows overlap with the date."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
+    )
+    csv_path = tmp_path / "quality.csv"
+    csv_path.write_text(csv_content)
+
+    from imap_mag.io.file import CalibrationLayerPathHandler
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    job = SetQualityAndNaNCalibrationJob(params, work)
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
+
+    with pytest.raises(ValueError, match="No quality/NaN windows overlap"):
+        job.run_calibration(handler, config)
+
+
+def test_generate_change_points_skips_outside_science_range(tmp_path):
+    """Windows entirely outside the science data range should be skipped."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-15T00:00:00,2026-01-15T06:00:00,2,3,True,False,False\n"
+    )
+    csv_path = tmp_path / "quality.csv"
+    csv_path.write_text(csv_content)
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    input_df = pd.read_csv(csv_path)
+    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
+    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
+    for col in ["nan_x", "nan_y", "nan_z"]:
+        input_df[col] = input_df[col].astype(bool)
+
+    change_points = job._generate_change_points(
+        input_df,
+        datetime(2026, 1, 16),
+        datetime(2026, 1, 16, 2, 0, 0),
+        datetime(2026, 1, 16, 23, 0, 0),
+    )
+    assert change_points == []
+
+
+def test_get_science_time_range_fallback_without_file(tmp_path):
+    """_get_science_time_range should return day boundaries when no science file."""
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    start, end = job._get_science_time_range(None)
+    assert start == datetime(2026, 1, 16, 0, 0, 0)
+    assert end == datetime(2026, 1, 17, 0, 0, 0)
+
+
+def test_get_science_time_range_fallback_nonexistent_file(tmp_path):
+    """_get_science_time_range should fall back when the file doesn't exist."""
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    start, end = job._get_science_time_range(tmp_path / "nonexistent.cdf")
+    assert start == datetime(2026, 1, 16, 0, 0, 0)
+    assert end == datetime(2026, 1, 17, 0, 0, 0)
+
+
+def test_generate_change_points_skips_outside_logical_day(tmp_path):
+    """Windows outside the logical day should be skipped even if within science range."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-17T02:00:00,2026-01-17T06:00:00,2,3,True,False,False\n"
+    )
+    csv_path = tmp_path / "quality.csv"
+    csv_path.write_text(csv_content)
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
+
+    input_df = pd.read_csv(csv_path)
+    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
+    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
+    for col in ["nan_x", "nan_y", "nan_z"]:
+        input_df[col] = input_df[col].astype(bool)
+
+    # Science range extends into Jan 17, but window starts after day_end for Jan 16
+    change_points = job._generate_change_points(
+        input_df,
+        datetime(2026, 1, 16),
+        datetime(2026, 1, 16, 0, 0, 0),
+        datetime(2026, 1, 17, 12, 0, 0),
+    )
+    assert change_points == []
+
+
+def test_calibrate_returns_list_of_paths(
+    quality_csv, tmp_path, temp_datastore, dynamic_work_folder
+):
+    """Verify calibrate() returns a list of paths."""
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
+    )
+
+    results = calibrate(
+        start_date=datetime(2026, 1, 16),
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalOnly,
+    )
+
+    assert isinstance(results, list)
+    assert len(results) == 1
+    assert results[0].exists()
+    assert "set-quality-and-nan" in results[0].name
+
+
 def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
     temp_datastore,
     dynamic_work_folder,
@@ -166,7 +414,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
 
         # Step 1: Calibrate - create the SET_QUALITY_AND_NAN layer
         calibrate(
-            date=datetime(2026, 1, 16),
+            start_date=datetime(2026, 1, 16),
             method=CalibrationMethod.SET_QUALITY_AND_NAN,
             mode=ScienceMode.Normal,
             sensor=Sensor.MAGO,
@@ -182,7 +430,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
         # Step 2: Apply the SET_QUALITY_AND_NAN layer
         apply(
             layers=["*set-quality-and-nan*"],
-            date=datetime(2026, 1, 16),
+            start_date=datetime(2026, 1, 16),
             mode=ScienceMode.Normal,
             save_mode=SaveMode.LocalOnly,
         )

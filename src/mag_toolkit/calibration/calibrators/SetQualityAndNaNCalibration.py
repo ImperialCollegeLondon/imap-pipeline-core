@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 from imap_mag.config.CalibrationConfig import CalibrationConfig
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
+from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -17,6 +18,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 from mag_toolkit.calibration.Layer import Validity
+from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
 from .CalibrationJob import CalibrationJob
 
@@ -24,14 +26,33 @@ logger = logging.getLogger(__name__)
 
 
 class SetQualityAndNaNCalibrationJob(CalibrationJob):
+    science_file_key = "science_file"
+
     def __init__(
         self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
     ):
         super().__init__(calibration_job_parameters, work_folder)
         self.name = CalibrationMethod.SET_QUALITY_AND_NAN
+        self.required_files[self.science_file_key] = None
 
     def _get_path_handlers(self, calibration_job_parameters: CalibrationJobParameters):
-        return {}
+        mode = calibration_job_parameters.mode
+        sensor = calibration_job_parameters.sensor
+        date = calibration_job_parameters.date
+        level = (
+            Level.ScienceLevel.l1b
+            if mode == ScienceMode.Burst
+            else Level.ScienceLevel.l1c
+        )
+
+        science_file = SciencePathHandler(
+            level=level.value,
+            content_date=date,
+            descriptor=f"{mode.short_name}-{sensor.value.lower()}",
+            extension="cdf",
+        )
+
+        return {self.science_file_key: science_file}
 
     def needs_data_store(self):
         return False
@@ -57,7 +78,14 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             input_df[col] = input_df[col].astype(bool)
 
         date = self.calibration_job_parameters.date
-        change_points = self._generate_change_points(input_df, date)
+
+        # Get actual science data time range from the science file
+        science_file = self.required_files.get(self.science_file_key)
+        science_start, science_end = self._get_science_time_range(science_file)
+
+        change_points = self._generate_change_points(
+            input_df, date, science_start, science_end
+        )
 
         if not change_points:
             raise ValueError(
@@ -103,8 +131,40 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
 
         return calfile, datafile
 
+    def _get_science_time_range(
+        self, science_file: Path | None
+    ) -> tuple[datetime, datetime]:
+        """Get the first and last timestamps from the science data file.
+
+        Falls back to logical day boundaries if no science file is available.
+        """
+        date = self.calibration_job_parameters.date
+        day_start = datetime(date.year, date.month, date.day)
+        day_end = day_start + timedelta(days=1)
+
+        if science_file is None or not Path(science_file).exists():
+            logger.warning(
+                "No science file available, using logical day boundaries for change points"
+            )
+            return day_start, day_end
+
+        science_layer = ScienceLayer.from_file(Path(science_file), load_contents=True)
+        if science_layer._contents is None:
+            return day_start, day_end
+
+        epochs = pd.to_datetime(science_layer._contents[CONSTANTS.CSV_VARS.EPOCH])
+        first_epoch = epochs.iloc[0].to_pydatetime()
+        last_epoch = epochs.iloc[-1].to_pydatetime()
+        del science_layer
+
+        return first_epoch, last_epoch
+
     def _generate_change_points(
-        self, input_df: pd.DataFrame, date: datetime
+        self,
+        input_df: pd.DataFrame,
+        date: datetime,
+        science_start: datetime,
+        science_end: datetime,
     ) -> list[dict]:
         day_start = datetime(date.year, date.month, date.day)
         day_end = day_start + timedelta(days=1)
@@ -115,11 +175,16 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             start = row["start_date"].to_pydatetime()
             end = row["end_date"].to_pydatetime()
 
+            # Skip windows entirely outside the science data range
+            if start > science_end or end < science_start:
+                continue
+
+            # Also skip if entirely outside the logical day
             if start >= day_end or end <= day_start:
                 continue
 
             window_start = max(start, day_start)
-            window_end = min(end, day_end)
+            window_end = min(end, science_end)
 
             offset_x = float("nan") if row["nan_x"] else 0.0
             offset_y = float("nan") if row["nan_y"] else 0.0
@@ -137,7 +202,8 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 }
             )
 
-            if window_end < day_end:
+            # Only add end-of-window reset if the window ends within the science data range
+            if window_end < science_end:
                 change_points.append(
                     {
                         CONSTANTS.CSV_VARS.EPOCH: pd.Timestamp(window_end),

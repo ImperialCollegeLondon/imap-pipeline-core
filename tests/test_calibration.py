@@ -74,7 +74,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     )
 
     calibrate(
-        date=datetime(2025, 4, 21),
+        start_date=datetime(2025, 4, 21),
         sensor=Sensor.MAGO,
         mode=ScienceMode.Normal,
         method=CalibrationMethod.NOOP,
@@ -134,7 +134,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     )
 
     gradiometry(
-        date=datetime(2026, 9, 30),
+        start_date=datetime(2026, 9, 30),
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,

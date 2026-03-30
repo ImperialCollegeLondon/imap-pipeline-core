@@ -1,4 +1,3 @@
-import fnmatch
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
@@ -36,95 +35,23 @@ class FileType(Enum):
 
 
 def resolve_layer_patterns(
-    layers: list[str], date: datetime, datastore: Path
+    layers: list[str], start_date: datetime, datastore: Path
 ) -> list[str]:
     """Resolve layer pattern strings to actual layer filenames.
 
-    Each entry in layers can be:
-    - An exact filename (e.g. "imap_mag_noop-layer_20260116_v001.json")
-    - A glob pattern (e.g. "*noop*", "*") that matches layer filenames for the given date.
-
-    Returns resolved filenames in the order the patterns were provided.
+    Delegates to DatastoreFileFinder.resolve_layer_patterns().
     """
-    date_str = date.strftime("%Y%m%d")
-    layer_dir = (
-        datastore / "calibration" / "layers" / date.strftime("%Y") / date.strftime("%m")
-    )
-
-    resolved: list[str] = []
-    for layer in layers:
-        if "*" in layer or "?" in layer:
-            if not layer_dir.exists():
-                logger.warning(
-                    f"Layer directory {layer_dir} does not exist, skipping pattern {layer}"
-                )
-                continue
-            matched = []
-            for f in sorted(layer_dir.iterdir()):
-                if (
-                    f.is_file()
-                    and f.suffix == ".json"
-                    and date_str in f.name
-                    and fnmatch.fnmatch(f.name, layer)
-                ):
-                    matched.append(f.name)
-            if not matched:
-                logger.warning(
-                    f"No layer files matched pattern '{layer}' for date {date_str} in {layer_dir}"
-                )
-            resolved.extend(matched)
-        else:
-            resolved.append(layer)
-
-    return resolved
+    finder = DatastoreFileFinder(datastore)
+    return finder.resolve_layer_patterns(layers, start_date)
 
 
-def find_science_file(date: datetime, mode: ScienceMode, datastore: Path) -> str:
+def find_science_file(start_date: datetime, mode: ScienceMode, datastore: Path) -> str:
     """Find the highest version science file in the datastore for a given date and mode.
 
-    Scans the datastore directory structure to locate science files matching
-    the date and mode, returning the filename of the highest version match.
+    Delegates to DatastoreFileFinder.find_science_file().
     """
-    date_str = date.strftime("%Y%m%d")
-    science_dir = datastore / "science" / "mag"
-
-    candidates: list[tuple[str, int]] = []
-
-    if not science_dir.exists():
-        raise FileNotFoundError(f"Science directory {science_dir} does not exist")
-
-    for level_dir in sorted(science_dir.iterdir()):
-        if not level_dir.is_dir():
-            continue
-        # Skip output levels (l2-pre, etc.)
-        if "l2" in level_dir.name:
-            continue
-
-        date_dir = level_dir / date.strftime("%Y") / date.strftime("%m")
-        if not date_dir.exists():
-            continue
-
-        for f in sorted(date_dir.iterdir()):
-            if not f.is_file() or f.suffix != ".cdf":
-                continue
-            if date_str not in f.name:
-                continue
-
-            handler = SciencePathHandler.from_filename(f.name)
-            if handler and handler.get_mode() == mode:
-                candidates.append((f.name, handler.version))
-
-    if not candidates:
-        raise FileNotFoundError(
-            f"No science file found for date {date.strftime('%Y-%m-%d')} and mode {mode.value}"
-        )
-
-    # Sort by version descending, return highest
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    logger.info(
-        f"Discovered science file {candidates[0][0]} for date {date.strftime('%Y-%m-%d')} mode {mode.value}"
-    )
-    return candidates[0][0]
+    finder = DatastoreFileFinder(datastore)
+    return finder.find_science_file(start_date, mode)
 
 
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
@@ -199,10 +126,10 @@ def apply(
             help="Calibration layers (filenames or glob patterns like '*noop*') to apply"
         ),
     ],
-    date: Annotated[
-        datetime,
+    start_date: Annotated[
+        datetime | None,
         typer.Option("--date", help="Start date of the input file data"),
-    ],
+    ] = None,
     end_date: Annotated[
         datetime | None,
         typer.Option(
@@ -262,12 +189,15 @@ def apply(
     e.g. imap-mag calibration apply --date 2026-01-16 --layers '*noop*'
     e.g. imap-mag calibration apply --date 2026-01-16 --end-date 2026-01-20 --layers '*' --mode norm
     """
-    effective_end = end_date or date
-    current = date
+    if start_date is None:
+        raise typer.BadParameter("A date must be provided via --date or --start-date.")
+
+    effective_end = end_date or start_date
+    current = start_date
     while current <= effective_end:
         _apply_for_date(
             layers=layers,
-            date=current,
+            start_date=current,
             mode=mode,
             input=input,
             offset_file_output_type=offset_file_output_type,
@@ -282,7 +212,7 @@ def apply(
 
 def _apply_for_date(
     layers: list[str],
-    date: datetime,
+    start_date: datetime,
     mode: ScienceMode | None,
     input: str | None,
     offset_file_output_type: str,
@@ -300,7 +230,9 @@ def _apply_for_date(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     # Resolve layer patterns to actual filenames
-    resolved_layers = resolve_layer_patterns(layers, date, app_settings.data_store)
+    resolved_layers = resolve_layer_patterns(
+        layers, start_date, app_settings.data_store
+    )
 
     # Discover science file if not provided
     if input is None:
@@ -309,7 +241,7 @@ def _apply_for_date(
                 "Either an input science file or a mode (norm/burst) must be provided "
                 "so the science file can be discovered."
             )
-        input = find_science_file(date, mode, app_settings.data_store)
+        input = find_science_file(start_date, mode, app_settings.data_store)
 
     original_input_handler = SciencePathHandler.from_filename(input)
 
@@ -342,8 +274,8 @@ def _apply_for_date(
 
     offset_file_handler = AncillaryPathHandler(
         descriptor=f"l2-{original_input_handler.get_mode().short_name}-offsets",
-        start_date=date,
-        end_date=date,
+        start_date=start_date,
+        end_date=start_date,
         version=0,
         extension=offset_file_output_type,
     )
@@ -362,10 +294,12 @@ def _apply_for_date(
         logger.info(
             "No calibration layers provided, proceeding with apply using only rotation. A temporary zero offset layer will be created."
         )
-        workLayers = [_setup_zero_calibration_layer(work_folder, workScienceFile, date)]
+        workLayers = [
+            _setup_zero_calibration_layer(work_folder, workScienceFile, start_date)
+        ]
 
     (L2_files, offset_file) = applier.apply(
-        day_to_process=date,
+        day_to_process=start_date,
         layer_files=workLayers,
         rotation=workRotationFile,
         dataFile=workScienceFile,

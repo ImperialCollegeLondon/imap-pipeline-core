@@ -51,7 +51,7 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
     apply(
         layers=["imap_mag_noop-layer_20260116_v001.json"],
         input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
-        date=datetime(2026, 1, 16),
+        start_date=datetime(2026, 1, 16),
     )
     verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))
 
@@ -77,7 +77,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
         apply(
             layers=["imap_mag_misaligned-timestamps-layer_20251017_v001.json"],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
-            date=datetime(2025, 10, 17),
+            start_date=datetime(2025, 10, 17),
         )
 
     assert not (
@@ -101,7 +101,7 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
         apply(
             layers=[],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
-            date=datetime(2025, 10, 17),
+            start_date=datetime(2025, 10, 17),
         )
 
     assert not (
@@ -136,7 +136,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
         apply(
             layers=[calibration_layer],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
-            date=datetime(2025, 10, 17),
+            start_date=datetime(2025, 10, 17),
         )
 
 
@@ -155,7 +155,7 @@ def test_apply_performs_correct_rotation(
         layers=[],
         input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
         rotation=Path("imap_mag_l2-calibration_20250926_v002.cdf"),
-        date=datetime(2025, 10, 17),
+        start_date=datetime(2025, 10, 17),
     )
 
     output_file = (
@@ -202,7 +202,7 @@ def test_apply_adds_offsets_together_correctly(
     apply(
         layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
-        date=datetime(2025, 10, 17),
+        start_date=datetime(2025, 10, 17),
     )
 
     output_file = (
@@ -275,7 +275,7 @@ def test_apply_writes_magnitudes_correctly(
     apply(
         layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        date=datetime(2025, 10, 17),
+        start_date=datetime(2025, 10, 17),
     )
 
     output_file = (

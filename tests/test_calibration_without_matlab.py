@@ -37,7 +37,7 @@ def test_empty_calibrator_makes_correct_matlab_call(
     )
 
     calibrate(
-        date=datetime(2025, 10, 17),
+        start_date=datetime(2025, 10, 17),
         sensor=Sensor.MAGO,
         mode=ScienceMode.Normal,
         method=CalibrationMethod.NOOP,
@@ -73,7 +73,7 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
     )
 
     gradiometry(
-        date=datetime(2026, 9, 30),
+        start_date=datetime(2026, 9, 30),
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
@@ -123,7 +123,7 @@ def test_gradiometer_calibrator_finds_next_viable_version(
     existing_layer.touch()
 
     gradiometry(
-        date=datetime(2026, 9, 30),
+        start_date=datetime(2026, 9, 30),
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
