@@ -262,7 +262,7 @@ class CalibrationApplicator:
             filename = SciencePathHandler.generate_filename_from_logical_source(
                 logical_source=logical_source,
                 content_date=day_to_process,
-                version=0,
+                version=1,
                 extension="cdf",
             )
             filepath = outputScienceFolder / filename
