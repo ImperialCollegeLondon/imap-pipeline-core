@@ -43,13 +43,13 @@ def test_apply_flow_resolves_layer_patterns_and_discovers_science_file(
     date = datetime(2026, 1, 16)
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v000.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
     )
     assert output_l2_file.exists()
 
     output_offsets_file = (
         temp_datastore
-        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v000.cdf"
+        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
     )
     assert output_offsets_file.exists()
 
@@ -116,6 +116,6 @@ def test_calibrate_and_apply_flow_creates_output(
     date = datetime(2026, 1, 16)
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v000.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
     )
     assert output_l2_file.exists()

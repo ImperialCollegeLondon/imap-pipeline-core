@@ -3,7 +3,7 @@
     "metadata": {
         "comment": "This is a zero value calibration file",
         "creation_timestamp": "2026-01-16T11:22:20",
-        "data_filename": "imap_mag_noop-layer-data_20260116_v001.csv",
+        "data_filename": "imap_mag_noop-norm-layer-data_20260116_v001.csv",
         "dependencies": [],
         "science": [
             ".work/imap_mag_l1b_norm-mago_20260116_v002.json"

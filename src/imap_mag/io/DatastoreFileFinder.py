@@ -115,12 +115,13 @@ class DatastoreFileFinder:
         self,
         layers: list[str],
         date: datetime,
+        mode: ScienceMode,
         throw_if_not_found: bool = False,
     ) -> list[str]:
         """Resolve layer pattern strings to actual layer filenames. Expect one layer file per item in layers.
 
         Each entry in layers can be:
-        - An exact filename (e.g. "imap_mag_noop-layer_20260116_v001.json")
+        - An exact filename (e.g. "imap_mag_noop-norm-layer_20260116_v001.json")
         - A glob pattern (e.g. "*noop*", "*") that matches layer filenames for the given date.
 
         When matching by pattern, only the highest version per descriptor+date is returned.
@@ -154,6 +155,13 @@ class DatastoreFileFinder:
                     for f, v in all_matching_files_with_version
                     if Path(f).name == layer
                 ]
+
+            # remove files that do not match mode "{mode}-layer"
+            all_matching_files_with_version = [
+                (f, v)
+                for f, v in all_matching_files_with_version
+                if f"{mode.short_name}-layer" in f
+            ]
 
             if all_matching_files_with_version:
                 if layer == "*":
@@ -215,9 +223,7 @@ class DatastoreFileFinder:
 
             candidates: list[tuple[str, int]] = []
             for f in sorted(date_dir.iterdir()):
-                if not f.is_file() or f.suffix != ".cdf":
-                    continue
-                if date_str not in f.name:
+                if not f.is_file() or f.suffix != ".cdf" or date_str not in f.name:
                     continue
 
                 handler = SciencePathHandler.from_filename(f.name)

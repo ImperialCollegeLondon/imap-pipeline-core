@@ -162,6 +162,7 @@ def calibrate_and_apply_flow(
             offset_file_output_type=offset_file_output_type.value,
             l2_output_type=L2_output_type.value,
             save_mode=save_mode,
+            mode=mode,
         )
 
 

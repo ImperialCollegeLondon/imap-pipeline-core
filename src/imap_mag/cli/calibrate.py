@@ -170,7 +170,7 @@ def _calibrate_for_date(
     calibrator.setup_datastore(app_settings.data_store)
 
     calibration_handler = CalibrationLayerPathHandler(
-        descriptor=method.short_name, content_date=start_date
+        descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
     )
     calibration_handler = calibrator.get_next_viable_version_layer(
         datastore_finder, calibration_handler

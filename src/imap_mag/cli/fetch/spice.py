@@ -591,9 +591,10 @@ def _metakernel_builder(
             key=lambda f: int(f.file_meta.get("version", "1")), reverse=True
         )
         latest_files.append(file_list_with_version[0])  # take the latest version only
-        logger.debug(
-            f"Using file {file_list_with_version[0].name}. Ignored {len(file_list) - 1} older versions for {root_path}"
-        )
+        if len(file_list_with_version) > 1:
+            logger.debug(
+                f"Using file {file_list_with_version[0].name}. Ignored {len(file_list) - 1} older versions for {root_path}"
+            )
 
     # get the first leapseconds kernel if available
     leapseconds_kernels = [

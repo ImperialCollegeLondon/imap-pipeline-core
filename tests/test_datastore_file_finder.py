@@ -14,14 +14,18 @@ def datastore(tmp_path):
     layer_dir.mkdir(parents=True)
 
     # Noop layers: v001 and v002
-    (layer_dir / "imap_mag_noop-layer_20260116_v001.json").touch()
-    (layer_dir / "imap_mag_noop-layer-data_20260116_v001.csv").touch()
-    (layer_dir / "imap_mag_noop-layer_20260116_v002.json").touch()
-    (layer_dir / "imap_mag_noop-layer-data_20260116_v002.csv").touch()
+    (layer_dir / "imap_mag_noop-norm-layer_20260116_v001.json").touch()
+    (layer_dir / "imap_mag_noop-norm-layer-data_20260116_v001.csv").touch()
+    (layer_dir / "imap_mag_noop-norm-layer_20260116_v002.json").touch()
+    (layer_dir / "imap_mag_noop-norm-layer-data_20260116_v002.csv").touch()
+    (layer_dir / "imap_mag_noop-burst-layer_20260116_v001.json").touch()
+    (layer_dir / "imap_mag_noop-burst-layer-data_20260116_v001.csv").touch()
+    (layer_dir / "imap_mag_noop-burst-layer_20260116_v002.json").touch()
+    (layer_dir / "imap_mag_noop-burst-layer-data_20260116_v002.csv").touch()
 
     # Set-quality layer: v000
-    (layer_dir / "imap_mag_set-quality-and-nan-layer_20260116_v000.json").touch()
-    (layer_dir / "imap_mag_set-quality-and-nan-layer-data_20260116_v000.csv").touch()
+    (layer_dir / "imap_mag_quality-norm-layer_20260116_v000.json").touch()
+    (layer_dir / "imap_mag_quality-norm-layer-data_20260116_v000.csv").touch()
 
     # Science files
     l1c_dir = tmp_path / "science" / "mag" / "l1c" / "2026" / "01"
@@ -42,8 +46,9 @@ class TestResolveLayerPatterns:
     def test_exact_filename_passes_through(self, datastore):
         finder = DatastoreFileFinder(datastore)
         result = finder.find_layers(
-            ["imap_mag_noop-layer_20260116_v001.json"],
+            ["imap_mag_noop-burst-layer_20260116_v001.json"],
             datetime(2026, 1, 16),
+            ScienceMode.Burst,
         )
         assert result == ["imap_mag_noop-layer_20260116_v001.json"]
 
@@ -52,19 +57,21 @@ class TestResolveLayerPatterns:
         result = finder.find_layers(
             ["*noop*"],
             datetime(2026, 1, 16),
+            ScienceMode.Normal,
         )
         # Should only return v002, not v001
-        assert result == ["imap_mag_noop-layer_20260116_v002.json"]
+        assert result == ["imap_mag_noop-norm-layer_20260116_v002.json"]
 
     def test_wildcard_star_returns_all_descriptors_highest_versions(self, datastore):
         finder = DatastoreFileFinder(datastore)
         result = finder.find_layers(
             ["*"],
             datetime(2026, 1, 16),
+            ScienceMode.Normal,
         )
         # Should return highest version of each descriptor
-        assert "imap_mag_noop-layer_20260116_v002.json" in result
-        assert "imap_mag_set-quality-and-nan-layer_20260116_v000.json" in result
+        assert "imap_mag_noop-norm-layer_20260116_v002.json" in result
+        assert "imap_mag_quality-norm-layer_20260116_v000.json" in result
         assert len(result) == 2
 
     def test_no_match_returns_empty(self, datastore):
@@ -72,6 +79,7 @@ class TestResolveLayerPatterns:
         result = finder.find_layers(
             ["*nonexistent*"],
             datetime(2026, 1, 16),
+            ScienceMode.Normal,
         )
         assert result == []
 
@@ -80,19 +88,21 @@ class TestResolveLayerPatterns:
         result = finder.find_layers(
             ["*"],
             datetime(2025, 3, 15),
+            ScienceMode.Normal,
         )
         assert result == []
 
     def test_mixed_exact_and_wildcard(self, datastore):
         finder = DatastoreFileFinder(datastore)
         result = finder.find_layers(
-            ["imap_mag_noop-layer_20260116_v001.json", "*set-quality*"],
+            ["imap_mag_noop-burst-layer_20260116_v001.json", "*set-quality*"],
             datetime(2026, 1, 16),
+            ScienceMode.Burst,
         )
         # Exact filename passes through even if not highest version
         assert result == [
-            "imap_mag_noop-layer_20260116_v001.json",
-            "imap_mag_set-quality-and-nan-layer_20260116_v000.json",
+            "imap_mag_noop-burst-layer_20260116_v001.json",
+            "imap_mag_quality-burst-layer_20260116_v000.json",
         ]
 
 
@@ -110,13 +120,13 @@ class TestKeepHighestVersions:
         filenames = [
             "imap_mag_noop-layer_20260116_v001.json",
             "imap_mag_noop-layer_20260116_v003.json",
-            "imap_mag_set-quality-and-nan-layer_20260116_v000.json",
-            "imap_mag_set-quality-and-nan-layer_20260116_v001.json",
+            "imap_mag_quality-layer_20260116_v000.json",
+            "imap_mag_quality-layer_20260116_v001.json",
         ]
         result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
         assert len(result) == 2
         assert "imap_mag_noop-layer_20260116_v003.json" in result
-        assert "imap_mag_set-quality-and-nan-layer_20260116_v001.json" in result
+        assert "imap_mag_quality-layer_20260116_v001.json" in result
 
     def test_empty_list(self):
         assert DatastoreFileFinder._keep_highest_version_layers_only([]) == []

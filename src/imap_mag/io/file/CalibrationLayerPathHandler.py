@@ -16,8 +16,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     Path handler for calibration layers.
     Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
     E.g filemnames like
-        imap_mag_noop-layer_20251017_v001.csv
-        imap_mag_noop-layer-data_20251017_v001.csv
+        imap_mag_noop-norm-layer_20251017_v001.csv
+        imap_mag_noop-norm-layer-data_20251017_v001.csv
     """
 
     mission: str = "imap"

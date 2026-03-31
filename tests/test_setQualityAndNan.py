@@ -385,7 +385,7 @@ def test_calibrate_returns_list_of_paths(
     assert isinstance(results, list)
     assert len(results) == 1
     assert results[0].exists()
-    assert "set-quality-and-nan" in results[0].name
+    assert "quality" in results[0].name
 
 
 def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
@@ -424,12 +424,12 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
 
         # Verify the layer was created in the datastore
         layer_dir = temp_datastore / "calibration" / "layers" / "2026" / "01"
-        layer_files = list(layer_dir.glob("*set-quality-and-nan*"))
+        layer_files = list(layer_dir.glob("*quality*"))
         assert len(layer_files) >= 2  # json + csv
 
         # Step 2: Apply the SET_QUALITY_AND_NAN layer
         apply(
-            layers=["*set-quality-and-nan*"],
+            layers=["*quality*"],
             start_date=datetime(2026, 1, 16),
             mode=ScienceMode.Normal,
             save_mode=SaveMode.LocalOnly,

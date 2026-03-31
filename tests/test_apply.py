@@ -18,12 +18,12 @@ with threading.Lock():
 def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     output_l2_file = (
         datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-{frame}_{date.year}{date.month:02d}{date.day:02d}_v000.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-{frame}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
     )
     assert output_l2_file.exists()
     output_offsets_file = (
         datastore
-        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v000.cdf"
+        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
     )
     assert output_offsets_file.exists()
 
@@ -49,22 +49,22 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
     spice_kernels,
 ):
     apply(
-        layers=["imap_mag_noop-layer_20260116_v001.json"],
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
         input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
         start_date=datetime(2026, 1, 16),
     )
     verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))
 
     assert re.search(
-        r"Calibration layer data defined in separate file: /.*/calibration/layers/2026/01/imap_mag_noop-layer-data_20260116_v001.csv",
+        r"Calibration layer data defined in separate file: /.*/calibration/layers/2026/01/imap_mag_noop-norm-layer-data_20260116_v001.csv",
         capture_cli_logs.text,
     )
 
 
 def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_folder):
     for f in [
-        "imap_mag_misaligned-timestamps-layer_20251017_v001.json",
-        "imap_mag_misaligned-timestamps-layer-data_20251017_v001.csv",
+        "imap_mag_misaligned-timestamps-norm-layer_20251017_v001.json",
+        "imap_mag_misaligned-timestamps-norm-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
             TEST_DATA / f,
@@ -75,7 +75,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
         Exception, match="Offsets and science data are not time compatible"
     ):
         apply(
-            layers=["imap_mag_misaligned-timestamps-layer_20251017_v001.json"],
+            layers=["imap_mag_misaligned-timestamps-norm-layer_20251017_v001.json"],
             input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
             start_date=datetime(2025, 10, 17),
         )
@@ -106,11 +106,11 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
 
     assert not (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v000.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
     ).exists()
     assert not (
         temp_datastore
-        / "science-ancillary/l2-offsets/2025/10/imap_mag_l2_norm-offsets_20251017_20251017_v000.cdf"
+        / "science-ancillary/l2-offsets/2025/10/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
     ).exists()
 
 
@@ -120,7 +120,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
 ):
     # Set up.
     invalid_metadata_file = TEST_DATA / "metadata_file_no_metadata.json"
-    calibration_layer = "imap_mag_noop-layer_20251017_v001.json"
+    calibration_layer = "imap_mag_noop-norm-layer_20251017_v001.json"
 
     copy_test_file(
         invalid_metadata_file,
@@ -160,7 +160,7 @@ def test_apply_performs_correct_rotation(
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v000.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
     )
 
     assert output_file.exists()
@@ -185,8 +185,8 @@ def test_apply_adds_offsets_together_correctly(
     spice_kernels,
 ):
     for f in [
-        "imap_mag_four-vector-offsets-layer_20251017_v001.json",
-        "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
+        "imap_mag_four-vector-offsets-norm-layer_20251017_v001.json",
+        "imap_mag_four-vector-offsets-norm-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
             TEST_DATA / f,
@@ -200,14 +200,14 @@ def test_apply_adds_offsets_together_correctly(
     )
 
     apply(
-        layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
+        layers=["imap_mag_four-vector-offsets-norm-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago_20251017_v000.cdf",
         start_date=datetime(2025, 10, 17),
     )
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v000.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
     )
 
     assert output_file.exists()
@@ -259,8 +259,8 @@ def test_apply_writes_magnitudes_correctly(
     spice_kernels,
 ):
     for f in [
-        "imap_mag_four-vector-offsets-layer_20251017_v001.json",
-        "imap_mag_four-vector-offsets-layer-data_20251017_v001.csv",
+        "imap_mag_four-vector-offsets-norm-layer_20251017_v001.json",
+        "imap_mag_four-vector-offsets-norm-layer-data_20251017_v001.csv",
     ]:
         copy_test_file(
             TEST_DATA / f,
@@ -273,14 +273,14 @@ def test_apply_writes_magnitudes_correctly(
     )
 
     apply(
-        layers=["imap_mag_four-vector-offsets-layer_20251017_v001.json"],
+        layers=["imap_mag_four-vector-offsets-norm-layer_20251017_v001.json"],
         input="imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
         start_date=datetime(2025, 10, 17),
     )
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v000.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
     )
 
     assert output_file.exists()

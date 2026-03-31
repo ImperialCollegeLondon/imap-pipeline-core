@@ -222,10 +222,21 @@ def _apply_for_date(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
+    if input is not None and mode is None:
+        if ScienceMode.Burst.short_name in input:
+            mode = ScienceMode.Burst
+        else:
+            mode = ScienceMode.Normal
+
+    if mode is None:
+        raise ValueError(
+            "Burst/Normal mode could not be inferred from input filename. Please provide a mode (norm or burst) to assist with file discovery."
+        )
+
     # Resolve layer patterns to actual filenames
     datastore_finder = DatastoreFileFinder(app_settings.data_store)
     resolved_layers = (
-        datastore_finder.find_layers(layers, date, throw_if_not_found=True)
+        datastore_finder.find_layers(layers, date, mode, throw_if_not_found=True)
         if layers
         else []  # ensure we throw if a layer is passed in but not found
     )
@@ -314,7 +325,7 @@ def _apply_for_date(
             continue
 
         l2_handler.level = "l2-pre"  # set level to l2-pre for the output file naming, as it's pre-release l2
-        l2_handler.version = 0  # set version to 0 for the output file naming
+        l2_handler.version = 1  # set version to 0 for the output file naming
         outputManager.add_file(L2_file, l2_handler)
 
 
