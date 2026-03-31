@@ -13,7 +13,7 @@ from imap_mag.io.file import (
     SequenceablePathHandler,
     VersionedPathHandler,
 )
-from imap_mag.util import ScienceMode
+from imap_mag.util import MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,9 @@ class DatastoreFileFinder:
                 best[key] = (name, handler.version)
         return [name for name, _ in best.values()]
 
-    def find_science_file(self, date: datetime, mode: ScienceMode) -> str:
+    def find_science_file(
+        self, date: datetime, mode: ScienceMode, sensor: MAGSensor
+    ) -> str:
         """Find the highest version science file for a given date and mode.
 
         For burst mode, only L1B files are used.
@@ -219,13 +221,17 @@ class DatastoreFileFinder:
                     continue
 
                 handler = SciencePathHandler.from_filename(f.name)
-                if handler and handler.get_mode() == mode:
+                if (
+                    handler
+                    and handler.get_mode() == mode
+                    and handler.get_sensor() == sensor
+                ):
                     candidates.append((f.name, handler.version))
 
             if candidates:
                 candidates.sort(key=lambda x: x[1], reverse=True)
                 logger.info(
-                    f"Discovered science file {candidates[0][0]} for date {date.strftime('%Y-%m-%d')} mode {mode.value} at level {level}"
+                    f"Discovered science file {candidates[0][0]} for {sensor.value} date {date.strftime('%Y-%m-%d')} mode {mode.value} at level {level}"
                 )
                 return candidates[0][0]
 

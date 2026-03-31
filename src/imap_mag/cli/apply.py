@@ -17,7 +17,7 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     SciencePathHandler,
 )
-from imap_mag.util import ReferenceFrame, ScienceMode
+from imap_mag.util import MAGSensor, ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationApplicator,
     CalibrationLayer,
@@ -237,7 +237,7 @@ def _apply_for_date(
                 "Either an input science file or a mode (norm/burst) must be provided "
                 "so the science file can be discovered."
             )
-        input = datastore_finder.find_science_file(date, mode)
+        input = datastore_finder.find_science_file(date, mode, MAGSensor.OBS)
 
     original_input_handler = SciencePathHandler.from_filename(input)
 

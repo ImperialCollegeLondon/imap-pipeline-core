@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from imap_mag.io.DatastoreFileFinder import DatastoreFileFinder
-from imap_mag.util import ScienceMode
+from imap_mag.util import MAGSensor, ScienceMode
 
 
 @pytest.fixture
@@ -27,6 +27,8 @@ def datastore(tmp_path):
     l1c_dir = tmp_path / "science" / "mag" / "l1c" / "2026" / "01"
     l1c_dir.mkdir(parents=True)
     (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v001.cdf").touch()
+    (l1c_dir / "imap_mag_l1c_norm-mago_20260117_v001.cdf").touch()
+    (l1c_dir / "imap_mag_l1c_norm-magi_20260116_v001.cdf").touch()
 
     l1b_dir = tmp_path / "science" / "mag" / "l1b" / "2026" / "01"
     l1b_dir.mkdir(parents=True)
@@ -131,8 +133,23 @@ class TestKeepHighestVersions:
 class TestFindScienceFile:
     def test_normal_mode_prefers_l1c(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+        )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
+
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.IBS
+        )
+        assert result == "imap_mag_l1c_norm-magi_20260116_v001.cdf"
+
+    def test_normal_mode_checks_correct_sensor(self, datastore):
+        finder = DatastoreFileFinder(datastore)
+        with pytest.raises(FileNotFoundError):
+            finder.find_science_file(
+                datetime(2026, 1, 17), ScienceMode.Normal, MAGSensor.IBS
+            )
 
     def test_normal_mode_falls_back_to_l1b(self, tmp_path):
         """When no L1C exists, normal mode should fall back to L1B."""
@@ -141,12 +158,16 @@ class TestFindScienceFile:
         (l1b_dir / "imap_mag_l1b_norm-mago_20260116_v000.cdf").touch()
 
         finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+        )
         assert result == "imap_mag_l1b_norm-mago_20260116_v000.cdf"
 
     def test_burst_mode_uses_l1b_only(self, datastore):
         finder = DatastoreFileFinder(datastore)
-        result = finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Burst)
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
+        )
         assert result == "imap_mag_l1b_burst-mago_20260116_v002.cdf"
 
     def test_burst_mode_ignores_l1c(self, tmp_path):
@@ -157,7 +178,9 @@ class TestFindScienceFile:
 
         finder = DatastoreFileFinder(tmp_path)
         with pytest.raises(FileNotFoundError):
-            finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Burst)
+            finder.find_science_file(
+                datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
+            )
 
     def test_highest_version_returned(self, tmp_path):
         l1c_dir = tmp_path / "science" / "mag" / "l1c" / "2026" / "01"
@@ -167,7 +190,9 @@ class TestFindScienceFile:
         (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v001.cdf").touch()
 
         finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+        )
         assert result == "imap_mag_l1c_norm-mago_20260116_v003.cdf"
 
     def test_non_cdf_files_ignored(self, tmp_path):
@@ -179,13 +204,17 @@ class TestFindScienceFile:
         (l1c_dir / "README.md").touch()
 
         finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+        result = finder.find_science_file(
+            datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+        )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
 
     def test_no_science_dir_raises(self, tmp_path):
         finder = DatastoreFileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="Science directory"):
-            finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+            finder.find_science_file(
+                datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+            )
 
     def test_no_matching_file_raises(self, tmp_path):
         science_dir = tmp_path / "science" / "mag" / "l1c" / "2026" / "01"
@@ -195,4 +224,6 @@ class TestFindScienceFile:
 
         finder = DatastoreFileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="No science file found"):
-            finder.find_science_file(datetime(2026, 1, 16), ScienceMode.Normal)
+            finder.find_science_file(
+                datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
+            )
