@@ -151,19 +151,18 @@ def calibrate_and_apply_flow(
         save_mode=save_mode,
     )
 
-    for cal_layer_path in cal_layer_paths:
-        layer = CalibrationLayer.from_file(cal_layer_path)
-        science_input = layer.metadata.science[0]
-
-        apply(
-            layers=[str(cal_layer_path)],
-            start_date=layer.metadata.content_date.astype(datetime),
-            input=science_input,
-            offset_file_output_type=offset_file_output_type.value,
-            l2_output_type=L2_output_type.value,
-            save_mode=save_mode,
-            mode=mode,
-        )
+    layer = CalibrationLayer.from_file(cal_layer_paths[0])
+    science_input = layer.metadata.science[0]
+    apply(
+        layers=[cal_layer_path.name for cal_layer_path in cal_layer_paths],
+        start_date=start_date,
+        end_date=end_date,
+        input=science_input,
+        offset_file_output_type=offset_file_output_type.value,
+        l2_output_type=L2_output_type.value,
+        save_mode=save_mode,
+        mode=mode,
+    )
 
 
 @flow(
