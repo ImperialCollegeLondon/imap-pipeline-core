@@ -26,6 +26,8 @@ def datastore(tmp_path):
     # Set-quality layer: v000
     (layer_dir / "imap_mag_quality-norm-layer_20260116_v000.json").touch()
     (layer_dir / "imap_mag_quality-norm-layer-data_20260116_v000.csv").touch()
+    (layer_dir / "imap_mag_quality-burst-layer_20260116_v000.json").touch()
+    (layer_dir / "imap_mag_quality-burst-layer-data_20260116_v000.csv").touch()
 
     # Science files
     l1c_dir = tmp_path / "science" / "mag" / "l1c" / "2026" / "01"
@@ -50,7 +52,7 @@ class TestResolveLayerPatterns:
             datetime(2026, 1, 16),
             ScienceMode.Burst,
         )
-        assert result == ["imap_mag_noop-layer_20260116_v001.json"]
+        assert result == ["imap_mag_noop-burst-layer_20260116_v001.json"]
 
     def test_wildcard_returns_highest_version_per_descriptor(self, datastore):
         finder = DatastoreFileFinder(datastore)
@@ -95,7 +97,7 @@ class TestResolveLayerPatterns:
     def test_mixed_exact_and_wildcard(self, datastore):
         finder = DatastoreFileFinder(datastore)
         result = finder.find_layers(
-            ["imap_mag_noop-burst-layer_20260116_v001.json", "*set-quality*"],
+            ["imap_mag_noop-burst-layer_20260116_v001.json", "*quality*"],
             datetime(2026, 1, 16),
             ScienceMode.Burst,
         )

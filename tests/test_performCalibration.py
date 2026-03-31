@@ -85,7 +85,7 @@ def test_calibrate_flow_creates_calibration_layer(
 
     assert len(results) == 1
     assert results[0].exists()
-    assert "noop-layer" in results[0].name
+    assert "noop-norm-layer" in results[0].name
 
 
 @pytest.mark.skipif(

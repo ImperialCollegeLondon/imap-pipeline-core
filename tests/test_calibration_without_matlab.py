@@ -25,10 +25,11 @@ def test_empty_calibrator_makes_correct_matlab_call(
     def mock_call_matlab(command):
         assert command.startswith("calibration.wrappers.run_empty_calibrator")
         create_test_file(
-            Path(dynamic_work_folder) / "imap_mag_noop-layer_20251017_v002.json"
+            Path(dynamic_work_folder) / "imap_mag_noop-norm-layer_20251017_v001.json"
         )
         create_test_file(
-            Path(dynamic_work_folder) / "imap_mag_noop-layer-data_20251017_v002.csv"
+            Path(dynamic_work_folder)
+            / "imap_mag_noop-norm-layer-data_20251017_v001.csv"
         )
 
     monkeypatch.setattr(
@@ -45,11 +46,11 @@ def test_empty_calibrator_makes_correct_matlab_call(
 
     assert (
         temp_datastore
-        / "calibration/layers/2025/10/imap_mag_noop-layer_20251017_v002.json"
+        / "calibration/layers/2025/10/imap_mag_noop-norm-layer_20251017_v001.json"
     ).exists()
     assert (
         temp_datastore
-        / "calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v002.csv"
+        / "calibration/layers/2025/10/imap_mag_noop-norm-layer-data_20251017_v001.csv"
     ).exists()
 
 
@@ -61,10 +62,11 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
     def mock_call_matlab(command):
         assert command.startswith("calibration.wrappers.run_gradiometry")
         create_test_file(
-            dynamic_work_folder / "imap_mag_gradiometer-layer_20260930_v001.json"
+            dynamic_work_folder / "imap_mag_gradiometer-norm-layer_20260930_v001.json"
         )
         create_test_file(
-            dynamic_work_folder / "imap_mag_gradiometer-layer-data_20260930_v001.csv"
+            dynamic_work_folder
+            / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
         )
 
     monkeypatch.setattr(
@@ -81,13 +83,13 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
 
     layer_metadata = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
     )
     assert layer_metadata.exists()
 
     layer_data = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
     )
     assert layer_data.exists()
 
@@ -100,14 +102,15 @@ def test_gradiometer_calibrator_finds_next_viable_version(
     def mock_call_matlab(command):
         assert (
             command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-layer_20260930_v002.json", "{dynamic_work_folder}/imap_mag_gradiometer-layer-data_20260930_v002.csv", "{temp_datastore}", "0.25", "10.0")'
-        )
-        create_test_file(
-            Path(dynamic_work_folder) / "imap_mag_gradiometer-layer_20260930_v002.json"
+            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer_20260930_v002.json", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer-data_20260930_v002.csv", "{temp_datastore}", "0.25", "10.0")'
         )
         create_test_file(
             Path(dynamic_work_folder)
-            / "imap_mag_gradiometer-layer-data_20260930_v002.csv"
+            / "imap_mag_gradiometer-norm-layer_20260930_v002.json"
+        )
+        create_test_file(
+            Path(dynamic_work_folder)
+            / "imap_mag_gradiometer-norm-layer-data_20260930_v002.csv"
         )
 
     monkeypatch.setattr(
@@ -117,7 +120,7 @@ def test_gradiometer_calibrator_finds_next_viable_version(
 
     existing_layer = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
     )
     existing_layer.parent.mkdir(parents=True, exist_ok=True)
     existing_layer.touch()
@@ -131,12 +134,12 @@ def test_gradiometer_calibrator_finds_next_viable_version(
 
     layer_metadata = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v002.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v002.json"
     )
     assert layer_metadata.exists()
 
     layer_data = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v002.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v002.json"
     )
     assert layer_data.exists()
