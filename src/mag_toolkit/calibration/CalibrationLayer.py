@@ -37,7 +37,7 @@ class CalibrationLayer(Layer):
             filepath.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Writing calibration layer CSV to {filepath!s}.")
-        self._contents.to_csv(filepath, index=False)
+        self._contents.to_csv(filepath, index=False, header=True)
         return filepath
 
     def get_epochs(self) -> pd.Series:

@@ -55,7 +55,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         return {self.science_file_key: science_file}
 
     def needs_data_store(self):
-        return False
+        return True
 
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
@@ -67,6 +67,10 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             )
 
         csv_path = Path(config.set_quality_and_nan.csv_file)
+        # check if it is an absolute path, if not assume it's relative to the current working directory
+        if not csv_path.is_absolute() and self.data_store is not None:
+            csv_path = Path(self.data_store) / csv_path
+
         if not csv_path.exists():
             raise FileNotFoundError(f"SetQualityAndNaN CSV file not found: {csv_path}")
 
@@ -87,17 +91,16 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             input_df, date, science_start, science_end
         )
 
-        if not change_points:
-            raise ValueError(
-                f"No quality/NaN windows overlap with date {date.strftime('%Y-%m-%d')}"
-            )
-
         change_points.sort(key=lambda p: p[CONSTANTS.CSV_VARS.EPOCH])
         df = pd.DataFrame(change_points)
 
-        validity = Validity(
-            start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
-            end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+        validity = (
+            Validity(
+                start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
+                end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+            )
+            if change_points
+            else Validity(start=science_start, end=science_end)
         )
 
         calfile = self.work_folder / cal_handler.get_filename()
