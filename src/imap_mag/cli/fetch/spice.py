@@ -600,25 +600,16 @@ def _metakernel_builder(
         leap_file = spice_folder / leapseconds_kernels[0].path
         spiceypy.furnsh(str(leap_file))
 
+    # Ensure start and end dates are offset aware UTC datetimes for comparison with file metadata
+    start_time = TimeConversion.force_utc_timezone(start_time) if start_time else None
+    end_time = TimeConversion.force_utc_timezone(end_time) if end_time else None
+
     # filter files by start_time and end_time if provided
     if start_time and end_time:
         latest_files = [
             f
             for f in latest_files
-            if (
-                f.file_meta is None
-                or f.file_meta.get("max_date_datetime") is None
-                or (
-                    TimeConversion.try_extract_iso_like_datetime(
-                        f.file_meta, "min_date_datetime"
-                    )
-                    <= end_time
-                    and TimeConversion.try_extract_iso_like_datetime(
-                        f.file_meta, "max_date_datetime"
-                    )
-                    >= start_time
-                )
-            )
+            if _file_meta_dates_within_range(f, start_time, end_time)
         ]
 
     latest_files.sort(
@@ -711,3 +702,32 @@ def _metakernel_builder(
     logger.info(f"Metakernel generated with {len(metakernel.spice_files)} SPICE files.")
 
     return metakernel
+
+
+def _file_meta_dates_within_range(
+    f: File, start_time: datetime, end_time: datetime
+) -> bool:
+    if f.file_meta is None:
+        return True
+
+    if f.file_meta.get("max_date_datetime") is None:
+        return True
+
+    min_date_datetime = TimeConversion.try_extract_iso_like_datetime(
+        f.file_meta, "min_date_datetime"
+    )
+    max_date_datetime = TimeConversion.try_extract_iso_like_datetime(
+        f.file_meta, "max_date_datetime"
+    )
+
+    if min_date_datetime is None or max_date_datetime is None:
+        logger.warning(
+            f"File {f.name} (id {f.id}) excluded as it is missing parsable min_date_datetime or max_date_datetime in metadata.\n"
+            f"  min_date_datetime: {min_date_datetime}, max_date_datetime: {max_date_datetime}"
+        )
+
+    if min_date_datetime is not None and min_date_datetime <= end_time:
+        if max_date_datetime is not None and max_date_datetime >= start_time:
+            return True
+
+    return False

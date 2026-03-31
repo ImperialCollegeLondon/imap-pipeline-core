@@ -214,7 +214,23 @@ class TestMetakernelBuilder:
 
     @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
     @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
-    def test_metakernel_builder_with_files(self, mock_furnsh, mock_datetime_to_j2000):
+    @pytest.mark.parametrize(
+        "start_time,end_time",
+        [
+            (datetime(2025, 10, 29), datetime(2025, 10, 30)),
+            (
+                datetime(2025, 10, 29).astimezone(UTC),
+                datetime(2025, 10, 30).astimezone(UTC),
+            ),
+        ],
+    )
+    def test_metakernel_builder_with_files(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+        start_time: datetime,
+        end_time: datetime,
+    ):
         """Test building metakernel with valid files."""
         # Mock the datetime to j2000 conversion
         mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
@@ -228,8 +244,8 @@ class TestMetakernelBuilder:
                     "version": "1",
                     "file_intervals_j2000": [[815036897, 815126896]],
                     "timestamp": 1761984312.0,
-                    "min_date_datetime": "2025-10-29, 19:07:07",
-                    "max_date_datetime": "2025-10-30, 20:07:06",
+                    "min_date_datetime": f"{start_time.strftime('%Y-%m-%d')}, 19:07:07",
+                    "max_date_datetime": f"{end_time.strftime('%Y-%m-%d')}, 20:07:06",
                 },
                 last_modified_date=datetime.now(UTC),
             ),
@@ -254,8 +270,8 @@ class TestMetakernelBuilder:
             lsk_file.write_text("\\begindata\nDELTET/DELTA_T_A = 32.184\n\\begintext")
 
             mk = _metakernel_builder(
-                start_time=datetime(2025, 10, 29),
-                end_time=datetime(2025, 10, 30),
+                start_time=start_time,
+                end_time=end_time,
                 files=files,
                 spice_folder=spice_folder,
             )
