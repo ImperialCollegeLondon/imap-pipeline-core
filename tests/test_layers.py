@@ -1,9 +1,13 @@
 import re
+import threading
 
 import numpy as np
 import pandas as pd
 import pytest
-from spacepy import pycdf
+
+with threading.Lock():
+    # seems to have a horrible race condition when run in parallel, so ensure tests using it do not run in parallel with other tests using it
+    from spacepy import pycdf
 
 from mag_toolkit.calibration import (
     CalibrationLayer,
