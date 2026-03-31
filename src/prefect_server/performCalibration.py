@@ -8,7 +8,7 @@ from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
 from imap_mag.config import SaveMode
 from imap_mag.config.CalibrationConfig import CalibrationConfig
-from imap_mag.util import ScienceMode
+from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
 from prefect_server.constants import PREFECT_CONSTANTS
 
@@ -175,10 +175,16 @@ def apply_flow(
     start_date: datetime,
     end_date: datetime | None = None,
     mode: ScienceMode | None = None,
-    file: str | None = None,
+    science_input_file: str | None = None,
     offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
+    rotation_calibration_file_name: str | None = None,
+    spice_metakernel: Path | None = None,
+    reference_frames: list[ReferenceFrame] | None = [
+        ReferenceFrame.GSE,
+        ReferenceFrame.SRF,
+    ],
 ):
     """Apply calibration layers for a date or date range.
 
@@ -187,7 +193,7 @@ def apply_flow(
         start_date: Start date for processing.
         end_date: End date (inclusive). If None, only start_date is processed.
         mode: Science mode (norm/burst) for discovering science files when file is None.
-        file: Science filename. If None, discovered using mode and date.
+        science_input_file: Science filename. If None, discovered using mode and date.
         save_mode: Where to save output files.
     """
     apply(
@@ -195,8 +201,13 @@ def apply_flow(
         start_date=start_date,
         end_date=end_date,
         mode=mode,
-        input=file,
+        input=science_input_file,
         offset_file_output_type=offset_file_output_type.value,
         l2_output_type=L2_output_type.value,
         save_mode=save_mode,
+        rotation=Path(rotation_calibration_file_name)
+        if rotation_calibration_file_name
+        else None,
+        spice_metakernel=spice_metakernel,
+        reference_frames=reference_frames,
     )
