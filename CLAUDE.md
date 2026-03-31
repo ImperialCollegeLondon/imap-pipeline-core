@@ -90,4 +90,4 @@ CLI commands are documented in the README.md in the project root.
 - Pre-commit hooks enforce style and run tests before commits
 - Do not use `pip` directly; always use `poetry` for dependency management
 - Always ensure linting and pre-commit checks pass before committing code
-- NEVER EVER mention agents like ChatGPT or Claude or copilot in commit messages or code comments.
+- NEVER EVER mention agents like ChatGPT or Claude or copilot in commit messages or code comments. This includes Co-Authored-By lines — never add a Co-Authored-By trailer referencing an AI agent.

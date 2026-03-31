@@ -9,7 +9,12 @@ from .CalibrationDefinitions import (
 )
 from .CalibrationJobParameters import CalibrationJobParameters
 from .CalibrationLayer import CalibrationLayer
-from .calibrators import CalibrationJob, EmptyCalibrationJob, GradiometerCalibrationJob
+from .calibrators import (
+    CalibrationJob,
+    EmptyCalibrationJob,
+    GradiometerCalibrationJob,
+    SetQualityAndNaNCalibrationJob,
+)
 from .ScienceLayer import ScienceLayer
 
 __all__ = [
@@ -26,4 +31,5 @@ __all__ = [
     "ScienceLayer",
     "ScienceValue",
     "Sensor",
+    "SetQualityAndNaNCalibrationJob",
 ]

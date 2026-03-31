@@ -76,7 +76,7 @@ class TimeConversion:
         return TimeConversion.convert_j2000ns_to_date(j2000ns)
 
     @staticmethod
-    def try_extract_iso_like_datetime(dict, key) -> datetime | None:
+    def try_extract_iso_like_datetime(dict, key, timezone=None) -> datetime | None:
         # Handle both "YYYY-MM-DD, HH:MM:SS" and "YYYY-MM-DD HH:MM:SS" formats stored in a dictionary
 
         if not dict or not key or key not in dict:
@@ -86,9 +86,14 @@ class TimeConversion:
         result = result.replace(", ", " ")
         try:
             result_date = datetime.fromisoformat(result)
-            return result_date
+
         except ValueError:
             return None
+
+        if timezone:
+            result_date = result_date.astimezone(timezone)
+
+        return result_date
 
     @staticmethod
     def datetime_to_j2000(value_as_datetime: datetime):
@@ -107,3 +112,11 @@ class TimeConversion:
         assert isinstance(datetime_value, datetime)
 
         return datetime_value
+
+    @staticmethod
+    def force_utc_timezone(date: datetime) -> datetime:
+        """No matter the timezone of the input date, it will be treated as UTC."""
+        if date.tzinfo is not None:
+            return date.replace(tzinfo=None)
+
+        return date

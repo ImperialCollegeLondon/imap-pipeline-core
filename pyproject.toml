@@ -1,7 +1,7 @@
 [project]
 requires-python = ">=3.11"
 name = "imap-mag"
-version = "4.12.0"
+version = "5.0.0"
 
 [tool.poetry]
 name = "imap-mag"
@@ -42,6 +42,7 @@ ialirt-data-access = "^0.6.0"
 apprise = ">=1.9.5"
 spiceypy = "^8.0.0"
 prefect-sqlalchemy = "^0.5.3"
+imap-processing = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"

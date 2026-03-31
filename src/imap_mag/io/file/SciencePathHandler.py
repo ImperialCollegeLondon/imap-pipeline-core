@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.file.StandardSPDFPathHandler import StandardSPDFPathHandler
+from imap_mag.util import MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,20 @@ class SciencePathHandler(StandardSPDFPathHandler):
 
     root_folder: str = "science"
     ingestion_date: datetime | None = None  # date data was ingested by SDC
+
+    def get_mode(self) -> ScienceMode:
+        return (
+            ScienceMode.Burst
+            if self.descriptor and ScienceMode.Burst.short_name in self.descriptor
+            else ScienceMode.Normal
+        )
+
+    def get_sensor(self) -> MAGSensor:
+        return (
+            MAGSensor.IBS
+            if self.descriptor and MAGSensor.IBS.value in self.descriptor
+            else MAGSensor.OBS
+        )
 
     def get_folder_structure(self) -> str:
         super()._check_property_values("folder structure", ["content_date", "level"])

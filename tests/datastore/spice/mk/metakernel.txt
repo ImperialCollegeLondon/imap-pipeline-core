@@ -1,0 +1,27 @@
+
+\begintext
+
+This is the most up to date Metakernel as of
+2026-03-18 12:08:59.322893+00:00.
+
+This attempts to cover data from
+821707269 to 821880069
+seconds since J2000.
+
+
+\begindata
+
+    PATH_VALUES     = ( 'spice' )
+    PATH_SYMBOLS    = ( 'KERNELS' )
+    KERNELS_TO_LOAD = ( '$KERNELS/lsk/naif0012.tls',
+                        '$KERNELS/pck/pck00011.tpc',
+                        '$KERNELS/fk/imap_130.tf',
+                        '$KERNELS/fk/imap_science_120.tf',
+                        '$KERNELS/sclk/imap_sclk_0136.tsc',
+                        '$KERNELS/spk/de440.bsp',
+                        '$KERNELS/spk/imap_recon_20250925_20260316_v01.bsp',
+                        '$KERNELS/ck/imap_2026_015_2026_017_001.ah.bc',
+                        '$KERNELS/ck/imap_dps_2026_009_2026_015_001.ah.bc',
+                        '$KERNELS/ck/imap_dps_2025_359_2026_076_001.ah.bc'   )
+
+\begintext

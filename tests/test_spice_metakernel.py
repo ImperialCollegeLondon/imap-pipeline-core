@@ -155,8 +155,8 @@ class TestMetaKernelClass:
 
         # Should have gap at start (0-25) and end (75-100)
         assert len(gaps) == 2
-        assert gaps[0] == [0, 25]
-        assert gaps[1] == [75, 100]
+        assert gaps[0] == (0, 25)
+        assert gaps[1] == (75, 100)
 
     def test_limitstring(self):
         """Test string limiting function."""
@@ -214,7 +214,23 @@ class TestMetakernelBuilder:
 
     @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
     @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
-    def test_metakernel_builder_with_files(self, mock_furnsh, mock_datetime_to_j2000):
+    @pytest.mark.parametrize(
+        "start_time,end_time",
+        [
+            (datetime(2025, 10, 29), datetime(2025, 10, 30)),
+            (
+                datetime(2025, 10, 29).astimezone(UTC),
+                datetime(2025, 10, 30).astimezone(UTC),
+            ),
+        ],
+    )
+    def test_metakernel_builder_with_files(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+        start_time: datetime,
+        end_time: datetime,
+    ):
         """Test building metakernel with valid files."""
         # Mock the datetime to j2000 conversion
         mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
@@ -228,8 +244,8 @@ class TestMetakernelBuilder:
                     "version": "1",
                     "file_intervals_j2000": [[815036897, 815126896]],
                     "timestamp": 1761984312.0,
-                    "min_date_datetime": "2025-10-29, 19:07:07",
-                    "max_date_datetime": "2025-10-30, 20:07:06",
+                    "min_date_datetime": f"{start_time.strftime('%Y-%m-%d')}, 19:07:07",
+                    "max_date_datetime": f"{end_time.strftime('%Y-%m-%d')}, 20:07:06",
                 },
                 last_modified_date=datetime.now(UTC),
             ),
@@ -254,14 +270,107 @@ class TestMetakernelBuilder:
             lsk_file.write_text("\\begindata\nDELTET/DELTA_T_A = 32.184\n\\begintext")
 
             mk = _metakernel_builder(
-                start_time=datetime(2025, 10, 29),
-                end_time=datetime(2025, 10, 30),
+                start_time=start_time,
+                end_time=end_time,
                 files=files,
                 spice_folder=spice_folder,
             )
 
             assert mk is not None
             assert isinstance(mk, MetaKernel)
+            assert len(mk.return_spice_files_in_order(False)) == 2
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_metakernel_builder_excludes_non_latest_versions(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        """Test building metakernel with valid files."""
+        # Mock the datetime to j2000 conversion
+        mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
+        start_time = datetime(2025, 10, 29)
+        end_time = datetime(2025, 10, 30)
+
+        # Create mock File objects
+        files = [
+            File(
+                path="spice/sclk/imap_sclk_001.tsc",
+                name="imap_sclk_001.tsc",
+                file_meta={
+                    "file_name": "sclk/imap_sclk_001.tsc",
+                    "file_root": "imap_sclk_.tsc",
+                    "kernel_type": "spacecraft_clock",
+                    "version": 1,
+                    "min_date_j2000": 315576066.1839245,
+                    "max_date_j2000": 4575787269.183866,
+                    "file_intervals_j2000": [[315576066.1839245, 4575787269.183866]],
+                    "min_date_datetime": "2010-01-01, 00:00:00",
+                    "max_date_datetime": "2145-01-01, 00:00:00",
+                    "file_intervals_datetime": [
+                        ["2010-01-01T00:00:00", "2145-01-01T00:00:00"]
+                    ],
+                    "min_date_sclk": "1/0000000000:00000",
+                    "max_date_sclk": "1/4260211203:00000",
+                    "file_intervals_sclk": [
+                        ["1/0000000000:00000", "1/4260211203:00000"]
+                    ],
+                    "sclk_kernel": "/tmp/naif0012.tls",
+                    "lsk_kernel": "/tmp/imap_sclk_0000.tsc",
+                    "ingestion_date": "2025-09-18, 18:33:26",
+                    "timestamp": 1758220406.0,
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+            File(
+                path="spice/sclk/imap_sclk_002.tsc",
+                name="imap_sclk_002.tsc",
+                file_meta={
+                    "file_name": "sclk/imap_sclk_002.tsc",
+                    "file_root": "imap_sclk_.tsc",
+                    "kernel_type": "spacecraft_clock",
+                    "version": 2,
+                    "min_date_j2000": 315576066.1839245,
+                    "max_date_j2000": 4575787269.183866,
+                    "file_intervals_j2000": [[315576066.1839245, 4575787269.183866]],
+                    "min_date_datetime": "2010-01-01, 00:00:00",
+                    "max_date_datetime": "2145-01-01, 00:00:00",
+                    "file_intervals_datetime": [
+                        ["2010-01-01T00:00:00", "2145-01-01T00:00:00"]
+                    ],
+                    "min_date_sclk": "1/0000000000:00000",
+                    "max_date_sclk": "1/4260211203:00000",
+                    "file_intervals_sclk": [
+                        ["1/0000000000:00000", "1/4260211203:00000"]
+                    ],
+                    "sclk_kernel": "/tmp/naif013.tls",
+                    "lsk_kernel": "/tmp/imap_sclk_001.tsc",
+                    "ingestion_date": "2025-09-18, 18:52:07",
+                    "timestamp": 1758221527.0,
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spice_folder = Path(tmpdir)
+            # Create the leapseconds file (minimal valid file)
+            lsk_folder = spice_folder / "spice" / "lsk"
+            lsk_folder.mkdir(parents=True)
+            lsk_file = lsk_folder / "naif0012.tls"
+            lsk_file.write_text("\\begindata\nDELTET/DELTA_T_A = 32.184\n\\begintext")
+
+            mk = _metakernel_builder(
+                start_time=start_time,
+                end_time=end_time,
+                files=files,
+                spice_folder=spice_folder,
+            )
+
+            assert mk is not None
+            assert isinstance(mk, MetaKernel)
+            assert len(mk.return_spice_files_in_order(False)) == 1
 
 
 class TestGenerateSpiceMetakernel:
@@ -410,8 +519,8 @@ class TestMetaKernelDuplicateRemoval:
             },
             {
                 "file_name": "same_file.bsp",
-                "file_intervals_j2000": [[50000, 100000]],
-                "timestamp": 2000.0,
+                "file_intervals_j2000": [[0, 50000]],
+                "timestamp": 1000.0,
             },
         ]
 

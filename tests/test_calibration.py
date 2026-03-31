@@ -13,6 +13,7 @@ from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import DATASTORE
 
@@ -58,7 +59,7 @@ def matlab_test_setup():
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path, monkeypatch, clean_datastore
+    matlab_test_setup, tmp_path, monkeypatch, clean_datastore, dynamic_work_folder
 ):
     monkeypatch.setattr(
         "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
@@ -73,16 +74,16 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
     )
 
     calibrate(
-        date=datetime(2025, 4, 21),
+        start_date=datetime(2025, 4, 21),
         sensor=Sensor.MAGO,
         mode=ScienceMode.Normal,
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.json"
     ).exists()
     with open(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -95,7 +96,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
     layer_data = (
         clean_datastore
-        / "calibration/layers/2025/04/imap_mag_noop-layer-data_20250421_v001.csv"
+        / "calibration/layers/2025/04/imap_mag_noop-norm-layer-data_20250421_v001.csv"
     )
     assert layer_data.exists()
     with open(layer_data) as f:
@@ -133,14 +134,14 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     )
 
     gradiometry(
-        date=datetime(2026, 9, 30),
+        start_date=datetime(2026, 9, 30),
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
     )
     layer_metadata = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer_20260930_v001.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
     )
     assert layer_metadata.exists()
     with open(layer_metadata) as f:
@@ -155,7 +156,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
 
     layer_data = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-layer-data_20260930_v001.csv"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
     )
     assert layer_data.exists()
     with open(layer_data) as f:
@@ -173,10 +174,9 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     except Exception as e:
         pytest.fail(f"Calibration layer created did not conform to standards: {e}")
 
-    assert cal_layer.values[1].value == [
-        -20.948437287498678,
-        287.80371538145209,
-        350.14540002089052,
-    ]
-    assert cal_layer.values[1].quality_bitmask == 2
+    assert cal_layer._contents is not None
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_X][1] == -20.948437287498678
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_Y][1] == 287.80371538145209
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.OFFSET_Z][1] == 350.14540002089052
+    assert cal_layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK][1] == 2
     assert cal_layer.metadata.comment == "Gradiometer layer with kappa value: 0.25"

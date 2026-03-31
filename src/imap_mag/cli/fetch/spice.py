@@ -566,15 +566,18 @@ def _metakernel_builder(
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
 
-    # for all files with version > 1 we need to remove older versions
+    # for all files with version > 1 we need to remove older versions by looking at the root_path metadata
     files_grouped_by_path: dict[str, list] = {}
     for file in files:
-        if file.path not in files_grouped_by_path:
-            files_grouped_by_path[file.path] = []
-        files_grouped_by_path[file.path].append(file)
+        root_path = (
+            file.file_meta.get("file_root", file.path) if file.file_meta else file.path
+        )
+        if root_path not in files_grouped_by_path:
+            files_grouped_by_path[root_path] = []
+        files_grouped_by_path[root_path].append(file)
 
     latest_files: list[File] = []
-    for file_list in files_grouped_by_path.values():
+    for root_path, file_list in files_grouped_by_path.items():
         # sort by version descending
         # remove files missing the file_meta or version field as we cannot determine which is latest, and log a warning about this
         file_list_with_version = [
@@ -582,12 +585,16 @@ def _metakernel_builder(
         ]
         if len(file_list) != len(file_list_with_version):
             logger.warning(
-                f"Found {len(file_list) - len(file_list_with_version)} files without version information for {file_list[0].path}. These files will be skipped as we cannot determine which is the latest version."
+                f"Found {len(file_list) - len(file_list_with_version)} files without version information for meta root_path {root_path}. These files will be skipped as we cannot determine which is the latest version."
             )
         file_list_with_version.sort(
             key=lambda f: int(f.file_meta.get("version", "1")), reverse=True
         )
         latest_files.append(file_list_with_version[0])  # take the latest version only
+        if len(file_list_with_version) > 1:
+            logger.debug(
+                f"Using file {file_list_with_version[0].name}. Ignored {len(file_list) - 1} older versions for {root_path}"
+            )
 
     # get the first leapseconds kernel if available
     leapseconds_kernels = [
@@ -600,25 +607,16 @@ def _metakernel_builder(
         leap_file = spice_folder / leapseconds_kernels[0].path
         spiceypy.furnsh(str(leap_file))
 
+    # Ensure start and end dates are offset aware UTC datetimes for comparison with file metadata
+    start_time = TimeConversion.force_utc_timezone(start_time) if start_time else None
+    end_time = TimeConversion.force_utc_timezone(end_time) if end_time else None
+
     # filter files by start_time and end_time if provided
     if start_time and end_time:
         latest_files = [
             f
             for f in latest_files
-            if (
-                f.file_meta is None
-                or f.file_meta.get("max_date_datetime") is None
-                or (
-                    TimeConversion.try_extract_iso_like_datetime(
-                        f.file_meta, "min_date_datetime"
-                    )
-                    <= end_time
-                    and TimeConversion.try_extract_iso_like_datetime(
-                        f.file_meta, "max_date_datetime"
-                    )
-                    >= start_time
-                )
-            )
+            if _file_meta_dates_within_range(f, start_time, end_time)
         ]
 
     latest_files.sort(
@@ -634,8 +632,9 @@ def _metakernel_builder(
             "No SPICE files found in the database matching the time range."
         )
 
-    logger.info(f"Generating SPICE metakernel with {len(latest_files)} files.")
-    logger.info(json.dumps([f.path for f in files], indent=2))
+    logger.info(
+        f"Generating SPICE metakernel with {len(latest_files)} files\n{json.dumps([f.path for f in latest_files], indent=2)}"
+    )
 
     if not start_time:
         start_time = minimum_mission_time
@@ -707,6 +706,37 @@ def _metakernel_builder(
                 priority_field="timestamp",
             )
 
-    logger.info(f"Metakernel generated with {len(metakernel.spice_files)} SPICE files.")
+    logger.info(
+        f"Metakernel generated with {len(metakernel.return_spice_files_in_order(detailed=False))} SPICE files."
+    )
 
     return metakernel
+
+
+def _file_meta_dates_within_range(
+    f: File, start_time: datetime, end_time: datetime
+) -> bool:
+    if f.file_meta is None:
+        return True
+
+    if f.file_meta.get("max_date_datetime") is None:
+        return True
+
+    min_date_datetime = TimeConversion.try_extract_iso_like_datetime(
+        f.file_meta, "min_date_datetime"
+    )
+    max_date_datetime = TimeConversion.try_extract_iso_like_datetime(
+        f.file_meta, "max_date_datetime"
+    )
+
+    if min_date_datetime is None or max_date_datetime is None:
+        logger.warning(
+            f"File {f.name} (id {f.id}) excluded as it is missing parsable min_date_datetime or max_date_datetime in metadata.\n"
+            f"  min_date_datetime: {min_date_datetime}, max_date_datetime: {max_date_datetime}"
+        )
+
+    if min_date_datetime is not None and min_date_datetime <= end_time:
+        if max_date_datetime is not None and max_date_datetime >= start_time:
+            return True
+
+    return False

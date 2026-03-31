@@ -407,6 +407,10 @@ async def adeploy_flows(local_debug: bool = False):
     )
 
     if local_debug:
+        # merge matlab deployables into deployables so they also run locally without docker
+        for matlab_deployable in matlab_deployables:
+            deployables.append(matlab_deployable)
+
         for deployable in deployables:
             deployable.work_queue_name = None
             deployable.job_variables = {}

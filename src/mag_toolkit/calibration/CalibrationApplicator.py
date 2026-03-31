@@ -1,342 +1,370 @@
+from __future__ import annotations
+
 import logging
-from collections.abc import Iterable
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
-from spacepy import pycdf
+import pandas
+import spiceypy
+from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
+from imap_processing.mag.l2 import mag_l2, mag_l2_data
 
+from imap_mag.cli.fetch.spice import generate_spice_metakernel
+from imap_mag.config import AppSettings
+from imap_mag.io.file import SciencePathHandler
+from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
+from imap_mag.util import ScienceMode
+from imap_mag.util.ReferenceFrame import ReferenceFrame
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CONSTANTS,
+)
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
 
 from .CalibrationDefinitions import (
-    CalibrationMetadata,
     CalibrationMethod,
-    CalibrationValue,
-    ScienceValue,
-    Sensor,
-    Validity,
     ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
+from .CalibrationMatrix import CalibrationMatrix
 from .ScienceLayer import ScienceLayer
 
 logger = logging.getLogger(__name__)
 
 
 class CalibrationApplicator:
-    def _apply_layers(
-        self, layer_files: list[Path], science_values: list[ScienceValue]
-    ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
-        total_offsets = []
-        for layer in layer_files:
-            if not layer.exists():
-                raise FileNotFoundError(f"Layer file {layer} does not exist")
-            calibration_layer = CalibrationLayer.from_file(layer)
-            logger.info(f"Applying offsets from {layer}")
+    def __init__(self, app_settings: AppSettings = AppSettings()):
+        self.app_settings = app_settings
 
-            science_values, offsets = self._apply_layer_to_science_values(
-                calibration_layer.value_type,
-                science_values,
-                calibration_layer.values,
-            )
-            if total_offsets:
-                total_offsets = self._sum_layers(total_offsets, offsets)
-            else:
-                total_offsets = offsets
-
-        return (science_values, total_offsets)
-
-    # TODO: could this be just another layer rather than a special case?
-    def apply_rotation(
+    def _create_offsets_file(
         self,
-        rotation: Path,
-        science_file: Path,
-        outputL2File: Path,
+        layers: list[Path],
+        outputCalibrationFile: Path,
+        science: ScienceLayer,
     ) -> Path:
-        """Apply rotation to the science data if a rotation file is provided."""
-        science_data = ScienceLayer.from_file(science_file)
-        science_values = self._rotate(rotation, science_data)
-        scienceResult = self._construct_science_layer(
-            science_data,
-            [science_file.name, rotation.name],
-            science_values,
+        if len(layers) < 1:
+            raise ValueError("No calibration layers provided")
+
+        science.load_contents()
+        science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
+
+        offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
+        if offsets.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
+            offsets = self._expand_boundary_changes_to_every_epoch(
+                offsets, science_epochs
+            )
+
+        if not offsets.compatible(science):
+            raise CalibrationValidityError(
+                "Offsets and science data are not time compatible"
+            )
+        science.clear_contents()
+
+        for layer_file in layers[1:]:
+            layer = CalibrationLayer.from_file(layer_file, load_contents=True)
+            if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
+                layer = self._expand_boundary_changes_to_every_epoch(
+                    layer, science_epochs
+                )
+            offsets = self._sum_layers(offsets, layer)
+            del layer
+
+        if offsets._contents is None:
+            raise ValueError("Offsets layer contents not loaded")
+
+        offsets.set_metadata(
+            [science.science_file],
+            science,
+            outputCalibrationFile.name,
+            method=CalibrationMethod.SUM,
         )
 
-        l2_filepath = scienceResult.writeToFile(outputL2File)
+        cal_filepath = offsets.writeToFile(outputCalibrationFile)
 
-        return l2_filepath
+        return cal_filepath
 
     def apply(
         self,
+        day_to_process: datetime,
         layer_files: list[Path],
         rotation: Path | None,
-        dataFile,
-        outputCalibrationFile: Path,
-        outputScienceFile: Path,
-    ) -> tuple[Path, Path]:
+        dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
+        outputOffsetsFile: Path,
+        outputScienceFolder: Path,
+        spice_metakernel: Path | None = None,
+        reference_frames: list[ReferenceFrame] = [
+            ReferenceFrame.SRF,
+            ReferenceFrame.GSE,
+            ReferenceFrame.GSM,
+            ReferenceFrame.RTN,
+            ReferenceFrame.DSRF,
+        ],
+    ) -> tuple[list[Path], Path]:
         """Currently operating on unprocessed data."""
-        science_data = ScienceLayer.from_file(dataFile)
 
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
 
-        if rotation is not None:
-            logger.info(f"Rotation science data according to {rotation}")
-            science_data.values = self._rotate(rotation, science_data)
-
-        science_values = science_data.values
-
-        dependencies = [layer_file.name for layer_file in layer_files]
-        if rotation:
-            dependencies.append(rotation.name)
-
-        science_values, total_offsets = self._apply_layers(layer_files, science_values)
-
-        offsets_layer = self._construct_calibration_layer(
-            total_offsets,
-            dependencies,
-            science_data,
-            outputCalibrationFile.name,
-        )
-
-        cal_filepath = offsets_layer.writeToFile(outputCalibrationFile)
-
-        scienceResult = self._construct_science_layer(
-            science_data,
-            dependencies,
-            science_values,
-        )
-
-        l2_filepath = scienceResult.writeToFile(outputScienceFile)
-
-        return (l2_filepath, cal_filepath)
-
-    def _construct_calibration_layer(
-        self,
-        offsets: list[CalibrationValue],
-        dependencies: list[str],
-        original_science: ScienceLayer,
-        calibration_id: str,
-    ) -> CalibrationLayer:
-        """Construct a calibration layer from the provided layer files."""
-
-        validity = Validity(start=offsets[0].time, end=offsets[-1].time)
-
-        # TODO: Correct dependencies and science in cal and science file
-
-        offsets_metadata = CalibrationMetadata(
-            dependencies=dependencies,
-            science=[original_science.science_file],
-            creation_timestamp=np.datetime64("now"),
-        )
-        offsets_layer = CalibrationLayer(
-            id=calibration_id,
-            mission=original_science.mission,
-            validity=validity,
-            method=CalibrationMethod.SUM,
-            sensor=original_science.sensor,
-            version=1,
-            metadata=offsets_metadata,
-            value_type=ValueType.VECTOR,
-            values=offsets,  # type: ignore
-        )
-
-        return offsets_layer
-
-    def _rotate(self, rotation_filepath: Path, science_layer: ScienceLayer):
-        with pycdf.CDF(str(rotation_filepath)) as cdf:
-            rotation_matrices_mago = np.array(cdf["URFTOORFO"][...])
-            rotation_matrices_magi = np.array(cdf["URFTOORFI"][...])
-        rotation_matrix = (
-            rotation_matrices_mago
-            if science_layer.sensor == Sensor.MAGO
-            else rotation_matrices_magi
-        )
-        for i, datapoint in enumerate(science_layer.values):
-            appropriate_rotator = rotation_matrix[datapoint.range]
-            datapoint = np.matmul(appropriate_rotator, datapoint.value)
-            science_layer.values[i].value = datapoint
-        return science_layer.values
-
-    def _construct_science_layer(
-        self, science: ScienceLayer, dependencies: list[str], values: list[ScienceValue]
-    ):
-        validity = Validity(start=values[0].time, end=values[-1].time)
-
-        metadata = CalibrationMetadata(
-            dependencies=dependencies,
-            science=[science.science_file],
-            creation_timestamp=np.datetime64("now"),
-        )
-        science_layer = ScienceLayer(
-            id="",
-            mission=science.mission,
-            validity=validity,
-            sensor=science.sensor,
-            version=0,
-            metadata=metadata,
-            science_file="",
-            value_type=ValueType.VECTOR,
-            values=values,
-        )
-        science_layer = science_layer.calculate_magnitudes()
-        return science_layer
-
-    def _apply_layer_to_science_values(
-        self,
-        layer_value_type: ValueType,
-        data_values: Iterable[ScienceValue],
-        layer_values: Iterable[CalibrationValue],
-    ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
-        match layer_value_type:
-            case ValueType.VECTOR:
-                return self._apply_vector_layer_to_science_values(
-                    data_values, layer_values
-                )
-            case ValueType.INTERPOLATION_POINTS:
-                return self._apply_interpolation_points_to_science_values(
-                    data_values, layer_values
-                )
-            case _:
-                raise ValueError(f"Unsupported layer value type: {layer_value_type}")
-
-    def _apply_interpolation_points_to_science_values(
-        self,
-        data_values: Iterable[ScienceValue],
-        layer_values: Iterable[CalibrationValue],
-    ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
-        science_times = np.array(
-            [data_point.time for data_point in data_values], dtype="m"
-        ) / np.timedelta64(1, "s")
-        layer_times = np.array(
-            [layer_point.time for layer_point in layer_values], dtype="m"
-        ) / np.timedelta64(1, "s")
-        x_vals = np.interp(
-            science_times,
-            layer_times,
-            [layer_point.value[0] for layer_point in layer_values],
-        )
-        y_vals = np.interp(
-            science_times,
-            layer_times,
-            [layer_point.value[1] for layer_point in layer_values],
-        )
-        z_vals = np.interp(
-            science_times,
-            layer_times,
-            [layer_point.value[2] for layer_point in layer_values],
-        )
-        interpolated_quality_flags = np.interp(
-            science_times,
-            layer_times,
-            [layer_point.quality_flag for layer_point in layer_values],
-        )
-        interpolated_quality_bitmasks = np.interp(
-            science_times,
-            layer_times,
-            [layer_point.quality_bitmask for layer_point in layer_values],
-        )
-        interpolated_calibration_values = [
-            CalibrationValue(
-                time=pd.to_datetime(science_time, unit="s").to_numpy(),
-                value=[x_val, y_val, z_val],
-                timedelta=0,
-                quality_flag=int(interpolated_quality_flag),
-                quality_bitmask=int(interpolated_quality_bitmask),
+        if not outputScienceFolder.exists():
+            raise ValueError(
+                f"Output science folder does not exist: {outputScienceFolder}"
             )
-            for science_time, x_val, y_val, z_val, interpolated_quality_flag, interpolated_quality_bitmask in zip(
-                science_times,
-                x_vals,
-                y_vals,
-                z_vals,
-                interpolated_quality_flags,
-                interpolated_quality_bitmasks,
+
+        science_handler = SciencePathHandler.from_filename(dataFile.name)
+        if not dataFile.exists() or not science_handler:
+            raise ValueError(
+                f"Input science file does not exist or could not be parsed: {dataFile}"
             )
+
+        if outputOffsetsFile.exists():
+            logger.warning(
+                f"Output calibration file already exists and would be overwritten: {outputOffsetsFile}"
+            )
+            raise FileExistsError(
+                f"Output calibration file already exists and would be overwritten: {outputOffsetsFile}"
+            )
+
+        science = ScienceLayer.from_file(dataFile, load_contents=True)
+
+        created_offsets_filepath = self._create_offsets_file(
+            layer_files,
+            outputOffsetsFile,
+            science=science,
+        )
+
+        del science
+
+        if not reference_frames:
+            logger.info(
+                "No reference frames specified, only offsets have been created, skipping L2 file generation"
+            )
+            return [], created_offsets_filepath
+
+        if rotation is None:
+            rotationCalibrationDataset = CalibrationMatrix.get_zero_rotation_dataset()
+            version = 0
+        else:
+            handler = AncillaryPathHandler.from_filename(rotation)
+            if not handler:
+                raise ValueError(f"Could not parse rotation file name: {rotation}")
+            version = handler.version
+            rotationCalibrationDataset = (
+                CalibrationMatrix.get_rotation_dataset_by_cdf_file(rotation)
+            )
+
+        calibration_dataset = (
+            CalibrationMatrix.get_combined_epoch_dataset_for_imap_processing(
+                rotationCalibrationDataset, day_to_process, day_to_process, version
+            )
+        )
+
+        # need to get the spice furnished as the l2 step does time truncation needed clock kernels and rotations
+        path_to_mk = (
+            generate_spice_metakernel(
+                start_time=day_to_process + timedelta(hours=-12),
+                end_time=day_to_process
+                + timedelta(
+                    days=1, hours=12
+                ),  # ensure we have plenty of spice coverage around it
+                file_types=[
+                    "leapseconds",
+                    "planetary_constants",
+                    "science_frames",
+                    "imap_frames",
+                    "spacecraft_clock",
+                    "attitude_history",
+                    "pointing_attitude",
+                    "planetary_ephemeris",
+                    "ephemeris_reconstructed",
+                ],
+                verify=False,
+            )
+            if spice_metakernel is None
+            else Path(spice_metakernel)
+        )
+        resolved_mk_path: str = str(path_to_mk.resolve())  # type: ignore
+
+        if not Path(resolved_mk_path).exists():
+            raise ValueError(
+                f"Resolved spice metakernel path does not exist: {resolved_mk_path}"
+            )
+
+        logger.info(f"furnishing spice metakernel at {resolved_mk_path}")
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(self.app_settings.data_store)
+            spiceypy.kclear()
+            spiceypy.furnsh(resolved_mk_path)
+            os.chdir(original_cwd)
+            logger.info("Kernels furnished. Loading data ready for L2 file generation")
+            science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
+            created_offsets_data = cdf_to_xarray(
+                str(created_offsets_filepath), to_datetime=False
+            )
+            mode = (
+                mag_l2_data.DataMode.NORM
+                if science_handler.get_mode() == ScienceMode.Normal
+                else mag_l2_data.DataMode.BURST
+            )
+            logger.info(
+                f"Using calibration to create L2 file(s) for {dataFile.name} in {mode.value} mode in frames {reference_frames} using imap_processing.mag.l2.mag_l2"
+            )
+            datasets = mag_l2.mag_l2(
+                input_data=science_data,
+                calibration_dataset=calibration_dataset,
+                offsets_dataset=created_offsets_data,
+                mode=mode,
+                day_to_process=np.datetime64(day_to_process),
+            )
+
+        finally:
+            os.chdir(original_cwd)
+            spiceypy.kclear()
+            os.remove(
+                resolved_mk_path
+            ) if spice_metakernel is None else None  # clean up the generated metakernel
+            del science_data
+            del created_offsets_data
+
+        # log paths to all files
+        logger.info(
+            f"Applied calibration layer(s) and created {len(datasets)} output dataset(s). Filtering to frames {reference_frames} and writing to CDF files in {outputScienceFolder}"
+        )
+
+        allowed_frame_descriptor_segments = [
+            f"-{frame.value}" for frame in reference_frames
         ]
 
-        return self._apply_vector_layer_to_science_values(
-            data_values, interpolated_calibration_values
-        )
-
-    def _apply_vector_layer_to_science_values(
-        self,
-        data_values: Iterable[ScienceValue],
-        layer_values: Iterable[CalibrationValue],
-    ) -> tuple[list[ScienceValue], list[CalibrationValue]]:
-        # This method assumes that the layer values are vectors and applies them to the science values
-        values: list[ScienceValue] = []
-
-        for data_point, layer_point in zip(data_values, layer_values):
-            if data_point.time != layer_point.time:
-                logger.error(
-                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
+        files_created = []
+        for ds in datasets:
+            logical_source = str(ds.attrs.get("Logical_source"))
+            if not logical_source:
+                logger.warning(
+                    "No Logical_source attribute found in dataset, skipping file naming"
                 )
-                logger.error(data_point)
-                logger.error(layer_point)
-                raise ValueError("Layer and data timestamps do not align")
-
-            data_point_vector = np.array(data_point.value)
-            layer_vector = np.array(layer_point.value)
-
-            value = data_point_vector + layer_vector
-            timedelta_value = layer_point.timedelta
-            quality_flag = layer_point.quality_flag
-            quality_bitmask = layer_point.quality_bitmask
-
-            time = data_point.time + pd.to_timedelta(timedelta_value, "s").to_numpy()
-
-            values.append(
-                ScienceValue(
-                    time=time,
-                    value=list(value),
-                    range=data_point.range,
-                    quality_flag=quality_flag,
-                    quality_bitmask=quality_bitmask,
+                continue
+            if not any(
+                segment in logical_source
+                for segment in allowed_frame_descriptor_segments
+            ):
+                logger.info(
+                    f"Skipping dataset with Logical_source {logical_source} as it does not match allowed frames {reference_frames}"
                 )
+                continue
+
+            if "_l2_" in logical_source and "l2-pre" not in logical_source:
+                logical_source = logical_source.replace(
+                    "l2", "l2-pre"
+                )  # set level to l2-pre for the output file naming, as it's pre-release l2
+
+            filename = SciencePathHandler.generate_filename_from_logical_source(
+                logical_source=logical_source,
+                content_date=day_to_process,
+                version=1,
+                extension="cdf",
             )
+            filepath = outputScienceFolder / filename
 
-        return (values, list(layer_values))
+            ds.attrs["Logical_file_id"] = filename
+            logger.info(f"Writing output science file to {filepath}")
+            if filepath.exists():
+                logger.warning(
+                    f"Output science file already exists and would be overwritten: {filepath}"
+                )
+                raise FileExistsError(
+                    f"Output science file already exists and would be overwritten: {filepath}"
+                )
+            xarray_to_cdf(ds, str(filepath))
+            files_created.append(filepath)
+
+        return (files_created, created_offsets_filepath)
+
+    def _expand_boundary_changes_to_every_epoch(
+        self,
+        layer: CalibrationLayer,
+        science_epochs: pandas.Series,
+    ) -> CalibrationLayer:
+        """Expand an BOUNDARY_CHANGES_ONLY layer to match science timestamps using forward-fill."""
+        import pandas as pd
+
+        layer.load_contents()
+        if layer._contents is None:
+            raise ValueError("Boundary changes layer has no contents to expand.")
+
+        change_points = layer._contents.copy()
+        change_points[CONSTANTS.CSV_VARS.EPOCH] = pd.to_datetime(
+            change_points[CONSTANTS.CSV_VARS.EPOCH]
+        )
+        change_points = change_points.set_index(CONSTANTS.CSV_VARS.EPOCH)
+
+        science_index = pd.DatetimeIndex(science_epochs)
+        first_science_epoch = science_index[0]
+        first_change_time = change_points.index[0]
+
+        if first_change_time > first_science_epoch:
+            zero_row = pd.DataFrame(
+                {
+                    CONSTANTS.CSV_VARS.OFFSET_X: [0.0],
+                    CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
+                    CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
+                    CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+                },
+                index=pd.DatetimeIndex([first_science_epoch]),
+            )
+            change_points = pd.concat([zero_row, change_points])
+
+        expanded = change_points.reindex(science_index, method="ffill")
+
+        expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
+            expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG].fillna(0).astype(int)
+        )
+        expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
+            expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int)
+        )
+        expanded[CONSTANTS.CSV_VARS.TIMEDELTA] = expanded[
+            CONSTANTS.CSV_VARS.TIMEDELTA
+        ].fillna(0.0)
+
+        expanded = expanded.reset_index()
+        expanded = expanded.rename(columns={"index": CONSTANTS.CSV_VARS.EPOCH})
+
+        layer._contents = expanded
+        layer.value_type = ValueType.VECTOR
+        return layer
 
     def _sum_layers(
         self,
-        data_values: Iterable[CalibrationValue],
-        layer_values: Iterable[CalibrationValue],
-    ) -> list[CalibrationValue]:
-        values = []
+        offsets: CalibrationLayer,
+        layer: CalibrationLayer,
+    ) -> CalibrationLayer:
+        if offsets._contents is None or layer._contents is None:
+            raise ValueError("Offsets or layer contents are not loaded")
 
-        for data_point, layer_point in zip(data_values, layer_values):
-            if data_point.time != layer_point.time:
-                raise ValueError(
-                    f"Layer and data timestamps {data_point.time!s} and {layer_point.time!s} do not align"
-                )
+        if not offsets.compatible(layer):
+            raise ValueError("Offsets and layer are not time compatible")
 
-            data_point_vector = np.array(data_point.value)
-            layer_vector = np.array(layer_point.value)
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X] += layer._contents[
+            CONSTANTS.CSV_VARS.OFFSET_X
+        ]
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y] += layer._contents[
+            CONSTANTS.CSV_VARS.OFFSET_Y
+        ]
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z] += layer._contents[
+            CONSTANTS.CSV_VARS.OFFSET_Z
+        ]
+        offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA] += layer._contents[
+            CONSTANTS.CSV_VARS.TIMEDELTA
+        ]
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] |= layer._contents[
+            CONSTANTS.CSV_VARS.QUALITY_FLAG
+        ]
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] |= layer._contents[
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK
+        ]
 
-            value = data_point_vector + layer_vector
-            timedelta = data_point.timedelta + layer_point.timedelta
-
-            quality_flag = data_point.quality_flag | layer_point.quality_flag
-            quality_bitmask = data_point.quality_bitmask | layer_point.quality_bitmask
-
-            values.append(
-                CalibrationValue(
-                    time=data_point.time,
-                    value=list(value),
-                    timedelta=timedelta,
-                    quality_flag=quality_flag,
-                    quality_bitmask=quality_bitmask,
-                )
-            )
-
-        return values
-
-    def check_science_in_valid_calibration_window(
-        self, data: ScienceLayer, calibration_layer: CalibrationLayer
-    ):
-        # check for time validity
-        if data.values[0].time < np.datetime64(
-            calibration_layer.validity.start
-        ) or data.values[-1].time > np.datetime64(calibration_layer.validity.end):
-            logger.debug("Data outside of calibration validity range")
-            raise CalibrationValidityError("Data outside of calibration validity range")
+        offsets._data_path = None  # Invalidate data path since contents have changed
+        return offsets

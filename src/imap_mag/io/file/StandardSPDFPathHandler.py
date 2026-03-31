@@ -27,8 +27,14 @@ class StandardSPDFPathHandler(VersionedPathHandler):
             "file name", ["descriptor", "level", "content_date", "extension"]
         )
         assert self.content_date
+        assert self.extension
 
-        return f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03}.{self.extension}"
+        return self.generate_filename_from_logical_source(
+            logical_source=f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}",
+            content_date=self.content_date,
+            version=self.version,
+            extension=self.extension,
+        )
 
     def get_content_date_for_indexing(self):
         return self.content_date
@@ -42,3 +48,18 @@ class StandardSPDFPathHandler(VersionedPathHandler):
         return re.compile(
             rf"{self.mission}_{self.instrument}_{self.level}_{re.escape(self.descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
         )
+
+    @classmethod
+    def generate_filename_from_logical_source(
+        cls, logical_source: str, content_date: datetime, version: int, extension: str
+    ) -> str:
+        if not logical_source:
+            raise ValueError("Logical_source is required to generate filename")
+        if not content_date:
+            raise ValueError("content_date is required to generate filename")
+        if version is None:
+            raise ValueError("version is required to generate filename")
+        if not extension:
+            raise ValueError("extension is required to generate filename")
+
+        return f"{logical_source.lower()}_{content_date.strftime('%Y%m%d')}_v{version:03d}.{extension}"

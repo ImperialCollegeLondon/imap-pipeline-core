@@ -9,8 +9,13 @@ class GradiometryConfig(BaseModel):
     sc_interference_threshold: float = 0.0
 
 
+class SetQualityAndNaNConfig(BaseModel):
+    csv_file: str
+
+
 class CalibrationConfig(BaseModel):
     gradiometer: GradiometryConfig = GradiometryConfig()
+    set_quality_and_nan: SetQualityAndNaNConfig | None = None
 
     @classmethod
     def from_file(cls, path: Path):

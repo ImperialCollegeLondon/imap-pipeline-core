@@ -46,6 +46,7 @@ class CONSTANTS:
 
     class CSV_VARS:
         EPOCH = "time"
+        RAW_EPOCH = "epoch"
         X = "x"
         Y = "y"
         Z = "z"
@@ -80,6 +81,8 @@ class CalibrationMethod(Enum):
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
+    MANUAL = "manual", "Manual offsets"
+    SET_QUALITY_AND_NAN = "quality", "Set Quality and NaN"
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":
@@ -97,7 +100,7 @@ class Sensor(StrEnum):
 
 class ValueType(StrEnum):
     VECTOR = "vector"
-    INTERPOLATION_POINTS = "interpolation_points"
+    BOUNDARY_CHANGES_ONLY = "boundary_changes"
 
 
 class Mission(StrEnum):
@@ -116,6 +119,11 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     data_filename: Path | None = None
     dependencies: list[str]
     science: list[str]
+    content_date: Annotated[
+        np.datetime64 | None,
+        BeforeValidator(convert_time),
+        PlainSerializer(serialize_dt, return_type=str),
+    ] = None
     creation_timestamp: Annotated[
         np.datetime64,
         BeforeValidator(convert_time),
