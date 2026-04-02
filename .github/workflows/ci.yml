@@ -104,7 +104,7 @@ jobs:
         run: echo "Version ${{ env.PACKAGE_VERSION }}, SHA ${{ github.sha }}, Ref ${{ github.ref_name }}" >  dist/python${{matrix.python-versions}}/version.txt
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
 
       - name: Login to GitHub Container registry ghcr.io
@@ -313,7 +313,7 @@ jobs:
         run: echo "Version ${{ env.PACKAGE_VERSION }}, SHA ${{ github.sha }}, Ref ${{ github.ref_name }}" >  dist/python${{matrix.python-versions}}/version.txt
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
 
       - name: Login to GitHub Container registry ghcr.io
