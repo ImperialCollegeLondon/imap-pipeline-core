@@ -256,7 +256,7 @@ class CalibrationLayer(Layer):
         df = pd.read_csv(
             path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
         )
-        if df.empty:
+        if df.columns.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
         return df
 

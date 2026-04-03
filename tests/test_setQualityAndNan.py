@@ -451,8 +451,9 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-16T02:11:54,2026-01-16T02:11:57,2,3,True,False,False\n"
     )
-    csv_path = Path(tempfile.mktemp(suffix=".csv"))
+    csv_path = dynamic_work_folder / "quality.csv"
     csv_path.write_text(csv_content)
+    date = datetime(2026, 1, 16)
 
     try:
         config = CalibrationConfig(
@@ -461,7 +462,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
 
         # Step 1: Calibrate - create the SET_QUALITY_AND_NAN layer
         calibrate(
-            start_date=datetime(2026, 1, 16),
+            start_date=date,
             method=CalibrationMethod.SET_QUALITY_AND_NAN,
             mode=ScienceMode.Normal,
             sensor=Sensor.MAGO,
@@ -470,19 +471,24 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
         )
 
         # Verify the layer was created in the datastore
-        layer_dir = temp_datastore / "calibration" / "layers" / "2026" / "01"
+        layer_dir = (
+            temp_datastore
+            / "calibration"
+            / "layers"
+            / f"{date.year}"
+            / f"{date.month:02d}"
+        )
         layer_files = list(layer_dir.glob("*quality*"))
         assert len(layer_files) >= 2  # json + csv
 
         # Step 2: Apply the SET_QUALITY_AND_NAN layer
         apply(
             layers=["*quality*"],
-            start_date=datetime(2026, 1, 16),
+            start_date=date,
             mode=ScienceMode.Normal,
             save_mode=SaveMode.LocalOnly,
         )
 
-        date = datetime(2026, 1, 16)
         output_l2_file = (
             temp_datastore
             / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
@@ -554,6 +560,62 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
                 assert abs(float(vectors[i, 0])) < 1e30, (
                     f"L2 row {i} x should not be FILLVAL"
                 )
+
+    finally:
+        csv_path.unlink(missing_ok=True)
+
+
+def test_apply_empty_quality_layer_produces_zero_quality_flags(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    # CSV with data for a completely different day - no windows will match Jan 16
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
+    )
+    csv_path = Path(tempfile.mktemp(suffix=".csv"))
+    csv_path.write_text(csv_content)
+
+    try:
+        config = CalibrationConfig(
+            set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+        )
+
+        # Calibrate - should create an empty (headers-only) quality layer
+        calibrate(
+            start_date=datetime(2026, 1, 16),
+            method=CalibrationMethod.SET_QUALITY_AND_NAN,
+            mode=ScienceMode.Normal,
+            sensor=Sensor.MAGO,
+            configuration=config.model_dump_json(),
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        # Apply the empty quality layer - must not raise
+        apply(
+            layers=["*quality*"],
+            start_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Normal,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        date = datetime(2026, 1, 16)
+        output_offsets_file = (
+            temp_datastore
+            / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        )
+        assert output_offsets_file.exists()
+
+        with open_cdf(output_offsets_file) as cdf:
+            quality_flags = cdf["quality_flag"][...]
+            quality_bitmask = cdf["quality_bitmask"][...]
+
+            # No quality windows matched - every epoch should be unflagged
+            for i, (flag, mask) in enumerate(zip(quality_flags, quality_bitmask)):
+                assert flag == 0, f"Row {i} should have quality_flag=0, got {flag}"
+                assert mask == 0, f"Row {i} should have quality_bitmask=0, got {mask}"
 
     finally:
         csv_path.unlink(missing_ok=True)

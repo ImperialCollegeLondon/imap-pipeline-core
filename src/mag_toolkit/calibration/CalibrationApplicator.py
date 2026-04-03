@@ -300,6 +300,25 @@ class CalibrationApplicator:
         change_points = change_points.set_index(CONSTANTS.CSV_VARS.EPOCH)
 
         science_index = pd.DatetimeIndex(science_epochs)
+
+        if change_points.empty:
+            zero_df = pd.DataFrame(
+                {
+                    CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
+                    CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
+                    CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
+                    CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
+                },
+                index=science_index,
+            )
+            zero_df.index.name = CONSTANTS.CSV_VARS.EPOCH
+            zero_df = zero_df.reset_index()
+            layer._contents = zero_df
+            layer.value_type = ValueType.VECTOR
+            return layer
+
         first_science_epoch = science_index[0]
         first_change_time = change_points.index[0]
 
