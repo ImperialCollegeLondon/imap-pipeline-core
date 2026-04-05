@@ -51,6 +51,7 @@ def check_ialirt_files(
     validation: dict = packet_definition["ialirt_validation"]
 
     # Check parameters according to validation rules
+    checks_run = 0
     for parameter in validation:
         name = parameter["name"]
         type = parameter["type"]
@@ -58,6 +59,8 @@ def check_ialirt_files(
         if name not in ialirt_data.columns:
             logger.warning(f"Parameter {name} not found in I-ALiRT data columns.")
             continue
+
+        checks_run += 1
 
         match type:
             case "limit":  # ------- Check for out-of-bounds values -------
@@ -125,6 +128,11 @@ def check_ialirt_files(
 
             case _:  # ------- Unknown check -------
                 logger.error(f"Unknown validation type {type} for parameter {name}.")
+
+    if checks_run == 0:
+        raise RuntimeError(
+            "No checks were performed — no matching columns found in I-ALiRT data."
+        )
 
     return anomalies
 

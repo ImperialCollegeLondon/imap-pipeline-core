@@ -228,6 +228,24 @@ def test_check_ialirt_files_with_anomalies(
     assert anomalies[0] == expected_anomaly
 
 
+def test_check_ialirt_raises_error_when_no_checks_run(temp_folder_path) -> None:
+    # Set up: YAML has known params, but CSV has completely different columns.
+    write_test_ialirt_packet_definition_file(temp_folder_path)
+    test_ialirt_data: Path = temp_folder_path / "ialirt_data.csv"
+    test_ialirt_data.write_text(
+        "time_utc,unrelated_column_a,unrelated_column_b\n"
+        "2024-01-01T00:00:00,1,2\n"
+        "2024-01-01T01:00:00,3,4\n"
+    )
+
+    # Exercise and verify.
+    with pytest.raises(RuntimeError, match="No checks were performed"):
+        check_ialirt_files(
+            files=[test_ialirt_data],
+            packet_definition_folder=temp_folder_path,
+        )
+
+
 def test_check_ialirt_files_unknown_validation_type(temp_folder_path, caplog) -> None:
     # Set up.
     packet_definition_file: Path = (
