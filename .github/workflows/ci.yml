@@ -205,7 +205,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if:  ${{ !cancelled() && hashFiles('test-results.xml') != '' }}
         with:
           name: Test Results (${{ matrix.python-versions }})
