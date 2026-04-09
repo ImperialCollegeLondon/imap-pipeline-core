@@ -373,15 +373,15 @@ def test_fetch_science_downloads_cdf_from_sdc(
 
     # Verify.
     assert result.exit_code == 0
-    assert (
+    expected_cdf = (
         temp_datastore
         / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
-    ).exists()
+    )
+    assert (expected_cdf).exists()
 
     with (
         open(
-            temp_datastore
-            / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            expected_cdf,
             "rb",
         ) as output,
         open(cdf_file, "rb") as input,
@@ -463,15 +463,16 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
 
     # Verify.
     assert result.exit_code == 0
-    assert (
+    expected_cdf = (
         temp_datastore
         / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
-    ).exists()
+    )
+
+    assert expected_cdf.exists()
 
     with (
         open(
-            temp_datastore
-            / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            expected_cdf,
             "rb",
         ) as output,
         open(cdf_file, "rb") as input,
