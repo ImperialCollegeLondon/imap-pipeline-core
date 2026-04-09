@@ -14,11 +14,7 @@ from typer.testing import CliRunner
 from imap_mag.cli.check.check_ialirt import IALiRTAnomalyError
 from imap_mag.main import app
 from prefect_server.checkIALiRT import CONSTANTS
-from tests.util.miscellaneous import (  # noqa: F401
-    DATASTORE,
-    TEST_DATA,
-    temp_datastore,
-)
+from tests.util.miscellaneous import DATASTORE, TEST_DATA
 
 runner = CliRunner()
 
@@ -46,7 +42,7 @@ def test_app_says_hello():
 def test_process_with_binary_hk_converts_to_csv(
     binary_file,
     output_file,
-    temp_datastore,  # noqa: F811
+    temp_datastore,
     dynamic_work_folder,
 ):
     # Set up.
@@ -117,12 +113,12 @@ def test_process_error_with_unsupported_file_type():
     [None, "downloadonly"],
 )
 def test_fetch_binary_downloads_hk_from_webpoda(
-    wiremock_manager, mode, preclean_work_and_output, dynamic_work_folder
+    wiremock_manager, mode, temp_datastore, dynamic_work_folder
 ):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
     expected_result = (
-        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
+        temp_datastore / "hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
     )
 
     wiremock_manager.add_file_mapping(
@@ -182,7 +178,7 @@ def test_fetch_binary_downloads_hk_from_webpoda(
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 def test_fetch_binary_downloads_hk_from_webpoda_with_ert(
-    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+    wiremock_manager, temp_datastore, dynamic_work_folder
 ):
     # Set up.
     binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts"))
@@ -225,13 +221,14 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(
 
     # Verify.
     assert result.exit_code == 0
-    assert Path(
-        "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
+    assert (
+        temp_datastore / "hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts"
     ).exists()
 
     with (
         open(
-            "output/hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts",
+            temp_datastore
+            / "hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.pkts",
             "rb",
         ) as output,
         open(binary_file, "rb") as input,
@@ -245,7 +242,7 @@ def test_fetch_binary_downloads_hk_from_webpoda_with_ert(
 )
 def test_fetch_ialirt_downloads_data_from_sdc(
     wiremock_manager,
-    temp_datastore,  # noqa: F811
+    temp_datastore,
 ) -> None:
     # Set up.
     query_response: list[dict] = [
@@ -312,7 +309,7 @@ def test_fetch_ialirt_downloads_data_from_sdc(
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 def test_fetch_science_downloads_cdf_from_sdc(
-    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+    wiremock_manager, temp_datastore, dynamic_work_folder
 ):
     # Set up.
     query_response: list[dict[str, str]] = [
@@ -376,13 +373,15 @@ def test_fetch_science_downloads_cdf_from_sdc(
 
     # Verify.
     assert result.exit_code == 0
-    assert Path(
-        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
+    assert (
+        temp_datastore
+        / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
     ).exists()
 
     with (
         open(
-            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            temp_datastore
+            / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
             "rb",
         ) as output,
         open(cdf_file, "rb") as input,
@@ -395,7 +394,7 @@ def test_fetch_science_downloads_cdf_from_sdc(
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
-    wiremock_manager, preclean_work_and_output, dynamic_work_folder
+    wiremock_manager, temp_datastore, dynamic_work_folder
 ):
     # Set up.
     query_response: list[dict[str, str]] = [
@@ -464,13 +463,15 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
 
     # Verify.
     assert result.exit_code == 0
-    assert Path(
-        "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
+    assert (
+        temp_datastore
+        / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf"
     ).exists()
 
     with (
         open(
-            "output/science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
+            temp_datastore
+            / "science/mag/l1b/2025/05/imap_mag_l1b_norm-magi_20250502_v001.cdf",
             "rb",
         ) as output,
         open(cdf_file, "rb") as input,
@@ -479,7 +480,7 @@ def test_fetch_science_downloads_cdf_from_sdc_with_ingestion_date(
 
 
 def test_check_ialirt_no_issues(
-    temp_datastore,  # noqa: F811
+    temp_datastore,
     capture_cli_logs,
 ):
     # Exercise.
@@ -502,7 +503,7 @@ def test_check_ialirt_no_issues(
 
 
 def test_check_ialirt_with_issues(
-    temp_datastore,  # noqa: F811
+    temp_datastore,
     capture_cli_logs,
 ):
     CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
