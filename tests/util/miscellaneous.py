@@ -1,5 +1,4 @@
 import logging
-import os
 import shutil
 import tempfile
 from datetime import datetime, timedelta
@@ -41,18 +40,6 @@ def enableLogging():
     )
     yield
     AppLogging.reset_setup_flag()  # Reset logging setup after test
-
-
-@pytest.fixture(
-    autouse=False,
-    scope="function",
-    params=[pytest.param("", marks=pytest.mark.xdist_group("datastore"))],
-)
-def preclean_work_and_output():
-    logger.info("Cleaning up work and output directories...")
-    os.system("rm -rf .work")
-    os.system("rm -rf output/*")
-    yield
 
 
 @pytest.fixture(autouse=False, scope="function")

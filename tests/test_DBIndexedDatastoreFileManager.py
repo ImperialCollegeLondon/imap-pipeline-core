@@ -102,7 +102,8 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     mock_datastore_manager: mock.Mock,
     mock_database: mock.Mock,
     capture_cli_logs,
-    preclean_work_and_output,
+    temp_datastore,
+    dynamic_work_folder,
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
