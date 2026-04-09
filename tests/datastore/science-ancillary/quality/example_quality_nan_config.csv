@@ -1,0 +1,2 @@
+start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z
+2026-01-15T00:00:00.000,2026-01-15T23:59:59.999,1,4,True,True,True
