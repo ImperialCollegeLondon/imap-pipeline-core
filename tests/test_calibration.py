@@ -3,7 +3,6 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from shutil import which
 
 import numpy as np
 import pandas as pd
@@ -14,7 +13,6 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
-from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
 from tests.util.miscellaneous import DATASTORE
 
 
@@ -40,31 +38,13 @@ def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None
     )
 
 
-def get_test_matlab_command():
-    if os.getenv("MLM_LICENSE_TOKEN") and (which("matlab-batch") is not None):
-        return "matlab-batch"
-    else:
-        return "matlab"
-
-
-@pytest.fixture()
-def matlab_test_setup():
-    setup_matlab_path("src/matlab", get_test_matlab_command())
-    yield
-
-
 @pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which(get_test_matlab_command()) is None,
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    matlab_test_setup, tmp_path, monkeypatch, clean_datastore, dynamic_work_folder
+    tmp_path, monkeypatch, clean_datastore, dynamic_work_folder
 ):
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
-        get_test_matlab_command,
-    )
     prepare_test_file(
         "imap_mag_l1c_norm-mago-hundred-vectors_20250421_v001.cdf",
         "science/mag/l1c",
@@ -121,18 +101,12 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
 
 @pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which(get_test_matlab_command()) is None,
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
-    matlab_test_setup, tmp_path, monkeypatch, temp_datastore, dynamic_work_folder
+    tmp_path, monkeypatch, temp_datastore, dynamic_work_folder
 ):
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
-        get_test_matlab_command,
-    )
-
     gradiometry(
         start_date=datetime(2026, 9, 30),
         mode=ScienceMode.Normal,

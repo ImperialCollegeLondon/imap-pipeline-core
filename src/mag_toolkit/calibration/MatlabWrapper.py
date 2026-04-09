@@ -1,11 +1,16 @@
 import logging
+import os
 import subprocess
+from shutil import which
 
 logger = logging.getLogger(__name__)
 
 
 def setup_matlab_path(path, matlab_command):
     cmd = [matlab_command, "-batch", f'addpath(genpath("{path}")); savepath']
+
+    logger.info(f"MATLAB setup command: \n  {' '.join(cmd)}")
+
     p = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
@@ -16,7 +21,14 @@ def setup_matlab_path(path, matlab_command):
 
 
 def get_matlab_command():
-    return "matlab"
+    if (
+        os.getenv("CI") == "true"
+        and os.getenv("MLM_LICENSE_TOKEN")
+        and (which("matlab-batch") is not None)
+    ):
+        return "matlab-batch"
+    else:
+        return "matlab"
 
 
 def call_matlab(command, first_call=True, timeout=60 * 5):
@@ -48,4 +60,4 @@ def call_matlab(command, first_call=True, timeout=60 * 5):
 
     if p.returncode != 0:
         logger.error(f"MATLAB command failed with return code {p.returncode}")
-        raise RuntimeError("MATLAB command failed")
+        raise RuntimeError(f"MATLAB command failed with return code {p.returncode}")
