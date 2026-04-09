@@ -1,5 +1,4 @@
 import tempfile
-import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -20,9 +19,7 @@ from mag_toolkit.calibration import (
 )
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
-
-with threading.Lock():
-    from spacepy import pycdf
+from tests.util.miscellaneous import open_cdf
 
 
 @pytest.fixture
@@ -501,7 +498,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
         FILLVAL = CONSTANTS.CDF_FLOAT_FILLVAL
 
         # Verify the offsets CDF has correct quality flags, bitmask, and FILLVAL offsets
-        with pycdf.CDF(str(output_offsets_file)) as cdf:
+        with open_cdf(output_offsets_file) as cdf:
             quality_flags = cdf["quality_flag"][...]
             quality_bitmask = cdf["quality_bitmask"][...]
             offsets = cdf["offsets"][...]
@@ -537,7 +534,8 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
                 )
 
         # Verify the L2 output has FILLVAL where expected
-        with pycdf.CDF(str(output_l2_file)) as cdf:
+
+        with open_cdf(output_l2_file) as cdf:
             assert "b_srf" in cdf
             vectors = cdf["b_srf"][...]
 

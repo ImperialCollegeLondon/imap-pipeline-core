@@ -1,7 +1,5 @@
 import os
-import threading
 from datetime import datetime
-from shutil import which
 
 import pytest
 
@@ -13,17 +11,8 @@ from prefect_server.performCalibration import (
     calibrate_and_apply_flow,
     calibrate_flow,
 )
+from tests.util.miscellaneous import open_cdf
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
-
-with threading.Lock():
-    from spacepy import pycdf
-
-
-def get_test_matlab_command():
-    if os.getenv("MLM_LICENSE_TOKEN") and (which("matlab-batch") is not None):
-        return "matlab-batch"
-    else:
-        return "matlab"
 
 
 def test_apply_flow_resolves_layer_patterns_and_discovers_science_file(
@@ -32,7 +21,6 @@ def test_apply_flow_resolves_layer_patterns_and_discovers_science_file(
     spice_kernels,
     prefect_test_fixture,  # noqa: F811
 ):
-    """Test that apply_flow resolves layer patterns and discovers science files by mode."""
     apply_flow(
         layers=["*noop*"],
         start_date=datetime(2026, 1, 16),
@@ -53,15 +41,14 @@ def test_apply_flow_resolves_layer_patterns_and_discovers_science_file(
     )
     assert output_offsets_file.exists()
 
-    with pycdf.CDF(str(output_l2_file)) as cdf:
+    with open_cdf(output_l2_file) as cdf:
         assert "b_srf" in cdf
         assert "epoch" in cdf
         assert "magnitude" in cdf
 
 
 @pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which(get_test_matlab_command()) is None,
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_calibrate_flow_creates_calibration_layer(
@@ -69,11 +56,6 @@ def test_calibrate_flow_creates_calibration_layer(
     dynamic_work_folder,
     prefect_test_fixture,  # noqa: F811
 ):
-    """Test that calibrate_flow creates a calibration layer for a date range."""
-    from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
-
-    setup_matlab_path("src/matlab", get_test_matlab_command())
-
     results = calibrate_flow(
         start_date=datetime(2026, 1, 16),
         mode=ScienceMode.Normal,
@@ -89,8 +71,7 @@ def test_calibrate_flow_creates_calibration_layer(
 
 
 @pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
-    or which(get_test_matlab_command()) is None,
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
     reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
 )
 def test_calibrate_and_apply_flow_creates_output(
@@ -99,11 +80,6 @@ def test_calibrate_and_apply_flow_creates_output(
     spice_kernels,
     prefect_test_fixture,  # noqa: F811
 ):
-    """Test that calibrate_and_apply_flow calibrates and applies in one flow."""
-    from mag_toolkit.calibration.MatlabWrapper import setup_matlab_path
-
-    setup_matlab_path("src/matlab", get_test_matlab_command())
-
     calibrate_and_apply_flow(
         start_date=datetime(2026, 1, 16),
         method=CalibrationMethod.NOOP,

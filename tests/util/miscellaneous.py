@@ -91,3 +91,11 @@ def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None =
         src_file,
         dest_folder / new_filename,
     )
+
+
+def open_cdf(cdf_path: Path, readonly: bool = True):
+    from spacepy import (
+        pycdf,  # has race condition when imported in multiple threads, so import locally within function. See https://github.com/spacepy/spacepy/issues/835
+    )
+
+    return pycdf.CDF(str(cdf_path), readonly=readonly)

@@ -1,5 +1,4 @@
 import re
-import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -8,11 +7,7 @@ import pytest
 
 from imap_mag.cli.apply import apply
 from tests.util.database import test_database  # noqa: F401
-from tests.util.miscellaneous import TEST_DATA, copy_test_file
-
-with threading.Lock():
-    # seems to have a horrible race condition when run in parallel, so ensure tests using it do not run in parallel with other tests using it
-    from spacepy import pycdf
+from tests.util.miscellaneous import TEST_DATA, copy_test_file, open_cdf
 
 
 def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
@@ -27,14 +22,14 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     )
     assert output_offsets_file.exists()
 
-    with pycdf.CDF(str(output_offsets_file)) as offsets_cdf:
+    with open_cdf(output_offsets_file) as offsets_cdf:
         assert "offsets" in offsets_cdf
         assert "epoch" in offsets_cdf
         assert "timedeltas" in offsets_cdf
         assert "quality_flag" in offsets_cdf
         assert "quality_bitmask" in offsets_cdf
 
-    with pycdf.CDF(str(output_l2_file)) as cdf:
+    with open_cdf(output_l2_file) as cdf:
         assert f"b_{frame}" in cdf
         assert "epoch" in cdf
         assert "magnitude" in cdf
@@ -172,7 +167,7 @@ def test_apply_performs_correct_rotation(
         [23217.203, 9613.361, 36211.74],
     ]
 
-    with pycdf.CDF(str(output_file)) as cdf:
+    with open_cdf(output_file) as cdf:
         vectors = cdf["b_srf"][...]
         for correct_vec, vec in zip(correct_vecs, vectors):  # type: ignore
             # Convert to list for comparison
@@ -220,7 +215,7 @@ def test_apply_adds_offsets_together_correctly(
         [23584.60784, 9784.77406, 36042.23171],
     ]
 
-    with pycdf.CDF(str(output_file)) as cdf:
+    with open_cdf(output_file) as cdf:
         vectors = cdf["b_srf"][...]
         for correct_vec, vec in zip(correct_vecs, vectors):  # type: ignore
             # Convert to list for comparison
@@ -293,7 +288,7 @@ def test_apply_writes_magnitudes_correctly(
         [-9784.77406, -23584.60784, -36042.23171],
     ]
 
-    with pycdf.CDF(str(output_file)) as cdf:
+    with open_cdf(output_file) as cdf:
         magnitudes = cdf["magnitude"][...]
         for correct_vec, mag in zip(correct_vecs, magnitudes):  # type: ignore
             # Convert to list for comparison

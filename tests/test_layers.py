@@ -1,13 +1,8 @@
 import re
-import threading
 
 import numpy as np
 import pandas as pd
 import pytest
-
-with threading.Lock():
-    # seems to have a horrible race condition when run in parallel, so ensure tests using it do not run in parallel with other tests using it
-    from spacepy import pycdf
 
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -23,11 +18,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     Validity,
     ValueType,
 )
-from tests.util.miscellaneous import DATASTORE
-
-# pycdf is not thread safe, so we need to ensure tests using it do not run in parallel with other tests using it
-#  apply mark to all tests in this file
-pytestmark = pytest.mark.xdist_group("spacepy")
+from tests.util.miscellaneous import DATASTORE, open_cdf
 
 
 def test_science_layer_calculates_magnitude_correctly():
@@ -133,7 +124,7 @@ def test_science_layer_writes_to_cdf_correctly(tmp_path):
     science_layer.calculate_magnitudes()  # Ensure magnitudes are calculated
     science_layer.writeToFile(cdf_path)
 
-    with pycdf.CDF(str(cdf_path)) as cdf_file:
+    with open_cdf(cdf_path) as cdf_file:
         vecs = cdf_file["vectors"][...]
         assert vecs is not None
         assert vecs[0][0] == science_layer._contents["x"][0]
