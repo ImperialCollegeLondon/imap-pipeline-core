@@ -92,7 +92,20 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
 
         change_points.sort(key=lambda p: p[CONSTANTS.CSV_VARS.EPOCH])
-        df = pd.DataFrame(change_points)
+        if change_points:
+            df = pd.DataFrame(change_points)
+        else:
+            df = pd.DataFrame(
+                columns=[
+                    CONSTANTS.CSV_VARS.EPOCH,
+                    CONSTANTS.CSV_VARS.OFFSET_X,
+                    CONSTANTS.CSV_VARS.OFFSET_Y,
+                    CONSTANTS.CSV_VARS.OFFSET_Z,
+                    CONSTANTS.CSV_VARS.TIMEDELTA,
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK,
+                ]
+            )
 
         validity = (
             Validity(
@@ -192,7 +205,9 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
 
             change_points.append(
                 {
-                    CONSTANTS.CSV_VARS.EPOCH: pd.Timestamp(window_start),
+                    CONSTANTS.CSV_VARS.EPOCH: pd.Timestamp(
+                        window_start,
+                    ),
                     CONSTANTS.CSV_VARS.OFFSET_X: offset_x,
                     CONSTANTS.CSV_VARS.OFFSET_Y: offset_y,
                     CONSTANTS.CSV_VARS.OFFSET_Z: offset_z,

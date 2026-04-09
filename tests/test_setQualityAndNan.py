@@ -86,6 +86,45 @@ def test_calibration_job_creates_quality_flag_layer(quality_csv, tmp_path):
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
 
+def test_epoch_written_as_full_iso_datetime_when_clipped_to_day_boundary(tmp_path):
+    """When config start_date is before the calibration day, window_start is clipped
+    to midnight of the calibration day. That midnight timestamp must be written to
+    CSV as a full ISO datetime (e.g. '2026-01-16T00:00:00.000000'), not just the
+    date ('2026-01-16'), so that downstream readers always see a datetime."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-15,2026-01-17,2,3,True,False,False\n"  # starts before calday
+    )
+    csv_path = tmp_path / "quality_input.csv"
+    csv_path.write_text(csv_content)
+
+    from imap_mag.io.file import CalibrationLayerPathHandler
+
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    work_folder = tmp_path / "work"
+    work_folder.mkdir()
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
+
+    job = SetQualityAndNaNCalibrationJob(params, work_folder)
+    _, datafile = job.run_calibration(handler, config)
+
+    raw_lines = datafile.read_text().splitlines()
+    # Second line is the first data row; its epoch value is the first field
+    first_epoch_str = raw_lines[1].split(",")[0]
+    # Must contain a time component — a bare date like "2026-01-16" has no 'T'
+    assert "T" in first_epoch_str, (
+        f"Epoch should be a full ISO datetime but got: {first_epoch_str!r}"
+    )
+
+
 def test_calibration_job_splits_across_days(tmp_path):
     """Verify a window spanning two days creates change points for each day."""
     csv_content = (
@@ -253,8 +292,11 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         job.run_calibration(handler, config)
 
 
-def test_run_calibration_raises_for_no_overlapping_windows(tmp_path):
-    """Verify run_calibration raises when no windows overlap with the date."""
+def test_calibration_with_no_matching_windows_creates_empty_layer_with_headers(
+    tmp_path,
+):
+    """When the CSV has no windows that overlap the target day, calibration should
+    succeed and produce a data CSV with the expected column headers but zero data rows."""
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
@@ -278,8 +320,16 @@ def test_run_calibration_raises_for_no_overlapping_windows(tmp_path):
         set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
     )
 
-    with pytest.raises(ValueError, match="No quality/NaN windows overlap"):
-        job.run_calibration(handler, config)
+    calfile, datafile = job.run_calibration(handler, config)
+
+    assert calfile.exists()
+    assert datafile.exists()
+
+    df = pd.read_csv(datafile)
+    assert len(df) == 0
+    assert CONSTANTS.CSV_VARS.EPOCH in df.columns
+    assert CONSTANTS.CSV_VARS.QUALITY_FLAG in df.columns
+    assert CONSTANTS.CSV_VARS.OFFSET_X in df.columns
 
 
 def test_generate_change_points_skips_outside_science_range(tmp_path):
