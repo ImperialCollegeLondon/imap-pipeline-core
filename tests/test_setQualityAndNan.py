@@ -10,6 +10,7 @@ from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import SaveMode
 from imap_mag.config.CalibrationConfig import CalibrationConfig, SetQualityAndNaNConfig
+from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -24,7 +25,6 @@ from tests.util.miscellaneous import open_cdf
 
 @pytest.fixture
 def quality_csv(tmp_path):
-    """Create a CSV file with quality/NaN specifications."""
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-16T02:11:54,2026-01-16T02:11:57,2,3,True,False,False\n"
@@ -34,7 +34,9 @@ def quality_csv(tmp_path):
     return csv_path
 
 
-def test_calibration_job_creates_quality_flag_layer(quality_csv, tmp_path):
+def test_calibration_job_creates_quality_flag_layer_file_jsona_and_csv_with_correct_contents(
+    quality_csv, tmp_path
+):
     """Verify the calibration job creates correct change-point rows."""
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16),
@@ -47,8 +49,6 @@ def test_calibration_job_creates_quality_flag_layer(quality_csv, tmp_path):
     config = CalibrationConfig(
         set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
     )
-
-    from imap_mag.io.file import CalibrationLayerPathHandler
 
     cal_handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
@@ -83,19 +83,15 @@ def test_calibration_job_creates_quality_flag_layer(quality_csv, tmp_path):
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
 
-def test_epoch_written_as_full_iso_datetime_when_clipped_to_day_boundary(tmp_path):
-    """When config start_date is before the calibration day, window_start is clipped
-    to midnight of the calibration day. That midnight timestamp must be written to
-    CSV as a full ISO datetime (e.g. '2026-01-16T00:00:00.000000'), not just the
-    date ('2026-01-16'), so that downstream readers always see a datetime."""
+def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_boundary(
+    tmp_path,
+):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-15,2026-01-17,2,3,True,False,False\n"  # starts before calday
     )
     csv_path = tmp_path / "quality_input.csv"
     csv_path.write_text(csv_content)
-
-    from imap_mag.io.file import CalibrationLayerPathHandler
 
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
@@ -109,15 +105,15 @@ def test_epoch_written_as_full_iso_datetime_when_clipped_to_day_boundary(tmp_pat
     config = CalibrationConfig(
         set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
     )
-
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
+
     _, datafile = job.run_calibration(handler, config)
 
     raw_lines = datafile.read_text().splitlines()
     # Second line is the first data row; its epoch value is the first field
     first_epoch_str = raw_lines[1].split(",")[0]
     # Must contain a time component — a bare date like "2026-01-16" has no 'T'
-    assert "T" in first_epoch_str, (
+    assert "2026-01-16T00:00:00" in first_epoch_str, (
         f"Epoch should be a full ISO datetime but got: {first_epoch_str!r}"
     )
 
@@ -126,18 +122,15 @@ def test_calibration_job_splits_across_days(tmp_path):
     """Verify a window spanning two days creates change points for each day."""
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-16T20:00:00,2026-01-17T06:00:00,4,5,False,True,True\n"
+        "2026-01-16T20:00:00,2026-01-17T06:00:00,1,5,False,True,True\n"
     )
     csv_path = tmp_path / "multi_day.csv"
     csv_path.write_text(csv_content)
-
     config = CalibrationConfig(
         set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
     )
     work_folder = tmp_path / "work"
     work_folder.mkdir()
-
-    from imap_mag.io.file import CalibrationLayerPathHandler
 
     # Day 1: 2026-01-16
     params_day1 = CalibrationJobParameters(
@@ -153,7 +146,8 @@ def test_calibration_job_splits_across_days(tmp_path):
     df1 = pd.read_csv(datafile1, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     # Day 1: window starts at 20:00, no end within day -> 1 change point
     assert len(df1) == 1
-    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 4
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T20:00:00")
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 5
 
     # Day 2: 2026-01-17
@@ -172,88 +166,78 @@ def test_calibration_job_splits_across_days(tmp_path):
     df2 = pd.read_csv(datafile2, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     # Day 2: window starts at 00:00 (clipped), ends at 06:00 -> 2 change points
     assert len(df2) == 2
-    assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 4
+    assert df2.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T00:00:00")
+    assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
+    assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 5
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T06:00:00")
     assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0
 
 
-def test_generate_change_points_uses_science_end_timestamp(tmp_path):
-    """When science data extends past midnight, the last change point should use
-    the science end timestamp, not the logical day boundary."""
+def run_calibration_on_config_file(
+    tmp_folder_path, csv_content, content_date=datetime(2026, 1, 16)
+):
+    csv_path = tmp_folder_path / "multi_day.csv"
+    csv_path.write_text(csv_content)
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
+    work_folder = tmp_folder_path / "work"
+    work_folder.mkdir()
+
+    params_day1 = CalibrationJobParameters(
+        date=content_date, mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    handler_day1 = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=content_date,
+    )
+    job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
+    json_file, datafile1 = job_day1.run_calibration(handler_day1, config)
+
+    assert json_file.exists()
+    assert datafile1.exists()
+
+    layer_data_file = pd.read_csv(datafile1, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
+    return layer_data_file
+
+
+def test_run_calibration_starts_at_midnight_if_config_if_in_a_previous_day(
+    tmp_path,
+):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-16T20:00:00,2026-01-17T06:00:00,4,5,False,True,True\n"
+        "2026-01-15T20:00:00,2026-01-17T06:00:00,4,5,False,True,True\n"
     )
-    csv_path = tmp_path / "quality.csv"
-    csv_path.write_text(csv_content)
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-
-    input_df = pd.read_csv(csv_path)
-    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
-    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
-    for col in ["nan_x", "nan_y", "nan_z"]:
-        input_df[col] = input_df[col].astype(bool)
-
-    # Science data ends at 00:30 on 17th Jan
-    science_start = datetime(2026, 1, 16, 0, 0, 0)
-    science_end = datetime(2026, 1, 17, 0, 30, 0)
-
-    change_points = job._generate_change_points(
-        input_df, datetime(2026, 1, 16), science_start, science_end
+    df1 = run_calibration_on_config_file(
+        tmp_path, csv_content, content_date=datetime(2026, 1, 16)
     )
 
-    assert (
-        len(change_points) == 1
-    )  # Only start, no end (window extends past science end)
-    assert change_points[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp(
-        "2026-01-16T20:00:00"
-    )
-    assert change_points[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 4
+    assert len(df1) == 1
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T00:00:00")
 
 
-def test_generate_change_points_window_ends_within_science_range(tmp_path):
-    """When a window ends within the science data range, both start and end
-    change points should be created."""
+def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
+    tmp_path,
+):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-16T02:00:00,2026-01-16T04:00:00,2,3,True,False,False\n"
     )
-    csv_path = tmp_path / "quality.csv"
-    csv_path.write_text(csv_content)
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-
-    input_df = pd.read_csv(csv_path)
-    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
-    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
-    for col in ["nan_x", "nan_y", "nan_z"]:
-        input_df[col] = input_df[col].astype(bool)
-
-    science_start = datetime(2026, 1, 16, 0, 0, 0)
-    science_end = datetime(2026, 1, 17, 0, 30, 0)
-
-    change_points = job._generate_change_points(
-        input_df, datetime(2026, 1, 16), science_start, science_end
+    df1 = run_calibration_on_config_file(
+        tmp_path, csv_content, content_date=datetime(2026, 1, 16)
     )
 
-    assert len(change_points) == 2
-    # Start: flagged
-    assert change_points[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 2
-    assert np.isnan(change_points[0][CONSTANTS.CSV_VARS.OFFSET_X])
-    # End: reset to zero
-    assert change_points[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
-    assert change_points[1][CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
+    assert len(df1) == 2
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T02:00:00")
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 2
+    assert np.isnan(df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_X])
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T04:00:00")
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
 
 
 def test_run_calibration_raises_without_config(tmp_path):
-    """Verify run_calibration raises when set_quality_and_nan config is None."""
-    from imap_mag.io.file import CalibrationLayerPathHandler
 
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
@@ -289,73 +273,22 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         job.run_calibration(handler, config)
 
 
-def test_calibration_with_no_matching_windows_creates_empty_layer_with_headers(
+def test_run_calibration_with_no_matching_windows_creates_empty_layer_with_headers(
     tmp_path,
 ):
-    """When the CSV has no windows that overlap the target day, calibration should
-    succeed and produce a data CSV with the expected column headers but zero data rows."""
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
     )
-    csv_path = tmp_path / "quality.csv"
-    csv_path.write_text(csv_content)
 
-    from imap_mag.io.file import CalibrationLayerPathHandler
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    work = tmp_path / "work"
-    work.mkdir()
-    job = SetQualityAndNaNCalibrationJob(params, work)
-    handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
-        content_date=datetime(2026, 1, 16),
-    )
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    df = run_calibration_on_config_file(
+        tmp_path, csv_content, content_date=datetime(2026, 1, 16)
     )
 
-    calfile, datafile = job.run_calibration(handler, config)
-
-    assert calfile.exists()
-    assert datafile.exists()
-
-    df = pd.read_csv(datafile)
     assert len(df) == 0
     assert CONSTANTS.CSV_VARS.EPOCH in df.columns
     assert CONSTANTS.CSV_VARS.QUALITY_FLAG in df.columns
     assert CONSTANTS.CSV_VARS.OFFSET_X in df.columns
-
-
-def test_generate_change_points_skips_outside_science_range(tmp_path):
-    """Windows entirely outside the science data range should be skipped."""
-    csv_content = (
-        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-15T00:00:00,2026-01-15T06:00:00,2,3,True,False,False\n"
-    )
-    csv_path = tmp_path / "quality.csv"
-    csv_path.write_text(csv_content)
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-
-    input_df = pd.read_csv(csv_path)
-    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
-    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
-    for col in ["nan_x", "nan_y", "nan_z"]:
-        input_df[col] = input_df[col].astype(bool)
-
-    change_points = job._generate_change_points(
-        input_df,
-        datetime(2026, 1, 16),
-        datetime(2026, 1, 16, 2, 0, 0),
-        datetime(2026, 1, 16, 23, 0, 0),
-    )
-    assert change_points == []
 
 
 def test_get_science_time_range_fallback_without_file(tmp_path):
@@ -382,37 +315,7 @@ def test_get_science_time_range_fallback_nonexistent_file(tmp_path):
     assert end == datetime(2026, 1, 17, 0, 0, 0)
 
 
-def test_generate_change_points_skips_outside_logical_day(tmp_path):
-    """Windows outside the logical day should be skipped even if within science range."""
-    csv_content = (
-        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-17T02:00:00,2026-01-17T06:00:00,2,3,True,False,False\n"
-    )
-    csv_path = tmp_path / "quality.csv"
-    csv_path.write_text(csv_content)
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-
-    input_df = pd.read_csv(csv_path)
-    input_df["start_date"] = pd.to_datetime(input_df["start_date"])
-    input_df["end_date"] = pd.to_datetime(input_df["end_date"])
-    for col in ["nan_x", "nan_y", "nan_z"]:
-        input_df[col] = input_df[col].astype(bool)
-
-    # Science range extends into Jan 17, but window starts after day_end for Jan 16
-    change_points = job._generate_change_points(
-        input_df,
-        datetime(2026, 1, 16),
-        datetime(2026, 1, 16, 0, 0, 0),
-        datetime(2026, 1, 17, 12, 0, 0),
-    )
-    assert change_points == []
-
-
-def test_calibrate_returns_list_of_paths(
+def test_calibrate_returns_list_of_paths_to_the_calibration_layer_files(
     quality_csv, tmp_path, temp_datastore, dynamic_work_folder
 ):
     """Verify calibrate() returns a list of paths."""
@@ -435,18 +338,7 @@ def test_calibrate_returns_list_of_paths(
     assert "quality" in results[0].name
 
 
-def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
-    temp_datastore,
-    dynamic_work_folder,
-    spice_kernels,
-):
-    """End-to-end: calibrate creates INTERPOLATION layer, apply uses it.
-
-    Verifies quality flags and NaN are applied only within the specified
-    time window, and data outside the window is unaltered.
-    """
-    # Create input CSV with a quality window inside the science data range
-    # Science data spans 02:11:51.521 to 02:11:59.021 (16 rows at 0.5s)
+def test_calibrate_creates_layer_json_and_csv_file(temp_datastore, dynamic_work_folder):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-16T02:11:54,2026-01-16T02:11:57,2,3,True,False,False\n"
@@ -454,115 +346,132 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
     csv_path = dynamic_work_folder / "quality.csv"
     csv_path.write_text(csv_content)
     date = datetime(2026, 1, 16)
+    layer_dir = (
+        temp_datastore / "calibration" / "layers" / f"{date.year}" / f"{date.month:02d}"
+    )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
+    assert len(list(layer_dir.glob("*quality*"))) == 0
 
-    try:
-        config = CalibrationConfig(
-            set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
-        )
+    calibrate(
+        start_date=date,
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalOnly,
+    )
 
-        # Step 1: Calibrate - create the SET_QUALITY_AND_NAN layer
-        calibrate(
-            start_date=date,
-            method=CalibrationMethod.SET_QUALITY_AND_NAN,
-            mode=ScienceMode.Normal,
-            sensor=Sensor.MAGO,
-            configuration=config.model_dump_json(),
-            save_mode=SaveMode.LocalOnly,
-        )
+    layer_files = list(layer_dir.glob("*quality*"))
+    assert len(layer_files) == 2, (
+        f"Expected 2 files (json + csv) but found {len(layer_files)}: {[f.name for f in layer_files]}"
+    )
+    expected = [
+        "imap_mag_quality-norm-layer-data_20260116_v001.csv",
+        "imap_mag_quality-norm-layer_20260116_v001.json",
+    ]
+    actual = sorted(f.name for f in layer_files)
+    assert actual == expected, f"Expected files {expected} but found {actual}"
 
-        # Verify the layer was created in the datastore
-        layer_dir = (
-            temp_datastore
-            / "calibration"
-            / "layers"
-            / f"{date.year}"
-            / f"{date.month:02d}"
-        )
-        layer_files = list(layer_dir.glob("*quality*"))
-        assert len(layer_files) >= 2  # json + csv
 
-        # Step 2: Apply the SET_QUALITY_AND_NAN layer
-        apply(
-            layers=["*quality*"],
-            start_date=date,
-            mode=ScienceMode.Normal,
-            save_mode=SaveMode.LocalOnly,
-        )
+def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    # Create input CSV with a quality window inside the science data range
+    # Science data spans 02:11:51.521 to 02:11:59.021 (16 rows at 0.5s)
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:11:54,2026-01-16T02:11:57,1,4,True,False,False\n"
+    )
+    csv_path = dynamic_work_folder / "quality.csv"
+    csv_path.write_text(csv_content)
+    date = datetime(2026, 1, 16)
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
 
-        output_l2_file = (
-            temp_datastore
-            / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
-        )
-        assert output_l2_file.exists()
+    calibrate(
+        start_date=date,
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalOnly,
+    )
+    apply(
+        layers=["*quality*"],
+        start_date=date,
+        mode=ScienceMode.Normal,
+        save_mode=SaveMode.LocalOnly,
+    )
 
-        output_offsets_file = (
-            temp_datastore
-            / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
-        )
-        assert output_offsets_file.exists()
+    output_l2_file = (
+        temp_datastore
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+    )
+    assert output_l2_file.exists()
 
-        FILLVAL = CONSTANTS.CDF_FLOAT_FILLVAL
+    output_offsets_file = (
+        temp_datastore
+        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+    )
+    assert output_offsets_file.exists()
 
-        # Verify the offsets CDF has correct quality flags, bitmask, and FILLVAL offsets
-        with open_cdf(output_offsets_file) as cdf:
-            quality_flags = cdf["quality_flag"][...]
-            quality_bitmask = cdf["quality_bitmask"][...]
-            offsets = cdf["offsets"][...]
+    FILLVAL = CONSTANTS.CDF_FLOAT_FILLVAL
 
-            # Science timestamps:
-            # indices 0-4: before window (02:11:51.521 to 02:11:53.521)
-            # indices 5-10: inside window (02:11:54.021 to 02:11:56.521)
-            # indices 11-15: after window (02:11:57.021 to 02:11:59.021)
+    # Verify the offsets CDF has correct quality flags, bitmask, and FILLVAL offsets
+    with open_cdf(output_offsets_file) as cdf:
+        quality_flags = cdf["quality_flag"][...]
+        quality_bitmask = cdf["quality_bitmask"][...]
+        offsets = cdf["offsets"][...]
 
-            # Before window: quality_flag=0, bitmask=0, offsets=0
-            for i in range(5):
-                assert quality_flags[i] == 0, f"Row {i} should have quality_flag=0"
-                assert quality_bitmask[i] == 0, f"Row {i} should have quality_bitmask=0"
-                assert offsets[i, 0] != FILLVAL, (
-                    f"Row {i} offset_x should not be FILLVAL"
-                )
+        # Science timestamps:
+        # indices 0-4: before window (02:11:51.521 to 02:11:53.521)
+        # indices 5-10: inside window (02:11:54.021 to 02:11:56.521)
+        # indices 11-15: after window (02:11:57.021 to 02:11:59.021)
 
-            # Inside window: quality_flag=2, bitmask=3, offset_x=FILLVAL
-            for i in range(5, 11):
-                assert quality_flags[i] == 2, f"Row {i} should have quality_flag=2"
-                assert quality_bitmask[i] == 3, f"Row {i} should have quality_bitmask=3"
-                assert offsets[i, 0] == FILLVAL, f"Row {i} offset_x should be FILLVAL"
-                assert offsets[i, 1] != FILLVAL, (
-                    f"Row {i} offset_y should not be FILLVAL"
-                )
+        # Before window: quality_flag=0, bitmask=0, offsets=0
+        for i in range(5):
+            assert quality_flags[i] == 0, f"Row {i} should have quality_flag=0"
+            assert quality_bitmask[i] == 0, f"Row {i} should have quality_bitmask=0"
+            assert offsets[i, 0] != FILLVAL, f"Row {i} offset_x should not be FILLVAL"
 
-            # After window: quality_flag=0, bitmask=0, offsets=0
-            for i in range(11, 16):
-                assert quality_flags[i] == 0, f"Row {i} should have quality_flag=0"
-                assert quality_bitmask[i] == 0, f"Row {i} should have quality_bitmask=0"
-                assert offsets[i, 0] != FILLVAL, (
-                    f"Row {i} offset_x should not be FILLVAL"
-                )
+        # Inside window: quality_flag=1, bitmask=4, offset_x=FILLVAL
+        for i in range(5, 11):
+            assert quality_flags[i] == 1, f"Row {i} should have quality_flag=1"
+            assert quality_bitmask[i] == 4, f"Row {i} should have quality_bitmask=4"
+            assert offsets[i, 0] == FILLVAL, f"Row {i} offset_x should be FILLVAL"
+            assert offsets[i, 1] != FILLVAL, f"Row {i} offset_y should not be FILLVAL"
 
-        # Verify the L2 output has FILLVAL where expected
+        # After window: quality_flag=0, bitmask=0, offsets=0
+        for i in range(11, 16):
+            assert quality_flags[i] == 0, f"Row {i} should have quality_flag=0"
+            assert quality_bitmask[i] == 0, f"Row {i} should have quality_bitmask=0"
+            assert offsets[i, 0] != FILLVAL, f"Row {i} offset_x should not be FILLVAL"
 
-        with open_cdf(output_l2_file) as cdf:
-            assert "b_srf" in cdf
-            vectors = cdf["b_srf"][...]
+    # Verify the L2 output has FILLVAL where expected
+    with open_cdf(output_l2_file) as cdf:
+        assert "b_srf" in cdf
+        vectors = cdf["b_srf"][...]
 
-            # Inside window: x component should be FILLVAL (large absolute value)
-            for i in range(5, 11):
-                assert abs(float(vectors[i, 0])) > 1e30, (
-                    f"L2 row {i} x should be FILLVAL, got {vectors[i, 0]}"
-                )
+        # Inside window: x component should be FILLVAL (large absolute value)
+        for i in range(5, 11):
+            assert abs(float(vectors[i, 0])) > 1e30, (
+                f"L2 row {i} x should be FILLVAL, got {vectors[i, 0]}"
+            )
 
-            # Outside window: should be normal science values
-            for i in range(5):
-                assert abs(float(vectors[i, 0])) < 1e30, (
-                    f"L2 row {i} x should not be FILLVAL"
-                )
-            for i in range(11, 16):
-                assert abs(float(vectors[i, 0])) < 1e30, (
-                    f"L2 row {i} x should not be FILLVAL"
-                )
-
-    finally:
-        csv_path.unlink(missing_ok=True)
+        # Outside window: should be normal science values
+        for i in range(5):
+            assert abs(float(vectors[i, 0])) < 1e30, (
+                f"L2 row {i} x should not be FILLVAL"
+            )
+        for i in range(11, 16):
+            assert abs(float(vectors[i, 0])) < 1e30, (
+                f"L2 row {i} x should not be FILLVAL"
+            )
 
 
 def test_apply_empty_quality_layer_produces_zero_quality_flags(
@@ -578,44 +487,40 @@ def test_apply_empty_quality_layer_produces_zero_quality_flags(
     csv_path = Path(tempfile.mktemp(suffix=".csv"))
     csv_path.write_text(csv_content)
 
-    try:
-        config = CalibrationConfig(
-            set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
-        )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
+    )
 
-        # Calibrate - should create an empty (headers-only) quality layer
-        calibrate(
-            start_date=datetime(2026, 1, 16),
-            method=CalibrationMethod.SET_QUALITY_AND_NAN,
-            mode=ScienceMode.Normal,
-            sensor=Sensor.MAGO,
-            configuration=config.model_dump_json(),
-            save_mode=SaveMode.LocalOnly,
-        )
+    # Calibrate - should create an empty (headers-only) quality layer
+    calibrate(
+        start_date=datetime(2026, 1, 16),
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalOnly,
+    )
 
-        # Apply the empty quality layer - must not raise
-        apply(
-            layers=["*quality*"],
-            start_date=datetime(2026, 1, 16),
-            mode=ScienceMode.Normal,
-            save_mode=SaveMode.LocalOnly,
-        )
+    # Apply the empty quality layer - must not raise
+    apply(
+        layers=["*quality*"],
+        start_date=datetime(2026, 1, 16),
+        mode=ScienceMode.Normal,
+        save_mode=SaveMode.LocalOnly,
+    )
 
-        date = datetime(2026, 1, 16)
-        output_offsets_file = (
-            temp_datastore
-            / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
-        )
-        assert output_offsets_file.exists()
+    date = datetime(2026, 1, 16)
+    output_offsets_file = (
+        temp_datastore
+        / f"science-ancillary/l2-offsets/{date.year}/{date.month:02d}/imap_mag_l2-norm-offsets_{date.year}{date.month:02d}{date.day:02d}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+    )
+    assert output_offsets_file.exists()
 
-        with open_cdf(output_offsets_file) as cdf:
-            quality_flags = cdf["quality_flag"][...]
-            quality_bitmask = cdf["quality_bitmask"][...]
+    with open_cdf(output_offsets_file) as cdf:
+        quality_flags = cdf["quality_flag"][...]
+        quality_bitmask = cdf["quality_bitmask"][...]
 
-            # No quality windows matched - every epoch should be unflagged
-            for i, (flag, mask) in enumerate(zip(quality_flags, quality_bitmask)):
-                assert flag == 0, f"Row {i} should have quality_flag=0, got {flag}"
-                assert mask == 0, f"Row {i} should have quality_bitmask=0, got {mask}"
-
-    finally:
-        csv_path.unlink(missing_ok=True)
+        # No quality windows matched - every epoch should be unflagged
+        for i, (flag, mask) in enumerate(zip(quality_flags, quality_bitmask)):
+            assert flag == 0, f"Row {i} should have quality_flag=0, got {flag}"
+            assert mask == 0, f"Row {i} should have quality_bitmask=0, got {mask}"
