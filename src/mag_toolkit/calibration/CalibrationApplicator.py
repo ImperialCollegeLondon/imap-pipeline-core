@@ -10,6 +10,7 @@ import pandas
 import spiceypy
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
+from imap_processing.mag.l2.mag_l2_data import ValidFrames
 
 from imap_mag.cli.fetch.spice import generate_spice_metakernel
 from imap_mag.config import AppSettings
@@ -217,6 +218,7 @@ class CalibrationApplicator:
                 offsets_dataset=created_offsets_data,
                 mode=mode,
                 day_to_process=np.datetime64(day_to_process),
+                frames=CalibrationApplicator._get_l2_frames(reference_frames),
             )
 
         finally:
@@ -280,6 +282,19 @@ class CalibrationApplicator:
             files_created.append(filepath)
 
         return (files_created, created_offsets_filepath)
+
+    @staticmethod
+    def _get_l2_frames(reference_frames: list[ReferenceFrame]) -> list[ValidFrames]:
+        frame_mapping = {
+            ReferenceFrame.DSRF: ValidFrames.DSRF,
+            ReferenceFrame.SRF: ValidFrames.SRF,
+            ReferenceFrame.GSE: ValidFrames.GSE,
+            ReferenceFrame.GSM: ValidFrames.GSM,
+            ReferenceFrame.RTN: ValidFrames.RTN,
+        }
+        return [
+            frame_mapping[frame] for frame in reference_frames if frame in frame_mapping
+        ]
 
     def _expand_boundary_changes_to_every_epoch(
         self,
