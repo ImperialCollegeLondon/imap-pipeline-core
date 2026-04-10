@@ -1765,14 +1765,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "1.0.16"
+version = "1.0.28"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "imap_processing-1.0.16-py3-none-any.whl", hash = "sha256:2bd6fcf1ed82e6516771ed7e317fb84dd68a603eee9a5ccaee9e90ab79259a4b"},
-    {file = "imap_processing-1.0.16.tar.gz", hash = "sha256:4a275a7cd5fc563ade78fcdc9aa119f67e0ce12759666a93b239c56c2fb3e26f"},
+    {file = "imap_processing-1.0.28-py3-none-any.whl", hash = "sha256:5c98698d539757dbacb4772d4bf8dc0d55fca9e00765774e37a74e5731ff375f"},
+    {file = "imap_processing-1.0.28.tar.gz", hash = "sha256:0c645767feead29608e378d079208d037dc5c59383492309b9256b424ce586ac"},
 ]
 
 [package.dependencies]
@@ -5733,4 +5733,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "e0af594bd15d297c119b7b38c233f2a535b17df7d7f78dec06cf7706d7b22f1d"
+content-hash = "db927c8ac12bb2d67af59ef7883a2670d7061c60d529a406ebe5913c9d70f1d7"
