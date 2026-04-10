@@ -56,7 +56,9 @@ class Layer(BaseModel, ABC):
         return model
 
     def _set_content_date_from_filepath(self, filepath: Path) -> None:
-        handler = FilePathHandlerSelector.find_by_path(filepath)
+        handler = FilePathHandlerSelector.find_by_path(
+            filepath, throw_if_not_found=False
+        )
         if handler:
             self.metadata.content_date = np.datetime64(
                 handler.get_content_date_for_indexing()

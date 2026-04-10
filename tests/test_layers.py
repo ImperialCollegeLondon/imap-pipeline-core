@@ -1,8 +1,5 @@
-import re
-
 import numpy as np
 import pandas as pd
-import pytest
 
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -210,7 +207,9 @@ def test_calibration_layer_loads_csv_correctly():
     )
 
 
-def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
+def test_calibration_layer_error_on_loading_empty_csv_is_boundary_changes_type(
+    tmp_path,
+):
     # Set up.
     empty_csv = tmp_path / "empty.csv"
     empty_csv.touch()
@@ -219,11 +218,8 @@ def test_calibration_layer_error_on_loading_empty_csv(tmp_path):
         "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n"
     )
 
-    # Exercise and verify.
-    with pytest.raises(
-        ValueError, match=re.escape("CSV file is empty or does not contain valid data")
-    ):
-        CalibrationLayer._from_csv(empty_csv)
+    cl = CalibrationLayer._from_csv(empty_csv)
+    assert cl.value_type == ValueType.BOUNDARY_CHANGES_ONLY
 
 
 def test_calibration_layer_create_zero_offset_from_science():

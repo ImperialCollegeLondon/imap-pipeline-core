@@ -264,9 +264,13 @@ class CalibrationLayer(Layer):
     def _from_csv(cls, path: Path):
         df = cls._values_from_csv(path)
 
-        validity = Validity(
-            start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
-            end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+        validity = (
+            Validity(
+                start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
+                end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+            )
+            if not df.empty
+            else Validity(start=np.datetime64("NaT"), end=np.datetime64("NaT"))
         )
 
         calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
@@ -291,7 +295,9 @@ class CalibrationLayer(Layer):
                 data_filename=path,
                 creation_timestamp=np.datetime64("now"),
             ),
-            value_type=ValueType.VECTOR,
+            value_type=ValueType.VECTOR
+            if not df.empty
+            else ValueType.BOUNDARY_CHANGES_ONLY,
             method=method,
         )
         instance._contents = df
