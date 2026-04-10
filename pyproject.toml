@@ -42,7 +42,7 @@ ialirt-data-access = "^0.6.0"
 apprise = ">=1.9.5"
 spiceypy = "^8.0.0"
 prefect-sqlalchemy = "^0.6.1"
-imap-processing = "^1.0.0"
+imap-processing = "^1.0.28"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
@@ -58,7 +58,7 @@ wiremock = "^2.7.0"
 pytest-xdist = "^3.8.0"
 diffimg = "^0.3.0"
 openpyxl = "^3.1.5"
-imap-processing = "^1.0.16"
+imap-processing = "^1.0.28"
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
