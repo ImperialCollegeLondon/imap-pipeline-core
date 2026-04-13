@@ -74,12 +74,17 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         if not csv_path.exists():
             raise FileNotFoundError(f"SetQualityAndNaN CSV file not found: {csv_path}")
 
-        input_df = pd.read_csv(csv_path)
-        input_df["start_date"] = pd.to_datetime(input_df["start_date"])
-        input_df["end_date"] = pd.to_datetime(input_df["end_date"])
-
-        for col in ["nan_x", "nan_y", "nan_z"]:
-            input_df[col] = input_df[col].astype(bool)
+        input_df = pd.read_csv(
+            csv_path,
+            dtype={
+                "nan_x": bool,
+                "nan_y": bool,
+                "nan_z": bool,
+                "quality_flag": pd.Int64Dtype(),
+                "quality_bitmask": pd.Int64Dtype(),
+            },
+            parse_dates=["start_date", "end_date"],
+        )
 
         date = self.calibration_job_parameters.date
 
@@ -87,41 +92,79 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         science_file = self.required_files.get(self.science_file_key)
         science_start, science_end = self._get_science_time_range(science_file)
 
-        change_points = self._generate_change_points(
-            input_df, date, science_start, science_end
+        day_start = pd.Timestamp(datetime(date.year, date.month, date.day))
+        day_end = day_start + pd.Timedelta(days=1)
+        science_start_ts = pd.Timestamp(science_start)
+        science_end_ts = pd.Timestamp(science_end)
+
+        # Filter to rows overlapping both the logical day and the science data range
+        overlaps = (
+            (input_df["start_date"] <= science_end_ts)
+            & (input_df["end_date"] >= science_start_ts)
+            & (input_df["start_date"] < day_end)
+            & (input_df["end_date"] > day_start)
+        )
+        filtered = input_df[overlaps].copy()
+
+        schema = {
+            CONSTANTS.CSV_VARS.EPOCH: "datetime64[ns]",
+            CONSTANTS.CSV_VARS.OFFSET_X: "float64",
+            CONSTANTS.CSV_VARS.OFFSET_Y: "float64",
+            CONSTANTS.CSV_VARS.OFFSET_Z: "float64",
+            CONSTANTS.CSV_VARS.TIMEDELTA: "float64",
+            CONSTANTS.CSV_VARS.QUALITY_FLAG: pd.Int64Dtype(),
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK: pd.Int64Dtype(),
+        }
+
+        filtered["window_start"] = filtered["start_date"].clip(lower=day_start)
+        filtered["window_end"] = filtered["end_date"].clip(upper=science_end_ts)
+        end_filtered = filtered[filtered["window_end"] < science_end_ts]
+
+        # create boundary change rows for the starts of all time windows defined in the config file
+        start_rows = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: filtered["window_start"].values,
+                CONSTANTS.CSV_VARS.OFFSET_X: np.where(
+                    filtered["nan_x"], float("nan"), 0.0
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_Y: np.where(
+                    filtered["nan_y"], float("nan"), 0.0
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_Z: np.where(
+                    filtered["nan_z"], float("nan"), 0.0
+                ),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered)),
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: filtered["quality_flag"].values,
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: filtered["quality_bitmask"].values,
+            }
+        )
+        # create boundary change rows for the ends of all time windows defined in the config file to reset values back to their previous values.
+        # If the window ends after the end of the day then there will be zero end_rows because we are reading from end_filtered
+        end_rows = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: end_filtered["window_end"].values,
+                CONSTANTS.CSV_VARS.OFFSET_X: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.OFFSET_Y: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.OFFSET_Z: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [pd.NA] * len(end_filtered),
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [pd.NA] * len(end_filtered),
+            }
         )
 
-        change_points.sort(key=lambda p: p[CONSTANTS.CSV_VARS.EPOCH])
-        if change_points:
-            df = pd.DataFrame(change_points)
-        else:
-            df = pd.DataFrame(
-                columns=[
-                    CONSTANTS.CSV_VARS.EPOCH,
-                    CONSTANTS.CSV_VARS.OFFSET_X,
-                    CONSTANTS.CSV_VARS.OFFSET_Y,
-                    CONSTANTS.CSV_VARS.OFFSET_Z,
-                    CONSTANTS.CSV_VARS.TIMEDELTA,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG,
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK,
-                ]
-            )
-
-        # ensure qualityflag is nullable integer
-        df[CONSTANTS.CSV_VARS.QUALITY_FLAG] = df[
-            CONSTANTS.CSV_VARS.QUALITY_FLAG
-        ].astype(pd.Int64Dtype())
-        # ensure quality bitmask is nullable integer
-        df[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = df[
-            CONSTANTS.CSV_VARS.QUALITY_BITMASK
-        ].astype(pd.Int64Dtype())
+        df = (
+            pd.concat([start_rows, end_rows])
+            .sort_values(CONSTANTS.CSV_VARS.EPOCH)
+            .reset_index(drop=True)
+            .astype(schema)
+        )
 
         validity = (
             Validity(
                 start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
                 end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
             )
-            if change_points
+            if not df.empty
             else Validity(start=science_start, end=science_end)
         )
 
@@ -180,68 +223,3 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         return np.datetime64(
             science_layer._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[0]
         ), np.datetime64(science_layer._contents[CONSTANTS.CSV_VARS.EPOCH].iloc[-1])
-
-    def _generate_change_points(
-        self,
-        input_df: pd.DataFrame,
-        date: datetime,
-        science_start: np.datetime64,
-        science_end: np.datetime64,
-    ) -> list[dict]:
-        day_start = np.datetime64(datetime(date.year, date.month, date.day))
-        day_end = day_start + np.timedelta64(1, "D")
-
-        change_points: list[dict] = []
-
-        for _, row in input_df.iterrows():
-            start = np.datetime64(row["start_date"])
-            end = np.datetime64(row["end_date"])
-
-            # Skip windows entirely outside the science data range
-            if start > science_end or end < science_start:
-                continue
-
-            # Also skip if entirely outside the logical day
-            if start >= day_end or end <= day_start:
-                continue
-
-            window_start = max(start, day_start)
-            window_end = min(end, science_end)
-
-            offset_x = float("nan") if row["nan_x"] else 0.0
-            offset_y = float("nan") if row["nan_y"] else 0.0
-            offset_z = float("nan") if row["nan_z"] else 0.0
-
-            change_points.append(
-                {
-                    CONSTANTS.CSV_VARS.EPOCH: pd.Timestamp(
-                        window_start,
-                    ),
-                    CONSTANTS.CSV_VARS.OFFSET_X: offset_x,
-                    CONSTANTS.CSV_VARS.OFFSET_Y: offset_y,
-                    CONSTANTS.CSV_VARS.OFFSET_Z: offset_z,
-                    CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: int(row["quality_flag"])
-                    if pd.notna(row["quality_flag"])
-                    else None,
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: int(row["quality_bitmask"])
-                    if pd.notna(row["quality_bitmask"])
-                    else None,
-                }
-            )
-
-            # Only add end-of-window reset if the window ends within the science data range
-            if window_end < science_end:
-                change_points.append(
-                    {
-                        CONSTANTS.CSV_VARS.EPOCH: pd.Timestamp(window_end),
-                        CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
-                        CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
-                        CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
-                        CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                        CONSTANTS.CSV_VARS.QUALITY_FLAG: None,
-                        CONSTANTS.CSV_VARS.QUALITY_BITMASK: None,
-                    }
-                )
-
-        return change_points
