@@ -20,7 +20,7 @@ To use WebPODA APIs, an access token needs to be defined in the environment as `
 2. Set up the virtual environment:
 
     ```bash
-    poetry install --all-groups # installs testing tools as well as the package dependencies
+    poetry install --all-groups --all-extras  # installs testing tools as well as the package dependencies
     ```
 
 3. Activate the virtual environment (alternatively, ensure any python-related command is preceded by `poetry run`):
