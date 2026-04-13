@@ -363,17 +363,17 @@ class CalibrationApplicator:
             raise ValueError("Offset contents are not loaded")
 
         # in the base layer quality flag is zero for all epochs, and is set to the layer value where it is defined, otherwise remains zero
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = np.where(
-            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].isna(),
-            0,
-            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG]
+            .astype(pandas.Int64Dtype())
+            .fillna(0)
         )
 
         # in the base layer bitmask starts at zero if not defined by the layer
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = np.where(
-            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].isna(),
-            0,
-            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK]
+            .astype(pandas.Int64Dtype())
+            .fillna(0)
         )
 
         offsets._data_path = None  # Invalidate data path since contents have changed
