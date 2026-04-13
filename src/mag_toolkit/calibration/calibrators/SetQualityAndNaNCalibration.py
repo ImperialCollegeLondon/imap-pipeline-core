@@ -107,6 +107,15 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 ]
             )
 
+        # ensure qualityflag is nullable integer
+        df[CONSTANTS.CSV_VARS.QUALITY_FLAG] = df[
+            CONSTANTS.CSV_VARS.QUALITY_FLAG
+        ].astype(pd.Int64Dtype())
+        # ensure quality bitmask is nullable integer
+        df[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = df[
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK
+        ].astype(pd.Int64Dtype())
+
         validity = (
             Validity(
                 start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
@@ -185,8 +194,8 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         change_points: list[dict] = []
 
         for _, row in input_df.iterrows():
-            start = np.datetime64(row["start_date"].to_pydatetime())
-            end = np.datetime64(row["end_date"].to_pydatetime())
+            start = np.datetime64(row["start_date"])
+            end = np.datetime64(row["end_date"])
 
             # Skip windows entirely outside the science data range
             if start > science_end or end < science_start:
@@ -212,8 +221,12 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                     CONSTANTS.CSV_VARS.OFFSET_Y: offset_y,
                     CONSTANTS.CSV_VARS.OFFSET_Z: offset_z,
                     CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: int(row["quality_flag"]),
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: int(row["quality_bitmask"]),
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: int(row["quality_flag"])
+                    if pd.notna(row["quality_flag"])
+                    else None,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: int(row["quality_bitmask"])
+                    if pd.notna(row["quality_bitmask"])
+                    else None,
                 }
             )
 
@@ -226,8 +239,8 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                         CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                         CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
                         CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                        CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
-                        CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
+                        CONSTANTS.CSV_VARS.QUALITY_FLAG: None,
+                        CONSTANTS.CSV_VARS.QUALITY_BITMASK: None,
                     }
                 )
 

@@ -149,13 +149,13 @@ class CalibrationLayer(Layer):
         timedelta_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qf_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].astype(int),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_FLAG].attrs,
         )
         qf_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qb_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].astype(int),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_BITMASK].attrs,
         )
         qb_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH

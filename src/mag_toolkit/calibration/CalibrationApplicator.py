@@ -59,7 +59,10 @@ class CalibrationApplicator:
             raise CalibrationValidityError(
                 "Offsets and science data are not time compatible"
             )
+            # NOTE: later layers are checked to be compatible with the previous when summing them
         science.clear_contents()
+
+        offsets = self._init_base_layer(offsets)
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
@@ -308,8 +311,8 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
                     CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pd.NA,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pd.NA,
                 },
                 index=science_index,
             )
@@ -329,8 +332,8 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
                     CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [pd.NA],
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [pd.NA],
                 },
                 index=pd.DatetimeIndex([first_science_epoch]),
             )
@@ -338,12 +341,12 @@ class CalibrationApplicator:
 
         expanded = change_points.reindex(science_index, method="ffill")
 
-        expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
-            expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG].fillna(0).astype(int)
-        )
-        expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
-            expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int)
-        )
+        expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG] = expanded[
+            CONSTANTS.CSV_VARS.QUALITY_FLAG
+        ].astype("Int64", errors="ignore")
+        expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = expanded[
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK
+        ].astype("Int64", errors="ignore")
         expanded[CONSTANTS.CSV_VARS.TIMEDELTA] = expanded[
             CONSTANTS.CSV_VARS.TIMEDELTA
         ].fillna(0.0)
@@ -354,6 +357,27 @@ class CalibrationApplicator:
         layer._contents = expanded
         layer.value_type = ValueType.VECTOR
         return layer
+
+    def _init_base_layer(self, offsets: CalibrationLayer) -> CalibrationLayer:
+        if offsets._contents is None:
+            raise ValueError("Offset contents are not loaded")
+
+        # in the base layer quality flag is zero for all epochs, and is set to the layer value where it is defined, otherwise remains zero
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].isna(),
+            0,
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+        )
+
+        # in the base layer bitmask starts at zero if not defined by the layer
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].isna(),
+            0,
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+        )
+
+        offsets._data_path = None  # Invalidate data path since contents have changed
+        return offsets
 
     def _sum_layers(
         self,
@@ -366,24 +390,54 @@ class CalibrationApplicator:
         if not offsets.compatible(layer):
             raise ValueError("Offsets and layer are not time compatible")
 
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_X
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_Y
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_Z
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA] += layer._contents[
-            CONSTANTS.CSV_VARS.TIMEDELTA
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] |= layer._contents[
-            CONSTANTS.CSV_VARS.QUALITY_FLAG
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] |= layer._contents[
-            CONSTANTS.CSV_VARS.QUALITY_BITMASK
-        ]
+        # If the base offset is a NaN then is stays NaN, otherwise add the offset, for each of the offset components
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X].notna(),
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X]
+            + layer._contents[CONSTANTS.CSV_VARS.OFFSET_X],
+            np.nan,
+        )
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y].notna(),
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y]
+            + layer._contents[CONSTANTS.CSV_VARS.OFFSET_Y],
+            np.nan,
+        )
+        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z].notna(),
+            offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z]
+            + layer._contents[CONSTANTS.CSV_VARS.OFFSET_Z],
+            np.nan,
+        )
+        offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA] = np.where(
+            offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA].notna(),
+            offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA]
+            + layer._contents[CONSTANTS.CSV_VARS.TIMEDELTA],
+            np.nan,
+        )
+
+        # top layer wins for quality flag, where it is defined
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = np.where(
+            layer._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].notna(),
+            layer._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+        )
+
+        # for quality bitmask, step 1 - if layer contains a zero then clear the mask,
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = np.where(
+            layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].notna()
+            & (layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0),
+            0,
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+        )
+
+        # for quality bitmask - step 2 - if it is non zero then set the mask bit, if it is NaN then leave previous value
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = np.where(
+            layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].notna(),
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int)
+            | layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int),
+            offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+        )
 
         offsets._data_path = None  # Invalidate data path since contents have changed
         return offsets
