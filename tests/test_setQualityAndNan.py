@@ -676,6 +676,12 @@ def test_apply_empty_quality_layer_on_top_of_existing_flags_and_bitmasks_does_no
         ("0", "0", 0, 0),  # reset to unflagged
         ("1", "1", 1, 5),  # different bitmask
         (
+            "1",
+            "7",
+            1,
+            7,
+        ),  # Bitwise OR of bitmask: 4 (from layer 1) | 7 (from layer 2) = 7
+        (
             "",
             "",
             1,
