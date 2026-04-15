@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import DatetimeProvider
@@ -62,7 +62,7 @@ def _fetch_files_for_work(
     path_handler_factory,
     label: str,
 ) -> list[Path]:
-    datastore_finder = DatastoreFileFinder(data_store)
+    datastore_finder = FileFinder(data_store)
 
     if (
         (start_date is None)
@@ -89,7 +89,7 @@ def _fetch_files_for_work(
         files = []
 
         for handler in path_handlers:
-            f = datastore_finder.find_matching_file(handler, throw_if_not_found=False)
+            f = datastore_finder.find_by_handler(handler, throw_if_not_found=False)
             if f is not None:
                 files.append(f)
 

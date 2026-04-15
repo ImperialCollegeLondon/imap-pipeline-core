@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -16,12 +17,16 @@ from imap_mag.cli.publish import publish
 from imap_mag.main import app
 from imap_mag.util import Environment
 from prefect_server.publishFlow import publish_flow
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     DATASTORE,
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 runner = CliRunner()
+
+OFFSETS_FILENAME = "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+OFFSETS_DATASTORE_PATH = Path("science-ancillary/l2-offsets/2025/10") / OFFSETS_FILENAME
 
 
 def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
@@ -180,3 +185,38 @@ async def test_publish_flow_to_sdc(
 
     # Verify.
     assert f"Publishing 1 files: {upload_file}" in capture_cli_logs.text
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+def test_publish_resolves_absolute_path_to_offsets_file(
+    wiremock_manager,
+    capture_cli_logs,
+    temp_datastore,
+    dynamic_work_folder,
+):
+    # Create the offsets file in the temp datastore
+    offsets_in_datastore = temp_datastore / OFFSETS_DATASTORE_PATH
+    offsets_in_datastore.parent.mkdir(parents=True, exist_ok=True)
+    offsets_in_datastore.write_bytes(b"fake-cdf-content")
+
+    # Copy the file to a location outside the datastore
+    outside = dynamic_work_folder / OFFSETS_FILENAME
+    shutil.copy(offsets_in_datastore, outside)
+
+    # Remove the file from the datastore so only the external copy exists
+    offsets_in_datastore.unlink()
+
+    add_mapping_for_successful_sdc_upload(wiremock_manager, Path(OFFSETS_FILENAME))
+
+    # publish() must succeed using the absolute path directly
+    with Environment(
+        MAG_DATA_STORE=str(temp_datastore),
+        MAG_PUBLISH_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        publish([outside])
+
+    assert f"Publishing 1 files: {outside}" in capture_cli_logs.text

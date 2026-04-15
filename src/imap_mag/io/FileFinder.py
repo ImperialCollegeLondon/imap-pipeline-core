@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, overload
 
+from imap_mag.db.Database import Database
 from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     IFilePathHandler,
@@ -13,20 +14,30 @@ from imap_mag.io.file import (
     SequenceablePathHandler,
     VersionedPathHandler,
 )
+from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from imap_mag.util import MAGSensor, ScienceMode
 
 logger = logging.getLogger(__name__)
 
 
-class DatastoreFileFinder:
+class FileFinder:
     """Find files in the datastore."""
 
-    location: Path
+    _data_store: Path
+    _work_folder: Path | None
+    _database: Database | None
 
-    def __init__(self, location: Path) -> None:
-        self.location = location
+    def __init__(
+        self,
+        data_store: Path,
+        work_folder: Path | None = None,
+        database: Database | None = None,
+    ) -> None:
+        self._data_store = data_store
+        self._work_folder = work_folder
+        self._database = database
 
-    def find_all_file_parts(
+    def find_parts_by_handler(
         self,
         path_handler: PartitionedPathHandler,
         throw_if_not_found: bool = False,
@@ -40,7 +51,7 @@ class DatastoreFileFinder:
         return [Path(file) for file, _ in all_matching_files]
 
     @overload
-    def find_latest_version(
+    def find_latest_version_by_handler(
         self,
         path_handler: VersionedPathHandler,
         throw_if_not_found: Literal[True] = True,
@@ -48,14 +59,14 @@ class DatastoreFileFinder:
         pass
 
     @overload
-    def find_latest_version(
+    def find_latest_version_by_handler(
         self,
         path_handler: VersionedPathHandler,
         throw_if_not_found: Literal[False] = False,
     ) -> Path | None:
         pass
 
-    def find_latest_version(
+    def find_latest_version_by_handler(
         self,
         path_handler: VersionedPathHandler,
         throw_if_not_found: bool = True,
@@ -73,7 +84,7 @@ class DatastoreFileFinder:
         return Path(filename_with_sequence)
 
     @overload
-    def find_matching_file(
+    def find_by_handler(
         self,
         path_handler: IFilePathHandler,
         throw_if_not_found: Literal[True] = True,
@@ -81,20 +92,20 @@ class DatastoreFileFinder:
         pass
 
     @overload
-    def find_matching_file(
+    def find_by_handler(
         self,
         path_handler: IFilePathHandler,
         throw_if_not_found: Literal[False] = False,
     ) -> Path | None:
         pass
 
-    def find_matching_file(
+    def find_by_handler(
         self,
         path_handler: IFilePathHandler,
         throw_if_not_found: bool = True,
     ) -> Path | None:
         matching_file = (
-            self.location
+            self._data_store
             / path_handler.get_folder_structure()
             / path_handler.get_filename()
         )
@@ -111,7 +122,7 @@ class DatastoreFileFinder:
         else:
             return None
 
-    def find_layers(
+    def find_layers_by_date_and_patterns(
         self,
         layers: list[str],
         date: datetime,
@@ -195,26 +206,25 @@ class DatastoreFileFinder:
                 best[key] = (name, handler.version)
         return [name for name, _ in best.values()]
 
-    def find_science_file(
-        self, date: datetime, mode: ScienceMode, sensor: MAGSensor
+    def find_latests_science_by_date(
+        self,
+        date: datetime,
+        mode: ScienceMode,
+        sensor: MAGSensor,
+        levels_to_search=["l1c", "l1b"],
     ) -> str:
         """Find the highest version science file for a given date and mode.
-
-        For burst mode, only L1B files are used.
-        For normal mode, L1C files are preferred; falls back to L1B if no L1C exists.
-
         Returns the filename of the highest version match.
         """
         date_str = date.strftime("%Y%m%d")
-        science_dir = self.location / "science" / "mag"
+        science_dir = self._data_store / "science" / "mag"
 
         if not science_dir.exists():
             raise FileNotFoundError(f"Science directory {science_dir} does not exist")
 
         if mode == ScienceMode.Burst:
-            levels_to_search = ["l1b"]
-        else:
-            levels_to_search = ["l1c", "l1b"]
+            # Remove l1c from levels to search for burst mode as no BM in L1C
+            levels_to_search = [level for level in levels_to_search if level != "l1c"]
 
         for level in levels_to_search:
             date_dir = science_dir / level / date.strftime("%Y") / date.strftime("%m")
@@ -253,7 +263,7 @@ class DatastoreFileFinder:
         filename_only: bool = False,
     ) -> list[tuple[str, int]]:
         pattern = path_handler.get_unsequenced_pattern()
-        folder = self.location / path_handler.get_folder_structure()
+        folder = self._data_store / path_handler.get_folder_structure()
         sequence_name = path_handler.get_sequence_variable_name()
 
         all_matching_files = [
@@ -292,3 +302,105 @@ class DatastoreFileFinder:
             ]
 
         return all_matching_files
+
+    @overload
+    def find_by_name_or_path(
+        self, file_name_or_path: "str | Path", throw_if_not_found: Literal[True] = True
+    ) -> "Path":
+        pass
+
+    @overload
+    def find_by_name_or_path(
+        self,
+        file_name_or_path: "str | Path",
+        throw_if_not_found: Literal[False] = False,
+    ) -> "Path | None":
+        pass
+
+    def find_by_name_or_path(
+        self, file_name_or_path: "str | Path", throw_if_not_found: bool = False
+    ) -> "Path | None":
+        path = (
+            Path(file_name_or_path)
+            if isinstance(file_name_or_path, str)
+            else file_name_or_path
+        )
+
+        # path already exists → return immediately
+        if path.exists():
+            logger.debug("Resolved '%s' via existing path.", file_name_or_path)
+            return path
+
+        # Relative path from data_store
+        candidate = self._data_store / path
+        if candidate.exists():
+            logger.debug(
+                "Resolved '%s' relative to data_store: %s", file_name_or_path, candidate
+            )
+            return candidate
+
+        # Relative path from _work_folder
+        if self._work_folder is not None:
+            candidate = self._work_folder / path
+            if candidate.exists():
+                logger.debug(
+                    "Resolved '%s' relative to work_folder: %s",
+                    file_name_or_path,
+                    candidate,
+                )
+                return candidate
+
+        # Steps that apply only to bare filenames (no directory component).
+        if path.parent == Path("."):
+            filename = path.name
+
+            # try using the path handlers
+            handler = FilePathHandlerSelector.find_by_path(
+                path, throw_if_not_found=False
+            )
+            if handler is not None:
+                candidate = (
+                    self._data_store
+                    / handler.get_folder_structure()
+                    / handler.get_filename()
+                )
+                if candidate.exists():
+                    logger.debug(
+                        "Resolved '%s' via path handler in data_store: %s",
+                        file_name_or_path,
+                        candidate,
+                    )
+                    return candidate
+
+            # try using the database (if available)
+            if self._database is not None:
+                try:
+                    files = self._database.get_files(name=filename, deletion_date=None)
+                    if files:
+                        db_path = self._data_store / files[0].path
+                        if db_path.exists():
+                            logger.debug(
+                                "Resolved '%s' via database record: %s",
+                                file_name_or_path,
+                                db_path,
+                            )
+                            return db_path
+                except Exception:
+                    logger.error(
+                        "Database lookup failed for '%s'.",
+                        file_name_or_path,
+                        exc_info=True,
+                    )
+                    raise
+
+        if throw_if_not_found:
+            raise FileNotFoundError(
+                f"File not found: '{file_name_or_path}'. "
+                f"Searched: local path, "
+                f"data_store ({self._data_store}), "
+                f"CWD ({Path.cwd()}), "
+                f"work_folder ({self._work_folder}), "
+                f"file path handlers, and database."
+            )
+        else:
+            return None

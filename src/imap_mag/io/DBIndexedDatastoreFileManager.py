@@ -44,11 +44,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
         # Check if the version needs to be increased
-        original_hash: str = generate_hash(original_file)
 
         skip_database_insertion: bool = self.__get_next_available_version(
+            original_file,
             path_handler,
-            original_hash=original_hash,
         )
 
         # Add file locally
@@ -58,7 +57,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         if not (
             destination_file.exists()
-            and (generate_hash(destination_file) == original_hash)
+            and (generate_hash(destination_file) == generate_hash(original_file))
         ):
             logger.error(
                 f"File {destination_file} does not exist or is not the same as original {original_file}."
@@ -89,7 +88,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 new_file = File.from_file(
                     file=destination_file,
                     version=version,
-                    hash=original_hash,
+                    hash=generate_hash(destination_file),
                     content_date=path_handler.get_content_date_for_indexing(),
                     settings=self.__settings,
                 )
@@ -196,8 +195,8 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
     def __get_next_available_version(
         self,
+        original_file: Path,
         path_handler: IFilePathHandler,
-        original_hash: str,
     ) -> bool:
         """Find a viable version for a file."""
 
@@ -212,6 +211,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
         # Find the file whose hash matches the original file
+        original_hash: str = generate_hash(original_file)
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]

@@ -11,7 +11,7 @@ from imap_mag.cli.cliUtils import (
     initialiseLoggingForCommand,
 )
 from imap_mag.config import AppSettings, SaveMode
-from imap_mag.io import DatastoreFileFinder, DatastoreFileManager
+from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
@@ -36,7 +36,7 @@ class FileType(Enum):
 
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
 def _prepare_layers_for_application(
-    layers: list[str], datastore_finder: DatastoreFileFinder, appSettings: AppSettings
+    layers: list[str], datastore_finder: FileFinder, appSettings: AppSettings
 ) -> list[Path]:
     """
     Prepare the calibration layers for application by fetching the versioned files.
@@ -53,7 +53,7 @@ def _prepare_layers_for_application(
                 f"Could not parse metadata from calibration metadata file: {layer}"
             )
 
-        versioned_layer_file: Path = datastore_finder.find_matching_file(
+        versioned_layer_file: Path = datastore_finder.find_by_handler(
             path_handler=cal_handler,
             throw_if_not_found=True,
         )
@@ -84,12 +84,12 @@ def _prepare_rotation_layer_for_application(rotation, appSettings):
     Prepare the rotation layer for application by fetching the versioned file.
     """
     if rotation:
-        datastore_finder = DatastoreFileFinder(appSettings.data_store)
+        datastore_finder = FileFinder(appSettings.data_store)
         rotation_handler = AncillaryPathHandler.from_filename(rotation)
         if not rotation_handler:
             logger.error(f"Could not parse metadata from rotation file: {rotation}")
             raise ValueError(f"Could not parse metadata from rotation file: {rotation}")
-        versioned_rotation_file = datastore_finder.find_matching_file(
+        versioned_rotation_file = datastore_finder.find_by_handler(
             path_handler=rotation_handler,
             throw_if_not_found=True,
         )
@@ -234,9 +234,11 @@ def _apply_for_date(
         )
 
     # Resolve layer patterns to actual filenames
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    datastore_finder = FileFinder(app_settings.data_store, app_settings.work_folder)
     resolved_layers = (
-        datastore_finder.find_layers(layers, date, mode, throw_if_not_found=True)
+        datastore_finder.find_layers_by_date_and_patterns(
+            layers, date, mode, throw_if_not_found=True
+        )
         if layers
         else []  # ensure we throw if a layer is passed in but not found
     )
@@ -248,9 +250,10 @@ def _apply_for_date(
                 "Either an input science file or a mode (norm/burst) must be provided "
                 "so the science file can be discovered."
             )
-        input = datastore_finder.find_science_file(date, mode, MAGSensor.OBS)
+        input = datastore_finder.find_latests_science_by_date(date, mode, MAGSensor.OBS)
 
-    original_input_handler = SciencePathHandler.from_filename(input)
+    # Parse metadata from the filename regardless of where the file lives
+    original_input_handler = SciencePathHandler.from_filename(Path(input).name)
 
     if not original_input_handler:
         logger.error(f"Could not parse metadata from input file: {input}")
@@ -264,12 +267,18 @@ def _apply_for_date(
             "At least one of calibration layers or rotation file must be provided."
         )
 
-    versioned_science_file = datastore_finder.find_matching_file(
-        path_handler=original_input_handler,
-        throw_if_not_found=True,
+    versioned_science_file = datastore_finder.find_by_name_or_path(
+        input, throw_if_not_found=True
     )
 
     logger.info(f"Applying layers to input file {versioned_science_file}")
+
+    if (
+        spice_metakernel is not None
+    ):  # not generating a metakernel, but one is provided, so need to resolve the path
+        spice_metakernel = datastore_finder.find_by_name_or_path(
+            spice_metakernel, throw_if_not_found=True
+        )
 
     workScienceFile: Path = fetch_file_for_work(
         versioned_science_file, app_settings.work_folder, throw_if_not_found=True

@@ -7,8 +7,8 @@ import typer
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import (
-    DatastoreFileFinder,
     DatastoreFileManager,
+    FileFinder,
     FilePathHandlerSelector,
 )
 from imap_mag.io.file import IFilePathHandler
@@ -45,7 +45,7 @@ def process(
 
     logger.info(f"Processing {len(files)} files:\n{', '.join(str(f) for f in files)}")
 
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    datastore_finder = FileFinder(app_settings.data_store)
     datastore_manager = DatastoreFileManager.CreateByMode(
         app_settings,
         use_database=(save_mode == SaveMode.LocalAndDatabase),
@@ -66,7 +66,7 @@ def process(
                 )
                 continue
 
-            file = datastore_finder.find_matching_file(
+            file = datastore_finder.find_by_handler(
                 path_handler, throw_if_not_found=True
             )
 
