@@ -89,11 +89,8 @@ ialirt_validation:
     danger_max: 59
   - name: mag_hk_mode
     type: forbidden
-    values: [2, 4]
+    values: ["Safe", "Debug"]
     severity: warning
-    lookup:
-      2: Safe
-      4: Debug
   - name: mag_hk_hk1v5_danger
     type: flag
     severity: danger

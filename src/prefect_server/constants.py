@@ -15,7 +15,6 @@ class PREFECT_CONSTANTS:
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
-        IALIRT_UPDATED = "imap_mag.ialirt.updated"
         IALIRT_HK_UPDATED = "imap_mag.ialirt_hk.updated"
 
     class POLL_IALIRT:

@@ -239,7 +239,7 @@ async def adeploy_flows(local_debug: bool = False):
         triggers=[
             DeploymentEventTrigger(
                 name="Trigger I-ALiRT validation on I-ALiRT update",
-                expect={PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED},
+                expect={PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
                 },  # type: ignore

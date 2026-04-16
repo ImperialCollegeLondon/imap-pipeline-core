@@ -302,7 +302,7 @@ def do_poll_ialirt(
         logger=logger,
         progress_item_id=CONSTANTS.DATABASE.IALIRT_PROGRESS_ID,
         fetch_fn=fetch_ialirt,
-        event_type=PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED,
+        event_type=None,
     )
 
 
@@ -336,7 +336,7 @@ def _do_poll(
     logger,
     progress_item_id: str,
     fetch_fn,
-    event_type: str,
+    event_type: str | None,
 ) -> list[Path]:
     start_timestamp = DatetimeProvider.now()
 
@@ -391,19 +391,21 @@ def _do_poll(
     )
 
     # Trigger event to notify updated I-ALiRT data
-    logger.debug(f"Emitting {event_type} event")
+    if event_type is not None:
+        logger.debug(f"Emitting {event_type} event")
 
-    event: Event | None = emit_event(
-        event=event_type,
-        resource={
-            "prefect.resource.id": f"prefect.flow-run.{flow_run.id}",
-            "prefect.resource.name": flow_run.name,
-            "prefect.resource.role": "flow-run",
-        },
-        payload={"files": list(downloaded.keys())},
-    )
-
-    if event is None:
-        logger.warning(f"Failed to emit {event_type} event")
+        event: Event | None = emit_event(
+            event=event_type,
+            resource={
+                "prefect.resource.id": f"prefect.flow-run.{flow_run.id}",
+                "prefect.resource.name": flow_run.name,
+                "prefect.resource.role": "flow-run",
+            },
+            payload={"files": list(downloaded.keys())},
+        )
+        if event is None:
+            logger.error(f"Failed to emit {event_type} event")
+    else:
+        event = None
 
     return list(downloaded.keys())
