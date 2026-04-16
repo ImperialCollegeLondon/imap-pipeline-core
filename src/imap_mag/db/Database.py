@@ -17,7 +17,7 @@ class Database:
     __active_session: Session | None
 
     def __init__(self, db_url=None):
-        env_url = os.getenv("SQLALCHEMY_URL")
+        env_url = self.get_environment_url()
         if db_url is None and env_url is not None:
             db_url = env_url
 
@@ -28,6 +28,10 @@ class Database:
 
         self.engine = create_engine(db_url, pool_pre_ping=True)
         self.session = sessionmaker(bind=self.engine)
+
+    @classmethod
+    def get_environment_url(cls) -> str | None:
+        return os.getenv("SQLALCHEMY_URL")
 
     @staticmethod
     def __session_manager(

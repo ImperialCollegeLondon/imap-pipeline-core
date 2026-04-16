@@ -16,7 +16,7 @@ from imap_mag.download.FetchIALiRT import (
     process_ialirt_hk_data,
     process_ialirt_mag_data,
 )
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.util.constants import CONSTANTS
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
@@ -40,7 +40,7 @@ def test_fetch_ialirt_no_data(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(Path(tempfile.mkdtemp())),
+        FileFinder(Path(tempfile.mkdtemp())),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -75,7 +75,7 @@ def test_fetch_ialirt_single_day_no_existing_data(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -130,7 +130,7 @@ def test_fetch_ialirt_multiple_days_no_existing_data(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -185,7 +185,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -255,7 +255,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_colu
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -325,7 +325,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_col
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -402,7 +402,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 
@@ -472,7 +472,7 @@ def test_fetch_ialirt_duplicate_timestamps_different_instruments(
     fetch_ialirt = FetchIALiRT(
         mock_ialirt_data_access,
         Path(tempfile.mkdtemp()),
-        DatastoreFileFinder(temp_datastore),
+        FileFinder(temp_datastore),
         IALIRT_PACKET_DEFINITION,
     )
 

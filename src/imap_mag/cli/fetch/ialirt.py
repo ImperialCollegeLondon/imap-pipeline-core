@@ -9,7 +9,7 @@ from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchIALiRT import FetchIALiRT
-from imap_mag.io import DatastoreFileFinder, DatastoreFileManager
+from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 
@@ -23,7 +23,7 @@ def _create_fetch_ialirt(app_settings: AppSettings) -> FetchIALiRT:
         app_settings.fetch_ialirt.api.auth_code,
         app_settings.fetch_ialirt.api.url_base,
     )
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
+    datastore_finder = FileFinder(app_settings.data_store)
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
 
     initialiseLoggingForCommand(

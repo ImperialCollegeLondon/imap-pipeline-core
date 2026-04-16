@@ -161,12 +161,12 @@ class CalibrationApplicator:
         )
 
         # need to get the spice furnished as the l2 step does time truncation needed clock kernels and rotations
-        path_to_mk = (
-            generate_spice_metakernel(
-                start_time=day_to_process + timedelta(hours=-12),
+        if spice_metakernel is None:
+            spice_metakernel = generate_spice_metakernel(
+                start_time=day_to_process + timedelta(hours=-1),
                 end_time=day_to_process
                 + timedelta(
-                    days=1, hours=12
+                    days=1, hours=1
                 ),  # ensure we have plenty of spice coverage around it
                 file_types=[
                     "leapseconds",
@@ -180,13 +180,14 @@ class CalibrationApplicator:
                     "ephemeris_reconstructed",
                 ],
                 verify=False,
-            )
-            if spice_metakernel is None
-            else Path(spice_metakernel)
-        )
-        resolved_mk_path: str = str(path_to_mk.resolve())  # type: ignore
+            )  # type: ignore
 
-        if not Path(resolved_mk_path).exists():
+        if spice_metakernel is None:
+            raise ValueError("Failed to generate spice metakernel for L2 generation")
+
+        resolved_mk_path = spice_metakernel.resolve()
+
+        if not resolved_mk_path.exists():
             raise ValueError(
                 f"Resolved spice metakernel path does not exist: {resolved_mk_path}"
             )
@@ -197,7 +198,7 @@ class CalibrationApplicator:
         try:
             os.chdir(self.app_settings.data_store)
             spiceypy.kclear()
-            spiceypy.furnsh(resolved_mk_path)
+            spiceypy.furnsh(str(resolved_mk_path))
             os.chdir(original_cwd)
             logger.info("Kernels furnished. Loading data ready for L2 file generation")
             science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
@@ -224,9 +225,6 @@ class CalibrationApplicator:
         finally:
             os.chdir(original_cwd)
             spiceypy.kclear()
-            os.remove(
-                resolved_mk_path
-            ) if spice_metakernel is None else None  # clean up the generated metakernel
             del science_data
             del created_offsets_data
 

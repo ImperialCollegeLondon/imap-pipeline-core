@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.HKProcessor import HKProcessor
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def dispatch(
-    file: Path | list[Path], work_folder: Path, datastore_finder: DatastoreFileFinder
+    file: Path | list[Path], work_folder: Path, datastore_finder: FileFinder
 ) -> FileProcessor:
     """Dispatch a file or a list of files to the appropriate processor."""
 

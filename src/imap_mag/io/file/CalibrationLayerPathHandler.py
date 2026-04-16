@@ -92,3 +92,14 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
                 version=int(match["version"]),
                 extension=match["ext"],
             )
+
+    def register_callback_on_resequencing(self, callback) -> None:
+        self._version_change_callback = callback
+
+    def increase_sequence(self) -> None:
+        super().increase_sequence()
+        if hasattr(self, "_version_change_callback"):
+            self._version_change_callback(self)
+        logger.debug(
+            f"Increased version to {self.version} for file {self.get_filename()}."
+        )

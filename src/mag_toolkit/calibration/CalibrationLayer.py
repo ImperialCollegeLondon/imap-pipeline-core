@@ -264,6 +264,9 @@ class CalibrationLayer(Layer):
     def _from_csv(cls, path: Path):
         df = cls._values_from_csv(path)
 
+        if df.empty:
+            raise ValueError("CSV file is empty or does not contain valid data")
+
         validity = Validity(
             start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
             end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
