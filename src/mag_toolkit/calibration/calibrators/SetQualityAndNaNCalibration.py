@@ -149,8 +149,13 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                     filtered["nan_z"], float("nan"), 0.0
                 ),
                 CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered)),
-                CONSTANTS.CSV_VARS.QUALITY_FLAG: filtered["quality_flag"].values,
-                CONSTANTS.CSV_VARS.QUALITY_BITMASK: filtered["quality_bitmask"].values,
+                # Blank/NA in the config means "no effect" — write 0 to the layer file
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: filtered["quality_flag"]
+                .fillna(0)
+                .values,
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: filtered["quality_bitmask"]
+                .fillna(0)
+                .values,
             }
         )
         # create boundary change rows for the ends of all time windows defined in the config file to reset values back to their previous values.

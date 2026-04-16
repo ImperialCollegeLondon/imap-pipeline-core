@@ -258,6 +258,20 @@ class CalibrationLayer(Layer):
         )
         if df.columns.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
+
+        # NaN is no longer valid in quality_flag or quality_bitmask columns.
+        # Use 0 for no-op, positive to set bits, negative to clear bits.
+        for col in [
+            CONSTANTS.CSV_VARS.QUALITY_FLAG,
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK,
+        ]:
+            if col in df.columns and df[col].isna().any():
+                raise ValueError(
+                    f"Layer file '{path.name}' contains NaN/blank values in column '{col}'. "
+                    f"Use 0 for no-op, a positive integer to set bits, "
+                    f"or a negative integer to clear bits."
+                )
+
         return df
 
     @classmethod
