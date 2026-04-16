@@ -76,8 +76,9 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     assert start_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
     end_row = df.iloc[1]
-    # End row undoes the window: flag was 1 → -1 clears it
+    # End row undoes the window: flag was 1 → -1 clears it; bitmask was 3 → -3 clears those bits
     assert end_row[CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
+    assert end_row[CONSTANTS.CSV_VARS.QUALITY_BITMASK] == -3
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Y] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
@@ -162,8 +163,9 @@ def test_calibration_job_splits_across_days(tmp_path):
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 5
     assert df2.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T06:00:00")
-    # End row undoes the window: flag was 1 → -1
+    # End row undoes the window: flag was 1 → -1; bitmask was 5 → -5
     assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == -5
 
 
 def run_calibration_on_config_file(
@@ -484,7 +486,7 @@ def test_apply_empty_quality_layer_produces_zero_quality_flags(
     # CSV with data for a completely different day - no windows will match Jan 16
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
+        "2026-02-01T00:00:00,2026-02-01T06:00:00,1,3,True,False,False\n"
     )
     config = create_temporary_csv_config(csv_content)
     date = datetime(2026, 1, 16)
@@ -549,7 +551,7 @@ def test_apply_empty_quality_layer_does_not_overwrite_existing_nan(
     # CSV with data for a completely different day - no windows will match Jan 16
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
+        "2026-02-01T00:00:00,2026-02-01T06:00:00,1,3,True,False,False\n"
     )
     config = create_temporary_csv_config(csv_content)
     date = datetime(2026, 1, 16)
@@ -711,6 +713,12 @@ def test_apply_empty_quality_layer_on_top_of_existing_flags_and_bitmasks_does_no
         ("", "", 1, 4),
         # -1 flag clears the quality flag to 0
         ("-1", "0", 0, 4),
+        # Negative bitmask clears specific bits: -4 clears bit 2 (value 4) → 4 & ~4 = 0
+        ("0", "-4", 1, 0),
+        # -1 flag AND negative bitmask together clear both
+        ("-1", "-4", 0, 0),
+        # -65535 clears all 16 bits of the bitmask
+        ("0", "-65535", 1, 0),
     ],
 )
 def test_apply_quality_layer_on_top_of_existing_flags_and_bitmasks_can_override_earlier_layers(

@@ -453,21 +453,30 @@ class CalibrationApplicator:
         positive_layer_flag = layer_flag_column.clip(lower=0)
         offsets._contents[cols.QUALITY_FLAG] = base_after_clear | positive_layer_flag
 
-        # quality_bitmask combining (bitmask negative-clear is Change 4 — kept as OR-only for now):
-        #   0 (or NA) → no change
-        #   positive N → OR N into mask
-        layer_bitmask_column = layer._contents[cols.QUALITY_BITMASK].astype(
-            pandas.Int64Dtype()
+        # quality_bitmask combining:
+        #   0 or NA → no change
+        #   positive N → OR N into mask (sets those bits)
+        #   negative N → clear those bits: result = base & (N - 1)  [since ~(-N) == N - 1]
+        layer_bitmask_column = (
+            layer._contents[cols.QUALITY_BITMASK].astype(pandas.Int64Dtype()).fillna(0)
         )
         offsets_bitmask_column = offsets._contents[cols.QUALITY_BITMASK].astype(
             pandas.Int64Dtype()
         )
 
-        # zero in layer means no change (Change 2); non-zero ORs; NA leaves unchanged
-        offsets._contents[cols.QUALITY_BITMASK] = offsets_bitmask_column.where(
-            layer_bitmask_column.isna() | (layer_bitmask_column == 0),
-            offsets_bitmask_column.fillna(0) | layer_bitmask_column.fillna(0),
+        or_mask = layer_bitmask_column > 0
+        clear_mask = layer_bitmask_column < 0
+
+        result_bitmask = offsets_bitmask_column.copy()
+        # OR positive values into the mask
+        result_bitmask = result_bitmask.where(
+            ~or_mask, offsets_bitmask_column.fillna(0) | layer_bitmask_column
         )
+        # Negative N clears bits: result = base & (layer - 1)  [~(-layer) == layer - 1]
+        result_bitmask = result_bitmask.where(
+            ~clear_mask, offsets_bitmask_column.fillna(0) & (layer_bitmask_column - 1)
+        )
+        offsets._contents[cols.QUALITY_BITMASK] = result_bitmask
 
         offsets._data_path = None  # Invalidate data path since contents have changed
         return offsets
