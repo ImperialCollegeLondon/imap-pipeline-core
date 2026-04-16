@@ -27,6 +27,27 @@ logger = logging.getLogger(__name__)
 
 
 class SetQualityAndNaNCalibrationJob(CalibrationJob):
+    """Calibration job that sets quality flags and NaN values in the science data based on time windows defined in a user-provided CSV file.
+
+    Example CSV files:
+
+        # EXAMPLE 1: Set quality_flag to 1 and set bits 1 and 4 (decimal 5), and set offsets to NaN for a 2-hour window on Jan 16, 2026
+        start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z
+        2026-01-16T20:00:00,2026-01-16T22:00:00,1,5,True,True,True
+
+        # EXAMPLE 2: Set quality_flag = 1 only, bitmask and nans unchanged
+        start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z
+        2026-01-16T20:00:00,2026-01-16T22:00:00,1,,False,False,False
+
+        # EXAMPLE 3: Force quality_flag to 0 and bitmask to zero (remove all bits 0xFFFF) for a 2-hour window on Jan 16, 2026
+        start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z
+        2026-01-16T20:00:00,2026-01-16T22:00:00,-1,-65535,True,True,True
+
+        # EXAMPLE 4: Set science to NaN, leave quality_flag and bitmask unchanged (0 means do not change as layers are summed with logical OR)
+        start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z
+        2026-01-16T20:00:00,2026-01-16T22:00:00,0,0,True,True,True
+    """
+
     science_file_key = "science_file"
 
     def __init__(
@@ -160,22 +181,6 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
         # create boundary change rows for the ends of all time windows defined in the config file to reset values back to their previous values.
         # If the window ends after the end of the day then there will be zero end_rows because we are reading from end_filtered
-        # End-row quality_flag: -1 (clear) if start was 1, otherwise 0 (no-op)
-        # End-row quality_bitmask: -start_bitmask if start was positive (clears those bits), else 0
-        end_flag_values = pd.array(
-            [
-                -1 if pd.notna(f) and int(f) == 1 else 0
-                for f in end_filtered["quality_flag"]
-            ],
-            dtype=pd.Int64Dtype(),
-        )
-        end_bitmask_values = pd.array(
-            [
-                -int(b) if pd.notna(b) and int(b) > 0 else 0
-                for b in end_filtered["quality_bitmask"]
-            ],
-            dtype=pd.Int64Dtype(),
-        )
         end_rows = pd.DataFrame(
             {
                 CONSTANTS.CSV_VARS.EPOCH: end_filtered["window_end"].values,
@@ -183,8 +188,8 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_Y: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(end_filtered)),
-                CONSTANTS.CSV_VARS.QUALITY_FLAG: end_flag_values,
-                CONSTANTS.CSV_VARS.QUALITY_BITMASK: end_bitmask_values,
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: np.zeros(len(end_filtered)),
             }
         )
 

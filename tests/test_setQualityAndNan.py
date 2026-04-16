@@ -76,9 +76,9 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     assert start_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
     end_row = df.iloc[1]
-    # End row undoes the window: flag was 1 → -1 clears it; bitmask was 3 → -3 clears those bits
-    assert end_row[CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
-    assert end_row[CONSTANTS.CSV_VARS.QUALITY_BITMASK] == -3
+    # End row reverts all entries after it to a zero/no-op layer
+    assert end_row[CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert end_row[CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Y] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
@@ -159,13 +159,14 @@ def test_calibration_job_splits_across_days(tmp_path):
     df2 = pd.read_csv(datafile2, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     # Day 2: window starts at 00:00 (clipped), ends at 06:00 -> 2 change points
     assert len(df2) == 2
+
     assert df2.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T00:00:00")
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 5
+
     assert df2.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T06:00:00")
-    # End row undoes the window: flag was 1 → -1; bitmask was 5 → -5
-    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
-    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == -5
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0
 
 
 def run_calibration_on_config_file(
@@ -208,7 +209,7 @@ def test_run_calibration_starts_at_midnight_if_config_if_in_a_previous_day(
     assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T00:00:00")
 
 
-def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
+def test_run_calibration_creates_two_change_points_if_window_contained_within_one_day(
     tmp_path,
 ):
     csv_content = (
@@ -222,10 +223,17 @@ def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
     assert len(df1) == 2
     assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T02:00:00")
     assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 3
     assert np.isnan(df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_X])
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_Y] == 0.0
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
+
     assert df1.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T04:00:00")
-    assert df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 0
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 0
     assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_Y] == 0.0
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
 
 def test_run_calibration_raises_without_config(tmp_path):

@@ -63,8 +63,6 @@ class CalibrationApplicator:
             # NOTE: later layers are checked to be compatible with the previous when summing them
         science.clear_contents()
 
-        offsets = self._init_base_layer(offsets)
-
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
             if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
@@ -324,12 +322,8 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
                     CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pandas.array(
-                        [0] * len(science_index), dtype=pandas.Int64Dtype()
-                    ),
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pandas.array(
-                        [0] * len(science_index), dtype=pandas.Int64Dtype()
-                    ),
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
                 },
                 index=science_index,
             )
@@ -349,12 +343,8 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
                     CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pandas.array(
-                        [0], dtype=pandas.Int64Dtype()
-                    ),
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pandas.array(
-                        [0], dtype=pandas.Int64Dtype()
-                    ),
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
                 },
                 index=pd.DatetimeIndex([first_science_epoch]),
             )
@@ -383,31 +373,6 @@ class CalibrationApplicator:
         layer._contents = expanded
         layer.value_type = ValueType.VECTOR
         return layer
-
-    def _init_base_layer(self, offsets: CalibrationLayer) -> CalibrationLayer:
-        if offsets._contents is None:
-            raise ValueError("Offset contents are not loaded")
-
-        # In the base layer quality_flag starts at 0 for all epochs.
-        # -1 (clear) applied to an all-zero base still gives 0.
-        flag_col = offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].astype(
-            pandas.Int64Dtype()
-        )
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = flag_col.where(
-            flag_col != -1, 0
-        )
-
-        # In the base layer bitmask starts at zero.
-        # Negative values (bit-clear) applied to 0 also give 0.
-        bitmask_col = offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].astype(
-            pandas.Int64Dtype()
-        )
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = bitmask_col.where(
-            bitmask_col >= 0, 0
-        )
-
-        offsets._data_path = None  # Invalidate data path since contents have changed
-        return offsets
 
     def _sum_layers(
         self,
