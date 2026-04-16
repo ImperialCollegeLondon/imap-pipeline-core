@@ -88,7 +88,7 @@ def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_b
 ):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-15,2026-01-17,2,3,True,False,False\n"  # starts before calday
+        "2026-01-15,2026-01-17,1,3,True,False,False\n"  # starts before calday
     )
     config = create_temporary_csv_config(csv_content)
 
@@ -196,7 +196,7 @@ def test_run_calibration_starts_at_midnight_if_config_if_in_a_previous_day(
 ):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-15T20:00:00,2026-01-17T06:00:00,4,5,False,True,True\n"
+        "2026-01-15T20:00:00,2026-01-17T06:00:00,1,5,False,True,True\n"
     )
     df1 = run_calibration_on_config_file(
         tmp_path, csv_content, content_date=datetime(2026, 1, 16)
@@ -211,7 +211,7 @@ def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
 ):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-16T02:00:00,2026-01-16T04:00:00,2,3,True,False,False\n"
+        "2026-01-16T02:00:00,2026-01-16T04:00:00,1,3,True,False,False\n"
     )
     df1 = run_calibration_on_config_file(
         tmp_path, csv_content, content_date=datetime(2026, 1, 16)
@@ -219,7 +219,7 @@ def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
 
     assert len(df1) == 2
     assert df1.iloc[0][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T02:00:00")
-    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 2
+    assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert np.isnan(df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_X])
     assert df1.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T04:00:00")
     assert np.isnan(df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG])
@@ -259,12 +259,37 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         job.run_calibration(handler, config)
 
 
+@pytest.mark.parametrize(
+    "invalid_flag",
+    [2, 3, -2, 100, -100],
+)
+def test_run_calibration_raises_for_invalid_quality_flag_in_csv(tmp_path, invalid_flag):
+    """quality_flag in CSV must be -1, 0, 1, or blank. Other values are rejected."""
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        f"2026-01-16T02:00:00,2026-01-16T04:00:00,{invalid_flag},3,False,False,False\n"
+    )
+    config = create_temporary_csv_config(csv_content)
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    job = SetQualityAndNaNCalibrationJob(params, work)
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    with pytest.raises(ValueError, match="quality_flag"):
+        job.run_calibration(handler, config)
+
+
 def test_run_calibration_with_no_matching_windows_creates_empty_layer_with_headers(
     tmp_path,
 ):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-02-01T00:00:00,2026-02-01T06:00:00,2,3,True,False,False\n"
+        "2026-02-01T00:00:00,2026-02-01T06:00:00,1,3,True,False,False\n"
     )
 
     df = run_calibration_on_config_file(
@@ -326,7 +351,7 @@ def test_calibrate_returns_list_of_paths_to_the_calibration_layer_files(
 def test_calibrate_creates_layer_json_and_csv_file(temp_datastore, dynamic_work_folder):
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-16T02:11:54,2026-01-16T02:11:57,2,3,True,False,False\n"
+        "2026-01-16T02:11:54,2026-01-16T02:11:57,1,3,True,False,False\n"
     )
     date = datetime(2026, 1, 16)
     layer_dir = (
@@ -793,7 +818,7 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
     csv = tmp_path / "my_quality_events.csv"
     csv.write_text(
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
-        "2026-01-16T02:00:00,2026-01-16T04:00:00,2,3,True,False,False\n"
+        "2026-01-16T02:00:00,2026-01-16T04:00:00,1,3,True,False,False\n"
     )
 
     # Change CWD to the directory that contains the CSV so the bare filename resolves

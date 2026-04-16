@@ -87,6 +87,20 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             parse_dates=["start_date", "end_date"],
         )
 
+        # Validate quality_flag: only -1, 0, 1, or blank/NA are permitted
+        valid_flags = {-1, 0, 1}
+        invalid_flag_mask = ~(
+            input_df["quality_flag"].isna() | input_df["quality_flag"].isin(valid_flags)
+        )
+        if invalid_flag_mask.any():
+            invalid_values = (
+                input_df.loc[invalid_flag_mask, "quality_flag"].unique().tolist()
+            )
+            raise ValueError(
+                f"quality_flag values in CSV must be -1, 0, 1, or blank/NA. "
+                f"Found invalid values: {invalid_values}"
+            )
+
         date = self.calibration_job_parameters.date
 
         # Get actual science data time range from the science file
