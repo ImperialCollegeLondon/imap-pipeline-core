@@ -146,12 +146,12 @@ class TestFindScienceFile:
     def test_normal_mode_prefers_l1c(self, datastore):
         finder = FileFinder(datastore)
 
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
 
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.IBS
         )
         assert result == "imap_mag_l1c_norm-magi_20260116_v001.cdf"
@@ -159,7 +159,7 @@ class TestFindScienceFile:
     def test_normal_mode_checks_correct_sensor(self, datastore):
         finder = FileFinder(datastore)
         with pytest.raises(FileNotFoundError):
-            finder.find_latests_science_by_date(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 17), ScienceMode.Normal, MAGSensor.IBS
             )
 
@@ -170,14 +170,14 @@ class TestFindScienceFile:
         (l1b_dir / "imap_mag_l1b_norm-mago_20260116_v000.cdf").touch()
 
         finder = FileFinder(tmp_path)
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1b_norm-mago_20260116_v000.cdf"
 
     def test_burst_mode_uses_l1b_only(self, datastore):
         finder = FileFinder(datastore)
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
         )
         assert result == "imap_mag_l1b_burst-mago_20260116_v002.cdf"
@@ -190,7 +190,7 @@ class TestFindScienceFile:
 
         finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError):
-            finder.find_latests_science_by_date(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
             )
 
@@ -202,7 +202,7 @@ class TestFindScienceFile:
         (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v001.cdf").touch()
 
         finder = FileFinder(tmp_path)
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v003.cdf"
@@ -216,7 +216,7 @@ class TestFindScienceFile:
         (l1c_dir / "README.md").touch()
 
         finder = FileFinder(tmp_path)
-        result = finder.find_latests_science_by_date(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
@@ -224,7 +224,7 @@ class TestFindScienceFile:
     def test_no_science_dir_raises(self, tmp_path):
         finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="Science directory"):
-            finder.find_latests_science_by_date(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
             )
 
@@ -236,6 +236,6 @@ class TestFindScienceFile:
 
         finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="No science file found"):
-            finder.find_latests_science_by_date(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
             )

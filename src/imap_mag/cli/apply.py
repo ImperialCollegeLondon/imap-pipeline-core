@@ -250,7 +250,7 @@ def _apply_for_date(
                 "Either an input science file or a mode (norm/burst) must be provided "
                 "so the science file can be discovered."
             )
-        input = datastore_finder.find_latests_science_by_date(date, mode, MAGSensor.OBS)
+        input = datastore_finder.find_latest_science_by_date(date, mode, MAGSensor.OBS)
 
     # Parse metadata from the filename regardless of where the file lives
     original_input_handler = SciencePathHandler.from_filename(Path(input).name)

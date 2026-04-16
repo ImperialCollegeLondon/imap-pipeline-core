@@ -206,7 +206,7 @@ class FileFinder:
                 best[key] = (name, handler.version)
         return [name for name, _ in best.values()]
 
-    def find_latests_science_by_date(
+    def find_latest_science_by_date(
         self,
         date: datetime,
         mode: ScienceMode,
@@ -331,14 +331,6 @@ class FileFinder:
             logger.debug("Resolved '%s' via existing path.", file_name_or_path)
             return path
 
-        # Relative path from data_store
-        candidate = self._data_store / path
-        if candidate.exists():
-            logger.debug(
-                "Resolved '%s' relative to data_store: %s", file_name_or_path, candidate
-            )
-            return candidate
-
         # Relative path from _work_folder
         if self._work_folder is not None:
             candidate = self._work_folder / path
@@ -349,6 +341,14 @@ class FileFinder:
                     candidate,
                 )
                 return candidate
+
+        # Relative path from data_store
+        candidate = self._data_store / path
+        if candidate.exists():
+            logger.debug(
+                "Resolved '%s' relative to data_store: %s", file_name_or_path, candidate
+            )
+            return candidate
 
         # Steps that apply only to bare filenames (no directory component).
         if path.parent == Path("."):
