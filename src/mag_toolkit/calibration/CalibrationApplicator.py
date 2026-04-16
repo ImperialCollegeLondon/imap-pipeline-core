@@ -324,8 +324,12 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
                     CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pd.NA,
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pd.NA,
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pandas.array(
+                        [0] * len(science_index), dtype=pandas.Int64Dtype()
+                    ),
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pandas.array(
+                        [0] * len(science_index), dtype=pandas.Int64Dtype()
+                    ),
                 },
                 index=science_index,
             )
@@ -345,8 +349,12 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
                     CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
-                    CONSTANTS.CSV_VARS.QUALITY_FLAG: [pd.NA],
-                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: [pd.NA],
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: pandas.array(
+                        [0], dtype=pandas.Int64Dtype()
+                    ),
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: pandas.array(
+                        [0], dtype=pandas.Int64Dtype()
+                    ),
                 },
                 index=pd.DatetimeIndex([first_science_epoch]),
             )
@@ -375,18 +383,27 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offset contents are not loaded")
 
-        # in the base layer quality flag is zero for all epochs, and is set to the layer value where it is defined, otherwise remains zero
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
+        # In the base layer quality_flag starts at 0 for all epochs.
+        # -1 (clear) applied to 0 still gives 0; NA means no-op → also 0.
+        flag_col = (
             offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG]
             .astype(pandas.Int64Dtype())
             .fillna(0)
         )
+        # Where flag is -1 (clear sentinel), result is 0 (clearing nothing = 0)
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] = flag_col.where(
+            flag_col != -1, 0
+        )
 
-        # in the base layer bitmask starts at zero if not defined by the layer
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
+        # In the base layer bitmask starts at zero if not defined by the layer.
+        # Negative values (bit-clear) applied to 0 also give 0; NA means no-op → 0.
+        bitmask_col = (
             offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK]
             .astype(pandas.Int64Dtype())
             .fillna(0)
+        )
+        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = bitmask_col.where(
+            bitmask_col >= 0, 0
         )
 
         offsets._data_path = None  # Invalidate data path since contents have changed
@@ -419,14 +436,26 @@ class CalibrationApplicator:
             offsets._contents[cols.TIMEDELTA] + layer._contents[cols.TIMEDELTA]
         )
 
-        # top layer wins for quality flag where it is defined
-        layer_flag_column = layer._contents[cols.QUALITY_FLAG].astype(
+        # quality_flag combining via bitwise OR semantics:
+        #   0 (or NA) → no change (OR with 0 leaves existing value)
+        #   1          → set the flag (OR with 1 always gives 1)
+        #  -1          → clear the flag to 0
+        layer_flag_column = (
+            layer._contents[cols.QUALITY_FLAG].astype(pandas.Int64Dtype()).fillna(0)
+        )
+        base_flag_column = offsets._contents[cols.QUALITY_FLAG].astype(
             pandas.Int64Dtype()
         )
-        offsets._contents[cols.QUALITY_FLAG] = offsets._contents[
-            cols.QUALITY_FLAG
-        ].where(layer_flag_column.isna(), layer_flag_column)
+        clear_flag_mask = layer_flag_column == -1
+        # Step 1: where layer is -1, force base to 0; otherwise keep base as-is
+        base_after_clear = base_flag_column.where(~clear_flag_mask, 0)
+        # Step 2: OR the positive part of the layer (0 or 1 only)
+        positive_layer_flag = layer_flag_column.clip(lower=0)
+        offsets._contents[cols.QUALITY_FLAG] = base_after_clear | positive_layer_flag
 
+        # quality_bitmask combining (bitmask negative-clear is Change 4 — kept as OR-only for now):
+        #   0 (or NA) → no change
+        #   positive N → OR N into mask
         layer_bitmask_column = layer._contents[cols.QUALITY_BITMASK].astype(
             pandas.Int64Dtype()
         )
@@ -434,14 +463,9 @@ class CalibrationApplicator:
             pandas.Int64Dtype()
         )
 
-        # quality bitmask step 1: A zero value in the new layer layer sets the mask to zero; all other values (inc NA) remain
-        offsets_bitmask_column = offsets_bitmask_column.mask(
-            (layer_bitmask_column == 0).fillna(False), 0
-        )
-
-        # quality bitmask step 2: non-zero in layer ORs the mask; NA in layer leaves it unchanged
+        # zero in layer means no change (Change 2); non-zero ORs; NA leaves unchanged
         offsets._contents[cols.QUALITY_BITMASK] = offsets_bitmask_column.where(
-            layer_bitmask_column.isna(),
+            layer_bitmask_column.isna() | (layer_bitmask_column == 0),
             offsets_bitmask_column.fillna(0) | layer_bitmask_column.fillna(0),
         )
 

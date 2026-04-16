@@ -76,8 +76,8 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     assert start_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
     end_row = df.iloc[1]
-    assert np.isnan(end_row[CONSTANTS.CSV_VARS.QUALITY_FLAG])
-    assert np.isnan(end_row[CONSTANTS.CSV_VARS.QUALITY_BITMASK])
+    # End row undoes the window: flag was 1 → -1 clears it
+    assert end_row[CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Y] == 0.0
     assert end_row[CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
@@ -162,8 +162,8 @@ def test_calibration_job_splits_across_days(tmp_path):
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert df2.iloc[0][CONSTANTS.CSV_VARS.QUALITY_BITMASK] == 5
     assert df2.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-17T06:00:00")
-    assert np.isnan(df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG])
-    assert np.isnan(df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_BITMASK])
+    # End row undoes the window: flag was 1 → -1
+    assert df2.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
 
 
 def run_calibration_on_config_file(
@@ -222,7 +222,7 @@ def test_run_calibration_creates_two_change_points_if_window_contained_with_day(
     assert df1.iloc[0][CONSTANTS.CSV_VARS.QUALITY_FLAG] == 1
     assert np.isnan(df1.iloc[0][CONSTANTS.CSV_VARS.OFFSET_X])
     assert df1.iloc[1][CONSTANTS.CSV_VARS.EPOCH] == pd.Timestamp("2026-01-16T04:00:00")
-    assert np.isnan(df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG])
+    assert df1.iloc[1][CONSTANTS.CSV_VARS.QUALITY_FLAG] == -1
     assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_X] == 0.0
 
 
@@ -698,20 +698,19 @@ def test_apply_empty_quality_layer_on_top_of_existing_flags_and_bitmasks_does_no
 @pytest.mark.parametrize(
     "top_layer_flag,top_layer_bitmask,expected_flag,expected_bitmask",
     [
-        ("0", "0", 0, 0),  # reset to unflagged
-        ("1", "1", 1, 5),  # different bitmask
+        # Zero means "no change" via OR semantics — previous layer values propagate through
+        ("0", "0", 1, 4),
+        ("1", "1", 1, 5),  # different bitmask: 4 | 1 = 5
         (
             "1",
             "7",
             1,
             7,
         ),  # Bitwise OR of bitmask: 4 (from layer 1) | 7 (from layer 2) = 7
-        (
-            "",
-            "",
-            1,
-            4,
-        ),  # leave blank so previous layer can proagate through (should keep original flag/bitmask)
+        # Blank means "no change" — previous layer values propagate through
+        ("", "", 1, 4),
+        # -1 flag clears the quality flag to 0
+        ("-1", "0", 0, 4),
     ],
 )
 def test_apply_quality_layer_on_top_of_existing_flags_and_bitmasks_can_override_earlier_layers(

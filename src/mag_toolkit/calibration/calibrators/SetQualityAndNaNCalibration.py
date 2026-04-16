@@ -155,6 +155,14 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
         # create boundary change rows for the ends of all time windows defined in the config file to reset values back to their previous values.
         # If the window ends after the end of the day then there will be zero end_rows because we are reading from end_filtered
+        # End-row quality_flag: -1 (clear) if start was 1, otherwise 0 (no-op); quality_bitmask: handled in Change 4
+        end_flag_values = pd.array(
+            [
+                -1 if pd.notna(f) and int(f) == 1 else 0
+                for f in end_filtered["quality_flag"]
+            ],
+            dtype=pd.Int64Dtype(),
+        )
         end_rows = pd.DataFrame(
             {
                 CONSTANTS.CSV_VARS.EPOCH: end_filtered["window_end"].values,
@@ -162,7 +170,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_Y: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(end_filtered)),
-                CONSTANTS.CSV_VARS.QUALITY_FLAG: [pd.NA] * len(end_filtered),
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: end_flag_values,
                 CONSTANTS.CSV_VARS.QUALITY_BITMASK: [pd.NA] * len(end_filtered),
             }
         )
