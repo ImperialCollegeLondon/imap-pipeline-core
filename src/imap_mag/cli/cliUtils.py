@@ -113,8 +113,11 @@ def fetch_file_for_work(
         f"{files[0].absolute().as_posix()}"
     )
 
-    # copy the file to work_folder
+    # copy the file to work_folder (skip if it is already there)
     work_file = Path(work_folder, files[0].name)
+    if files[0].resolve() == work_file.resolve():
+        logger.debug(f"File {files[0]} is already in work folder, no copy needed.")
+        return work_file
     logger.debug(f"Copying {files[0]} to {work_file}")
     work_file = Path(shutil.copy2(files[0], work_folder))
 

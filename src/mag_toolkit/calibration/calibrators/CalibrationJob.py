@@ -4,7 +4,7 @@ from pathlib import Path
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.config.CalibrationConfig import CalibrationConfig
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 
@@ -26,13 +26,13 @@ class CalibrationJob(ABC):
 
     def setup_calibration_files(
         self,
-        datastore_finder: DatastoreFileFinder,
+        datastore_finder: FileFinder,
     ):
         path_handlers = self._get_path_handlers(self.calibration_job_parameters)
 
         for key in path_handlers:
             path_handler = path_handlers[key]
-            input_file = datastore_finder.find_latest_version(
+            input_file = datastore_finder.find_latest_version_by_handler(
                 path_handler, throw_if_not_found=True
             )
             work_file = fetch_file_for_work(
@@ -61,30 +61,40 @@ class CalibrationJob(ABC):
         :param sensor: The sensor type.
         :return: A dictionary of path handlers."""
 
-    def get_next_viable_version_layer(
+    def set_layer_to_next_viable_version(
         self,
-        datastore_finder: DatastoreFileFinder,
+        datastore_finder: FileFinder,
         layer_handler: CalibrationLayerPathHandler,
-    ) -> CalibrationLayerPathHandler:
+    ):
         """
         Get the next viable version for a calibration layer.
+
+        Checks both the JSON metadata file and the CSV data file so that the pair
+        is always versioned together — whichever file has the higher existing version
+        determines the base for the next version number.
+
         :return: Calibration layer handler for next viable version.
         """
 
-        latest_version_file: Path | None = datastore_finder.find_latest_version(
+        def _version_of(path: Path | None) -> int:
+            if path is None:
+                return 0
+            h = CalibrationLayerPathHandler.from_filename(path)
+            return h.version if h is not None else 0
+
+        latest_json_file: Path | None = datastore_finder.find_latest_version_by_handler(
             layer_handler, throw_if_not_found=False
         )
+        latest_csv_file: Path | None = datastore_finder.find_latest_version_by_handler(
+            layer_handler.get_equivalent_data_handler(), throw_if_not_found=False
+        )
 
-        if latest_version_file is None:
-            return layer_handler
-        else:
-            latest_version_handler: CalibrationLayerPathHandler | None = (
-                CalibrationLayerPathHandler.from_filename(latest_version_file)
-            )
-            assert latest_version_handler is not None
-
-            latest_version_handler.increase_sequence()
-            return latest_version_handler
+        max_existing_version = max(
+            _version_of(latest_json_file), _version_of(latest_csv_file)
+        )
+        if max_existing_version >= layer_handler.version:
+            layer_handler.version = max_existing_version
+            layer_handler.increase_sequence()
 
     def _check_environment_is_setup(self):
         if not self._check_for_required_files():

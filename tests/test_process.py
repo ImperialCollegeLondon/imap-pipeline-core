@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process import HKProcessor, dispatch
 from imap_mag.util import CONSTANTS, HKPacket, TimeConversion
@@ -22,7 +22,7 @@ def instantiate_hk_processor(test_datastore: Path = DATASTORE) -> HKProcessor:
 
     work_folder = Path(tempfile.gettempdir())
 
-    processor = HKProcessor(work_folder, DatastoreFileFinder(test_datastore))
+    processor = HKProcessor(work_folder, FileFinder(test_datastore))
     processor.initialize(Path("packet_def"))
 
     return processor
@@ -60,7 +60,7 @@ def test_dispatch_hk_binary(extension):
     processor = dispatch(
         packet_path,
         Path(tempfile.gettempdir()),
-        DatastoreFileFinder(DATASTORE),
+        FileFinder(DATASTORE),
     )
 
     # Verify.
@@ -81,7 +81,7 @@ def test_dispatch_unsupported_file(capture_cli_logs):
         dispatch(
             packet_path,
             Path(tempfile.gettempdir()),
-            DatastoreFileFinder(DATASTORE),
+            FileFinder(DATASTORE),
         )
 
     assert (

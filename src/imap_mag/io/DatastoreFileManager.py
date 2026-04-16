@@ -37,10 +37,9 @@ class DatastoreFileManager(IDatastoreFileManager):
             logger.debug(f"Output location does not exist. Creating {self.location}.")
             self.location.mkdir(parents=True, exist_ok=True)
 
-        original_hash = generate_hash(original_file)
         skip_file_copy: bool = self.__get_next_available_version(
+            original_file,
             path_handler,
-            original_hash=original_hash,
         )
         destination_file: Path = path_handler.get_full_path(self.location)
 
@@ -70,30 +69,28 @@ class DatastoreFileManager(IDatastoreFileManager):
 
     def __get_next_available_version(
         self,
+        original_file: Path,
         path_handler: IFilePathHandler,
-        original_hash: str,
     ) -> bool:
         """Find a viable version for a file."""
+
+        destination_file: Path = path_handler.get_full_path(self.location)
 
         if not path_handler.supports_sequencing():
             logger.debug(
                 "Versioning not supported. File may be overwritten if it already exists and is different."
             )
 
-            destination_file: Path = path_handler.get_full_path(self.location)
-
             return (
-                original_hash == generate_hash(destination_file)
+                generate_hash(original_file) == generate_hash(destination_file)
                 if destination_file.exists()
                 else False
             )
         else:
             assert isinstance(path_handler, SequenceablePathHandler)
 
-        destination_file = path_handler.get_full_path(self.location)
-
         while destination_file.exists():
-            if generate_hash(destination_file) == original_hash:
+            if generate_hash(destination_file) == generate_hash(original_file):
                 return True
 
             logger.debug(

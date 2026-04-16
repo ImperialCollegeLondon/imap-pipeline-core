@@ -8,7 +8,7 @@ import pandas as pd
 import yaml
 
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.process import get_packet_definition_folder
@@ -27,7 +27,7 @@ class FetchIALiRT:
         self,
         data_access: IALiRTApiClient,
         work_folder: Path,
-        datastore_finder: DatastoreFileFinder,
+        datastore_finder: FileFinder,
         packet_definition: Path,
     ) -> None:
         """Initialize I-ALiRT interface."""
@@ -138,7 +138,7 @@ class FetchIALiRT:
                 path_handler = path_handler_factory(max_daily_date)
 
                 # Find file in datastore
-                file_path: Path | None = self.__datastore_finder.find_matching_file(
+                file_path: Path | None = self.__datastore_finder.find_by_handler(
                     path_handler, throw_if_not_found=False
                 )
 

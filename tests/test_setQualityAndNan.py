@@ -10,7 +10,7 @@ from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import SaveMode
 from imap_mag.config.CalibrationConfig import CalibrationConfig, SetQualityAndNaNConfig
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -255,7 +255,7 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         set_quality_and_nan=SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
     )
 
-    with pytest.raises(FileNotFoundError, match="CSV file not found"):
+    with pytest.raises(FileNotFoundError, match="File not found"):
         job.run_calibration(handler, config)
 
 
@@ -787,3 +787,40 @@ def test_apply_quality_layer_on_top_of_existing_flags_and_bitmasks_can_override_
             assert quality_flags[i] == 0, f"Row {i} should have quality_flag=0"
             assert quality_bitmask[i] == 0, f"Row {i} should have quality_bitmask=0"
             assert offsets[i, 0] != FILLVAL, f"Row {i} offset_x should not be FILLVAL"
+
+
+def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
+    csv = tmp_path / "my_quality_events.csv"
+    csv.write_text(
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:00:00,2026-01-16T04:00:00,2,3,True,False,False\n"
+    )
+
+    # Change CWD to the directory that contains the CSV so the bare filename resolves
+    monkeypatch.chdir(tmp_path)
+
+    # Use a separate directory as the datastore so the CSV is NOT there
+    datastore = tmp_path / "store"
+    datastore.mkdir()
+    params = CalibrationJobParameters(
+        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    job = SetQualityAndNaNCalibrationJob(params, work)
+    job.setup_datastore(datastore)  # CSV is not here
+    handler = CalibrationLayerPathHandler(
+        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+        content_date=datetime(2026, 1, 16),
+    )
+    config = CalibrationConfig(
+        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
+    )
+
+    # Should succeed: resolver finds the file via CWD fallback
+    calfile, datafile = job.run_calibration(handler, config)
+
+    assert calfile.exists()
+    assert datafile.exists()
+    df = pd.read_csv(datafile)
+    assert len(df) == 2  # start + end change points

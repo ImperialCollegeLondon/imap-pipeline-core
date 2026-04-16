@@ -12,7 +12,7 @@ import xarray as xr
 from rich.progress import track
 from space_packet_parser.exceptions import UnrecognizedPacketTypeError
 
-from imap_mag.io import DatastoreFileFinder
+from imap_mag.io import FileFinder
 from imap_mag.io.file import HKBinaryPathHandler, HKDecodedPathHandler, IFilePathHandler
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.get_packet_definition_folder import get_packet_definition_folder
@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 class HKProcessor(FileProcessor):
     __xtcePacketDefinitionFolder: Path
 
-    def __init__(
-        self, work_folder: Path, datastore_finder: DatastoreFileFinder
-    ) -> None:
+    def __init__(self, work_folder: Path, datastore_finder: FileFinder) -> None:
         self.__work_folder = work_folder
         self.__datastore_finder = datastore_finder
 
@@ -199,7 +197,7 @@ class HKProcessor(FileProcessor):
                     extension="pkts",
                 )
 
-                day_files: list[Path] = self.__datastore_finder.find_all_file_parts(
+                day_files: list[Path] = self.__datastore_finder.find_parts_by_handler(
                     l0_path_handler, throw_if_not_found=False
                 )
 

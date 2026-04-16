@@ -7,8 +7,7 @@ import typer
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.config import AppSettings
-from imap_mag.io import DatastoreFileFinder, FilePathHandlerSelector
-from imap_mag.io.file import IFilePathHandler
+from imap_mag.io.FileFinder import FileFinder
 
 logger = logging.getLogger(__name__)
 
@@ -38,18 +37,12 @@ def publish(
 
     logger.info(f"Publishing {len(files)} files: {', '.join(str(f) for f in files)}")
 
+    datastore_finder = FileFinder(app_settings.data_store, work_folder)
+
     resolved_files: list[Path] = []
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
-
     for file in files:
-        path_handler: IFilePathHandler = FilePathHandlerSelector.find_by_path(
-            file, throw_if_not_found=True
-        )
-
-        resolved_file = datastore_finder.find_matching_file(
-            path_handler, throw_if_not_found=True
-        )
-        resolved_files.append(resolved_file)
+        resolved = datastore_finder.find_by_name_or_path(file, throw_if_not_found=True)
+        resolved_files.append(resolved)
 
     logger.info(
         f"Found {len(resolved_files)} files for publish: {', '.join(str(f) for f in resolved_files)}"
@@ -57,7 +50,6 @@ def publish(
 
     # Publish file to SDC.
     failed: int = 0
-
     data_access = SDCDataAccess(
         auth_code=app_settings.publish.api.auth_code,
         data_dir=work_folder,

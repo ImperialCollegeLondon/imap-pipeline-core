@@ -18,8 +18,8 @@ ialirt_human_readable_names:
   - mag_hk_multbit_errs: Multi-bit Errors
   - mag_hk_fib_saturated: FIB Saturation
   - mag_hk_fob_saturated: FOB Saturation
-  - mag_hk_fib_isvalid: FIB Status
-  - mag_hk_fob_isvalid: FOB Status
+  - mag_hk_pri_isvalid: FOB Status
+  - mag_hk_sec_isvalid: FIB Status
 
 ialirt_csv_conversion:
   columns:
@@ -87,11 +87,8 @@ ialirt_validation:
     warning_max: 55
   - name: mag_hk_mode
     type: forbidden
-    values: [2, 4]
+    values: ["Safe", "Debug"]
     severity: danger
-    lookup:
-      2: Safe
-      4: Debug
   - name: mag_hk_hk1v5_danger
     type: flag
     severity: danger

@@ -1,4 +1,5 @@
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -6,6 +7,8 @@ import numpy as np
 import pytest
 
 from imap_mag.cli.apply import apply
+from imap_mag.config import SaveMode
+from imap_mag.util import ScienceMode
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import TEST_DATA, copy_test_file, open_cdf
 
@@ -294,3 +297,62 @@ def test_apply_writes_magnitudes_correctly(
             # Convert to list for comparison
             computed_magnitude = np.linalg.norm(correct_vec)
             assert mag == pytest.approx(computed_magnitude, rel=1e-6)
+
+
+def test_apply_uses_absolute_path_for_science_file(
+    tmp_path,
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """apply() must use a science file given as an absolute path that lives
+    outside the datastore, rather than ignoring the path and looking in the
+    datastore by filename.
+
+    Bug: the old code extracted the filename, built a SciencePathHandler, then
+    called datastore_finder.find_matching_file() which always searched the
+    datastore.  An absolute path pointing to a copy of the file that was NOT
+    in the datastore would raise FileNotFoundError even though the file existed.
+    """
+    # Copy the science file to a location outside the datastore
+    science_in_datastore = (
+        temp_datastore
+        / "science/mag/l1c/2026/01/imap_mag_l1c_norm-mago_20260116_v001.cdf"
+    )
+    science_outside = tmp_path / "imap_mag_l1c_norm-mago_20260116_v001.cdf"
+    shutil.copy(science_in_datastore, science_outside)
+
+    # Remove the file from the datastore so the only copy is the external one
+    science_in_datastore.unlink()
+
+    # apply() must succeed using the absolute path directly
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input=str(science_outside),  # absolute path outside datastore
+        start_date=datetime(2026, 1, 16),
+    )
+    verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))
+
+
+def test_apply_spice_metakernel_resolved_as_datastore_relative_path(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """apply() must resolve the spice_metakernel when given as a path relative
+    to the datastore root (e.g. "spice/mk/metakernel.txt").
+
+    Bug: CalibrationApplicator used Path(spice_metakernel) directly, which is
+    relative to CWD.  A path like "spice/mk/metakernel.txt" would only work if
+    the CWD happened to contain that structure; it failed if the file was under
+    the datastore but not the CWD.
+    """
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        start_date=datetime(2026, 1, 16),
+        mode=ScienceMode.Normal,
+        save_mode=SaveMode.LocalOnly,
+        # Pass the metakernel as a datastore-relative path; CWD does NOT have this path
+        spice_metakernel=Path("spice/mk/metakernel.txt"),
+    )
+    verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))

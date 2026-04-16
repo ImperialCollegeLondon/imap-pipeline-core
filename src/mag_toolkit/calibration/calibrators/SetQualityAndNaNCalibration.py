@@ -7,6 +7,7 @@ import pandas as pd
 
 from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
+from imap_mag.io.FileFinder import FileFinder
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -29,11 +30,15 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
     science_file_key = "science_file"
 
     def __init__(
-        self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
+        self,
+        calibration_job_parameters: CalibrationJobParameters,
+        work_folder: Path,
+        file_finder: FileFinder | None = None,
     ):
         super().__init__(calibration_job_parameters, work_folder)
         self.name = CalibrationMethod.SET_QUALITY_AND_NAN
         self.required_files[self.science_file_key] = None
+        self._finder = file_finder or FileFinder(work_folder, work_folder, None)
 
     def _get_path_handlers(self, calibration_job_parameters: CalibrationJobParameters):
         mode = calibration_job_parameters.mode
@@ -66,13 +71,9 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 "with a csv_file path."
             )
 
-        csv_path = Path(config.set_quality_and_nan.csv_file)
-        # check if it is an absolute path, if not assume it's relative to the current working directory
-        if not csv_path.is_absolute() and self.data_store is not None:
-            csv_path = Path(self.data_store) / csv_path
-
-        if not csv_path.exists():
-            raise FileNotFoundError(f"SetQualityAndNaN CSV file not found: {csv_path}")
+        csv_path = self._finder.find_by_name_or_path(
+            config.set_quality_and_nan.csv_file, throw_if_not_found=True
+        )
 
         input_df = pd.read_csv(
             csv_path,
@@ -196,6 +197,14 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             raise FileNotFoundError(f"Calibration file {calfile} was not created.")
         if not datafile.exists():
             raise FileNotFoundError(f"Data file {datafile} was not created.")
+
+        def raise_if_resequenced():
+            raise ValueError(
+                f"Calibration file {calfile} and data file {datafile} may not be resequenced due to their interdependence. If you need to resequence, please delete these files and re-run the calibration."
+            )
+
+        cal_handler.register_callback_on_resequencing(raise_if_resequenced)
+        data_handler.register_callback_on_resequencing(raise_if_resequenced)
 
         return calfile, datafile
 

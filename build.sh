@@ -8,11 +8,7 @@ poetry run python --version
 
 # restore dependencies & create an venv if needed
 echo "Restoring dependencies..."
-if [ "$1" != "--skip-tests" ]; then
-    poetry install --all-groups -q
-else
-    poetry install -q
-fi
+poetry install --all-groups --all-extras
 
 # load the current python virtual environment - assumes you have already probably run "poetry shell" or are calling from build-python-versions.sh
 if [ -d ".venv" ]; then

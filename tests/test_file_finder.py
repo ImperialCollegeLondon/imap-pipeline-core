@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from imap_mag.io.DatastoreFileFinder import DatastoreFileFinder
+from imap_mag.io.FileFinder import FileFinder
 from imap_mag.util import MAGSensor, ScienceMode
 
 
@@ -46,8 +46,8 @@ def datastore(tmp_path):
 
 class TestResolveLayerPatterns:
     def test_exact_filename_passes_through(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["imap_mag_noop-burst-layer_20260116_v001.json"],
             datetime(2026, 1, 16),
             ScienceMode.Burst,
@@ -55,8 +55,8 @@ class TestResolveLayerPatterns:
         assert result == ["imap_mag_noop-burst-layer_20260116_v001.json"]
 
     def test_wildcard_returns_highest_version_per_descriptor(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["*noop*"],
             datetime(2026, 1, 16),
             ScienceMode.Normal,
@@ -65,8 +65,8 @@ class TestResolveLayerPatterns:
         assert result == ["imap_mag_noop-norm-layer_20260116_v002.json"]
 
     def test_wildcard_star_returns_all_descriptors_highest_versions(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["*"],
             datetime(2026, 1, 16),
             ScienceMode.Normal,
@@ -77,8 +77,8 @@ class TestResolveLayerPatterns:
         assert len(result) == 2
 
     def test_no_match_returns_empty(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["*nonexistent*"],
             datetime(2026, 1, 16),
             ScienceMode.Normal,
@@ -86,8 +86,8 @@ class TestResolveLayerPatterns:
         assert result == []
 
     def test_missing_directory_returns_empty(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["*"],
             datetime(2025, 3, 15),
             ScienceMode.Normal,
@@ -95,8 +95,8 @@ class TestResolveLayerPatterns:
         assert result == []
 
     def test_mixed_exact_and_wildcard(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_layers(
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
             ["imap_mag_noop-burst-layer_20260116_v001.json", "*quality*"],
             datetime(2026, 1, 16),
             ScienceMode.Burst,
@@ -115,7 +115,7 @@ class TestKeepHighestVersions:
             "imap_mag_noop-layer_20260116_v002.json",
             "imap_mag_noop-layer_20260116_v000.json",
         ]
-        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
+        result = FileFinder._keep_highest_version_layers_only(filenames)
         assert result == ["imap_mag_noop-layer_20260116_v002.json"]
 
     def test_multiple_descriptors(self):
@@ -125,41 +125,41 @@ class TestKeepHighestVersions:
             "imap_mag_quality-layer_20260116_v000.json",
             "imap_mag_quality-layer_20260116_v001.json",
         ]
-        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
+        result = FileFinder._keep_highest_version_layers_only(filenames)
         assert len(result) == 2
         assert "imap_mag_noop-layer_20260116_v003.json" in result
         assert "imap_mag_quality-layer_20260116_v001.json" in result
 
     def test_empty_list(self):
-        assert DatastoreFileFinder._keep_highest_version_layers_only([]) == []
+        assert FileFinder._keep_highest_version_layers_only([]) == []
 
     def test_unparseable_filenames_skipped(self):
         filenames = [
             "imap_mag_noop-layer_20260116_v001.json",
             "not_a_valid_layer_file.json",
         ]
-        result = DatastoreFileFinder._keep_highest_version_layers_only(filenames)
+        result = FileFinder._keep_highest_version_layers_only(filenames)
         assert result == ["imap_mag_noop-layer_20260116_v001.json"]
 
 
 class TestFindScienceFile:
     def test_normal_mode_prefers_l1c(self, datastore):
-        finder = DatastoreFileFinder(datastore)
+        finder = FileFinder(datastore)
 
-        result = finder.find_science_file(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
 
-        result = finder.find_science_file(
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.IBS
         )
         assert result == "imap_mag_l1c_norm-magi_20260116_v001.cdf"
 
     def test_normal_mode_checks_correct_sensor(self, datastore):
-        finder = DatastoreFileFinder(datastore)
+        finder = FileFinder(datastore)
         with pytest.raises(FileNotFoundError):
-            finder.find_science_file(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 17), ScienceMode.Normal, MAGSensor.IBS
             )
 
@@ -169,15 +169,15 @@ class TestFindScienceFile:
         l1b_dir.mkdir(parents=True)
         (l1b_dir / "imap_mag_l1b_norm-mago_20260116_v000.cdf").touch()
 
-        finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(
+        finder = FileFinder(tmp_path)
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1b_norm-mago_20260116_v000.cdf"
 
     def test_burst_mode_uses_l1b_only(self, datastore):
-        finder = DatastoreFileFinder(datastore)
-        result = finder.find_science_file(
+        finder = FileFinder(datastore)
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
         )
         assert result == "imap_mag_l1b_burst-mago_20260116_v002.cdf"
@@ -188,9 +188,9 @@ class TestFindScienceFile:
         l1c_dir.mkdir(parents=True)
         (l1c_dir / "imap_mag_l1c_burst-mago_20260116_v001.cdf").touch()
 
-        finder = DatastoreFileFinder(tmp_path)
+        finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError):
-            finder.find_science_file(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Burst, MAGSensor.OBS
             )
 
@@ -201,8 +201,8 @@ class TestFindScienceFile:
         (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v003.cdf").touch()
         (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v001.cdf").touch()
 
-        finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(
+        finder = FileFinder(tmp_path)
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v003.cdf"
@@ -215,16 +215,16 @@ class TestFindScienceFile:
         (l1c_dir / "imap_mag_l1c_norm-mago_20260116_v001.txt").touch()
         (l1c_dir / "README.md").touch()
 
-        finder = DatastoreFileFinder(tmp_path)
-        result = finder.find_science_file(
+        finder = FileFinder(tmp_path)
+        result = finder.find_latest_science_by_date(
             datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
         )
         assert result == "imap_mag_l1c_norm-mago_20260116_v001.cdf"
 
     def test_no_science_dir_raises(self, tmp_path):
-        finder = DatastoreFileFinder(tmp_path)
+        finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="Science directory"):
-            finder.find_science_file(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
             )
 
@@ -234,8 +234,8 @@ class TestFindScienceFile:
         # File for wrong date
         (science_dir / "imap_mag_l1c_norm-mago_20260115_v001.cdf").touch()
 
-        finder = DatastoreFileFinder(tmp_path)
+        finder = FileFinder(tmp_path)
         with pytest.raises(FileNotFoundError, match="No science file found"):
-            finder.find_science_file(
+            finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
             )

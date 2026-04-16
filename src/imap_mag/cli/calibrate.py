@@ -8,10 +8,12 @@ import typer
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, CalibrationConfig, GradiometryConfig, SaveMode
-from imap_mag.io import DatastoreFileFinder, DatastoreFileManager
+from imap_mag.db.Database import Database
+from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
+    CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
     EmptyCalibrationJob,
@@ -19,6 +21,7 @@ from mag_toolkit.calibration import (
     Sensor,
     SetQualityAndNaNCalibrationJob,
 )
+from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
 app = typer.Typer()
 
@@ -137,6 +140,11 @@ def _calibrate_for_date(
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
+    datastore_finder = FileFinder(
+        app_settings.data_store,
+        work_folder,
+        database=Database() if Database.get_environment_url() else None,
+    )
 
     if configuration is None:
         calibration_configuration = CalibrationConfig()
@@ -149,7 +157,7 @@ def _calibrate_for_date(
     calibration_job_parameters = CalibrationJobParameters(
         date=start_date, mode=mode, sensor=sensor
     )
-
+    calibrator: CalibrationJob
     match method:
         case CalibrationMethod.NOOP:
             calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
@@ -159,12 +167,10 @@ def _calibrate_for_date(
             )
         case CalibrationMethod.SET_QUALITY_AND_NAN:
             calibrator = SetQualityAndNaNCalibrationJob(
-                calibration_job_parameters, work_folder
+                calibration_job_parameters, work_folder, datastore_finder
             )
         case _:
             raise ValueError("Calibration method is not implemented")
-
-    datastore_finder = DatastoreFileFinder(app_settings.data_store)
 
     calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
@@ -172,13 +178,22 @@ def _calibrate_for_date(
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
     )
-    calibration_handler = calibrator.get_next_viable_version_layer(
-        datastore_finder, calibration_handler
-    )
+    calibrator.set_layer_to_next_viable_version(datastore_finder, calibration_handler)
 
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration
     )
+
+    # verify that file and datafile are valid
+    layer = CalibrationLayer.from_file(metadata_path, load_contents=False)
+    if not layer.metadata.data_filename or not data_path.exists():
+        raise FileNotFoundError(
+            f"Calibration layer file at {metadata_path!s} has data file {layer.metadata.data_filename!s} that was not found"
+        )
+    if data_path.name != layer.metadata.data_filename.name:
+        raise ValueError(
+            f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
+        )
 
     outputManager = DatastoreFileManager.CreateByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
@@ -187,8 +202,14 @@ def _calibrate_for_date(
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler
     )
-    outputManager.add_file(
+
+    result_data_file, _ = outputManager.add_file(
         data_path, path_handler=calibration_handler.get_equivalent_data_handler()
     )
+
+    if result_data_file.name != layer.metadata.data_filename.name:
+        raise ValueError(
+            f"Output data file {result_data_file!s} does not match expected data filename {layer.metadata.data_filename!s} specified in calibration layer metadata."
+        )
 
     return output_calibration_path
