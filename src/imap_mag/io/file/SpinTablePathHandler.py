@@ -65,9 +65,10 @@ class SpinTablePathHandler(VersionedPathHandler):
         return self.filename
 
     def set_sequence(self, sequence: int) -> None:
-        raise ValueError(
-            "Spin table file versions are fixed by the source and cannot be changed."
-        )
+        if sequence != self.version:
+            raise ValueError(
+                "Spin table file versions are fixed by the source and cannot be changed."
+            )
 
     def increase_sequence(self) -> None:
         raise ValueError(

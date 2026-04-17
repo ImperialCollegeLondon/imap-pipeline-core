@@ -151,6 +151,9 @@ def test_spin_table_path_handler_version_is_immutable():
     with pytest.raises(ValueError, match="cannot be changed"):
         handler.set_sequence(15)
 
+    # Setting to the same version is allowed (idempotent, needed for re-download dedup)
+    handler.set_sequence(1)
+
     # Version and filename should be unchanged
     assert handler.version == 1
     assert handler.get_filename() == "imap_2026_089_2026_090_01.spin"
