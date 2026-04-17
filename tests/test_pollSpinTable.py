@@ -134,29 +134,7 @@ def test_spin_table_path_handler_extracts_version_from_filename():
     assert handler_v99 is not None
     assert handler_v99.version == 99
 
-    assert handler_v1.supports_sequencing() is True
-    assert handler_v1.get_sequence() == 1
-
-
-def test_spin_table_path_handler_version_is_immutable():
-    """Test that spin table version cannot be changed after creation."""
-    handler = SpinTablePathHandler.from_filename("imap_2026_089_2026_090_01.spin")
-    assert handler is not None
-    assert handler.version == 1
-    assert handler.get_filename() == "imap_2026_089_2026_090_01.spin"
-
-    with pytest.raises(ValueError, match="cannot be changed"):
-        handler.increase_sequence()
-
-    with pytest.raises(ValueError, match="cannot be changed"):
-        handler.set_sequence(15)
-
-    # Setting to the same version is allowed (idempotent, needed for re-download dedup)
-    handler.set_sequence(1)
-
-    # Version and filename should be unchanged
-    assert handler.version == 1
-    assert handler.get_filename() == "imap_2026_089_2026_090_01.spin"
+    assert handler_v1.supports_sequencing() is False
 
 
 def test_spin_table_path_handler_returns_none_for_non_spin_files():

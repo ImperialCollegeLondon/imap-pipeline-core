@@ -9,7 +9,11 @@ from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io.DatastoreFileManager import DatastoreFileManager, generate_hash
-from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
+from imap_mag.io.file import (
+    IFilePathHandler,
+    SequenceablePathHandler,
+    VersionedPathHandler,
+)
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 
 logger = logging.getLogger(__name__)
@@ -81,7 +85,11 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                     path_handler,
                     SequenceablePathHandler,
                 )
-                else 0
+                else (
+                    path_handler.version
+                    if isinstance(path_handler, VersionedPathHandler)
+                    else 0
+                )
             )
 
             try:

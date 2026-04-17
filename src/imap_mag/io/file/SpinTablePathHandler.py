@@ -40,18 +40,13 @@ class SpinTablePathHandler(VersionedPathHandler):
         return "spice"
 
     def supports_sequencing(self) -> bool:
-        return True
+        return False
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        super()._check_property_values(
-            f"unsequenced pattern for {self.filename}", ["filename", "version"]
+        raise ValueError(
+            "Spin table files do not support sequencing. "
+            "Versions are fixed by the source."
         )
-        assert self.filename
-        assert self.version is not None
-
-        # imap_2026_089_2026_090_01.spin -> base = imap_2026_089_2026_090
-        base = self.filename.rsplit("_", 1)[0]
-        return re.compile(rf"{re.escape(base)}_(?P<version>\d+)\.spin")
 
     def get_content_date_for_indexing(self) -> datetime | None:
         return self.content_date
@@ -63,17 +58,6 @@ class SpinTablePathHandler(VersionedPathHandler):
         super()._check_property_values("get_filename", ["filename"])
         assert self.filename
         return self.filename
-
-    def set_sequence(self, sequence: int) -> None:
-        if sequence != self.version:
-            raise ValueError(
-                "Spin table file versions are fixed by the source and cannot be changed."
-            )
-
-    def increase_sequence(self) -> None:
-        raise ValueError(
-            "Spin table file versions are fixed by the source and cannot be changed."
-        )
 
     def add_metadata(self, metadata: dict) -> None:
         self.content_date = TimeConversion.try_extract_iso_like_datetime(
