@@ -4,6 +4,7 @@ from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.fetch.ialirt import fetch_ialirt, fetch_ialirt_hk
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.cli.fetch.spice import fetch_spice, generate_spice_metakernel
+from imap_mag.cli.fetch.spin_table import fetch_spin_tables
 
 app = typer.Typer()
 
@@ -17,3 +18,4 @@ app.command("spice", help="Download spice kernels from SDC")(fetch_spice)
 app.command("metakernel", help="Build a SPICE metakernel from available kernels")(
     generate_spice_metakernel
 )
+app.command("spin-tables", help="Download spin table files from SDC")(fetch_spin_tables)
