@@ -60,6 +60,7 @@ class CalibrationApplicator:
             raise CalibrationValidityError(
                 "Offsets and science data are not time compatible"
             )
+            # NOTE: later layers are checked to be compatible with the previous when summing them
         science.clear_contents()
 
         for layer_file in layers[1:]:
@@ -313,6 +314,25 @@ class CalibrationApplicator:
         change_points = change_points.set_index(CONSTANTS.CSV_VARS.EPOCH)
 
         science_index = pd.DatetimeIndex(science_epochs)
+
+        if change_points.empty:
+            zero_df = pd.DataFrame(
+                {
+                    CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
+                    CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
+                    CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
+                    CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                    CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
+                    CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
+                },
+                index=science_index,
+            )
+            zero_df.index.name = CONSTANTS.CSV_VARS.EPOCH
+            zero_df = zero_df.reset_index()
+            layer._contents = zero_df
+            layer.value_type = ValueType.VECTOR
+            return layer
+
         first_science_epoch = science_index[0]
         first_change_time = change_points.index[0]
 
@@ -332,15 +352,20 @@ class CalibrationApplicator:
 
         expanded = change_points.reindex(science_index, method="ffill")
 
-        expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG] = (
-            expanded[CONSTANTS.CSV_VARS.QUALITY_FLAG].fillna(0).astype(int)
-        )
-        expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = (
-            expanded[CONSTANTS.CSV_VARS.QUALITY_BITMASK].fillna(0).astype(int)
-        )
         expanded[CONSTANTS.CSV_VARS.TIMEDELTA] = expanded[
             CONSTANTS.CSV_VARS.TIMEDELTA
         ].fillna(0.0)
+
+        # Defensive check: quality_flag and quality_bitmask must never be NaN after expansion
+        for col in [
+            CONSTANTS.CSV_VARS.QUALITY_FLAG,
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK,
+        ]:
+            if expanded[col].isna().any():
+                raise ValueError(
+                    f"Unexpected NaN values in '{col}' after layer expansion. "
+                    f"Layer files must not contain NaN quality values."
+                )
 
         expanded = expanded.reset_index()
         expanded = expanded.rename(columns={"index": CONSTANTS.CSV_VARS.EPOCH})
@@ -360,24 +385,47 @@ class CalibrationApplicator:
         if not offsets.compatible(layer):
             raise ValueError("Offsets and layer are not time compatible")
 
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_X] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_X
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Y] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_Y
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.OFFSET_Z] += layer._contents[
-            CONSTANTS.CSV_VARS.OFFSET_Z
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.TIMEDELTA] += layer._contents[
-            CONSTANTS.CSV_VARS.TIMEDELTA
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG] |= layer._contents[
-            CONSTANTS.CSV_VARS.QUALITY_FLAG
-        ]
-        offsets._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK] |= layer._contents[
-            CONSTANTS.CSV_VARS.QUALITY_BITMASK
-        ]
+        cols = CONSTANTS.CSV_VARS
+
+        # If the base offset is NaN it stays NaN, otherwise add the layer offset (NaN propagates in float arithmetic)
+        offsets._contents[cols.OFFSET_X] += layer._contents[cols.OFFSET_X]
+        offsets._contents[cols.OFFSET_Y] += layer._contents[cols.OFFSET_Y]
+        offsets._contents[cols.OFFSET_Z] += layer._contents[cols.OFFSET_Z]
+        offsets._contents[cols.TIMEDELTA] += layer._contents[cols.TIMEDELTA]
+
+        # quality_flag combining via bitwise OR semantics (no NaN values permitted):
+        #   0  → no change (OR with 0 leaves existing value)
+        #   1  → set the flag (OR with 1 always gives 1)
+        #  -1  → clear the flag to 0
+        clear_flag_mask = layer._contents[cols.QUALITY_FLAG] == -1
+        # Step 1: where layer is -1, force base to 0; otherwise keep base as-is
+        base_after_clear = offsets._contents[cols.QUALITY_FLAG].where(
+            ~clear_flag_mask, other=0
+        )
+        # Step 2: OR the positive part of the layer (0 or 1 only)
+        offsets._contents[cols.QUALITY_FLAG] = base_after_clear | layer._contents[
+            cols.QUALITY_FLAG
+        ].clip(lower=0)
+
+        # quality_bitmask combining (no NaN values permitted):
+        #   0          → no change
+        #   positive N → OR N into mask (sets those bits)
+        #   negative N → clear those bits: result = base & (N - 1)  [since ~(-N) == N - 1]
+        clear_mask = layer._contents[cols.QUALITY_BITMASK] < 0
+
+        # OR positive values into the mask
+        result_bitmask = offsets._contents[cols.QUALITY_BITMASK].where(
+            clear_mask,
+            offsets._contents[cols.QUALITY_BITMASK]
+            | layer._contents[cols.QUALITY_BITMASK],
+        )
+        # Negative N clears bits: result = base & (layer - 1)  [~(-layer) == layer - 1]
+        result_bitmask = result_bitmask.where(
+            ~clear_mask,
+            offsets._contents[cols.QUALITY_BITMASK]
+            & (layer._contents[cols.QUALITY_BITMASK] - 1),
+        )
+        offsets._contents[cols.QUALITY_BITMASK] = result_bitmask
 
         offsets._data_path = None  # Invalidate data path since contents have changed
         return offsets

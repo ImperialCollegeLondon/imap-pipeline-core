@@ -149,13 +149,13 @@ class CalibrationLayer(Layer):
         timedelta_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qf_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].astype(int),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_FLAG].attrs,
         )
         qf_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qb_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].astype(int),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_BITMASK].attrs,
         )
         qb_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
@@ -256,20 +256,35 @@ class CalibrationLayer(Layer):
         df = pd.read_csv(
             path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
         )
-        if df.empty:
+        if df.columns.empty:
             raise ValueError("CSV file is empty or does not contain valid data")
+
+        # NaN is no longer valid in quality_flag or quality_bitmask columns.
+        # Use 0 for no-op, positive to set bits, negative to clear bits.
+        for col in [
+            CONSTANTS.CSV_VARS.QUALITY_FLAG,
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK,
+        ]:
+            if col in df.columns and df[col].isna().any():
+                raise ValueError(
+                    f"Layer file '{path.name}' contains NaN/blank values in column '{col}'. "
+                    f"Use 0 for no-op, a positive integer to set bits, "
+                    f"or a negative integer to clear bits."
+                )
+
         return df
 
     @classmethod
     def _from_csv(cls, path: Path):
         df = cls._values_from_csv(path)
 
-        if df.empty:
-            raise ValueError("CSV file is empty or does not contain valid data")
-
-        validity = Validity(
-            start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
-            end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+        validity = (
+            Validity(
+                start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
+                end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+            )
+            if not df.empty
+            else Validity(start=np.datetime64("NaT"), end=np.datetime64("NaT"))
         )
 
         calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
@@ -294,7 +309,9 @@ class CalibrationLayer(Layer):
                 data_filename=path,
                 creation_timestamp=np.datetime64("now"),
             ),
-            value_type=ValueType.VECTOR,
+            value_type=ValueType.VECTOR
+            if not df.empty
+            else ValueType.BOUNDARY_CHANGES_ONLY,
             method=method,
         )
         instance._contents = df
