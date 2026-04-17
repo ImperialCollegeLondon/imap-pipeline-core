@@ -40,10 +40,18 @@ class SpinTablePathHandler(VersionedPathHandler):
         return "spice"
 
     def supports_sequencing(self) -> bool:
-        return False
+        return True
 
     def get_unsequenced_pattern(self) -> re.Pattern:
-        raise ValueError("SpinTablePathHandler does not support sequencing.")
+        super()._check_property_values(
+            f"unsequenced pattern for {self.filename}", ["filename", "version"]
+        )
+        assert self.filename
+        assert self.version is not None
+
+        # imap_2026_089_2026_090_01.spin -> base = imap_2026_089_2026_090
+        base = self.filename.rsplit("_", 1)[0]
+        return re.compile(rf"{re.escape(base)}_(?P<version>\d+)\.spin")
 
     def get_content_date_for_indexing(self) -> datetime | None:
         return self.content_date
@@ -55,6 +63,21 @@ class SpinTablePathHandler(VersionedPathHandler):
         super()._check_property_values("get_filename", ["filename"])
         assert self.filename
         return self.filename
+
+    def set_sequence(self, sequence: int) -> None:
+        self.version = sequence
+        self._regenerate_filename_with_version()
+
+    def increase_sequence(self) -> None:
+        self.version += 1
+        self._regenerate_filename_with_version()
+
+    def _regenerate_filename_with_version(self):
+        if self.filename:
+            # Replace the version digits before .spin: imap_2026_089_2026_090_01.spin
+            self.filename = re.sub(
+                r"_\d+\.spin$", f"_{self.version:02}.spin", self.filename
+            )
 
     def add_metadata(self, metadata: dict) -> None:
         self.content_date = TimeConversion.try_extract_iso_like_datetime(

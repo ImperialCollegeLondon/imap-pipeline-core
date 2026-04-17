@@ -124,6 +124,36 @@ def test_spin_table_path_handler_with_metadata():
     assert handler.content_date == datetime(2026, 3, 30)
 
 
+def test_spin_table_path_handler_extracts_version_from_filename():
+    """Test SpinTablePathHandler extracts version correctly from filename."""
+    handler_v1 = SpinTablePathHandler.from_filename("imap_2025_267_2025_267_01.spin")
+    assert handler_v1 is not None
+    assert handler_v1.version == 1
+
+    handler_v99 = SpinTablePathHandler.from_filename("imap_2025_267_2025_267_99.spin")
+    assert handler_v99 is not None
+    assert handler_v99.version == 99
+
+    assert handler_v1.supports_sequencing() is True
+    assert handler_v1.get_sequence() == 1
+
+
+def test_spin_table_path_handler_sequencing():
+    """Test SpinTablePathHandler version sequencing updates filename."""
+    handler = SpinTablePathHandler.from_filename("imap_2026_089_2026_090_01.spin")
+    assert handler is not None
+    assert handler.version == 1
+    assert handler.get_filename() == "imap_2026_089_2026_090_01.spin"
+
+    handler.increase_sequence()
+    assert handler.version == 2
+    assert handler.get_filename() == "imap_2026_089_2026_090_02.spin"
+
+    handler.set_sequence(15)
+    assert handler.version == 15
+    assert handler.get_filename() == "imap_2026_089_2026_090_15.spin"
+
+
 def test_spin_table_path_handler_returns_none_for_non_spin_files():
     """Test SpinTablePathHandler returns None for non-spin-table files."""
     assert SpinTablePathHandler.from_filename("imap_2026_089_2026_090_01.ah.bc") is None
@@ -333,6 +363,7 @@ async def test_poll_spin_table_indexes_metadata_in_database(
     assert files[0].file_meta["end_date"] == "2025-06-02, 00:00:00"
     assert files[0].file_meta["version"] == "01"
     assert files[0].file_meta["ingestion_date"] == "2025-06-02, 01:50:09"
+    assert files[0].version == 1
 
 
 @pytest.mark.skipif(
