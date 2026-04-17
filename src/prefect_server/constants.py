@@ -30,6 +30,9 @@ class PREFECT_CONSTANTS:
     class POLL_LO_PIVOT_PLATFORM:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
+    class POLL_SPIN_TABLE:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
     class ENV_VAR_NAMES:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
@@ -43,6 +46,7 @@ class PREFECT_CONSTANTS:
         POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
+        POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
@@ -65,6 +69,7 @@ class PREFECT_CONSTANTS:
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
+        POLL_SPIN_TABLE = "poll-spin-table"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -87,6 +92,7 @@ class PREFECT_CONSTANTS:
         POLL_L1D = "poll_l1d_science"
         POLL_SPICE = "poll_spice"
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
+        POLL_SPIN_TABLE = "poll_spin_table"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
