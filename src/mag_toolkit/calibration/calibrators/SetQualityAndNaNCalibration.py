@@ -238,7 +238,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         if not datafile.exists():
             raise FileNotFoundError(f"Data file {datafile} was not created.")
 
-        def raise_if_resequenced():
+        def raise_if_resequenced(path_handler):
             raise ValueError(
                 f"Calibration file {calfile} and data file {datafile} may not be resequenced due to their interdependence. If you need to resequence, please delete these files and re-run the calibration."
             )
