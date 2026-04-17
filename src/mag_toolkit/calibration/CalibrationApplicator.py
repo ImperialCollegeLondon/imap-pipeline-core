@@ -388,58 +388,42 @@ class CalibrationApplicator:
         cols = CONSTANTS.CSV_VARS
 
         # If the base offset is NaN it stays NaN, otherwise add the layer offset (NaN propagates in float arithmetic)
-        offsets._contents[cols.OFFSET_X] = (
-            offsets._contents[cols.OFFSET_X] + layer._contents[cols.OFFSET_X]
-        )
-        offsets._contents[cols.OFFSET_Y] = (
-            offsets._contents[cols.OFFSET_Y] + layer._contents[cols.OFFSET_Y]
-        )
-        offsets._contents[cols.OFFSET_Z] = (
-            offsets._contents[cols.OFFSET_Z] + layer._contents[cols.OFFSET_Z]
-        )
-        offsets._contents[cols.TIMEDELTA] = (
-            offsets._contents[cols.TIMEDELTA] + layer._contents[cols.TIMEDELTA]
-        )
+        offsets._contents[cols.OFFSET_X] += layer._contents[cols.OFFSET_X]
+        offsets._contents[cols.OFFSET_Y] += layer._contents[cols.OFFSET_Y]
+        offsets._contents[cols.OFFSET_Z] += layer._contents[cols.OFFSET_Z]
+        offsets._contents[cols.TIMEDELTA] += layer._contents[cols.TIMEDELTA]
 
         # quality_flag combining via bitwise OR semantics (no NaN values permitted):
         #   0  → no change (OR with 0 leaves existing value)
         #   1  → set the flag (OR with 1 always gives 1)
         #  -1  → clear the flag to 0
-        layer_flag_column = layer._contents[cols.QUALITY_FLAG].astype(
-            pandas.Int64Dtype()
-        )
-        base_flag_column = offsets._contents[cols.QUALITY_FLAG].astype(
-            pandas.Int64Dtype()
-        )
-        clear_flag_mask = layer_flag_column == -1
+        clear_flag_mask = layer._contents[cols.QUALITY_FLAG] == -1
         # Step 1: where layer is -1, force base to 0; otherwise keep base as-is
-        base_after_clear = base_flag_column.where(~clear_flag_mask, 0)
+        base_after_clear = offsets._contents[cols.QUALITY_FLAG].where(
+            ~clear_flag_mask, other=0
+        )
         # Step 2: OR the positive part of the layer (0 or 1 only)
-        positive_layer_flag = layer_flag_column.clip(lower=0)
-        offsets._contents[cols.QUALITY_FLAG] = base_after_clear | positive_layer_flag
+        offsets._contents[cols.QUALITY_FLAG] = base_after_clear | layer._contents[
+            cols.QUALITY_FLAG
+        ].clip(lower=0)
 
         # quality_bitmask combining (no NaN values permitted):
         #   0          → no change
         #   positive N → OR N into mask (sets those bits)
         #   negative N → clear those bits: result = base & (N - 1)  [since ~(-N) == N - 1]
-        layer_bitmask_column = layer._contents[cols.QUALITY_BITMASK].astype(
-            pandas.Int64Dtype()
-        )
-        offsets_bitmask_column = offsets._contents[cols.QUALITY_BITMASK].astype(
-            pandas.Int64Dtype()
-        )
+        clear_mask = layer._contents[cols.QUALITY_BITMASK] < 0
 
-        or_mask = layer_bitmask_column > 0
-        clear_mask = layer_bitmask_column < 0
-
-        result_bitmask = offsets_bitmask_column.copy()
         # OR positive values into the mask
-        result_bitmask = result_bitmask.where(
-            ~or_mask, offsets_bitmask_column | layer_bitmask_column
+        result_bitmask = offsets._contents[cols.QUALITY_BITMASK].where(
+            clear_mask,
+            offsets._contents[cols.QUALITY_BITMASK]
+            | layer._contents[cols.QUALITY_BITMASK],
         )
         # Negative N clears bits: result = base & (layer - 1)  [~(-layer) == layer - 1]
         result_bitmask = result_bitmask.where(
-            ~clear_mask, offsets_bitmask_column & (layer_bitmask_column - 1)
+            ~clear_mask,
+            offsets._contents[cols.QUALITY_BITMASK]
+            & (layer._contents[cols.QUALITY_BITMASK] - 1),
         )
         offsets._contents[cols.QUALITY_BITMASK] = result_bitmask
 
