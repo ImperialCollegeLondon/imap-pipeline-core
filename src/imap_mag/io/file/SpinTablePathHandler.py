@@ -65,19 +65,14 @@ class SpinTablePathHandler(VersionedPathHandler):
         return self.filename
 
     def set_sequence(self, sequence: int) -> None:
-        self.version = sequence
-        self._regenerate_filename_with_version()
+        raise ValueError(
+            "Spin table file versions are fixed by the source and cannot be changed."
+        )
 
     def increase_sequence(self) -> None:
-        self.version += 1
-        self._regenerate_filename_with_version()
-
-    def _regenerate_filename_with_version(self):
-        if self.filename:
-            # Replace the version digits before .spin: imap_2026_089_2026_090_01.spin
-            self.filename = re.sub(
-                r"_\d+\.spin$", f"_{self.version:02}.spin", self.filename
-            )
+        raise ValueError(
+            "Spin table file versions are fixed by the source and cannot be changed."
+        )
 
     def add_metadata(self, metadata: dict) -> None:
         self.content_date = TimeConversion.try_extract_iso_like_datetime(
