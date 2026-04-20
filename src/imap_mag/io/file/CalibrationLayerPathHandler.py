@@ -68,6 +68,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             content_date=self.content_date,
             version=self.version,
             extension="csv",
+            _version_is_locked=self._version_is_locked,
         )
 
     @classmethod

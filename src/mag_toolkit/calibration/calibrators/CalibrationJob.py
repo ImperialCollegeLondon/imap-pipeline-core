@@ -93,8 +93,10 @@ class CalibrationJob(ABC):
             _version_of(latest_json_file), _version_of(latest_csv_file)
         )
         if max_existing_version >= layer_handler.version:
-            layer_handler.version = max_existing_version
+            layer_handler.set_sequence(max_existing_version)
             layer_handler.increase_sequence()
+
+        layer_handler.lock_version()
 
     def _check_environment_is_setup(self):
         if not self._check_for_required_files():

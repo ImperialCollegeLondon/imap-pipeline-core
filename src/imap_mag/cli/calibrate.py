@@ -174,6 +174,9 @@ def _calibrate_for_date(
 
     calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
+    outputManager = DatastoreFileManager.CreateByMode(
+        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+    )
 
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
@@ -194,10 +197,6 @@ def _calibrate_for_date(
         raise ValueError(
             f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
         )
-
-    outputManager = DatastoreFileManager.CreateByMode(
-        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
-    )
 
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler

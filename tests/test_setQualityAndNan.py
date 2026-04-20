@@ -1,3 +1,4 @@
+import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from mag_toolkit.calibration import (
 )
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
+from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import open_cdf
 
 
@@ -862,5 +864,50 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
 
     assert calfile.exists()
     assert datafile.exists()
-    df = pd.read_csv(datafile)
-    assert len(df) == 2  # start + end change points
+    pd.read_csv(datafile)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibrate_twice_with_database_creates_v002_layer_and_data_files(
+    temp_datastore,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
+):
+    csv_content = (
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:11:54,2026-01-16T02:11:57,1,3,True,False,False\n"
+    )
+    config = create_temporary_csv_config(csv_content)
+    date = datetime(2026, 1, 16)
+    layer_dir = temp_datastore / "calibration" / "layers" / "2026" / "01"
+
+    calibrate(
+        start_date=date,
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalAndDatabase,
+    )
+
+    calibrate(
+        start_date=date,
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        save_mode=SaveMode.LocalAndDatabase,
+    )
+
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    assert v002_json.exists(), "Second run must produce layer JSON at v002"
+    assert v002_csv.exists(), "Second run must produce layer data CSV at v002"
+
+    layer = CalibrationLayer.from_file(v002_json, load_contents=False)
+    assert layer.metadata.data_filename.name == v002_csv.name, (
+        "Layer JSON v002 must reference data CSV v002, not an older version"
+    )

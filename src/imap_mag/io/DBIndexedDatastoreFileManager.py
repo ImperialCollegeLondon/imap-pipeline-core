@@ -223,11 +223,16 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         matching_files: list[File] = [
             f for f in database_files if f.hash == original_hash
         ]
+
         assert len(matching_files) <= 1, (
             "There should be at most one file with the same hash in the database."
         )
 
+        # This is a versioned file - if we already have a copy of the file with same content by hash, we can just reuse that version and skip copying and database insertion
         if matching_files:
+            logger.info(
+                f"File with same content as {original_file.name} already exists in database with version {matching_files[0].version}. Reusing that version."
+            )
             path_handler.set_sequence(matching_files[0].version)
             preliminary_file = path_handler.get_full_path(Path(""))
 
