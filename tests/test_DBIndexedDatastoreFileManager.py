@@ -25,12 +25,7 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
 )
-from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
-from mag_toolkit.calibration import (
-    CalibrationLayer,
-    CalibrationMethod,
-    Sensor,
-)
+from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
     CalibrationMethod,
@@ -688,7 +683,13 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     csv_content = (
         "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask"
     )
-    csv_hash = hashlib.md5(csv_content.encode()).hexdigest()
+
+    # Write the layer pair first so we can get the actual CSV hash after the
+    # pandas round-trip (which may normalise newlines etc.)
+    work_json, work_csv = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, csv_content
+    )
+    csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
 
     # Pre-populate DB with v001 JSON record that stores the companion CSV hash
     test_database.insert_files(
@@ -707,11 +708,6 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
                 file_meta={"data_file_hash": csv_hash},
             )
         ]
-    )
-
-    # Work-folder source pair
-    work_json, _ = _write_layer_pair(
-        temp_folder_path, "quality-norm", date, 1, csv_content
     )
     dest_json = (
         Path(tempfile.gettempdir()) / "imap_mag_quality-norm-layer_20260116_v001.json"
@@ -756,10 +752,20 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
 ) -> None:
     """Different companion CSV → new v002 DB record with updated data_file_hash and data_filename."""
     date = datetime(2026, 1, 16)
-    old_csv = "col\n1\n"
-    new_csv = "col\n99\n"
+    old_csv = "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n2026-01-16T00:00:00.000000,1.0,2.0,3.0,0.0,0,0\n"
+    new_csv = "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n2026-01-16T00:00:00.000000,4.0,5.0,6.0,0.0,0,0\n"
     old_csv_hash = hashlib.md5(old_csv.encode()).hexdigest()
-    new_csv_hash = hashlib.md5(new_csv.encode()).hexdigest()
+
+    # Write the new layer pair first so we can get the actual CSV hash after the
+    # pandas round-trip (which may normalise dates/floats)
+    work_json, work_csv = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, new_csv
+    )
+    new_csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
+
+    assert old_csv_hash != new_csv_hash, (
+        "old and new CSV hashes must differ for this test"
+    )
 
     test_database.insert_files(
         [
@@ -778,8 +784,6 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
             )
         ]
     )
-
-    work_json, _ = _write_layer_pair(temp_folder_path, "quality-norm", date, 1, new_csv)
 
     path_handler = CalibrationLayerPathHandler(
         descriptor="quality-norm", content_date=date, version=1
