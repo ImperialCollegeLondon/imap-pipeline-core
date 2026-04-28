@@ -169,7 +169,8 @@ class FetchIALiRT:
                 ):
                     # Only append the new data.
                     combined_data = combined_data[
-                        self.__get_index_as_datetime(combined_data) >= min_daily_date
+                        self.__get_index_as_datetime(combined_data).values
+                        >= min_daily_date
                     ]
                     write_mode = "a"
                 else:
