@@ -14,10 +14,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def generate_hash(file: Path) -> str:
-    return hashlib.md5(file.read_bytes()).hexdigest()
-
-
 class DatastoreFileManager(IDatastoreFileManager):
     """Manage output files."""
 
@@ -62,16 +58,43 @@ class DatastoreFileManager(IDatastoreFileManager):
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Allow the handler to rewrite the source (e.g. update version references in JSON).
-        actual_source = path_handler.prepare_for_version(original_file)
+        source_file_after_reversioning = path_handler.prepare_for_version(original_file)
         try:
             logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
-            destination = shutil.copy2(actual_source, destination_file)
+            destination = shutil.copy2(source_file_after_reversioning, destination_file)
             logger.debug(f"Copied to {destination}.")
+            self.verify_file_delivered_to_datastore(
+                original_file, source_file_after_reversioning, destination_file
+            )
         finally:
-            if actual_source != original_file and actual_source.exists():
-                actual_source.unlink()
+            if (
+                source_file_after_reversioning != original_file
+                and source_file_after_reversioning.exists()
+            ):
+                source_file_after_reversioning.unlink()
 
         return (destination_file, path_handler)
+
+    def verify_file_delivered_to_datastore(
+        self, original_file, source_file_after_reversioning, destination_file
+    ):
+        if not destination_file.exists():
+            raise FileNotFoundError(
+                f"File {destination_file} does not exist after copy from {original_file}."
+            )
+
+        def generate_hash(file: Path) -> str:
+            return hashlib.md5(file.read_bytes()).hexdigest()
+
+        if generate_hash(destination_file) != generate_hash(
+            source_file_after_reversioning
+        ):
+            logger.error(
+                f"File {destination_file} content differs from reversioned {source_file_after_reversioning} (and maybe source {original_file})."
+            )
+            raise FileNotFoundError(
+                f"File {destination_file} does not match source {original_file}."
+            )
 
     def __get_next_available_version(
         self,

@@ -1,4 +1,4 @@
-from imap_mag.io.DatastoreFileManager import DatastoreFileManager, generate_hash
+from imap_mag.io.DatastoreFileManager import DatastoreFileManager
 from imap_mag.io.DBIndexedDatastoreFileManager import DBIndexedDatastoreFileManager
 from imap_mag.io.FileFinder import FileFinder
 from imap_mag.io.FilePathHandlerSelector import (
@@ -14,5 +14,4 @@ __all__ = [
     "FilePathHandlerSelector",
     "IDatastoreFileManager",
     "NoProviderFoundError",
-    "generate_hash",
 ]

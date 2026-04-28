@@ -349,35 +349,6 @@ def test_DBIndexedDatastoreFileManager_errors_when_destination_file_is_not_found
         database_manager.add_file(original_file, path_handler)
 
 
-def test_dDBIndexedDatastoreFileManager_errors_destination_file_different_hash(
-    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
-) -> None:
-    # Set up.
-    database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
-    )
-
-    original_file = create_test_file(
-        Path(tempfile.gettempdir()) / "some_file", "some content"
-    )
-    path_handler = HKDecodedPathHandler(
-        version=1,
-        descriptor="hsk-pw",
-        content_date=datetime(2025, 5, 2),
-        extension="txt",
-    )
-
-    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
-        create_test_file(test_file, "some other content"),
-        path_handler,
-    )
-
-    # Exercise and verify.
-    with pytest.raises(FileNotFoundError):
-        database_manager.add_file(original_file, path_handler)
-
-
 def test_DBIndexedDatastoreFileManager_errors_database_error(
     mock_datastore_manager: mock.Mock, mock_database: mock.Mock
 ) -> None:

@@ -8,7 +8,7 @@ from sqlalchemy.sql import text
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.io.DatastoreFileManager import DatastoreFileManager, generate_hash
+from imap_mag.io.DatastoreFileManager import DatastoreFileManager
 from imap_mag.io.file import (
     IFilePathHandler,
     SequenceablePathHandler,
@@ -63,33 +63,9 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             actual_source = original_file
 
-        try:
-            (destination_file, path_handler) = self.__file_manager.add_file(
-                actual_source, path_handler
-            )
-
-            if not destination_file.exists():
-                raise FileNotFoundError(
-                    f"File {destination_file} does not exist after copy from {original_file}."
-                )
-
-            # For a new write verify the destination matches the (possibly rewritten) source.
-            # For a reused version the destination is the existing file — content may differ
-            # from original_file by design (e.g. different creation timestamps in JSON), so
-            # we only check existence above.
-            if not skip_database_insertion and (
-                generate_hash(destination_file) != generate_hash(actual_source)
-            ):
-                logger.error(
-                    f"File {destination_file} content differs from source {original_file}."
-                )
-                raise FileNotFoundError(
-                    f"File {destination_file} does not match source {original_file}."
-                )
-
-        finally:
-            if actual_source != original_file and actual_source.exists():
-                actual_source.unlink()
+        (destination_file, path_handler) = self.__file_manager.add_file(
+            actual_source, path_handler
+        )
 
         # Add file to database
         if skip_database_insertion:
@@ -117,7 +93,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 new_file = File.from_file(
                     file=destination_file,
                     version=version,
-                    hash=generate_hash(destination_file),
+                    hash=path_handler.get_content_identity(destination_file),
                     content_date=path_handler.get_content_date_for_indexing(),
                     settings=self.__settings,
                 )
