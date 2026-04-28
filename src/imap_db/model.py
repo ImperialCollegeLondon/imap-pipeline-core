@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import re
 from collections import defaultdict
@@ -129,7 +128,9 @@ class File(Base):
             raise FileNotFoundError(f"File {file} does not exist.")
 
         if hash is None or hash == "":
-            hash = hashlib.md5(file.read_bytes()).hexdigest()
+            from imap_mag.io.file import IFilePathHandler
+
+            hash = IFilePathHandler.default_file_hash(file)
 
         size = file.stat().st_size
 

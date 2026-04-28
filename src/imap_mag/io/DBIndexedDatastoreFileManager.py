@@ -99,9 +99,8 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 )
 
                 base_meta = path_handler.get_metadata()
-                storage_meta = path_handler.get_storage_meta(original_file)
-                if base_meta or storage_meta:
-                    new_file.file_meta = {**(base_meta or {}), **(storage_meta or {})}
+                if base_meta:
+                    new_file.file_meta = {**(base_meta or {})}
 
                 self.__database.insert_file(new_file)
             except Exception as e:
@@ -221,9 +220,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Check whether an existing version has the same content identity
         identity_hash: str = path_handler.get_content_identity(original_file)
         matching_files: list[File] = [
-            f
-            for f in database_files
-            if path_handler.get_stored_content_identity(f) == identity_hash
+            f for f in database_files if f.hash == identity_hash
         ]
 
         assert len(matching_files) <= 1, (

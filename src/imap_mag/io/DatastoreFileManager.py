@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import shutil
 from pathlib import Path
@@ -84,7 +83,7 @@ class DatastoreFileManager(IDatastoreFileManager):
             )
 
         def generate_hash(file: Path) -> str:
-            return hashlib.md5(file.read_bytes()).hexdigest()
+            return IFilePathHandler.default_file_hash(file)
 
         if generate_hash(destination_file) != generate_hash(
             source_file_after_reversioning

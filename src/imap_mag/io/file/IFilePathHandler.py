@@ -5,7 +5,6 @@ import typing
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,22 +57,24 @@ class IFilePathHandler(abc.ABC):
         """Instantiate a path handler from a file name."""
         pass
 
-    def get_content_identity(self, source_file: Path) -> str:
+    @classmethod
+    def default_file_hash(cls, source_file):
+        return hashlib.md5(source_file.read_bytes()).hexdigest()
+
+    def get_content_identity(
+        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+    ) -> str:
         """Return a hash representing content identity for deduplication.
 
         Override to use a different identity signal, e.g., a companion file's
         hash instead of the source file's own hash.
         """
-        return hashlib.md5(source_file.read_bytes()).hexdigest()
-
-    def get_stored_content_identity(self, file_record: Any) -> str:
-        """Extract the content-identity hash from a database File record.
-
-        Matches the value returned by get_content_identity so that duplicate
-        detection works across both file-based and DB-indexed datastores.
-        Override when the identity is stored somewhere other than file_record.hash.
-        """
-        return file_record.hash
+        source_file = (
+            file_path_override
+            if file_path_override is not None
+            else self.get_full_path(parent_folder)
+        )
+        return self.default_file_hash(source_file)
 
     def prepare_for_version(self, source_file: Path) -> Path:
         """Prepare the source file for the version currently set on this handler.
@@ -99,17 +100,6 @@ class IFilePathHandler(abc.ABC):
         Default: no sibling constraint.
         """
         return False
-
-    def get_storage_meta(self, source_file: Path) -> dict | None:
-        """Return extra key/value pairs to merge into file_meta when storing in the DB.
-
-        Called just before DB insertion. Use this to persist auxiliary identity
-        data (e.g., a companion file's hash) that get_stored_content_identity
-        will later read back for duplicate detection.
-
-        Default: None (no extra metadata).
-        """
-        return None
 
     def _check_property_values(
         self, method_description: str, properties: list[str]

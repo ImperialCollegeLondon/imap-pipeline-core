@@ -1,12 +1,10 @@
-import hashlib
 import json
 import logging
 import re
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
@@ -120,24 +118,49 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             pass
         return alongside.parent / self.get_equivalent_data_handler().get_filename()
 
-    def get_content_identity(self, source_file: Path) -> str:
-        """For JSON metadata files use the companion CSV hash as identity.
+    def get_content_identity(
+        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+    ) -> str:
+        """Return a hash representing content identity for deduplication.
 
-        Two calibration layers are identical when their data CSV content is the
-        same for the same content date, regardless of which version number the
-        JSON happens to embed in its data_filename field.
+        Cal json files keep their id hash inside the file meta because based on the data file not the json as that can change
         """
-        if self.extension == "json":
-            companion = self._companion_csv_path(source_file)
-            if companion.exists():
-                return hashlib.md5(companion.read_bytes()).hexdigest()
-        return hashlib.md5(source_file.read_bytes()).hexdigest()
+        source_file = (
+            file_path_override
+            if file_path_override is not None
+            else self.get_full_path(parent_folder)
+        )
 
-    def get_stored_content_identity(self, file_record: Any) -> str:
-        """For JSON records read the companion CSV hash stored in file_meta."""
-        if self.extension == "json" and file_record.file_meta:
-            return file_record.file_meta.get("data_file_hash", file_record.hash)
-        return file_record.hash
+        if not source_file.exists():
+            raise FileNotFoundError(
+                f"Source file {source_file} does not exist for content identity hashing."
+            )
+
+        if source_file.suffix == ".json":
+            from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+            cal_file = CalibrationLayer.from_file(source_file, load_contents=False)
+            if cal_file.metadata.data_hash:
+                return cal_file.metadata.data_hash
+            else:
+                logger.warning(
+                    f"No data hash found in metadata of {source_file}. Falling back to hashing the data file."
+                )
+                datefile = (
+                    cal_file.metadata.data_filename
+                    if cal_file.metadata.data_filename
+                    else self.get_equivalent_data_handler().get_filename()
+                )
+                source_file = source_file.parent / datefile
+                if not source_file.exists():
+                    raise FileNotFoundError(
+                        f"Data file {source_file} does not exist for content identity hashing."
+                    )
+
+        logger.debug(
+            f"Content identity for non-JSON file {source_file} is based on the file itself."
+        )
+        return self.default_file_hash(source_file)
 
     def prepare_for_version(self, source_file: Path) -> Path:
         """Rewrite the JSON's data_filename to match the handler's current version.
@@ -151,21 +174,22 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             return source_file
 
         expected_data_filename = self.get_equivalent_data_handler().get_filename()
-        layer_dict = json.loads(source_file.read_text())
-        current_data_filename = Path(
-            layer_dict.get("metadata", {}).get("data_filename", "")
-        ).name
 
-        if current_data_filename == expected_data_filename:
+        from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+        cal_file = CalibrationLayer.from_file(source_file, load_contents=False)
+
+        if cal_file.metadata.data_filename == expected_data_filename:
             return source_file  # already correct — no rewrite needed
 
-        layer_dict["metadata"]["data_filename"] = expected_data_filename
-        tmp = Path(tempfile.mktemp(suffix=".json", dir=source_file.parent))
-        tmp.write_text(json.dumps(layer_dict))
+        cal_file.metadata.data_filename = Path(expected_data_filename)
+        new_version_path = source_file.parent / self.get_filename()
+        cal_file.writeToFile(new_version_path)
+
         logger.debug(
-            f"Rewrote {source_file.name} data_filename from {current_data_filename!r} to {expected_data_filename!r} in {tmp.name}."
+            f"Rewrote {source_file.name} data_filename from {cal_file.metadata.data_filename!r} to {expected_data_filename!r} in {new_version_path.name}."
         )
-        return tmp
+        return new_version_path
 
     def is_version_blocked_by_sibling(
         self, version: int, datastore: Path, source_file: Path
@@ -189,13 +213,3 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
                 new_companion
             ) != sibling.get_content_identity(sibling_dest)
         return True  # Cannot determine — play it safe and block this version
-
-    def get_storage_meta(self, source_file: Path) -> dict | None:
-        """Store the companion CSV hash so duplicate detection works via the DB."""
-        if self.extension == "json":
-            companion = self._companion_csv_path(source_file)
-            if companion.exists():
-                return {
-                    "data_file_hash": hashlib.md5(companion.read_bytes()).hexdigest()
-                }
-        return None

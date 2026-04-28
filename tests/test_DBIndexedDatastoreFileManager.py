@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pytest
 
 from imap_db.model import File
@@ -24,7 +25,21 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
 )
-from tests.util.database import test_database  # noqa: F401
+from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
+from mag_toolkit.calibration import (
+    CalibrationLayer,
+    CalibrationMethod,
+    Sensor,
+)
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CalibrationMetadata,
+    CalibrationMethod,
+    Mission,
+    Sensor,
+    ValueType,
+)
+from mag_toolkit.calibration.Layer import Validity
+from tests.util.database import test_database  # noqa: F401  # noqa: F401
 from tests.util.miscellaneous import (
     create_test_file,
 )
@@ -616,15 +631,41 @@ def _write_layer_pair(
     folder: Path, descriptor: str, date: datetime, version: int, csv_content: str
 ) -> tuple[Path, Path]:
     """Write a v{version} JSON+CSV calibration-layer pair and return their paths."""
+
     handler = CalibrationLayerPathHandler(
         descriptor=descriptor, content_date=date, version=version
     )
+
     csv_name = handler.get_equivalent_data_handler().get_filename()
     csv_path = folder / csv_name
     csv_path.write_text(csv_content)
-    layer_dict = {"metadata": {"data_filename": csv_name}, "version": version}
+
+    layer = CalibrationLayer(
+        id="",
+        mission=Mission.IMAP,
+        validity=Validity(start=np.datetime64("NaT"), end=np.datetime64("NaT")),
+        sensor=Sensor.MAGO,
+        version=handler.version,
+        metadata=CalibrationMetadata(
+            dependencies=[],
+            science=[],
+            creation_timestamp=np.datetime64("now"),
+            data_filename=Path(csv_name),
+            content_date=np.datetime64(date),
+        ),
+        value_type=ValueType.BOUNDARY_CHANGES_ONLY,
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
+    )
+    layer._contents = layer._values_from_csv(
+        csv_path
+    )  # directly set contents without reading from file
+
     json_path = folder / handler.get_filename()
-    json_path.write_text(json.dumps(layer_dict))
+    layer.writeToFile(json_path)
+
+    assert json_path.exists()
+    assert csv_path.exists()
+
     return json_path, csv_path
 
 
@@ -644,7 +685,9 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     )
 
     date = datetime(2026, 1, 16)
-    csv_content = "col\n42\n"
+    csv_content = (
+        "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask"
+    )
     csv_hash = hashlib.md5(csv_content.encode()).hexdigest()
 
     # Pre-populate DB with v001 JSON record that stores the companion CSV hash
