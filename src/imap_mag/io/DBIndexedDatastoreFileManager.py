@@ -90,22 +90,17 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             )
 
             try:
-                identity_hash = path_handler.get_content_identity(destination_file)
-                raw_file_hash = IFilePathHandler.default_file_hash(destination_file)
-
                 new_file = File.from_file(
                     file=destination_file,
                     version=version,
-                    hash=identity_hash,
+                    hash=path_handler.get_content_identity(destination_file),
                     content_date=path_handler.get_content_date_for_indexing(),
                     settings=self.__settings,
                 )
 
-                file_meta: dict = path_handler.get_metadata() or {}
-                if identity_hash != raw_file_hash:
-                    file_meta["data_file_hash"] = identity_hash
-                if file_meta:
-                    new_file.file_meta = file_meta
+                base_meta = path_handler.get_metadata()
+                if base_meta:
+                    new_file.file_meta = {**(base_meta or {})}
 
                 self.__database.insert_file(new_file)
             except Exception as e:
@@ -222,18 +217,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
-        # Check whether an existing version has the same content identity.
-        # For JSON calibration layers the identity is the companion CSV hash, which
-        # may be stored in file_meta["data_file_hash"] rather than file.hash.
+        # Check whether an existing version has the same content identity
         identity_hash: str = path_handler.get_content_identity(original_file)
         matching_files: list[File] = [
-            f
-            for f in database_files
-            if f.hash == identity_hash
-            or (
-                f.file_meta is not None
-                and f.file_meta.get("data_file_hash") == identity_hash
-            )
+            f for f in database_files if f.hash == identity_hash
         ]
 
         assert len(matching_files) <= 1, (

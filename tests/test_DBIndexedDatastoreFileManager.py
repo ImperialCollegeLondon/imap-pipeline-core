@@ -691,7 +691,7 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     )
     csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
 
-    # Pre-populate DB with v001 JSON record that stores the companion CSV hash
+    # Pre-populate DB with v001 JSON record whose hash is the companion CSV hash
     test_database.insert_files(
         [
             File(
@@ -699,13 +699,12 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
                 path="calibration/layers/2026/01",
                 descriptor="imap_mag_quality-norm-layer",
                 version=1,
-                hash="any-old-json-hash",
+                hash=csv_hash,
                 size=100,
                 content_date=date,
                 creation_date=datetime(2026, 1, 16, 12, 0, 0),
                 last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
                 software_version=__version__,
-                file_meta={"data_file_hash": csv_hash},
             )
         ]
     )
@@ -750,7 +749,7 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     capture_cli_logs,
     temp_folder_path,
 ) -> None:
-    """Different companion CSV → new v002 DB record with updated data_file_hash and data_filename."""
+    """Different companion CSV → new v002 DB record with updated hash and data_filename."""
     date = datetime(2026, 1, 16)
     old_csv = "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n2026-01-16T00:00:00.000000,1.0,2.0,3.0,0.0,0,0\n"
     new_csv = "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n2026-01-16T00:00:00.000000,4.0,5.0,6.0,0.0,0,0\n"
@@ -774,13 +773,12 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
                 path="calibration/layers/2026/01",
                 descriptor="imap_mag_quality-norm-layer",
                 version=1,
-                hash="any-old-json-hash",
+                hash=old_csv_hash,
                 size=100,
                 content_date=date,
                 creation_date=datetime(2026, 1, 16, 12, 0, 0),
                 last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
                 software_version=__version__,
-                file_meta={"data_file_hash": old_csv_hash},
             )
         ]
     )
@@ -815,8 +813,8 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
         "imap_mag_quality-norm-layer-data_20260116_v002.csv"
     )
 
-    # Verify DB record for v002 has new data_file_hash in file_meta
+    # Verify DB record for v002 stores the companion CSV hash
     db_files = test_database.get_files()
     v002_records = [f for f in db_files if f.version == 2]
     assert len(v002_records) == 1
-    assert v002_records[0].file_meta["data_file_hash"] == new_csv_hash
+    assert v002_records[0].hash == new_csv_hash
