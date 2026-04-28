@@ -4,7 +4,7 @@ import hashlib
 import logging
 import os
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest import mock
 
@@ -52,7 +52,6 @@ def check_inserted_file(
     assert file.hash == hashlib.md5(b"some content").hexdigest()
     assert file.content_date == datetime(2025, 5, 2)
     assert file.creation_date == datetime.fromtimestamp(test_file.stat().st_ctime)
-    assert file.last_modified_date == datetime.fromtimestamp(test_file.stat().st_mtime)
     assert file.deletion_date is None
     assert file.software_version == __version__
 
@@ -634,3 +633,49 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
     assert database_files[0].name == ancillary_file_name
     assert database_files[0].version == 1
     assert database_files[0].content_date == expected_date
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+) -> None:
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_file_last_modified.txt"
+    test_file.unlink(missing_ok=True)
+
+    modified_timestamp = datetime(2025, 5, 3, 12, 34, 56).timestamp()
+
+    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler]:
+        created_file = create_test_file(test_file, "some content")
+        os.utime(created_file, (modified_timestamp, modified_timestamp))
+        return created_file, path_handler
+
+    mock_datastore_manager.add_file.side_effect = add_file_side_effect
+
+    # Exercise.
+    database_manager.add_file(original_file, path_handler)
+
+    database_files = test_database.get_files()
+    assert len(database_files) == 1
+    # assert last mod is approximately right now
+    now = datetime.now(UTC).replace(tzinfo=None)
+    assert database_files[0].last_modified_date is not None
+    assert abs((database_files[0].last_modified_date - now).total_seconds()) < 5

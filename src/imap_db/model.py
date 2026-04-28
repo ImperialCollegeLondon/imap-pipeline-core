@@ -45,7 +45,9 @@ class File(Base):
         DateTime(), server_default=func.now()
     )
     last_modified_date: Mapped[datetime] = mapped_column(
-        DateTime(), onupdate=func.now()
+        DateTime(),
+        onupdate=func.now(),
+        server_default=func.now(),
     )
     deletion_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     software_version: Mapped[str] = mapped_column(String(16))
@@ -77,7 +79,6 @@ class File(Base):
             content_date=self.content_date,
             creation_date=self.creation_date,
             software_version=self.software_version,
-            last_modified_date=DatetimeProvider.now(),
         )
 
         self.set_deleted()
@@ -156,7 +157,6 @@ class File(Base):
             size=size,
             content_date=content_date,
             creation_date=datetime.fromtimestamp(file.stat().st_ctime),
-            last_modified_date=datetime.fromtimestamp(file.stat().st_mtime),
             software_version=__version__,
         )
 
