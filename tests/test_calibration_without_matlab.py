@@ -128,21 +128,24 @@ def test_gradiometer_calibrator_finds_next_viable_version(
     temp_datastore,
     dynamic_work_folder,
 ):
+    """Calibration always produces v001 output; datastore bumps to v002 when v001 already exists."""
+
     def mock_call_matlab(command):
         assert (
             command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer_20260930_v002.json", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer-data_20260930_v002.csv", "{temp_datastore}", "0.25", "10.0")'
+            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer_20260930_v001.json", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer-data_20260930_v001.csv", "{temp_datastore}", "0.25", "10.0")'
         )
         create_test_file(
             Path(dynamic_work_folder)
-            / "imap_mag_gradiometer-norm-layer_20260930_v002.json",
+            / "imap_mag_gradiometer-norm-layer_20260930_v001.json",
             _generate_layer_json(
-                "imap_mag_gradiometer-norm-layer-data_20260930_v002.csv"
+                "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
             ),
         )
         create_test_file(
             Path(dynamic_work_folder)
-            / "imap_mag_gradiometer-norm-layer-data_20260930_v002.csv"
+            / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv",
+            "col\n1\n2\n",
         )
 
     monkeypatch.setattr(
@@ -150,6 +153,7 @@ def test_gradiometer_calibrator_finds_next_viable_version(
         mock_call_matlab,
     )
 
+    # Pre-populate datastore with a different v001 (empty content differs from new)
     existing_layer = (
         temp_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
@@ -164,17 +168,15 @@ def test_gradiometer_calibrator_finds_next_viable_version(
         sc_interference_threshold=10.0,
     )
 
-    layer_metadata = (
+    # Datastore must have versioned up to v002
+    assert (
         temp_datastore
         / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v002.json"
-    )
-    assert layer_metadata.exists()
-
-    layer_data = (
+    ).exists()
+    assert (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v002.json"
-    )
-    assert layer_data.exists()
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v002.csv"
+    ).exists()
 
 
 def test_calibration_layer_versioned_together_when_only_json_exists(
@@ -182,26 +184,23 @@ def test_calibration_layer_versioned_together_when_only_json_exists(
     temp_datastore,
     dynamic_work_folder,
 ):
-    """Bug: when only a JSON layer exists at v001 (no CSV), both JSON and CSV
-    output files must be versioned as v002 — not JSON=v002, CSV=v001."""
+    """When only a JSON layer exists at v001 (no CSV), both JSON and CSV
+    output files must be versioned as v002 — not JSON=v002, CSV=v001.
+    Calibration always produces v001; the datastore bumps both to v002."""
 
     def mock_call_matlab(command):
-        # Emit both files at whatever version is in the command
-        import re
-
-        m = re.search(r"layer_20260930_(v\d+)\.json", command)
-        assert m, f"Could not parse version from command: {command}"
-        ver = m.group(1)
+        # Calibration always emits v001 — versioning is the datastore's job
         create_test_file(
             Path(dynamic_work_folder)
-            / f"imap_mag_gradiometer-norm-layer_20260930_{ver}.json",
+            / "imap_mag_gradiometer-norm-layer_20260930_v001.json",
             _generate_layer_json(
-                f"imap_mag_gradiometer-norm-layer-data_20260930_{ver}.csv"
+                "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
             ),
         )
         create_test_file(
             Path(dynamic_work_folder)
-            / f"imap_mag_gradiometer-norm-layer-data_20260930_{ver}.csv"
+            / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv",
+            "col\n1\n2\n",
         )
 
     monkeypatch.setattr(
@@ -235,25 +234,24 @@ def test_calibration_layer_versioned_together_when_only_csv_exists(
     temp_datastore,
     dynamic_work_folder,
 ):
-    """Bug: when only a CSV layer-data exists at v001 (no JSON), both JSON and CSV
-    output files must be versioned as v002 — not JSON=v001, CSV=v002."""
+    """When only a CSV layer-data exists at v001 (no JSON), both JSON and CSV
+    output files must be versioned as v002 — not JSON=v001, CSV=v002.
+    The sibling-check in DatastoreFileManager ensures the JSON version is
+    also bumped when the companion CSV slot is already occupied."""
 
     def mock_call_matlab(command):
-        import re
-
-        m = re.search(r"layer_20260930_(v\d+)\.json", command)
-        assert m, f"Could not parse version from command: {command}"
-        ver = m.group(1)
+        # Calibration always emits v001 — versioning is the datastore's job
         create_test_file(
             Path(dynamic_work_folder)
-            / f"imap_mag_gradiometer-norm-layer_20260930_{ver}.json",
+            / "imap_mag_gradiometer-norm-layer_20260930_v001.json",
             _generate_layer_json(
-                f"imap_mag_gradiometer-norm-layer-data_20260930_{ver}.csv"
+                "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
             ),
         )
         create_test_file(
             Path(dynamic_work_folder)
-            / f"imap_mag_gradiometer-norm-layer-data_20260930_{ver}.csv"
+            / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv",
+            "col\n1\n2\n",
         )
 
     monkeypatch.setattr(
@@ -261,10 +259,13 @@ def test_calibration_layer_versioned_together_when_only_csv_exists(
         mock_call_matlab,
     )
 
-    # Pre-populate the datastore with only a CSV at v001 (no matching JSON)
+    # Pre-populate the datastore with only a CSV at v001 (no matching JSON).
+    # Its content differs from the new CSV so the sibling check must block v001.
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
-    (layers_dir / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv").touch()
+    (layers_dir / "imap_mag_gradiometer-norm-layer-data_20260930_v001.csv").write_text(
+        "col\nold\n"
+    )
 
     gradiometry(
         start_date=datetime(2026, 9, 30),

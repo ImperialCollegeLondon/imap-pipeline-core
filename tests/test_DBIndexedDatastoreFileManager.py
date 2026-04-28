@@ -1,6 +1,7 @@
 """Tests for database classes."""
 
 import hashlib
+import json
 import logging
 import os
 import tempfile
@@ -19,6 +20,7 @@ from imap_mag.io import (
 )
 from imap_mag.io.file import (
     AncillaryPathHandler,
+    CalibrationLayerPathHandler,
     HKBinaryPathHandler,
     HKDecodedPathHandler,
 )
@@ -634,3 +636,169 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
     assert database_files[0].name == ancillary_file_name
     assert database_files[0].version == 1
     assert database_files[0].content_date == expected_date
+
+
+# ── CalibrationLayerPathHandler deduplication (DB-indexed datastore) ──────────
+
+
+def _write_layer_pair(
+    folder: Path, descriptor: str, date: datetime, version: int, csv_content: str
+) -> tuple[Path, Path]:
+    """Write a v{version} JSON+CSV calibration-layer pair and return their paths."""
+    handler = CalibrationLayerPathHandler(
+        descriptor=descriptor, content_date=date, version=version
+    )
+    csv_name = handler.get_equivalent_data_handler().get_filename()
+    csv_path = folder / csv_name
+    csv_path.write_text(csv_content)
+    layer_dict = {"metadata": {"data_filename": csv_name}, "version": version}
+    json_path = folder / handler.get_filename()
+    json_path.write_text(json.dumps(layer_dict))
+    return json_path, csv_path
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibration_layer_db_dedup_identical_content_reuses_v001(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    temp_folder_path,
+) -> None:
+    """Identical companion CSV → version stays at 1, no DB insertion."""
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+
+    date = datetime(2026, 1, 16)
+    csv_content = "col\n42\n"
+    csv_hash = hashlib.md5(csv_content.encode()).hexdigest()
+
+    # Pre-populate DB with v001 JSON record that stores the companion CSV hash
+    test_database.insert_files(
+        [
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v001.json",
+                path="calibration/layers/2026/01",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                hash="any-old-json-hash",
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 12, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
+                software_version=__version__,
+                file_meta={"data_file_hash": csv_hash},
+            )
+        ]
+    )
+
+    # Work-folder source pair
+    work_json, _ = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, csv_content
+    )
+    dest_json = (
+        Path(tempfile.gettempdir()) / "imap_mag_quality-norm-layer_20260116_v001.json"
+    )
+
+    path_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(
+            dest_json,
+            json.dumps(
+                {
+                    "metadata": {
+                        "data_filename": "imap_mag_quality-norm-layer-data_20260116_v001.csv"
+                    }
+                }
+            ),
+        ),
+        path_handler,
+    )
+
+    # Exercise
+    (_, _) = database_manager.add_file(work_json, path_handler)
+
+    # Verify: deduplication happened — no new DB record
+    assert path_handler.version == 1
+    db_files = test_database.get_files()
+    assert len(db_files) == 1  # only the pre-existing v001 record
+    assert "already exists in database at version 1. Reusing." in capture_cli_logs.text
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    temp_folder_path,
+) -> None:
+    """Different companion CSV → new v002 DB record with updated data_file_hash and data_filename."""
+    date = datetime(2026, 1, 16)
+    old_csv = "col\n1\n"
+    new_csv = "col\n99\n"
+    old_csv_hash = hashlib.md5(old_csv.encode()).hexdigest()
+    new_csv_hash = hashlib.md5(new_csv.encode()).hexdigest()
+
+    test_database.insert_files(
+        [
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v001.json",
+                path="calibration/layers/2026/01",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                hash="any-old-json-hash",
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 12, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
+                software_version=__version__,
+                file_meta={"data_file_hash": old_csv_hash},
+            )
+        ]
+    )
+
+    work_json, _ = _write_layer_pair(temp_folder_path, "quality-norm", date, 1, new_csv)
+
+    path_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+
+    # Capture source content during the mock call (before cleanup deletes the temp file)
+    captured_contents: list[dict] = []
+
+    def capture_add_file(
+        source: Path, handler
+    ) -> tuple[Path, CalibrationLayerPathHandler]:
+        captured_contents.append(json.loads(source.read_text()))
+        dest = Path(tempfile.gettempdir()) / f"layer_v{handler.version:03d}.json"
+        dest.write_bytes(source.read_bytes())
+        return dest, handler
+
+    mock_datastore_manager.add_file.side_effect = capture_add_file
+
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+    database_manager.add_file(work_json, path_handler)
+
+    # Verify version bumped
+    assert path_handler.version == 2
+
+    # Verify the source passed to inner manager was the rewritten JSON referencing v002 CSV
+    assert captured_contents[0]["metadata"]["data_filename"] == (
+        "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    )
+
+    # Verify DB record for v002 has new data_file_hash in file_meta
+    db_files = test_database.get_files()
+    v002_records = [f for f in db_files if f.version == 2]
+    assert len(v002_records) == 1
+    assert v002_records[0].file_meta["data_file_hash"] == new_csv_hash

@@ -871,11 +871,12 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
-def test_calibrate_twice_with_database_creates_v002_layer_and_data_files(
+def test_calibrate_twice_identical_config_deduplicates_to_v001(
     temp_datastore,
     dynamic_work_folder,
     test_database,  # noqa: F811
 ):
+    """Identical calibration runs must reuse v001 — no duplicate files created."""
     csv_content = (
         "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
         "2026-01-16T02:11:54,2026-01-16T02:11:57,1,3,True,False,False\n"
@@ -884,30 +885,75 @@ def test_calibrate_twice_with_database_creates_v002_layer_and_data_files(
     date = datetime(2026, 1, 16)
     layer_dir = temp_datastore / "calibration" / "layers" / "2026" / "01"
 
+    for _ in range(2):
+        calibrate(
+            start_date=date,
+            method=CalibrationMethod.SET_QUALITY_AND_NAN,
+            mode=ScienceMode.Normal,
+            sensor=Sensor.MAGO,
+            configuration=config.model_dump_json(),
+            save_mode=SaveMode.LocalAndDatabase,
+        )
+
+    v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.json"
+    v001_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.csv"
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+
+    assert v001_json.exists(), "v001 JSON must exist"
+    assert v001_csv.exists(), "v001 CSV must exist"
+    assert not v002_json.exists(), "Identical second run must NOT create v002 JSON"
+    assert not v002_csv.exists(), "Identical second run must NOT create v002 CSV"
+
+    layer = CalibrationLayer.from_file(v001_json, load_contents=False)
+    assert layer.metadata.data_filename.name == v001_csv.name
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
+    temp_datastore,
+    dynamic_work_folder,
+    test_database,  # noqa: F811
+):
+    """A second calibration run with different data must produce a new v002 pair."""
+    date = datetime(2026, 1, 16)
+    layer_dir = temp_datastore / "calibration" / "layers" / "2026" / "01"
+
+    config_v1 = create_temporary_csv_config(
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:11:54,2026-01-16T02:11:57,1,3,True,False,False\n"
+    )
     calibrate(
         start_date=date,
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         mode=ScienceMode.Normal,
         sensor=Sensor.MAGO,
-        configuration=config.model_dump_json(),
+        configuration=config_v1.model_dump_json(),
         save_mode=SaveMode.LocalAndDatabase,
     )
 
+    config_v2 = create_temporary_csv_config(
+        "start_date,end_date,quality_flag,quality_bitmask,nan_x,nan_y,nan_z\n"
+        "2026-01-16T02:11:54,2026-01-16T02:11:57,0,7,False,True,False\n"
+    )
     calibrate(
         start_date=date,
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         mode=ScienceMode.Normal,
         sensor=Sensor.MAGO,
-        configuration=config.model_dump_json(),
+        configuration=config_v2.model_dump_json(),
         save_mode=SaveMode.LocalAndDatabase,
     )
 
     v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
     v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
-    assert v002_json.exists(), "Second run must produce layer JSON at v002"
-    assert v002_csv.exists(), "Second run must produce layer data CSV at v002"
+    assert v002_json.exists(), "Different second run must produce v002 JSON"
+    assert v002_csv.exists(), "Different second run must produce v002 CSV"
 
     layer = CalibrationLayer.from_file(v002_json, load_contents=False)
     assert layer.metadata.data_filename.name == v002_csv.name, (
-        "Layer JSON v002 must reference data CSV v002, not an older version"
+        "v002 JSON must reference v002 CSV"
     )

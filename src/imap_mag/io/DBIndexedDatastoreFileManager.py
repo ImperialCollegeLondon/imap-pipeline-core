@@ -47,28 +47,49 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             self.__database = database
 
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
-        # Check if the version needs to be increased
-
+        # Determine the version: reuse an existing one if content is identical,
+        # otherwise advance to the next available slot.
         skip_database_insertion: bool = self.__get_next_available_version(
             original_file,
             path_handler,
         )
 
-        # Add file locally
-        (destination_file, path_handler) = self.__file_manager.add_file(
-            original_file, path_handler
-        )
+        # For a new version the handler may need to rewrite the source file
+        # (e.g. update a data_filename reference inside a JSON layer).
+        # For a reused version the source is unchanged — the inner file manager
+        # will verify the existing destination matches by content identity.
+        if not skip_database_insertion:
+            actual_source = path_handler.prepare_for_version(original_file)
+        else:
+            actual_source = original_file
 
-        if not (
-            destination_file.exists()
-            and (generate_hash(destination_file) == generate_hash(original_file))
-        ):
-            logger.error(
-                f"File {destination_file} does not exist or is not the same as original {original_file}."
+        try:
+            (destination_file, path_handler) = self.__file_manager.add_file(
+                actual_source, path_handler
             )
-            raise FileNotFoundError(
-                f"File {destination_file} does not exist or is not the same as original {original_file}."
-            )
+
+            if not destination_file.exists():
+                raise FileNotFoundError(
+                    f"File {destination_file} does not exist after copy from {original_file}."
+                )
+
+            # For a new write verify the destination matches the (possibly rewritten) source.
+            # For a reused version the destination is the existing file — content may differ
+            # from original_file by design (e.g. different creation timestamps in JSON), so
+            # we only check existence above.
+            if not skip_database_insertion and (
+                generate_hash(destination_file) != generate_hash(actual_source)
+            ):
+                logger.error(
+                    f"File {destination_file} content differs from source {original_file}."
+                )
+                raise FileNotFoundError(
+                    f"File {destination_file} does not match source {original_file}."
+                )
+
+        finally:
+            if actual_source != original_file and actual_source.exists():
+                actual_source.unlink()
 
         # Add file to database
         if skip_database_insertion:
@@ -101,7 +122,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                     settings=self.__settings,
                 )
 
-                new_file.file_meta = path_handler.get_metadata()
+                base_meta = path_handler.get_metadata()
+                storage_meta = path_handler.get_storage_meta(original_file)
+                if base_meta or storage_meta:
+                    new_file.file_meta = {**(base_meta or {}), **(storage_meta or {})}
 
                 self.__database.insert_file(new_file)
             except Exception as e:
@@ -206,7 +230,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         original_file: Path,
         path_handler: IFilePathHandler,
     ) -> bool:
-        """Find a viable version for a file."""
+        """Find a viable version for a file, returning True if the file already exists unchanged."""
 
         if not path_handler.supports_sequencing():
             logger.debug(
@@ -218,37 +242,33 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         database_files: list[File] = self.__get_matching_database_files(path_handler)
 
-        # Find the file whose hash matches the original file
-        original_hash: str = generate_hash(original_file)
+        # Check whether an existing version has the same content identity
+        identity_hash: str = path_handler.get_content_identity(original_file)
         matching_files: list[File] = [
-            f for f in database_files if f.hash == original_hash
+            f
+            for f in database_files
+            if path_handler.get_stored_content_identity(f) == identity_hash
         ]
 
         assert len(matching_files) <= 1, (
-            "There should be at most one file with the same hash in the database."
+            "There should be at most one file with the same content identity in the database."
         )
 
-        # This is a versioned file - if we already have a copy of the file with same content by hash, we can just reuse that version and skip copying and database insertion
         if matching_files:
             logger.info(
-                f"File with same content as {original_file.name} already exists in database with version {matching_files[0].version}. Reusing that version."
+                f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
             )
             path_handler.set_sequence(matching_files[0].version)
-            preliminary_file = path_handler.get_full_path(Path(""))
-
             return True
 
-        # Find first available version (note that this might not be the sequential next version)
+        # Find the next available version slot
         existing_versions: set[int] = set(file.version for file in database_files)
 
         while path_handler.get_sequence() in existing_versions:
-            preliminary_file = path_handler.get_full_path(Path(""))
+            current_path = path_handler.get_full_path(Path(""))
             logger.debug(
-                f"File {preliminary_file} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
+                f"File {current_path} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
             )
             path_handler.increase_sequence()
-
-            updated_file: Path = path_handler.get_full_path(Path(""))
-            preliminary_file = updated_file
 
         return False

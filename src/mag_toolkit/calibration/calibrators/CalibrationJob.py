@@ -61,43 +61,6 @@ class CalibrationJob(ABC):
         :param sensor: The sensor type.
         :return: A dictionary of path handlers."""
 
-    def set_layer_to_next_viable_version(
-        self,
-        datastore_finder: FileFinder,
-        layer_handler: CalibrationLayerPathHandler,
-    ):
-        """
-        Get the next viable version for a calibration layer.
-
-        Checks both the JSON metadata file and the CSV data file so that the pair
-        is always versioned together — whichever file has the higher existing version
-        determines the base for the next version number.
-
-        :return: Calibration layer handler for next viable version.
-        """
-
-        def _version_of(path: Path | None) -> int:
-            if path is None:
-                return 0
-            h = CalibrationLayerPathHandler.from_filename(path)
-            return h.version if h is not None else 0
-
-        latest_json_file: Path | None = datastore_finder.find_latest_version_by_handler(
-            layer_handler, throw_if_not_found=False
-        )
-        latest_csv_file: Path | None = datastore_finder.find_latest_version_by_handler(
-            layer_handler.get_equivalent_data_handler(), throw_if_not_found=False
-        )
-
-        max_existing_version = max(
-            _version_of(latest_json_file), _version_of(latest_csv_file)
-        )
-        if max_existing_version >= layer_handler.version:
-            layer_handler.set_sequence(max_existing_version)
-            layer_handler.increase_sequence()
-
-        layer_handler.lock_version()
-
     def _check_environment_is_setup(self):
         if not self._check_for_required_files():
             logger.error("Required files are incomplete")
