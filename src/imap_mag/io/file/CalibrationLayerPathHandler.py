@@ -1,4 +1,3 @@
-import json
 import logging
 import re
 from dataclasses import dataclass
@@ -103,17 +102,18 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     # ── Content-identity overrides for JSON metadata files ──────────────────
 
     def _companion_csv_path(self, alongside: Path) -> Path:
-        """Return the companion CSV path, reading data_filename from the JSON when possible.
+        """Return the companion CSV path, reading data_filename from the CalibrationLayer.
 
-        Reading the JSON's own data_filename field means the lookup stays correct
+        Reading the layer's own data_filename field means the lookup stays correct
         regardless of what version number is currently set on the handler — both
         work-folder v001.json and datastore v002.json point at their own companion.
         """
         try:
-            layer_dict = json.loads(alongside.read_text())
-            data_filename = layer_dict.get("metadata", {}).get("data_filename", "")
-            if data_filename:
-                return alongside.parent / Path(data_filename).name
+            from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+            cal = CalibrationLayer.from_file(alongside, load_contents=False)
+            if cal.metadata.data_filename:
+                return alongside.parent / cal.metadata.data_filename.name
         except Exception:
             pass
         return alongside.parent / self.get_equivalent_data_handler().get_filename()
@@ -124,9 +124,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         """Return a hash representing content identity for deduplication.
 
         JSON layer files are identified by their companion CSV hash (stored in the
-        JSON's metadata.data_hash field), not the JSON file itself, because the JSON
+        layer's metadata.data_hash field), not the JSON file itself, because the JSON
         can change (e.g. version bump rewrites data_filename) while the CSV data stays
-        the same.  Raw JSON parsing avoids requiring the companion CSV to be co-located.
+        the same.
         """
         source_file = (
             file_path_override
@@ -141,10 +141,11 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
 
         if source_file.suffix == ".json":
             try:
-                layer_dict = json.loads(source_file.read_text())
-                data_hash = layer_dict.get("metadata", {}).get("data_hash")
-                if data_hash:
-                    return data_hash
+                from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+                cal = CalibrationLayer.from_file(source_file, load_contents=False)
+                if cal.metadata.data_hash:
+                    return cal.metadata.data_hash
             except Exception:
                 pass
 
