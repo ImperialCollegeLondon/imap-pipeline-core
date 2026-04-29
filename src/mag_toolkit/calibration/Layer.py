@@ -44,14 +44,12 @@ class Layer(BaseModel, ABC):
         data_file: Path = path.parent / model.metadata.data_filename.name
 
         model._data_path = data_file
-
-        if not data_file.exists():
-            raise FileNotFoundError(f"Layer data file {data_file!s} not found.")
-
         model._set_content_date_from_filepath(data_file)
 
         logger.debug(f"Calibration layer data defined in separate file: {data_file!s}")
         if load_contents:
+            if not data_file.exists():
+                raise FileNotFoundError(f"Layer data file {data_file!s} not found.")
             model._load_data_file(data_file)
         return model
 

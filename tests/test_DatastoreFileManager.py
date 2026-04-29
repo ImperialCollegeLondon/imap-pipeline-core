@@ -15,6 +15,7 @@ from imap_mag.io.file import (
 )
 from tests.util.miscellaneous import (
     create_test_file,
+    write_calibration_layer_pair,
 )
 
 
@@ -273,43 +274,23 @@ def test_error_on_file_not_found(capture_cli_logs):
 # ── CalibrationLayerPathHandler deduplication (file-based datastore) ──────────
 
 
-def _make_layer_pair(
-    folder: Path,
-    descriptor: str,
-    date: datetime,
-    version: int,
-    csv_content: str,
-) -> tuple[Path, Path]:
-    """Write a v{version} JSON+CSV calibration-layer pair into *folder*."""
-    handler = CalibrationLayerPathHandler(
-        descriptor=descriptor, content_date=date, version=version
-    )
-    csv_name = handler.get_equivalent_data_handler().get_filename()
-    csv_path = folder / csv_name
-    csv_path.write_text(csv_content)
-
-    layer_dict = {"metadata": {"data_filename": csv_name}, "version": version}
-    json_path = folder / handler.get_filename()
-    json_path.write_text(json.dumps(layer_dict))
-    return json_path, csv_path
-
-
 def test_calibration_layer_identical_content_deduplicates_to_existing_version(
     capture_cli_logs, temp_folder_path
 ):
     """If the companion CSV content matches an existing version, reuse that version."""
     date = datetime(2026, 1, 16)
-    csv_content = "col\n1\n2\n"
 
     # Existing v001 pair already in datastore
     store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
     store_dir.mkdir(parents=True)
-    _make_layer_pair(store_dir, "quality-norm", date, 1, csv_content)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
 
     # New run produces a work-folder pair also at v001 with identical CSV
     work_dir = temp_folder_path / "work"
     work_dir.mkdir()
-    work_json, _ = _make_layer_pair(work_dir, "quality-norm", date, 1, csv_content)
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=0
+    )
 
     manager = DatastoreFileManager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
@@ -332,12 +313,14 @@ def test_calibration_layer_different_content_bumps_to_v002(
     # Existing v001 pair with original content
     store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
     store_dir.mkdir(parents=True)
-    _make_layer_pair(store_dir, "quality-norm", date, 1, "col\n1\n")
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
 
     # New run with different CSV content
     work_dir = temp_folder_path / "work"
     work_dir.mkdir()
-    work_json, _ = _make_layer_pair(work_dir, "quality-norm", date, 1, "col\n99\n")
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=1
+    )
 
     manager = DatastoreFileManager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
@@ -362,12 +345,12 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
 
     store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
     store_dir.mkdir(parents=True)
-    _make_layer_pair(store_dir, "quality-norm", date, 1, "col\n1\n")
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
 
     work_dir = temp_folder_path / "work"
     work_dir.mkdir()
-    work_json, work_csv = _make_layer_pair(
-        work_dir, "quality-norm", date, 1, "col\n99\n"
+    work_json, work_csv = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=1
     )
 
     manager = DatastoreFileManager(temp_folder_path)
@@ -380,4 +363,4 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
     (csv_result, _) = manager.add_file(work_csv, csv_handler)
 
     assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v002.csv"
-    assert csv_result.read_text() == "col\n99\n"
+    assert csv_result.read_bytes() == work_csv.read_bytes()

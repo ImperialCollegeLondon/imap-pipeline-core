@@ -172,26 +172,27 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         originally generated at (e.g., v001 → v002 because v001 already exists
         with different content), the JSON must reference the correctly-versioned
         companion CSV.  Returns a temporary file that the caller must delete.
-
-        Uses raw JSON parsing so it works on both minimal and full CalibrationLayer
-        JSON formats without requiring the companion CSV to be present.
         """
         if self.extension != "json":
             return source_file
 
         expected_data_filename = self.get_equivalent_data_handler().get_filename()
 
-        layer_dict = json.loads(source_file.read_text())
-        current = Path(layer_dict.get("metadata", {}).get("data_filename", "")).name
+        from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+        cal_file = CalibrationLayer.from_file(source_file, load_contents=False)
+
+        current = (
+            Path(cal_file.metadata.data_filename).name
+            if cal_file.metadata.data_filename
+            else None
+        )
         if current == expected_data_filename:
             return source_file  # already correct — no rewrite needed
 
-        if "metadata" not in layer_dict:
-            layer_dict["metadata"] = {}
-        layer_dict["metadata"]["data_filename"] = expected_data_filename
-
+        cal_file.metadata.data_filename = Path(expected_data_filename)
         new_version_path = source_file.parent / self.get_filename()
-        new_version_path.write_text(json.dumps(layer_dict))
+        cal_file.writeToFile(new_version_path)
 
         logger.debug(
             f"Rewrote {source_file.name} data_filename from {current!r} to {expected_data_filename!r} in {new_version_path.name}."
