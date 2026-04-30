@@ -374,9 +374,13 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    apply_shared_job_variables = shared_job_variables.copy()
+    apply_shared_job_variables["mem_limit"] = "6g"
+    apply_shared_job_variables["memswap_limit"] = "6g"
+
     apply_deployable = apply_flow.to_deployment(
         name="apply",
-        job_variables=matlab_shared_job_variables,
+        job_variables=apply_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
@@ -385,7 +389,7 @@ async def adeploy_flows(local_debug: bool = False):
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name="calibrate_and_apply",
-        job_variables=matlab_shared_job_variables,
+        job_variables=apply_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
