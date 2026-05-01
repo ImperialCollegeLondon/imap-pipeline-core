@@ -11,7 +11,9 @@ from imap_mag.data_pipelines import (
     AutomaticRunParameters,
     FetchByDatesRunParameters,
 )
-from imap_mag.data_pipelines.HiEsaStepPipeline import HiEsaStepPipeline
+from imap_mag.data_pipelines.WebTCADTelemetryItemPipeline import (
+    WebTCADTelemetryItemPipeline,
+)
 from imap_mag.db import Database
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,9 @@ def _run(
     else:
         run_params = AutomaticRunParameters()
 
-    pipeline = HiEsaStepPipeline(item=item, database=database, settings=app_settings)
+    pipeline = WebTCADTelemetryItemPipeline(
+        item=item, database=database, settings=app_settings
+    )
     pipeline.build(run_params)
     asyncio.run(pipeline.run())
 
