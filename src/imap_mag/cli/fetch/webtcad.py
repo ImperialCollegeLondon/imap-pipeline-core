@@ -1,4 +1,4 @@
-"""Programs to retrieve IMAP-Hi ESA STEP housekeeping CSV files from WebTCAD LaTiS."""
+"""CLI commands that download HK telemetry CSV files from the WebTCAD LaTiS API."""
 
 import asyncio
 import logging
@@ -52,6 +52,15 @@ def _run(
     logger.info(
         f"{item.name} download complete. {len(result.data_items)} files processed."
     )
+
+
+def fetch_lo_pivot_platform_angle(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    use_database: bool = False,
+):
+    """Download IMAP-Lo pivot platform angle HK CSV data from WebTCAD LaTiS."""
+    _run(HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE, start_date, end_date, use_database)
 
 
 def fetch_hi45_esa_step(
