@@ -155,6 +155,24 @@ imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01
 imap-mag fetch science --level l2 --modes norm --frame dsrf --start-date 2025-01-02 --end-date 2025-01-03 --ingestion-date
 ```
 
+### Fetch HK telemetry CSVs from WebTCAD LaTiS
+
+Downloads daily CSV files for an analog telemetry item (one file per UTC day) and indexes them in the datastore. Omit `--start-date` / `--end-date` to download new days only based on the last recorded workflow progress.
+
+```bash
+export IMAP_WEBPODA_TOKEN=[YOUR_SECRET_HERE!]
+export MAG_FETCH_WEBTCAD_API_URL_BASE=https://lasp.colorado.edu/ops/imap/webtcad/latis/dap
+
+# IMAP-Lo pivot platform angle
+imap-mag fetch imap-lo-pivot-platform --start-date 2025-01-02 --end-date 2025-01-03
+
+# IMAP-Hi 45 ESA STEP
+imap-mag fetch imap-hi45-step --start-date 2025-01-02 --end-date 2025-01-03
+
+# IMAP-Hi 90 ESA STEP
+imap-mag fetch imap-hi90-step --start-date 2025-01-02 --end-date 2025-01-03
+```
+
 ### Process Binary HK to CSV
 
 ```bash
