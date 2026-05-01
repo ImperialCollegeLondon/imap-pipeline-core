@@ -38,6 +38,18 @@ class HKWebTCADItems(Enum):
         Subsystem.LO,
         "pivot-platform-angle",
     )
+    HI45_ESA_STEP = (
+        58238,
+        "H45_APP_NHK.SCI_ESA_STEP",
+        Subsystem.HI45,
+        "esa-step",
+    )
+    HI90_ESA_STEP = (
+        58309,
+        "H90_APP_NHK.SCI_ESA_STEP",
+        Subsystem.HI90,
+        "esa-step",
+    )
 
 
 class WebTCADLaTiS:
