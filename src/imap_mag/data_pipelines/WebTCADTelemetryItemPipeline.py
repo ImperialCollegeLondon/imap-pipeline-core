@@ -1,12 +1,12 @@
-from imap_mag.client.WebTCADLaTiS import WebTCADLaTiS
+from imap_mag.client.WebTCADLaTiS import HKWebTCADItems, WebTCADLaTiS
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import (
     AutomaticRunParameters,
     FetchByDatesRunParameters,
     Pipeline,
 )
-from imap_mag.data_pipelines.DownloadLoPivotCsvFilesStage import (
-    DownloadLoPivotCsvFilesStage,
+from imap_mag.data_pipelines.DownloadWebTCADCsvFilesStage import (
+    DownloadWebTCADCsvFilesStage,
 )
 from imap_mag.data_pipelines.GetProcessingDatesStage import (
     DateResolutionMode,
@@ -19,18 +19,26 @@ from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDates
 from imap_mag.db import Database
 
 
-class LoPivotPlatformPipeline(Pipeline):
-    # static const:
-    PROGRESS_ITEM_ID = "LO_PIVOT_PLATFORM_ANGLE"
+class WebTCADTelemetryItemPipeline(Pipeline):
+    """Pipeline that downloads daily WebTCAD LaTiS telemetry CSV files for any
+    HKWebTCADItems entry, indexes them in the file datastore and tracks per-item
+    workflow progress.
+
+    The progress item id is taken from the enum member name so each telemetry item
+    gets its own progress record.
+    """
 
     def __init__(
         self,
+        item: HKWebTCADItems,
         database: Database | None,
         settings: AppSettings,
     ):
         super().__init__(settings=settings)
 
-        self.initial_context = {"progress_item_name": self.PROGRESS_ITEM_ID}
+        self.item = item
+        self.progress_item_id = item.name
+        self.initial_context = {"progress_item_name": self.progress_item_id}
         self._database = database
         self._client = WebTCADLaTiS(fetch_webtcad_config=settings.fetch_webtcad)
 
@@ -42,7 +50,8 @@ class LoPivotPlatformPipeline(Pipeline):
                     database=self._database,
                     date_resolution_mode=DateResolutionMode.DATE_ONLY,
                 ),
-                DownloadLoPivotCsvFilesStage(
+                DownloadWebTCADCsvFilesStage(
+                    item=self.item,
                     client=self._client,
                     settings=self._settings,
                 ),

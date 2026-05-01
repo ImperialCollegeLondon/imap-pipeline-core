@@ -43,7 +43,8 @@ def test_download_csv(wiremock_manager):
 
     client = build_client_under_test(wiremock_manager)
 
-    result = client.download_imap_lo_pivot_platform_angle_to_csv_file(
+    result = client.download_analog_telemetry_item(
+        telemetry_item_id=HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.tmid,
         start_date=start_date,
         end_date=end_date,
     )
@@ -88,7 +89,8 @@ def test_download_csv_raises_on_error(wiremock_manager):
     client = build_client_under_test(wiremock_manager)
 
     with pytest.raises(Exception):
-        client.download_imap_lo_pivot_platform_angle_to_csv_file(
+        client.download_analog_telemetry_item(
+            telemetry_item_id=HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.tmid,
             start_date=start_date,
             end_date=end_date,
         )
@@ -118,7 +120,8 @@ def test_download_csv_empty_response(wiremock_manager):
 
     client = build_client_under_test(wiremock_manager)
 
-    result = client.download_imap_lo_pivot_platform_angle_to_csv_file(
+    result = client.download_analog_telemetry_item(
+        telemetry_item_id=HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.tmid,
         start_date=start_date,
         end_date=end_date,
     )

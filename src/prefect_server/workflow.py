@@ -21,6 +21,10 @@ from prefect_server.performCalibration import (
     calibrate_flow,
     gradiometry_flow,
 )
+from prefect_server.pollHiEsaStep import (
+    poll_hi45_esa_step_flow,
+    poll_hi90_esa_step_flow,
+)
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
@@ -152,6 +156,20 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(
             PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_LO_PIVOT_PLATFORM_CRON
         ),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_hi45_esa_step_deployable = poll_hi45_esa_step_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HI45_ESA_STEP,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HI45_ESA_STEP_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_hi90_esa_step_deployable = poll_hi90_esa_step_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HI90_ESA_STEP,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HI90_ESA_STEP_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
@@ -415,6 +433,8 @@ async def adeploy_flows(local_debug: bool = False):
         poll_spice_deployable,
         poll_science_deployable,
         poll_lo_pivot_platform_deployable,
+        poll_hi45_esa_step_deployable,
+        poll_hi90_esa_step_deployable,
         poll_spin_table_deployable,
         publish_deployable,
         check_ialirt_deployable,

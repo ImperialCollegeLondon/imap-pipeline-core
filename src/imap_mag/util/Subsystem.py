@@ -17,3 +17,5 @@ class Subsystem(Enum):
     SC = "sc", "sc_4.2_111.xml"
     MAG = "mag", "mag_17.9.xml"
     LO = "lo", ""
+    HI45 = "hi45", ""
+    HI90 = "hi90", ""

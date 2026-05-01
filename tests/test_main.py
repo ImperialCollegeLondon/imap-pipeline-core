@@ -6,15 +6,22 @@ import json
 import os
 import re
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from imap_mag.cli.check.check_ialirt import IALiRTAnomalyError
+from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
 from imap_mag.main import app
 from prefect_server.checkIALiRT import CONSTANTS
 from tests.util.miscellaneous import DATASTORE, TEST_DATA
+from tests.util.webtcad_flow_helpers import (
+    SAMPLE_CSV_WITH_DATA,
+    define_available_latis_mapping,
+    define_unavailable_latis_mapping,
+)
 
 runner = CliRunner()
 
@@ -531,3 +538,69 @@ def test_check_ialirt_with_issues(
     assert "Detected 7 anomalies in I-ALiRT data:" in capture_cli_logs.text
     assert "[DANGER]" in capture_cli_logs.text
     assert "[WARNING]" in capture_cli_logs.text
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.parametrize(
+    "subcommand,item",
+    [
+        ("imap-lo-pivot-platform", HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE),
+        ("imap-hi45-step", HKWebTCADItems.HI45_ESA_STEP),
+        ("imap-hi90-step", HKWebTCADItems.HI90_ESA_STEP),
+    ],
+)
+def test_fetch_webtcad_cli_downloads_csv_for_date_range(
+    subcommand,
+    item,
+    wiremock_manager,
+    temp_datastore,
+    dynamic_work_folder,
+):
+    """Each WebTCAD fetch subcommand downloads a CSV for the supplied date and writes it to the datastore."""
+    wiremock_manager.reset()
+
+    target_date = datetime(2026, 1, 15)
+    next_day = datetime(2026, 1, 16)
+
+    define_available_latis_mapping(
+        wiremock_manager,
+        item,
+        target_date,
+        next_day,
+        SAMPLE_CSV_WITH_DATA,
+    )
+    define_unavailable_latis_mapping(wiremock_manager, item)
+
+    settings_overrides_for_env: Mapping[str, str] = {
+        "MAG_FETCH_WEBTCAD_API_URL_BASE": wiremock_manager.get_url(),
+        "IMAP_WEBPODA_TOKEN": "12345",
+        "MAG_DATA_STORE": str(temp_datastore),
+    }
+
+    expected_file = (
+        temp_datastore
+        / f"hk/{item.instrument.short_name}/l1/{item.descriptor}/2026/01"
+        / f"imap_{item.instrument.short_name}_l1_{item.descriptor}_20260115_v001.csv"
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "fetch",
+            subcommand,
+            "--start-date",
+            "2026-01-15",
+            "--end-date",
+            "2026-01-15",
+        ],
+        env=settings_overrides_for_env,
+    )
+
+    print("\n" + str(result.stdout))
+
+    assert result.exit_code == 0, result.exception
+    assert expected_file.exists(), f"Expected file not found at {expected_file}"
+    assert expected_file.read_text() == SAMPLE_CSV_WITH_DATA
