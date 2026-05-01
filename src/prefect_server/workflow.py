@@ -196,6 +196,7 @@ async def adeploy_flows(local_debug: bool = False):
                 timezone=timezone,
                 parameters={
                     "level": "l2",
+                    "reference_frames": ["gse", "rtn"],
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
             )
@@ -205,7 +206,11 @@ async def adeploy_flows(local_debug: bool = False):
             Cron(
                 get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_L1D_CRON),
                 timezone=timezone,
-                parameters={"level": "l1d", "modes": ["norm"]},
+                parameters={
+                    "level": "l1d",
+                    "modes": ["norm"],
+                    "reference_frames": ["gse", "rtn"],
+                },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D + "_norm_only",
             )
         )
