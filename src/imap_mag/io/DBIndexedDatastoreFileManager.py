@@ -196,6 +196,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             file
             for file in database_files
             if path_handler.get_folder_structure() in file.path
+            and file.deletion_date is None
         ]
 
         return database_files

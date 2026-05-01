@@ -818,3 +818,99 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     v002_records = [f for f in db_files if f.version == 2]
     assert len(v002_records) == 1
     assert v002_records[0].hash == new_csv_hash
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    temp_folder_path,
+) -> None:
+    """Deleted DB records must not block version slots or match on hash.
+
+    Reproduces the bug from the log where v001 and v002 were deleted in the DB,
+    causing a new run with identical content to be assigned v003 instead of v001.
+    """
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+
+    date = datetime(2026, 1, 1)
+    csv_content = (
+        "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask"
+    )
+
+    work_json, work_csv = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, csv_content
+    )
+    csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
+
+    # Pre-populate DB with v001 and v002, both soft-deleted
+    test_database.insert_files(
+        [
+            File(
+                name="imap_mag_quality-norm-layer_20260101_v001.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260101_v001.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                hash=csv_hash,
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 1, 12, 0, 0),
+                last_modified_date=datetime(2026, 1, 1, 12, 0, 0),
+                deletion_date=datetime(2026, 1, 2, 0, 0, 0),
+                software_version=__version__,
+            ),
+            File(
+                name="imap_mag_quality-norm-layer_20260101_v002.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260101_v002.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=2,
+                hash="different_hash_for_v002",
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 1, 13, 0, 0),
+                last_modified_date=datetime(2026, 1, 1, 13, 0, 0),
+                deletion_date=datetime(2026, 1, 2, 0, 0, 0),
+                software_version=__version__,
+            ),
+        ]
+    )
+
+    path_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+    dest_json = (
+        Path(tempfile.gettempdir())
+        / "imap_mag_quality-norm-layer_20260101_v001_del_test.json"
+    )
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(
+            dest_json,
+            json.dumps(
+                {
+                    "metadata": {
+                        "data_filename": "imap_mag_quality-norm-layer-data_20260101_v001.csv"
+                    }
+                }
+            ),
+        ),
+        path_handler,
+    )
+
+    # Exercise
+    database_manager.add_file(work_json, path_handler)
+
+    # Verify: deleted records did not block slots or match hashes
+    # Version must be 1 (not 3), and a new active DB record must be inserted
+    assert path_handler.version == 1, (
+        f"Expected version 1 but got {path_handler.version}. "
+        "Deleted DB records should not occupy version slots."
+    )
+    active_files = [f for f in test_database.get_files() if f.deletion_date is None]
+    assert len(active_files) == 1
+    assert active_files[0].version == 1

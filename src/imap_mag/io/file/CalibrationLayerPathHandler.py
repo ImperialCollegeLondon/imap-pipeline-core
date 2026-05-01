@@ -99,8 +99,6 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             f"Increased version to {self.version} for file {self.get_filename()}."
         )
 
-    # ── Content-identity overrides for JSON metadata files ──────────────────
-
     def _companion_csv_path(self, alongside: Path) -> Path:
         """Return the companion CSV path, reading data_filename from the CalibrationLayer.
 
