@@ -79,23 +79,6 @@ class WebTCADLaTiS:
             f"WebTCAD LaTiS client initialized with base URL: {self.__base_url}"
         )
 
-    def download_imap_lo_pivot_platform_angle_to_csv_file(
-        self,
-        *,
-        start_date: datetime,
-        end_date: datetime,
-        system_id: str = FLIGHT_SYSTEM_ID,
-        mode: TimeQueryMode = TimeQueryMode.SPACECRAFT_TIME_MODE,
-    ) -> str:
-        return self.download_analog_telemetry_item(
-            telemetry_item_id=HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.tmid,
-            start_date=start_date,
-            end_date=end_date,
-            mode=mode,
-            results_format=WebTCADLaTiS.ResultsFormat.CSV,
-            system_id=system_id,
-        )
-
     def download_analog_telemetry_item(
         self,
         *,

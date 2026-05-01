@@ -27,11 +27,8 @@ class PREFECT_CONSTANTS:
     class POLL_SCIENCE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
-    class POLL_LO_PIVOT_PLATFORM:
-        WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
-
-    class POLL_HI_ESA_STEP:
-        WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
+    class POLL_WEBTCAD:
+        WEBTCAD_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
     class POLL_SPIN_TABLE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"

@@ -19,11 +19,13 @@ from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDates
 from imap_mag.db import Database
 
 
-class HiEsaStepPipeline(Pipeline):
-    """Pipeline that downloads daily IMAP-Hi ESA STEP telemetry CSV files from the WebTCAD LaTiS API.
+class WebTCADTelemetryItemPipeline(Pipeline):
+    """Pipeline that downloads daily WebTCAD LaTiS telemetry CSV files for any
+    HKWebTCADItems entry, indexes them in the file datastore and tracks per-item
+    workflow progress.
 
-    The same pipeline shape is used for both Hi-45 and Hi-90; the specific telemetry item
-    (and therefore the TMID, instrument and descriptor) is provided at construction time.
+    The progress item id is taken from the enum member name so each telemetry item
+    gets its own progress record.
     """
 
     def __init__(
@@ -35,7 +37,7 @@ class HiEsaStepPipeline(Pipeline):
         super().__init__(settings=settings)
 
         self.item = item
-        self.progress_item_id = f"{item.instrument.short_name.upper()}_ESA_STEP"
+        self.progress_item_id = item.name
         self.initial_context = {"progress_item_name": self.progress_item_id}
         self._database = database
         self._client = WebTCADLaTiS(fetch_webtcad_config=settings.fetch_webtcad)
