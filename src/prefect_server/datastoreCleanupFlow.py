@@ -70,7 +70,7 @@ def _get_files_to_cleanup(
 async def cleanup_datastore_flow(
     task_names: list[str] | None = None,
     dry_run: bool | None = None,
-    max_file_operations: int = 100,
+    max_file_operations: int = 250,
 ):
     """
     Clean up files from the datastore based on configured tasks.
@@ -86,7 +86,7 @@ async def cleanup_datastore_flow(
         task_names: Optional list of task names to run. If None, runs all tasks.
         dry_run: If True, only log what would happen. If None, uses config value.
         max_file_operations: Maximum number of file operations (archive/delete)
-            before stopping. Default is 100.
+            before stopping. Default is 250.
     """
     logger = try_get_prefect_logger(__name__)
 

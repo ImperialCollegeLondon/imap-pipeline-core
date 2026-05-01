@@ -122,6 +122,26 @@ datastore_cleanup:
           files_older_than: "24h"
           keep_latest_version_only: true
           cleanup_mode: "delete"
+        - name: "delete-l2pre-after-6months-last-modified"
+          paths_to_match:
+              - "*science/mag/l2-pre/*/*/imap_mag_l2-pre_*.cdf"
+          files_older_than: "180d"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"
+        - name: "delete-all-non-gse-rtn-l1d-l2pre-l2-versions"
+          paths_to_match:
+              - "*science/mag/l1d/*/*/imap_mag_l1d_*-dsrf_*.cdf"
+              - "*science/mag/l1d/*/*/imap_mag_l1d_*-srf_*.cdf"
+              - "*science/mag/l1d/*/*/imap_mag_l1d_*-gsm_*.cdf"
+              - "*science/mag/l2-pre/*/*/imap_mag_l2-pre_*-dsrf_*.cdf"
+              - "*science/mag/l2-pre/*/*/imap_mag_l2-pre_*-srf_*.cdf"
+              - "*science/mag/l2-pre/*/*/imap_mag_l2-pre_*-gsm_*.cdf"
+              - "*science/mag/l2/*/*/imap_mag_l2_*-dsrf_*.cdf"
+              - "*science/mag/l2/*/*/imap_mag_l2_*-srf_*.cdf"
+              - "*science/mag/l2/*/*/imap_mag_l2_*-gsm_*.cdf"
+          files_older_than: "24h"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"
         - name: "delete-30day-old-non-latest-science-versions"
           paths_to_match:
               - "*science/mag/l1b/*"

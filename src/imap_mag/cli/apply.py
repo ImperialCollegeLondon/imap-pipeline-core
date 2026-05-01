@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -336,6 +337,51 @@ def _apply_for_date(
         l2_handler.level = "l2-pre"  # set level to l2-pre for the output file naming, as it's pre-release l2
         l2_handler.version = 1  # set version to 0 for the output file naming
         outputManager.add_file(L2_file, l2_handler)
+
+    cleanup_workfolder_after_apply(
+        app_settings,
+        workScienceFile,
+        workLayers,
+        workRotationFile,
+        L2_files,
+        offset_file,
+    )
+
+    logger.info(f"Apply complete for date {date}. Temporary files cleaned up.")
+
+
+def cleanup_workfolder_after_apply(
+    app_settings, workScienceFile, workLayers, workRotationFile, L2_files, offset_file
+):
+    files_to_cleanup: list[Path] = [
+        offset_file,
+        *L2_files,
+        *workLayers,
+        workScienceFile,
+    ]
+    if workRotationFile:
+        files_to_cleanup.append(workRotationFile)
+
+    # add the .csv version of all layer files to the cleanup list as well
+    for layer_file in workLayers:
+        if layer_file.suffix == ".json":
+            corresponding_csv = layer_file.with_suffix(".csv")
+            if corresponding_csv.exists():
+                files_to_cleanup.append(corresponding_csv)
+
+    work_folder_resolved = app_settings.work_folder.resolve()
+    for temp_file in files_to_cleanup:
+        temp_file_resolved = temp_file.resolve()
+        if temp_file_resolved.exists() and (
+            temp_file_resolved == work_folder_resolved
+            or work_folder_resolved in temp_file_resolved.parents
+        ):
+            logger.info(f"Deleting temporary file {temp_file}")
+            os.remove(temp_file)
+        else:
+            logger.warning(
+                f"Skipping deletion of file outside work folder '{app_settings.work_folder}': {temp_file}"
+            )
 
 
 def _setup_zero_calibration_layer(
