@@ -1,5 +1,6 @@
 """Tests for `OutputManager` class."""
 
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -7,9 +8,14 @@ from pathlib import Path
 import pytest
 
 from imap_mag.io import DatastoreFileManager
-from imap_mag.io.file import HKDecodedPathHandler, IFilePathHandler
+from imap_mag.io.file import (
+    CalibrationLayerPathHandler,
+    HKDecodedPathHandler,
+    IFilePathHandler,
+)
 from tests.util.miscellaneous import (
     create_test_file,
+    write_calibration_layer_pair,
 )
 
 
@@ -263,3 +269,98 @@ def test_error_on_file_not_found(capture_cli_logs):
         manager.add_file(original_file, HKDecodedPathHandler())
 
     assert f"File {original_file} does not exist." in capture_cli_logs.text
+
+
+# ── CalibrationLayerPathHandler deduplication (file-based datastore) ──────────
+
+
+def test_calibration_layer_identical_content_deduplicates_to_existing_version(
+    capture_cli_logs, temp_folder_path
+):
+    """If the companion CSV content matches an existing version, reuse that version."""
+    date = datetime(2026, 1, 16)
+
+    # Existing v001 pair already in datastore
+    store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
+    store_dir.mkdir(parents=True)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
+
+    # New run produces a work-folder pair also at v001 with identical CSV
+    work_dir = temp_folder_path / "work"
+    work_dir.mkdir()
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=0
+    )
+
+    manager = DatastoreFileManager(temp_folder_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+
+    (result_path, _) = manager.add_file(work_json, handler)
+
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.json"
+    assert handler.version == 1
+    assert not (store_dir / "imap_mag_quality-norm-layer_20260116_v002.json").exists()
+
+
+def test_calibration_layer_different_content_bumps_to_v002(
+    capture_cli_logs, temp_folder_path
+):
+    """If the companion CSV content differs from all existing versions, create v002."""
+    date = datetime(2026, 1, 16)
+
+    # Existing v001 pair with original content
+    store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
+    store_dir.mkdir(parents=True)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
+
+    # New run with different CSV content
+    work_dir = temp_folder_path / "work"
+    work_dir.mkdir()
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=1
+    )
+
+    manager = DatastoreFileManager(temp_folder_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+
+    (result_path, _) = manager.add_file(work_json, handler)
+
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v002.json"
+    assert handler.version == 2
+
+    # JSON in datastore at v002 must reference v002 CSV
+    saved = json.loads(result_path.read_text())
+    assert saved["metadata"]["data_filename"] == (
+        "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    )
+
+
+def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
+    """The companion CSV is saved at the same version the JSON was bumped to."""
+    date = datetime(2026, 1, 16)
+
+    store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
+    store_dir.mkdir(parents=True)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 1, seed=0)
+
+    work_dir = temp_folder_path / "work"
+    work_dir.mkdir()
+    work_json, work_csv = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 1, seed=1
+    )
+
+    manager = DatastoreFileManager(temp_folder_path)
+    json_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1
+    )
+    manager.add_file(work_json, json_handler)
+
+    csv_handler = json_handler.get_equivalent_data_handler()  # version now 2
+    (csv_result, _) = manager.add_file(work_csv, csv_handler)
+
+    assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    assert csv_result.read_bytes() == work_csv.read_bytes()

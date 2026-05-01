@@ -4,6 +4,8 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from imap_mag.appLogging import AppLogging
@@ -91,6 +93,64 @@ def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None =
         src_file,
         dest_folder / new_filename,
     )
+
+
+def write_calibration_layer_pair(
+    folder: Path,
+    descriptor: str,
+    date: datetime,
+    version: int,
+    seed: int = 0,
+) -> tuple[Path, Path]:
+    """Create a real CalibrationLayer JSON+CSV pair in *folder*. Returns (json_path, csv_path)."""
+    from imap_mag.io.file import CalibrationLayerPathHandler
+    from mag_toolkit.calibration.CalibrationDefinitions import (
+        CalibrationMetadata,
+        CalibrationMethod,
+        Mission,
+        Sensor,
+        Validity,
+        ValueType,
+    )
+    from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+    epoch = np.datetime64(date) + np.timedelta64(seed, "s")
+    contents = pd.DataFrame(
+        {
+            "time": np.array([epoch], dtype="datetime64[ns]"),
+            "offset_x": [float(seed)],
+            "offset_y": [float(seed)],
+            "offset_z": [float(seed)],
+            "timedelta": [0.0],
+            "quality_flag": [0],
+            "quality_bitmask": [0],
+        }
+    )
+    layer = CalibrationLayer(
+        id="",
+        mission=Mission.IMAP,
+        validity=Validity(start=epoch, end=epoch),
+        sensor=Sensor.MAGO,
+        version=version,
+        metadata=CalibrationMetadata(
+            dependencies=[],
+            science=[],
+            creation_timestamp=np.datetime64("now"),
+            content_date=np.datetime64(date),
+        ),
+        value_type=ValueType.VECTOR,
+        method=CalibrationMethod.NOOP,
+    )
+    layer._contents = contents
+
+    handler = CalibrationLayerPathHandler(
+        descriptor=descriptor, content_date=date, version=version
+    )
+    json_path = folder / handler.get_filename()
+    layer.writeToFile(json_path)
+
+    csv_path = folder / handler.get_equivalent_data_handler().get_filename()
+    return json_path, csv_path
 
 
 def open_cdf(cdf_path: Path, readonly: bool = True):

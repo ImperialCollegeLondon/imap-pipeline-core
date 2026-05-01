@@ -1,7 +1,7 @@
 [project]
 requires-python = ">=3.11,<3.15"
 name = "imap-mag"
-version = "5.1.0"
+version = "5.1.1"
 description = "Process IMAP data"
 authors = [
   {name = "alastairtree"},

@@ -174,17 +174,19 @@ def _calibrate_for_date(
 
     calibrator.setup_calibration_files(datastore_finder)
     calibrator.setup_datastore(app_settings.data_store)
+    outputManager = DatastoreFileManager.CreateByMode(
+        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+    )
 
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
     )
-    calibrator.set_layer_to_next_viable_version(datastore_finder, calibration_handler)
 
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration
     )
 
-    # verify that file and datafile are valid
+    # verify that the generated work-folder pair is internally consistent
     layer = CalibrationLayer.from_file(metadata_path, load_contents=False)
     if not layer.metadata.data_filename or not data_path.exists():
         raise FileNotFoundError(
@@ -195,21 +197,12 @@ def _calibrate_for_date(
             f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
         )
 
-    outputManager = DatastoreFileManager.CreateByMode(
-        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
-    )
-
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler
     )
 
-    result_data_file, _ = outputManager.add_file(
+    outputManager.add_file(
         data_path, path_handler=calibration_handler.get_equivalent_data_handler()
     )
-
-    if result_data_file.name != layer.metadata.data_filename.name:
-        raise ValueError(
-            f"Output data file {result_data_file!s} does not match expected data filename {layer.metadata.data_filename!s} specified in calibration layer metadata."
-        )
 
     return output_calibration_path

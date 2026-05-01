@@ -6,7 +6,7 @@
         "data_filename": "imap_mag_four-vector-offsets-norm-layer-data_20251017_v001.csv",
         "dependencies": [],
         "science": [
-            ".work/imap_mag_l1b_norm-mago_20251017_v002.json"
+            "imap_mag_l1b_norm-mago_20251017_v002.cdf"
         ]
     },
     "method": "noop",

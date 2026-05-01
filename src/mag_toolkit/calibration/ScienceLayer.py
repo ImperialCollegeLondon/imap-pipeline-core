@@ -184,7 +184,9 @@ class ScienceLayer(Layer):
                     CONSTANTS.CSV_VARS.RANGE: data[:, 3],
                 }
             )
-
+        logger.debug(
+            f"Loaded contents from CDF at {path!s} with {len(contents) if contents is not None else 'no'} rows."
+        )
         science_layer = cls(
             id=dataset.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID][0],
             mission=dataset.attrs[CONSTANTS.CDF_ATTRS.MISSION_GROUP][0],
@@ -193,7 +195,7 @@ class ScienceLayer(Layer):
             version=version,
             metadata=metadata,
             value_type=ValueType.VECTOR,
-            science_file=str(path),
+            science_file=path.name,
         )
         science_layer._set_content_date_from_filepath(path)
         science_layer._set_data_path(path)

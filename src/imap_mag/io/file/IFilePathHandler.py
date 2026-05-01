@@ -1,4 +1,5 @@
 import abc
+import hashlib
 import logging
 import typing
 from dataclasses import dataclass
@@ -55,6 +56,50 @@ class IFilePathHandler(abc.ABC):
     def from_filename(cls: type[T], filename: str | Path) -> T | None:
         """Instantiate a path handler from a file name."""
         pass
+
+    @classmethod
+    def default_file_hash(cls, source_file):
+        return hashlib.md5(source_file.read_bytes()).hexdigest()
+
+    def get_content_identity(
+        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+    ) -> str:
+        """Return a hash representing content identity for deduplication.
+
+        Override to use a different identity signal, e.g., a companion file's
+        hash instead of the source file's own hash.
+        """
+        source_file = (
+            file_path_override
+            if file_path_override is not None
+            else self.get_full_path(parent_folder)
+        )
+        return self.default_file_hash(source_file)
+
+    def prepare_for_version(self, source_file: Path) -> Path:
+        """Prepare the source file for the version currently set on this handler.
+
+        Called after the final version is determined and before the file is copied
+        into the datastore. Returns the path to copy from — may be a temporary
+        rewrite of source_file. Callers must delete the returned file if it differs
+        from source_file.
+
+        Default: return source_file unchanged (no rewriting needed).
+        """
+        return source_file
+
+    def is_version_blocked_by_sibling(
+        self, version: int, datastore: Path, source_file: Path
+    ) -> bool:
+        """Return True if *version* must be skipped due to a sibling-file conflict.
+
+        Called after the primary version-search loop to ensure paired files
+        (e.g. a JSON layer and its companion CSV) always land on the same version.
+        Override when a file type co-versions with another file type.
+
+        Default: no sibling constraint.
+        """
+        return False
 
     def _check_property_values(
         self, method_description: str, properties: list[str]

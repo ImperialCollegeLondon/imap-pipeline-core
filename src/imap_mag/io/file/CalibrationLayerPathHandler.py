@@ -93,13 +93,130 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
                 extension=match["ext"],
             )
 
-    def register_callback_on_resequencing(self, callback) -> None:
-        self._version_change_callback = callback
-
     def increase_sequence(self) -> None:
         super().increase_sequence()
-        if hasattr(self, "_version_change_callback"):
-            self._version_change_callback(self)
         logger.debug(
             f"Increased version to {self.version} for file {self.get_filename()}."
         )
+
+    def _companion_csv_path(self, alongside: Path) -> Path:
+        """Return the companion CSV path, reading data_filename from the CalibrationLayer.
+
+        Reading the layer's own data_filename field means the lookup stays correct
+        regardless of what version number is currently set on the handler — both
+        work-folder v001.json and datastore v002.json point at their own companion.
+        """
+        try:
+            from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+            cal = CalibrationLayer.from_file(alongside, load_contents=False)
+            if cal.metadata.data_filename:
+                return alongside.parent / cal.metadata.data_filename.name
+        except Exception:
+            pass
+        return alongside.parent / self.get_equivalent_data_handler().get_filename()
+
+    def get_content_identity(
+        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+    ) -> str:
+        """Return a hash representing content identity for deduplication.
+
+        JSON layer files are identified by their companion CSV hash (stored in the
+        layer's metadata.data_hash field), not the JSON file itself, because the JSON
+        can change (e.g. version bump rewrites data_filename) while the CSV data stays
+        the same.
+        """
+        source_file = (
+            file_path_override
+            if file_path_override is not None
+            else self.get_full_path(parent_folder)
+        )
+
+        if not source_file.exists():
+            raise FileNotFoundError(
+                f"Source file {source_file} does not exist for content identity hashing."
+            )
+
+        if source_file.suffix == ".json":
+            try:
+                from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+                cal = CalibrationLayer.from_file(source_file, load_contents=False)
+                if cal.metadata.data_hash:
+                    return cal.metadata.data_hash
+            except Exception:
+                pass
+
+            companion = self._companion_csv_path(source_file)
+            if companion.exists():
+                logger.warning(
+                    f"No data_hash in metadata of {source_file}. Falling back to hashing the companion CSV."
+                )
+                return self.default_file_hash(companion)
+
+            logger.debug(
+                f"No data_hash or companion CSV for {source_file}. Using JSON file hash as identity fallback."
+            )
+            # Fall through to hash the JSON itself
+
+        logger.debug(
+            f"Content identity for non-JSON file {source_file} is based on the file itself."
+        )
+        return self.default_file_hash(source_file)
+
+    def prepare_for_version(self, source_file: Path) -> Path:
+        """Rewrite the JSON's data_filename to match the handler's current version.
+
+        When the datastore assigns a version other than what the source file was
+        originally generated at (e.g., v001 → v002 because v001 already exists
+        with different content), the JSON must reference the correctly-versioned
+        companion CSV.  Returns a temporary file that the caller must delete.
+        """
+        if self.extension != "json":
+            return source_file
+
+        expected_data_filename = self.get_equivalent_data_handler().get_filename()
+
+        from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+        cal_file = CalibrationLayer.from_file(source_file, load_contents=False)
+
+        current = (
+            Path(cal_file.metadata.data_filename).name
+            if cal_file.metadata.data_filename
+            else None
+        )
+        if current == expected_data_filename:
+            return source_file  # already correct — no rewrite needed
+
+        cal_file.metadata.data_filename = Path(expected_data_filename)
+        new_version_path = source_file.parent / self.get_filename()
+        cal_file.writeToFile(new_version_path)
+
+        logger.debug(
+            f"Rewrote {source_file.name} data_filename from {current!r} to {expected_data_filename!r} in {new_version_path.name}."
+        )
+        return new_version_path
+
+    def is_version_blocked_by_sibling(
+        self, version: int, datastore: Path, source_file: Path
+    ) -> bool:
+        """For JSON layers: also reject a version if the companion CSV slot is occupied
+        with content that differs from the new companion CSV.
+
+        This ensures that JSON and CSV always land on the same version, even when
+        only one half of the pair exists in the datastore from a prior partial save.
+        """
+        if self.extension != "json":
+            return False
+        sibling = self.get_equivalent_data_handler()
+        sibling.set_sequence(version)
+        sibling_dest = sibling.get_full_path(datastore)
+        if not sibling_dest.exists():
+            return False
+        new_companion = self._companion_csv_path(source_file)
+        if new_companion.exists():
+            return sibling.get_content_identity(
+                new_companion
+            ) != sibling.get_content_identity(sibling_dest)
+        return True  # Cannot determine — play it safe and block this version

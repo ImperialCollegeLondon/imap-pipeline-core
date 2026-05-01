@@ -10,7 +10,7 @@ import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from pydantic import PrivateAttr
 
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file import CalibrationLayerPathHandler, IFilePathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -230,7 +230,7 @@ class CalibrationLayer(Layer):
         return self
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
-        created = super()._write_to_json(filepath, createDirectory)
+
         if self._contents is not None:
             if self.metadata.data_filename is None:
                 self.metadata.data_filename = Path(
@@ -238,10 +238,11 @@ class CalibrationLayer(Layer):
                     .get_equivalent_data_handler()
                     .get_filename()
                 )
+            data_file_path = filepath.parent / self.metadata.data_filename
+            self._write_to_csv(data_file_path, createDirectory)
+            self.metadata.data_hash = IFilePathHandler.default_file_hash(data_file_path)
 
-            self._write_to_csv(
-                filepath.parent / self.metadata.data_filename, createDirectory
-            )
+        created = super()._write_to_json(filepath, createDirectory)
         return created
 
     @classmethod

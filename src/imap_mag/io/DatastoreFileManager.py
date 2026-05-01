@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import shutil
 from pathlib import Path
@@ -12,10 +11,6 @@ if TYPE_CHECKING:
     from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
-
-
-def generate_hash(file: Path) -> str:
-    return hashlib.md5(file.read_bytes()).hexdigest()
 
 
 class DatastoreFileManager(IDatastoreFileManager):
@@ -61,11 +56,44 @@ class DatastoreFileManager(IDatastoreFileManager):
             )
             destination_file.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
-        destination = shutil.copy2(original_file, destination_file)
-        logger.debug(f"Copied to {destination}.")
+        # Allow the handler to rewrite the source (e.g. update version references in JSON).
+        source_file_after_reversioning = path_handler.prepare_for_version(original_file)
+        try:
+            logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
+            destination = shutil.copy2(source_file_after_reversioning, destination_file)
+            logger.debug(f"Copied to {destination}.")
+            self.verify_file_delivered_to_datastore(
+                original_file, source_file_after_reversioning, destination_file
+            )
+        finally:
+            if (
+                source_file_after_reversioning != original_file
+                and source_file_after_reversioning.exists()
+            ):
+                source_file_after_reversioning.unlink()
 
         return (destination_file, path_handler)
+
+    def verify_file_delivered_to_datastore(
+        self, original_file, source_file_after_reversioning, destination_file
+    ):
+        if not destination_file.exists():
+            raise FileNotFoundError(
+                f"File {destination_file} does not exist after copy from {original_file}."
+            )
+
+        def generate_hash(file: Path) -> str:
+            return IFilePathHandler.default_file_hash(file)
+
+        if generate_hash(destination_file) != generate_hash(
+            source_file_after_reversioning
+        ):
+            logger.error(
+                f"File {destination_file} content differs from reversioned {source_file_after_reversioning} (and maybe source {original_file})."
+            )
+            raise FileNotFoundError(
+                f"File {destination_file} does not match source {original_file}."
+            )
 
     def __get_next_available_version(
         self,
@@ -80,26 +108,37 @@ class DatastoreFileManager(IDatastoreFileManager):
             logger.debug(
                 "Versioning not supported. File may be overwritten if it already exists and is different."
             )
-
-            return (
-                generate_hash(original_file) == generate_hash(destination_file)
-                if destination_file.exists()
-                else False
-            )
+            if not destination_file.exists():
+                return False
+            orig_identity = path_handler.get_content_identity(original_file)
+            dest_identity = path_handler.get_content_identity(destination_file)
+            return orig_identity == dest_identity
         else:
             assert isinstance(path_handler, SequenceablePathHandler)
 
-        while destination_file.exists():
-            if generate_hash(destination_file) == generate_hash(original_file):
-                return True
+        while True:
+            if destination_file.exists():
+                orig_identity = path_handler.get_content_identity(original_file)
+                dest_identity = path_handler.get_content_identity(destination_file)
+                if orig_identity == dest_identity:
+                    return True
 
-            logger.debug(
-                f"File {destination_file} already exists and is different. Increasing version to {path_handler.get_sequence() + 1}."
-            )
+                logger.debug(
+                    f"File {destination_file} already exists and is different. Increasing version to {path_handler.get_sequence() + 1}."
+                )
+            elif path_handler.is_version_blocked_by_sibling(
+                path_handler.get_sequence(), self.location, original_file
+            ):
+                logger.debug(
+                    f"Version {path_handler.get_sequence()} blocked by sibling conflict for {destination_file}. Increasing version."
+                )
+            else:
+                return False
+
             path_handler.increase_sequence()
             updated_file = path_handler.get_full_path(self.location)
 
-            # Make sure file has changed, otherwise this in an infinite loop
+            # Make sure file has changed, otherwise this is an infinite loop
             if destination_file == updated_file:
                 logger.error(
                     f"File {destination_file} already exists and is different. Cannot increase version."
@@ -109,8 +148,6 @@ class DatastoreFileManager(IDatastoreFileManager):
                 )
 
             destination_file = updated_file
-
-        return False
 
     @classmethod
     def CreateByMode(
