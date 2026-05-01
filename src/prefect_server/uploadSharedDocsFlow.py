@@ -98,11 +98,15 @@ async def upload_shared_docs_flow(
     return result
 
 
-def _filter_files_by_patterns(files: list[File], patterns: list[str]) -> list[File]:
+def _filter_files_by_patterns(
+    files: list[File], patterns: list[str], how_many: int | None
+) -> list[File]:
     """Filter files to only those matching any of the given fnmatch patterns."""
     filtered_files = [
         f for f in files if any(fnmatch.fnmatch(f.path, p) for p in patterns)
     ]
+    if how_many is not None:
+        filtered_files = filtered_files[:how_many]
 
     logger.info(
         f"{len(files)} files matching patterns:\n {', '.join(str(f) for f in files)}"
@@ -124,13 +128,17 @@ async def upload_new_files(
         how_many, db, started, find_files_after, workflow_progress_key
     )
 
-    new_files_db = db.get_files_since(last_modified_date, how_many)
+    db_batch_size = get_db_batch_size(how_many)
+
+    new_files_db = db.get_files_since(last_modified_date, db_batch_size)
 
     logger.info(
-        f"Found {len(new_files_db)} new files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
+        f"Found {len(new_files_db)} new files with max batch size {db_batch_size}. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
     )
 
-    files = _filter_files_by_patterns(new_files_db, app_settings.upload.paths_to_match)
+    files = _filter_files_by_patterns(
+        new_files_db, app_settings.upload.paths_to_match, how_many
+    )
 
     for file in files:
         path_inside_datastore = file.get_datastore_relative_path(app_settings)
@@ -164,6 +172,10 @@ async def upload_new_files(
     db.save(workflow_progress)
     logger.info(f"{len(files)} file(s) uploaded")
     return len(files)
+
+
+def get_db_batch_size(how_many):
+    return 2000 if how_many is None or how_many == 0 else max(how_many * 3, 2000)
 
 
 def _get_workflow_progress(
@@ -200,14 +212,15 @@ async def remove_deleted_files(
         how_many, db, started, find_files_after, workflow_progress_key + "-deletes"
     )
 
-    deleted_files_db = db.get_files_deleted_since(last_modified_date, how_many)
+    db_batch_size = get_db_batch_size(how_many)
+    deleted_files_db = db.get_files_deleted_since(last_modified_date, db_batch_size)
 
     logger.info(
-        f"Found {len(deleted_files_db)} deleted files. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
+        f"Found {len(deleted_files_db)} deleted files with max batch size {db_batch_size}. Checking against {len(app_settings.upload.paths_to_match)} patterns from settings."
     )
 
     files = _filter_files_by_patterns(
-        deleted_files_db, app_settings.upload.paths_to_match
+        deleted_files_db, app_settings.upload.paths_to_match, how_many
     )
 
     for file in files:
