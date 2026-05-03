@@ -10,6 +10,7 @@ import yaml
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import FileFinder
 from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
+from imap_mag.io.file.IALiRTInstrumentPathHandler import IALiRTInstrumentPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.process import get_packet_definition_folder
 from imap_mag.util.constants import CONSTANTS
@@ -44,7 +45,7 @@ class FetchIALiRT:
     ) -> dict[Path, IALiRTPathHandler]:
         """Retrieve I-ALiRT MAG science data."""
 
-        return self.__download_to_csv(
+        return self.download_to_csv(
             instrument="mag",
             start_date=start_date,
             end_date=end_date,
@@ -62,7 +63,7 @@ class FetchIALiRT:
     ) -> dict[Path, IALiRTHKPathHandler]:
         """Retrieve I-ALiRT MAG HK data."""
 
-        return self.__download_to_csv(
+        return self.download_to_csv(
             instrument="mag_hk",
             start_date=start_date,
             end_date=end_date,
@@ -73,10 +74,33 @@ class FetchIALiRT:
                 df,
                 self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
             ),
-            max_hours_per_chunk=2,  # Limit to 3 hours per chunk to avoid 400 error
+            max_hours_per_chunk=2,  # Limit to 2 hours per chunk to avoid 400 error
         )
 
-    def __download_to_csv(
+    def download_instrument_to_csv(
+        self,
+        instrument: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> dict[Path, IFilePathHandler]:
+        """Retrieve I-ALiRT data for any instrument, dispatching to the right handler/processor."""
+
+        if instrument == "mag":
+            return self.download_mag_to_csv(start_date, end_date)
+        elif instrument == "mag_hk":
+            return self.download_mag_hk_to_csv(start_date, end_date)
+        else:
+            return self.download_to_csv(
+                instrument=instrument,
+                start_date=start_date,
+                end_date=end_date,
+                path_handler_factory=lambda content_date: IALiRTInstrumentPathHandler(
+                    instrument=instrument, content_date=content_date
+                ),
+                process_fn=process_ialirt_default,
+            )
+
+    def download_to_csv(
         self,
         instrument: str,
         start_date: datetime,
@@ -286,3 +310,51 @@ def process_ialirt_hk_data(
                     )
 
     return df
+
+
+def process_ialirt_default(df: pd.DataFrame) -> pd.DataFrame:
+    """Process I-ALiRT data for instruments without a specific processor.
+
+    Flattens list columns (into _x/_y/_z for 3-element, else _0/_1/...) and
+    dict columns (into <col>.<key>) so the result is a flat CSV-friendly dataframe.
+    """
+
+    df.columns = df.columns.str.strip()
+
+    for column in list(df.columns):
+        non_null = df[df[column].notna()][column]
+        if non_null.empty:
+            continue
+
+        first_val = non_null.iloc[0]
+
+        if isinstance(first_val, list):
+            length = len(first_val)
+            if length == 3:
+                suffixes = ["x", "y", "z"]
+            else:
+                suffixes = [str(i) for i in range(length)]
+
+            for i, suffix in enumerate(suffixes):
+                df[f"{column}_{suffix}"] = non_null.apply(
+                    lambda x, idx=i: (
+                        x[idx] if isinstance(x, list) and len(x) > idx else None
+                    )
+                )
+            df = df.drop(columns=[column])
+
+        elif isinstance(first_val, dict):
+            flattened = pd.json_normalize(df[column].dropna())
+            flattened.columns = [f"{column}.{key}" for key in flattened.columns]
+            flattened.index = df[df[column].notna()].index
+            df = pd.concat([df.drop(columns=[column]), flattened], axis=1)
+
+    return df
+
+
+# Registry mapping instrument name to its processing function.
+# Unknown instruments fall back to process_ialirt_default.
+INSTRUMENT_PROCESSORS = {
+    "mag": process_ialirt_mag_data,
+    "mag_hk": process_ialirt_hk_data,
+}

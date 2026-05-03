@@ -11027,7 +11027,7 @@ jobs:
           use_to_delete_old_rows: true
   imap_ialirt:
     target_table: ialirt_mag
-    filename_match: imap_ialirt_*.csv
+    filename_match: imap_ialirt_2*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
