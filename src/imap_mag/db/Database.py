@@ -1,9 +1,12 @@
 import functools
 import logging
 import os
+import threading
 from datetime import datetime
+from typing import ClassVar
 
 from sqlalchemy import create_engine, or_, select
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, WorkflowProgress
@@ -14,6 +17,8 @@ logger = logging.getLogger(__name__)
 class Database:
     """Database manager."""
 
+    _engine_cache: ClassVar[dict[str, Engine]] = {}
+    _engine_lock: ClassVar[threading.Lock] = threading.Lock()
     __active_session: Session | None
 
     def __init__(self, db_url=None):
@@ -26,7 +31,14 @@ class Database:
                 "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
             )
 
-        self.engine = create_engine(db_url, pool_pre_ping=True)
+        url = make_url(db_url)
+        url_key = url.render_as_string(hide_password=False)
+
+        with Database._engine_lock:
+            if url_key not in Database._engine_cache:
+                Database._engine_cache[url_key] = create_engine(url, pool_pre_ping=True)
+
+        self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
 
     @classmethod
@@ -131,7 +143,8 @@ class Database:
 
         logger.debug(f"Executing SQL statement: {statement}")
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_files_deleted_since(
         self, last_modified_date: datetime, how_many: int | None = None
@@ -150,7 +163,8 @@ class Database:
 
         logger.debug(f"Executing SQL statement: {statement}")
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @__session_manager(expire_on_commit=False)
     def get_workflow_progress(self, item_name: str) -> WorkflowProgress:
@@ -169,7 +183,8 @@ class Database:
             WorkflowProgress.progress_timestamp.desc()
         )
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @__session_manager()
     def save(self, model: Base) -> None:
@@ -179,7 +194,8 @@ class Database:
     def get_all_active_files(self) -> list[File]:
         """Get all files that have not been deleted."""
         statement = select(File).where(File.deletion_date.is_(None))
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
@@ -187,7 +203,8 @@ class Database:
             File.deletion_date.is_(None),
             File.path.like(pattern),
         )
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
         """Get all active files matching any of the given fnmatch patterns.
@@ -215,7 +232,8 @@ class Database:
             or_(*pattern_conditions),
         )
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @staticmethod
     def _fnmatch_to_like(pattern: str) -> str:
