@@ -8,14 +8,20 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from imap_db.model import File, WorkflowProgress
+from imap_db.model import Base, File, WorkflowProgress
 from imap_mag import __version__
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
     IDatastoreFileManager,
 )
-from tests.util.database import test_database  # noqa: F401
+from tests.util.database import (  # noqa: F401
+    test_database,
+    test_database_container,
+    test_database_server_engine,
+)
 from tests.util.miscellaneous import (
     NOW,
     TODAY,
@@ -202,3 +208,71 @@ def test_database_insert_file_same_name_different_hash(
         f"File {test_file2!s} already exists in database with different hash. Replacing."
         in capture_cli_logs.text
     )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_multiple_database_instances_share_engine(
+    test_database_server_engine,  # noqa: F811
+) -> None:
+    """Multiple Database instances with the same URL must share one SQLAlchemy engine.
+
+    Before the fix each Database() call created a fresh engine with its own
+    connection pool, so N instances consumed N*pool_size connections and could
+    exhaust the server's max_connections limit.
+    """
+    db1 = Database(db_url=test_database_server_engine.url)
+    db2 = Database(db_url=test_database_server_engine.url)
+    db3 = Database(db_url=test_database_server_engine.url)
+
+    assert db1.engine is db2.engine, (
+        "Database instances with the same URL should reuse one cached engine"
+    )
+    assert db2.engine is db3.engine, (
+        "Database instances with the same URL should reuse one cached engine"
+    )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_database_read_methods_return_connections_to_pool(
+    test_database_server_engine,  # noqa: F811
+) -> None:
+    """Read methods must close their sessions so connections return to the pool.
+
+    Before the fix the bare self.session().execute(...) pattern did not
+    guarantee session closure, so connections could remain checked-out and
+    prevent other callers from obtaining one.
+    """
+    # Use a pool with a single connection and no overflow so any leak is immediately visible.
+    constrained_engine = create_engine(
+        test_database_server_engine.url,
+        pool_size=1,
+        max_overflow=0,
+        pool_timeout=1,
+    )
+    Base.metadata.create_all(constrained_engine)
+
+    db = Database.__new__(Database)
+    db.engine = constrained_engine
+    db.session = sessionmaker(bind=constrained_engine)
+
+    since = datetime(2020, 1, 1)
+
+    # Calling the same read methods repeatedly must not exhaust the single pooled connection.
+    for _ in range(5):
+        db.get_files_since(since)
+        db.get_all_active_files()
+        db.get_all_workflow_progress()
+        db.get_files_by_path_pattern("%")
+        db.get_active_files_matching_patterns(["*"])
+
+    assert constrained_engine.pool.checkedout() == 0, (
+        "All connections should be returned to pool after read methods complete"
+    )
+
+    constrained_engine.dispose()
