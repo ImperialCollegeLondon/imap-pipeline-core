@@ -8,6 +8,8 @@ from imap_mag.io.file.CalibrationLayerPathHandler import (
 )
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.io.file.IALiRTHKPathHandler import IALiRTHKPathHandler
+from imap_mag.io.file.IALiRTInstrumentPathHandler import IALiRTInstrumentPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
@@ -48,12 +50,16 @@ class FilePathHandlerSelector:
     ) -> IFilePathHandler | None:
         """Find a suitable path handler for the given filepath."""
 
-        # Providers to try in alphabetical order.
+        # Providers to try in order. More specific handlers first to prevent shadowing.
+        # IALiRTHKPathHandler before IALiRTInstrumentPathHandler before IALiRTPathHandler
+        # because the instrument handler would otherwise match hk_ files.
         provider_to_try: list[type[IFilePathHandler]] = [
             AncillaryPathHandler,
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,
             HKDecodedPathHandler,
+            IALiRTHKPathHandler,
+            IALiRTInstrumentPathHandler,
             IALiRTPathHandler,
             SciencePathHandler,
             SpinTablePathHandler,

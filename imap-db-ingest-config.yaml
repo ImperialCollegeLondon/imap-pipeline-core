@@ -11027,7 +11027,7 @@ jobs:
           use_to_delete_old_rows: true
   imap_ialirt:
     target_table: ialirt_mag
-    filename_match: imap_ialirt_*.csv
+    filename_match: imap_ialirt_2*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
@@ -11109,3 +11109,247 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+  imap_ialirt_hit:
+    target_table: imap_ialirt_hit
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      hit_e_a_side_med_en:
+        db_column: hit_e_a_side_med_en
+        type: integer
+        nullable: false
+      hit_e_b_side_med_en:
+        db_column: hit_e_b_side_med_en
+        type: integer
+        nullable: false
+      hit_epoch:
+        db_column: hit_epoch
+        type: bigint
+        nullable: false
+      hit_h_omni_low_en:
+        db_column: hit_h_omni_low_en
+        type: integer
+        nullable: false
+      hit_h_omni_med_en:
+        db_column: hit_h_omni_med_en
+        type: integer
+        nullable: false
+      hit_he_omni_high_en:
+        db_column: hit_he_omni_high_en
+        type: integer
+        nullable: false
+      hit_he_omni_low_en:
+        db_column: hit_he_omni_low_en
+        type: integer
+        nullable: false
+      instrument:
+        db_column: instrument
+        type: varchar(3)
+        nullable: false
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_hit_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_kernel_set_key
+      columns:
+      - column: kernel_set_key
+        order: DESC
+  imap_ialirt_swe:
+    target_table: imap_ialirt_swe
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      instrument:
+        db_column: instrument
+        type: varchar(3)
+        nullable: false
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      swe_counterstreaming_electrons:
+        db_column: swe_counterstreaming_electrons
+        type: integer
+        nullable: false
+      swe_epoch:
+        db_column: swe_epoch
+        type: bigint
+        nullable: false
+      swe_normalized_counts_0:
+        db_column: swe_normalized_counts_0
+        type: integer
+        nullable: false
+      swe_normalized_counts_1:
+        db_column: swe_normalized_counts_1
+        type: integer
+        nullable: false
+      swe_normalized_counts_2:
+        db_column: swe_normalized_counts_2
+        type: integer
+        nullable: false
+      swe_normalized_counts_3:
+        db_column: swe_normalized_counts_3
+        type: integer
+        nullable: false
+      swe_normalized_counts_4:
+        db_column: swe_normalized_counts_4
+        type: integer
+        nullable: false
+      swe_normalized_counts_5:
+        db_column: swe_normalized_counts_5
+        type: integer
+        nullable: false
+      swe_normalized_counts_6:
+        db_column: swe_normalized_counts_6
+        type: integer
+        nullable: false
+      swe_normalized_counts_7:
+        db_column: swe_normalized_counts_7
+        type: integer
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_swe_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_kernel_set_key
+      columns:
+      - column: kernel_set_key
+        order: DESC
+  imap_ialirt_swapi:
+    target_table: imap_ialirt_swapi
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      instrument:
+        db_column: instrument
+        type: varchar(5)
+        nullable: false
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      swapi_epoch:
+        db_column: swapi_epoch
+        type: bigint
+        nullable: false
+      swapi_pseudo_proton_density:
+        db_column: swapi_pseudo_proton_density
+        type: float
+        nullable: false
+      swapi_pseudo_proton_speed:
+        db_column: swapi_pseudo_proton_speed
+        type: float
+        nullable: false
+      swapi_pseudo_proton_temperature:
+        db_column: swapi_pseudo_proton_temperature
+        type: float
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_swapi_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_kernel_set_key
+      columns:
+      - column: kernel_set_key
+        order: DESC
+  imap_ialirt_codice_hi:
+    target_table: imap_ialirt_codice_hi
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      codice_hi_epoch_0:
+        db_column: codice_hi_epoch_0
+        type: bigint
+        nullable: false
+      codice_hi_epoch_1:
+        db_column: codice_hi_epoch_1
+        type: bigint
+        nullable: false
+      codice_hi_epoch_2:
+        db_column: codice_hi_epoch_2
+        type: bigint
+        nullable: false
+      codice_hi_epoch_3:
+        db_column: codice_hi_epoch_3
+        type: bigint
+        nullable: false
+      codice_hi_h_0:
+        db_column: codice_hi_h_0
+        type: text
+        nullable: false
+      codice_hi_h_1:
+        db_column: codice_hi_h_1
+        type: text
+        nullable: false
+      codice_hi_h_2:
+        db_column: codice_hi_h_2
+        type: text
+        nullable: false
+      codice_hi_h_3:
+        db_column: codice_hi_h_3
+        type: text
+        nullable: false
+      instrument:
+        db_column: instrument
+        type: varchar(9)
+        nullable: false
+      kernel_set_key:
+        db_column: kernel_set_key
+        type: datetime
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_codice_hi_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    indexes:
+    - name: idx_kernel_set_key
+      columns:
+      - column: kernel_set_key
+        order: DESC

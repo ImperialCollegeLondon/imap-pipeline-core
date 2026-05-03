@@ -13,6 +13,7 @@ import pytest
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.download.FetchIALiRT import (
     FetchIALiRT,
+    process_ialirt_default,
     process_ialirt_hk_data,
     process_ialirt_mag_data,
 )
@@ -721,3 +722,121 @@ def test_process_mag_data_with_vectors() -> None:
     assert processed_df.at[1, "mag_B_RTN_r"] == 10
     assert processed_df.at[1, "mag_B_RTN_t"] == 11
     assert processed_df.at[1, "mag_B_RTN_n"] == 12
+
+
+def test_process_ialirt_default_scalar_passthrough() -> None:
+    raw_data = [
+        {"time_utc": "2026-05-01T00:00:00", "flux": 1.5, "energy": 3.2},
+        {"time_utc": "2026-05-01T01:00:00", "flux": 2.0, "energy": 4.1},
+    ]
+    df = pd.DataFrame(raw_data)
+
+    processed = process_ialirt_default(df)
+
+    assert list(processed.columns) == ["time_utc", "flux", "energy"]
+    assert processed.at[0, "flux"] == 1.5
+    assert processed.at[1, "energy"] == 4.1
+
+
+def test_process_ialirt_default_3element_list_uses_xyz() -> None:
+    raw_data = [
+        {"time_utc": "2026-05-01T00:00:00", "vec": [1, 2, 3]},
+    ]
+    df = pd.DataFrame(raw_data)
+
+    processed = process_ialirt_default(df)
+
+    assert "vec" not in processed.columns
+    assert processed.at[0, "vec_x"] == 1
+    assert processed.at[0, "vec_y"] == 2
+    assert processed.at[0, "vec_z"] == 3
+
+
+def test_process_ialirt_default_2element_list_uses_indexed() -> None:
+    raw_data = [
+        {"time_utc": "2026-05-01T00:00:00", "pair": [10, 20]},
+    ]
+    df = pd.DataFrame(raw_data)
+
+    processed = process_ialirt_default(df)
+
+    assert "pair" not in processed.columns
+    assert processed.at[0, "pair_0"] == 10
+    assert processed.at[0, "pair_1"] == 20
+
+
+def test_process_ialirt_default_dict_column_flattened() -> None:
+    raw_data = [
+        {"time_utc": "2026-05-01T00:00:00", "status": {"temp": 42, "mode": 3}},
+    ]
+    df = pd.DataFrame(raw_data)
+
+    processed = process_ialirt_default(df)
+
+    assert "status" not in processed.columns
+    assert processed.at[0, "status.temp"] == 42
+    assert processed.at[0, "status.mode"] == 3
+
+
+def test_fetch_ialirt_download_instrument_to_csv_uses_instrument_path_handler(
+    mock_ialirt_data_access: mock.Mock,
+    temp_datastore,  # noqa: F811
+) -> None:
+    from imap_mag.io.file.IALiRTInstrumentPathHandler import IALiRTInstrumentPathHandler
+
+    fetch = FetchIALiRT(
+        mock_ialirt_data_access,
+        Path(tempfile.mkdtemp()),
+        FileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
+    )
+
+    mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
+        {"time_utc": "2026-05-01T00:00:00", "flux": 1.5},
+    ]
+
+    result = fetch.download_instrument_to_csv(
+        instrument="swe",
+        start_date=datetime(2026, 5, 1),
+        end_date=datetime(2026, 5, 2),
+    )
+
+    assert len(result) == 1
+    path_handler = next(iter(result.values()))
+    assert isinstance(path_handler, IALiRTInstrumentPathHandler)
+    assert path_handler.instrument == "swe"
+
+    file_path = next(iter(result.keys()))
+    assert "imap_ialirt_swe_" in file_path.name
+
+
+def test_fetch_ialirt_download_instrument_to_csv_mag_uses_ialirt_path_handler(
+    mock_ialirt_data_access: mock.Mock,
+    temp_datastore,  # noqa: F811
+) -> None:
+    fetch = FetchIALiRT(
+        mock_ialirt_data_access,
+        Path(tempfile.mkdtemp()),
+        FileFinder(temp_datastore),
+        IALIRT_PACKET_DEFINITION,
+    )
+
+    mock_ialirt_data_access.get_all_by_dates.side_effect = lambda **_: [
+        {
+            "time_utc": "2026-05-01T00:00:00",
+            "mag_B_GSE": [1, 2, 3],
+            "mag_B_RTN": [4, 5, 6],
+        },
+    ]
+
+    result = fetch.download_instrument_to_csv(
+        instrument="mag",
+        start_date=datetime(2026, 5, 1),
+        end_date=datetime(2026, 5, 2),
+    )
+
+    assert len(result) == 1
+    file_path = next(iter(result.keys()))
+    # MAG keeps original naming (no instrument in filename)
+    assert file_path.name.startswith("imap_ialirt_202605")
+    assert "mag" not in file_path.name

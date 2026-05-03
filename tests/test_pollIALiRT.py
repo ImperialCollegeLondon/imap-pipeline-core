@@ -9,7 +9,7 @@ import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     END_OF_HOUR,
@@ -22,6 +22,18 @@ from tests.util.prefect_test_utils import (  # noqa: F401
     mock_teams_webhook_block,
     prefect_test_fixture,
 )
+
+
+def define_empty_mappings_for_all_instruments(wiremock_manager):
+    """Add low-priority WireMock stubs that return empty data for any instrument not otherwise stubbed."""
+
+    empty_response = json.dumps({"meta": {"count": 0}, "data": []})
+    wiremock_manager.add_string_mapping(
+        r"/space-weather\?.*",
+        empty_response,
+        is_pattern=True,
+        priority=10,  # lower priority than specific stubs (priority=1)
+    )
 
 
 def define_available_ialirt_mappings(
@@ -159,6 +171,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     # Set up.
     wiremock_manager.reset()
 
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
@@ -199,6 +212,7 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     test_database.save(workflow_progress)
     wiremock_manager.reset()
 
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_mappings(
         wiremock_manager, progress_timestamp + timedelta(seconds=1), END_OF_HOUR
     )
@@ -238,6 +252,7 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
 
     wiremock_manager.reset()
 
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
@@ -334,6 +349,7 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
     wiremock_manager.reset()
 
     yesterday, end_of_hour = mock_datetime_provider_for_6am_uk_time
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_mappings(wiremock_manager, yesterday, end_of_hour)
 
     # Exercise.
@@ -366,6 +382,7 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
     # Set up.
     wiremock_manager.reset()
 
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
@@ -373,8 +390,8 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_hk_flow(
-            wait_for_new_data_to_arrive=False,
+        await poll_ialirt_flow(
+            wait_for_new_data_to_arrive=False, plot_last_3_days=False
         )
 
     # Verify.
@@ -403,6 +420,7 @@ async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
 
     wiremock_manager.reset()
 
+    define_empty_mappings_for_all_instruments(wiremock_manager)
     define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
@@ -410,10 +428,11 @@ async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_hk_flow(
+        await poll_ialirt_flow(
             wait_for_new_data_to_arrive=False,
             start_date=start_date,
             end_date=end_date,
+            plot_last_3_days=False,
         )
 
     # Verify.

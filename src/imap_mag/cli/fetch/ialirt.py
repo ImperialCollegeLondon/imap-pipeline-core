@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -6,64 +7,76 @@ from typing import Annotated
 import typer
 
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.download.FetchIALiRT import FetchIALiRT
-from imap_mag.io import DatastoreFileManager, FileFinder
-from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.data_pipelines import AutomaticRunParameters, FetchByDatesRunParameters
+from imap_mag.data_pipelines.IALiRTInstrumentPipeline import IALiRTInstrumentPipeline
+from imap_mag.db import Database
+from imap_mag.util.constants import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
-
-def _create_fetch_ialirt(app_settings: AppSettings) -> FetchIALiRT:
-    """Create a FetchIALiRT instance with common configuration."""
-
-    data_access = IALiRTApiClient(
-        app_settings.fetch_ialirt.api.auth_code,
-        app_settings.fetch_ialirt.api.url_base,
-    )
-    datastore_finder = FileFinder(app_settings.data_store)
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
-
-    initialiseLoggingForCommand(
-        work_folder
-    )  # DO NOT log anything before this point (it won't be captured in the log file)
-
-    return FetchIALiRT(
-        data_access, work_folder, datastore_finder, app_settings.packet_definition
-    )
+# Instruments accepted by `fetch ialirt` (excludes mag_hk which has its own sub-command)
+_SCIENCE_INSTRUMENTS = [
+    k for k in CONSTANTS.DATABASE.IALIRT_INSTRUMENT_PROGRESS_IDS if k != "mag_hk"
+]
 
 
-def _publish_files(
-    app_settings: AppSettings,
-    downloaded_files: dict[Path, IFilePathHandler],
+def _run_pipeline(
+    instrument: str,
+    start_date: datetime | None,
+    end_date: datetime | None,
     fetch_mode: FetchMode,
-) -> dict[Path, IFilePathHandler]:
-    """Publish downloaded files to data store."""
+    app_settings: AppSettings,
+) -> list[Path]:
+    """Build and run an IALiRTInstrumentPipeline, returning the produced file paths."""
 
-    if not app_settings.fetch_ialirt.publish_to_data_store:
-        logger.info("Files not published to data store based on config.")
-        return downloaded_files
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
+    initialiseLoggingForCommand(work_folder)
 
-    datastore_manager = DatastoreFileManager.CreateByMode(
-        app_settings,
-        use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
+    use_database = fetch_mode == FetchMode.DownloadAndUpdateProgress
+    database = Database() if use_database else None
+
+    pipeline = IALiRTInstrumentPipeline(
+        instrument=instrument,
+        database=database,
+        settings=app_settings,
     )
 
-    result: dict[Path, IFilePathHandler] = dict()
-    for file, path_handler in downloaded_files.items():
-        (output_file, output_handler) = datastore_manager.add_file(file, path_handler)
-        result[output_file] = output_handler
+    if start_date is not None:
+        run_params: AutomaticRunParameters | FetchByDatesRunParameters = (
+            FetchByDatesRunParameters(start_date=start_date, end_date=end_date)
+        )
+    else:
+        run_params = AutomaticRunParameters()
 
-    return result
+    pipeline.build(run_params)
+    asyncio.run(pipeline.run())
+    result = pipeline.get_results()
+
+    if not result.success:
+        raise RuntimeError(f"I-ALiRT {instrument} pipeline failed: {result}")
+
+    return [item.file_path for item in result.data_items if hasattr(item, "file_path")]
 
 
 # E.g.,
 # imap-mag fetch ialirt --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch ialirt --instrument swe --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_ialirt(
-    start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
-    end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    start_date: Annotated[
+        datetime | None,
+        typer.Option(help="Start date for the download"),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        typer.Option(help="End date for the download"),
+    ] = None,
+    instrument: Annotated[
+        str,
+        typer.Option(
+            help=f"I-ALiRT instrument to download. Supported: {', '.join(_SCIENCE_INSTRUMENTS)}",
+        ),
+    ] = "mag",
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -71,33 +84,39 @@ def fetch_ialirt(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IALiRTPathHandler]:
-    """Download I-ALiRT MAG data from SDC."""
+) -> list[Path]:
+    """Download I-ALiRT data from the I-ALiRT API."""
+
+    if instrument not in _SCIENCE_INSTRUMENTS:
+        raise typer.BadParameter(
+            f"Unknown instrument '{instrument}'. Supported: {', '.join(_SCIENCE_INSTRUMENTS)}"
+        )
 
     app_settings = AppSettings()  # type: ignore
 
-    fetch = _create_fetch_ialirt(app_settings)
+    files = _run_pipeline(instrument, start_date, end_date, fetch_mode, app_settings)
 
-    downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch.download_mag_to_csv(
-        start_date=start_date,
-        end_date=end_date,
-    )
-
-    if not downloaded_ialirt:
-        logger.info(f"No I-ALiRT MAG data downloaded from {start_date} to {end_date}.")
+    if not files:
+        logger.info(f"No I-ALiRT {instrument} data downloaded.")
     else:
         logger.debug(
-            f"Downloaded {len(downloaded_ialirt)} files:\n{', '.join(str(f) for f in downloaded_ialirt.keys())}"
+            f"Downloaded {len(files)} files:\n{', '.join(str(f) for f in files)}"
         )
 
-    return _publish_files(app_settings, downloaded_ialirt, fetch_mode)
+    return files
 
 
 # E.g.,
 # imap-mag fetch ialirt-hk --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_ialirt_hk(
-    start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
-    end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    start_date: Annotated[
+        datetime | None,
+        typer.Option(help="Start date for the download"),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        typer.Option(help="End date for the download"),
+    ] = None,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -105,27 +124,18 @@ def fetch_ialirt_hk(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IALiRTHKPathHandler]:
-    """Download I-ALiRT MAG HK data from SDC."""
+) -> list[Path]:
+    """Download I-ALiRT MAG HK data from the I-ALiRT API."""
 
     app_settings = AppSettings()  # type: ignore
 
-    fetch = _create_fetch_ialirt(app_settings)
+    files = _run_pipeline("mag_hk", start_date, end_date, fetch_mode, app_settings)
 
-    logger.info(f"Downloading I-ALiRT MAG HK from {start_date} to {end_date}.")
-
-    downloaded_hk: dict[Path, IALiRTHKPathHandler] = fetch.download_mag_hk_to_csv(
-        start_date=start_date,
-        end_date=end_date,
-    )
-
-    if not downloaded_hk:
-        logger.info(
-            f"No I-ALiRT MAG HK data downloaded from {start_date} to {end_date}."
-        )
+    if not files:
+        logger.info("No I-ALiRT MAG HK data downloaded.")
     else:
         logger.debug(
-            f"Downloaded {len(downloaded_hk)} files:\n{', '.join(str(f) for f in downloaded_hk.keys())}"
+            f"Downloaded {len(files)} files:\n{', '.join(str(f) for f in files)}"
         )
 
-    return _publish_files(app_settings, downloaded_hk, fetch_mode)
+    return files

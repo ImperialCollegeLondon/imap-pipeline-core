@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import ClassVar
 
 import numpy as np
 
@@ -30,3 +31,13 @@ class CONSTANTS:
         IALIRT_PROGRESS_ID = "MAG_IALIRT"
         IALIRT_HK_PROGRESS_ID = "MAG_IALIRT_HK"
         IALIRT_VALIDATION_ID = "IALIRT_VALIDATION"
+
+        IALIRT_INSTRUMENT_PROGRESS_IDS: ClassVar[dict[str, str]] = {
+            "mag": IALIRT_PROGRESS_ID,
+            "mag_hk": IALIRT_HK_PROGRESS_ID,
+            "hit": "IALIRT_HIT",
+            "swe": "IALIRT_SWE",
+            "swapi": "IALIRT_SWAPI",
+            "codice_lo": "IALIRT_CODICE_LO",
+            "codice_hi": "IALIRT_CODICE_HI",
+        }
