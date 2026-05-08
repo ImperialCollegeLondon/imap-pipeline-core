@@ -1067,3 +1067,115 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     assert database_files[0].hash == hashlib.md5(file_contents.encode()).hexdigest()
     assert database_files[0].path == str(path_handler.get_full_path())
     assert database_files[0].deletion_date is None
+
+
+class TestDBIndexedDatastoreFileManagerUnit:
+    """Unit tests for DBIndexedDatastoreFileManager without Docker."""
+
+    def _make_manager(self, tmp_path, mock_db=None):
+        from unittest.mock import MagicMock, patch
+
+        from imap_mag.config.AppSettings import AppSettings
+        from imap_mag.io import DBIndexedDatastoreFileManager
+
+        mock_settings = MagicMock(spec=AppSettings)
+        mock_settings.data_store = tmp_path
+
+        if mock_db is None:
+            mock_db = MagicMock(spec=Database)
+
+        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
+            manager = DBIndexedDatastoreFileManager(
+                database=mock_db,
+                settings=mock_settings,
+            )
+
+        manager._DBIndexedDatastoreFileManager__settings = mock_settings
+        manager._DBIndexedDatastoreFileManager__database = mock_db
+
+        return manager, mock_db, mock_settings
+
+    def test_delete_file_marks_file_as_deleted_and_removes_from_filesystem(self, tmp_path):
+        from unittest.mock import MagicMock, patch
+
+        from imap_mag.io import DBIndexedDatastoreFileManager
+
+        mock_db = MagicMock(spec=Database)
+        mock_settings = MagicMock()
+        mock_settings.data_store = tmp_path
+
+        source_file = tmp_path / "test_file.csv"
+        source_file.write_text("content")
+
+        mock_file = MagicMock(spec=File)
+        mock_file.path = "test_file.csv"
+        mock_file.deletion_date = None
+
+        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
+            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+
+        manager._DBIndexedDatastoreFileManager__settings = mock_settings
+        manager._DBIndexedDatastoreFileManager__database = mock_db
+
+        manager.delete_file(mock_file)
+
+        mock_file.set_deleted.assert_called_once()
+        mock_db.save.assert_called_once_with(mock_file)
+        assert not source_file.exists()
+
+    def test_delete_file_does_not_error_when_file_does_not_exist_on_filesystem(self, tmp_path):
+        from unittest.mock import MagicMock, patch
+
+        from imap_mag.io import DBIndexedDatastoreFileManager
+
+        mock_db = MagicMock(spec=Database)
+        mock_settings = MagicMock()
+        mock_settings.data_store = tmp_path
+
+        mock_file = MagicMock(spec=File)
+        mock_file.path = "nonexistent_file.csv"
+        mock_file.deletion_date = None
+
+        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
+            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+
+        manager._DBIndexedDatastoreFileManager__settings = mock_settings
+        manager._DBIndexedDatastoreFileManager__database = mock_db
+
+        manager.delete_file(mock_file)
+
+        mock_file.set_deleted.assert_called_once()
+
+    def test_archive_file_copies_to_archive_and_marks_deleted(self, tmp_path):
+        from unittest.mock import MagicMock, patch
+
+        from imap_mag.io import DBIndexedDatastoreFileManager
+
+        mock_db = MagicMock(spec=Database)
+        mock_settings = MagicMock()
+        mock_settings.data_store = tmp_path
+
+        source_file = tmp_path / "subdir" / "test_file.csv"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("content to archive")
+
+        archive_folder = tmp_path / "archive"
+        archive_folder.mkdir()
+
+        mock_archived_file = MagicMock(spec=File)
+        mock_file = MagicMock(spec=File)
+        mock_file.path = "subdir/test_file.csv"
+        mock_file.archive_to_new_file_path.return_value = mock_archived_file
+
+        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
+            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+
+        manager._DBIndexedDatastoreFileManager__settings = mock_settings
+        manager._DBIndexedDatastoreFileManager__database = mock_db
+
+        manager.archive_file(mock_file, archive_folder)
+
+        assert (archive_folder / "subdir" / "test_file.csv").exists()
+        mock_db.insert_file.assert_called_once_with(mock_archived_file)
+        mock_db.save.assert_called_once_with(mock_file)
+        assert not source_file.exists()
