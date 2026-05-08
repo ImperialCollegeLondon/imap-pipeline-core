@@ -1,42 +1,12 @@
-"""Tests for CDFLoader, CalibrationMatrix, and CalibrationLayer."""
+"""Unit tests for CalibrationMatrix."""
 
-import tempfile
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 import xarray as xr
 
-from mag_toolkit.CDFLoader import load_cdf, write_cdf
 from mag_toolkit.calibration.CalibrationMatrix import CalibrationMatrix
-
-
-class TestCDFLoader:
-    def test_load_cdf_raises_when_file_not_found(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            load_cdf(tmp_path / "nonexistent.cdf")
-
-    def test_load_cdf_calls_xarray_reader_for_existing_file(self, tmp_path):
-        cdf_file = tmp_path / "test.cdf"
-        cdf_file.touch()
-
-        mock_dataset = MagicMock(spec=xr.Dataset)
-        with patch("mag_toolkit.CDFLoader.xarray.cdf_to_xarray", return_value=mock_dataset) as mock_load:
-            result = load_cdf(cdf_file)
-
-        mock_load.assert_called_once_with(cdf_file)
-        assert result is mock_dataset
-
-    def test_write_cdf_calls_xarray_writer(self, tmp_path):
-        output_path = tmp_path / "output.cdf"
-        mock_dataset = MagicMock(spec=xr.Dataset)
-
-        with patch("mag_toolkit.CDFLoader.xarray.xarray_to_cdf") as mock_write:
-            write_cdf(mock_dataset, output_path)
-
-        mock_write.assert_called_once_with(mock_dataset, output_path)
 
 
 class TestCalibrationMatrixGetZeroRotationDataset:
@@ -67,7 +37,7 @@ class TestCalibrationMatrixGetZeroRotationDataset:
     def test_urftoorfo_is_a_3x3_identity_like_matrix(self):
         ds = CalibrationMatrix.get_zero_rotation_dataset()
         data = ds["URFTOORFO"].values
-        assert data.shape[0] == 3  # 3x3 first two dims
+        assert data.shape[0] == 3
         assert data.shape[1] == 3
 
     def test_has_global_attributes(self):
@@ -107,7 +77,7 @@ class TestCalibrationMatrixGetCombinedEpochDataset:
             calibration_dataset_start_date=datetime(2025, 1, 1),
             calibration_dataset_end_date=datetime(2025, 1, 5),
         )
-        assert len(result.coords["epoch"]) == 5  # 5 days inclusive
+        assert len(result.coords["epoch"]) == 5
 
     def test_input_file_version_is_included(self):
         input_ds = self._sample_dataset()

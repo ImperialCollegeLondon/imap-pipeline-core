@@ -1,27 +1,23 @@
-"""Tests for SaveProcessingDatesStage, LoPivotPlatformPipeline, and SpinTablePipeline."""
+"""Tests for SaveProcessingDatesStage."""
 
 import asyncio
+import logging
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from imap_db.model import WorkflowProgress
 from imap_mag.data_pipelines import (
+    PROGRESS_DATE_CONTEXT_KEY,
     AutomaticRunParameters,
-    FetchByDatesRunParameters,
     Pipeline,
     ProgressUpdateMode,
 )
-from imap_mag.data_pipelines.LoPivotPlatformPipeline import LoPivotPlatformPipeline
-from imap_mag.data_pipelines.Record import FileRecord, Record
+from imap_mag.data_pipelines.Record import Record
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
-from imap_mag.data_pipelines.SpinTablePipeline import SpinTablePipeline
 
 
 def _make_workflow_progress(item_name="TEST"):
-    wp = WorkflowProgress(item_name=item_name)
-    return wp
+    return WorkflowProgress(item_name=item_name)
 
 
 def _make_context(progress_date=None):
@@ -36,15 +32,11 @@ def _make_context(progress_date=None):
 
 class TestSaveProcessingDatesStageInit:
     def test_warns_when_no_database_provided(self, caplog):
-        import logging
-
         with caplog.at_level(logging.WARNING):
             SaveProcessingDatesStage(database=None)
         assert "No database" in caplog.text
 
     def test_does_not_warn_when_database_provided(self, caplog):
-        import logging
-
         mock_db = MagicMock()
         with caplog.at_level(logging.WARNING):
             SaveProcessingDatesStage(database=mock_db)
@@ -73,7 +65,6 @@ class TestSaveProcessingDatesStageUpdateWorkflowProgress:
         context = _make_context()
 
         stage.update_workflow_progress(context, datetime(2025, 6, 15))
-        # No exception should be raised
 
     def test_marks_saved_at_least_once_after_save(self):
         mock_db = MagicMock()
@@ -124,24 +115,19 @@ class TestSaveProcessingDatesStageProcess:
         context = _make_context()
         item = Record(value="test")
 
-        asyncio.get_event_loop().run_until_complete(
-            stage.process(item, context)
-        )
+        asyncio.get_event_loop().run_until_complete(stage.process(item, context))
 
         stage._next_stage.process.assert_called_once()
 
     def test_process_uses_progress_date_from_context_key(self):
         mock_db = MagicMock()
         stage = self._make_stage_with_params(db=mock_db)
-        from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY
 
         context = _make_context()
         context[PROGRESS_DATE_CONTEXT_KEY] = datetime(2025, 7, 4)
         item = Record(value="test")
 
-        asyncio.get_event_loop().run_until_complete(
-            stage.process(item, context)
-        )
+        asyncio.get_event_loop().run_until_complete(stage.process(item, context))
 
         wp = context["workflow_progress"]
         assert wp.progress_timestamp == datetime(2025, 7, 4)
@@ -157,49 +143,3 @@ class TestSaveProcessingDatesStageCompleted:
         asyncio.get_event_loop().run_until_complete(stage.stage_completed(context))
 
         mock_db.save.assert_called()
-
-
-class TestSpinTablePipeline:
-    def test_progress_item_id_is_spin_table(self):
-        assert SpinTablePipeline.PROGRESS_ITEM_ID == "SPIN_TABLE"
-
-    def test_build_creates_stages(self):
-        mock_settings = MagicMock()
-        mock_settings.fetch_spice = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = MagicMock()
-        mock_client = MagicMock()
-
-        pipeline = SpinTablePipeline(
-            database=None,
-            settings=mock_settings,
-            client=mock_client,
-        )
-        run_params = FetchByDatesRunParameters(
-            start_date=datetime(2025, 1, 1),
-            end_date=datetime(2025, 1, 31),
-        )
-        pipeline.build(run_params)
-
-        assert pipeline._run_parameters is not None
-
-
-class TestLoPivotPlatformPipeline:
-    def test_progress_item_id_is_lo_pivot_platform(self):
-        assert LoPivotPlatformPipeline.PROGRESS_ITEM_ID == "LO_PIVOT_PLATFORM_ANGLE"
-
-    def test_build_creates_stages(self):
-        mock_settings = MagicMock()
-        mock_settings.fetch_webtcad = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = MagicMock()
-
-        pipeline = LoPivotPlatformPipeline(
-            database=None,
-            settings=mock_settings,
-        )
-        run_params = FetchByDatesRunParameters(
-            start_date=datetime(2025, 1, 1),
-            end_date=datetime(2025, 1, 31),
-        )
-        pipeline.build(run_params)
-
-        assert pipeline._run_parameters is not None
