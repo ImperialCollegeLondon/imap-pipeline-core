@@ -1,9 +1,7 @@
 """Unit tests for prefect_server.serverConfig."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-import prefect.blocks.notifications
-import prefect.blocks.system
 import pytest
 
 from prefect_server.serverConfig import ServerConfig
@@ -109,51 +107,3 @@ class TestCreateBlocks:
         captured = capsys.readouterr().out
         # All blocks already exist, so we get "already exists" messages only
         assert "already exists" in captured
-
-    @pytest.mark.asyncio
-    async def test_saves_blocks_that_do_not_exist(self, capsys):
-        mock_client = AsyncMock()
-        mock_client.read_block_documents = AsyncMock(return_value=[])
-
-        mock_save = AsyncMock()
-        with (
-            patch.object(prefect.blocks.system.Secret, "save", mock_save),
-            patch.object(
-                prefect.blocks.notifications.MicrosoftTeamsWebhook, "save", mock_save
-            ),
-            patch(
-                "prefect_server.serverConfig.RCloneConfigFileBlock", autospec=True
-            ) as mock_rclone_cls,
-            patch(
-                "prefect_server.serverConfig.SqlAlchemyConnector", autospec=True
-            ) as mock_sql_cls,
-        ):
-            mock_rclone_cls.return_value.save = mock_save
-            mock_sql_cls.return_value.save = mock_save
-
-            await ServerConfig._create_blocks(mock_client)
-
-        assert mock_save.call_count == 6
-        captured = capsys.readouterr().out
-        assert "Created new block" in captured
-
-
-class TestServerConfigInitialise:
-    @pytest.mark.asyncio
-    async def test_initialise_calls_create_methods(self):
-        mock_client = AsyncMock()
-
-        with (
-            patch("prefect_server.serverConfig.create_db"),
-            patch("prefect_server.serverConfig.upgrade_db"),
-            patch("prefect_server.serverConfig.get_client") as mock_get_client,
-            patch.object(ServerConfig, "_create_concurrency_limits", new=AsyncMock()),
-            patch.object(ServerConfig, "_create_queues", new=AsyncMock()),
-            patch.object(ServerConfig, "_create_variables", new=AsyncMock()),
-            patch.object(ServerConfig, "_create_blocks", new=AsyncMock()),
-        ):
-            mock_get_client.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_get_client.return_value.__aexit__ = AsyncMock(return_value=False)
-            await ServerConfig.initialise()

@@ -71,7 +71,9 @@ def test_spice_path_handler_can_update_versions_of_metakernels():
 
 class TestGetKernelTypeFromFilename:
     def test_attitude_history_bc_file(self):
-        kt = SPICEPathHandler.get_kernel_type_from_filename("imap_2025_302_2025_303_001.ah.bc")
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            "imap_2025_302_2025_303_001.ah.bc"
+        )
         assert kt == "attitude_history"
 
     def test_spacecraft_clock_file(self):
@@ -83,11 +85,15 @@ class TestGetKernelTypeFromFilename:
         assert kt == "leapseconds"
 
     def test_ephemeris_reconstructed_file(self):
-        kt = SPICEPathHandler.get_kernel_type_from_filename("imap_recon_20250925_20251104_v01.bsp")
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            "imap_recon_20250925_20251104_v01.bsp"
+        )
         assert kt == "ephemeris_reconstructed"
 
     def test_pointing_attitude_takes_priority_over_attitude_history(self):
-        kt = SPICEPathHandler.get_kernel_type_from_filename("imap_dps_2025_281_2025_286_001.ah.bc")
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            "imap_dps_2025_281_2025_286_001.ah.bc"
+        )
         assert kt == "pointing_attitude"
 
     def test_returns_none_for_unknown_file(self):
@@ -95,7 +101,9 @@ class TestGetKernelTypeFromFilename:
         assert kt is None
 
     def test_works_with_path_object(self):
-        kt = SPICEPathHandler.get_kernel_type_from_filename(Path("spice/lsk/naif0012.tls"))
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            Path("spice/lsk/naif0012.tls")
+        )
         assert kt == "leapseconds"
 
     def test_science_frames_is_more_specific_than_imap_frames(self):
@@ -103,7 +111,9 @@ class TestGetKernelTypeFromFilename:
         assert kt == "science_frames"
 
     def test_attitude_predict_file(self):
-        kt = SPICEPathHandler.get_kernel_type_from_filename("imap_2025_302_2025_303_001.ap.bc")
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            "imap_2025_302_2025_303_001.ap.bc"
+        )
         assert kt == "attitude_predict"
 
 
@@ -117,12 +127,17 @@ class TestGetUnsequencedPattern:
             handler.get_unsequenced_pattern()
 
     def test_returns_pattern_for_v_prefixed_versioned_file(self):
-        handler = SPICEPathHandler.from_filename("imap_mag_metakernel_20251017000000_20251017235959_v001.tm")
+        handler = SPICEPathHandler.from_filename(
+            "imap_mag_metakernel_20251017000000_20251017235959_v001.tm"
+        )
         assert handler is not None
         assert handler.is_versioned_spice_file
 
         pattern = handler.get_unsequenced_pattern()
-        assert pattern.match("imap_mag_metakernel_20251017000000_20251017235959_v003.tm") is not None
+        assert (
+            pattern.match("imap_mag_metakernel_20251017000000_20251017235959_v003.tm")
+            is not None
+        )
 
     def test_raises_when_filename_does_not_end_with_version(self):
         handler = SPICEPathHandler(
@@ -149,7 +164,10 @@ class TestAddMetadata:
 
     def test_stores_full_metadata_dict(self):
         handler = SPICEPathHandler.from_filename("imap_dps_2025_281_2025_286_001.ah.bc")
-        meta = {"min_date_datetime": "2025-10-29 19:07:07", "kernel_type": "attitude_history"}
+        meta = {
+            "min_date_datetime": "2025-10-29 19:07:07",
+            "kernel_type": "attitude_history",
+        }
         handler.add_metadata(meta)
         assert handler.get_metadata() == meta
 
@@ -166,27 +184,39 @@ class TestAddMetadata:
     def test_get_content_date_for_indexing_returns_content_date(self):
         handler = SPICEPathHandler.from_filename("imap_dps_2025_281_2025_286_001.ah.bc")
         handler.add_metadata({"min_date_datetime": "2025-10-29 19:07:07"})
-        assert handler.get_content_date_for_indexing() == datetime(2025, 10, 29, 19, 7, 7)
+        assert handler.get_content_date_for_indexing() == datetime(
+            2025, 10, 29, 19, 7, 7
+        )
 
 
 class TestSequencing:
     def test_set_sequence_on_versioned_file_updates_version_and_filename(self):
-        handler = SPICEPathHandler.from_filename("imap_mag_metakernel_20251017000000_20251017235959_v001.tm")
+        handler = SPICEPathHandler.from_filename(
+            "imap_mag_metakernel_20251017000000_20251017235959_v001.tm"
+        )
         assert handler is not None
 
         handler.set_sequence(5)
 
         assert handler.version == 5
-        assert handler.get_filename() == "imap_mag_metakernel_20251017000000_20251017235959_v005.tm"
+        assert (
+            handler.get_filename()
+            == "imap_mag_metakernel_20251017000000_20251017235959_v005.tm"
+        )
 
     def test_increase_sequence_on_versioned_file_increments_version(self):
-        handler = SPICEPathHandler.from_filename("imap_mag_metakernel_20251017000000_20251017235959_v003.tm")
+        handler = SPICEPathHandler.from_filename(
+            "imap_mag_metakernel_20251017000000_20251017235959_v003.tm"
+        )
         assert handler is not None
 
         handler.increase_sequence()
 
         assert handler.version == 4
-        assert handler.get_filename() == "imap_mag_metakernel_20251017000000_20251017235959_v004.tm"
+        assert (
+            handler.get_filename()
+            == "imap_mag_metakernel_20251017000000_20251017235959_v004.tm"
+        )
 
     def test_set_sequence_raises_for_non_versioned_file(self):
         handler = SPICEPathHandler.from_filename("imap_dps_2025_281_2025_286_001.ah.bc")
@@ -218,7 +248,9 @@ class TestFromFilenameAdvanced:
         assert handler.get_filename() == "imap_2025_302_2025_303_001.ah.bc"
 
     def test_versioned_file_detected_correctly(self):
-        handler = SPICEPathHandler.from_filename("imap_mag_metakernel_20251017000000_20251017235959_v001.tm")
+        handler = SPICEPathHandler.from_filename(
+            "imap_mag_metakernel_20251017000000_20251017235959_v001.tm"
+        )
         assert handler is not None
         assert handler.is_versioned_spice_file is True
         assert handler.version == 1

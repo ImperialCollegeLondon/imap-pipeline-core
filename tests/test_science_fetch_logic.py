@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -190,7 +190,9 @@ class TestFetchScienceDownload:
     def test_raises_when_skip_count_negative(self, tmp_path):
         mock_access = MagicMock()
         fetcher = FetchScience(mock_access)
-        with pytest.raises(ValueError, match="skip_items_count must be zero or greater"):
+        with pytest.raises(
+            ValueError, match="skip_items_count must be zero or greater"
+        ):
             fetcher.download_science(
                 level=ScienceLevel.l2,
                 start_date=datetime(2025, 1, 1),

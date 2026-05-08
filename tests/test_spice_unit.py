@@ -76,7 +76,9 @@ class TestDownloadSpiceFilesLaterThan:
     def test_skips_file_with_none_filename(self):
         mock_da, _ = self._make_data_access()
         result = download_spice_files_later_than(
-            mock_da, None, [{"file_name": None, "ingestion_date": "2025-01-01, 00:00:00"}]
+            mock_da,
+            None,
+            [{"file_name": None, "ingestion_date": "2025-01-01, 00:00:00"}],
         )
         mock_da.download.assert_not_called()
         assert result == {}
@@ -102,9 +104,7 @@ class TestDownloadSpiceFilesLaterThan:
     def test_logs_warning_and_excludes_empty_file(self):
         mock_da, _ = self._make_data_access(file_size=0)
         file_meta = {"file_name": "empty.bsp", "ingestion_date": "2025-01-10, 00:00:00"}
-        result = download_spice_files_later_than(
-            mock_da, None, [file_meta]
-        )
+        result = download_spice_files_later_than(mock_da, None, [file_meta])
         mock_da.download.assert_called_once()
         assert result == {}
 
@@ -151,7 +151,9 @@ class TestFetchSpice:
         ):
             mock_settings = _make_mock_fetch_spice_settings(tmp_path)
             mock_settings.fetch_spice.publish_to_data_store = False
-            mock_sdc_cls.return_value.spice_query.return_value = [{"file_name": "test.bc"}]
+            mock_sdc_cls.return_value.spice_query.return_value = [
+                {"file_name": "test.bc"}
+            ]
             with patch(
                 "imap_mag.cli.fetch.spice.AppSettings",
                 return_value=mock_settings,
@@ -192,7 +194,10 @@ class TestFetchSpice:
         mock_output_file = Path("datastore/spice/ck/test.bc")
         mock_output_handler = MagicMock()
         mock_output_manager = MagicMock()
-        mock_output_manager.add_file.return_value = (mock_output_file, mock_output_handler)
+        mock_output_manager.add_file.return_value = (
+            mock_output_file,
+            mock_output_handler,
+        )
         mock_settings = _make_mock_fetch_spice_settings(tmp_path)
         mock_settings.fetch_spice.publish_to_data_store = True
 
@@ -213,7 +218,9 @@ class TestFetchSpice:
                 return_value=mock_output_manager,
             ),
         ):
-            mock_sdc_cls.return_value.spice_query.return_value = [{"file_name": "test.bc"}]
+            mock_sdc_cls.return_value.spice_query.return_value = [
+                {"file_name": "test.bc"}
+            ]
             result = fetch_spice()
 
         assert len(result) == 1
@@ -251,6 +258,8 @@ class TestPublishSpiceKernel:
                 return_value=mock_output_manager,
             ),
         ):
-            result = publish_spice_kernel(mock_settings, kernel_path, use_database=False)
+            result = publish_spice_kernel(
+                mock_settings, kernel_path, use_database=False
+            )
 
         assert result == output_file

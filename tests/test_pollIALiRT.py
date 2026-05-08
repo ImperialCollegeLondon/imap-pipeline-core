@@ -13,6 +13,9 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
 from prefect_server.pollIALiRT import (
     _do_poll,
+    do_poll_ialirt,
+    generate_flow_run_name,
+    generate_hk_flow_run_name,
     poll_ialirt_flow,
     poll_ialirt_hk_flow,
 )
@@ -836,3 +839,74 @@ class TestPollIALiRTHKFlowUnitExtended:
             )
 
         mock_do_poll.assert_called_once()
+
+
+class TestPollIALiRTGenerateName:
+    def test_name_with_no_dates_uses_last_update(self):
+        mock_params = {"start_date": None, "end_date": None}
+        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
+            with patch(
+                "prefect_server.pollIALiRT.DatetimeProvider.end_of_hour",
+                return_value=datetime(2025, 6, 1),
+            ):
+                mock_flow_run.parameters = mock_params
+                name = generate_flow_run_name()
+
+        assert "last-update" in name
+
+    def test_name_with_dates(self):
+        mock_params = {
+            "start_date": datetime(2025, 6, 1, 12, 0, 0),
+            "end_date": datetime(2025, 6, 1, 13, 0, 0),
+        }
+        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            name = generate_flow_run_name()
+
+        assert "01-06-2025" in name
+
+    def test_hk_name_with_no_dates(self):
+        mock_params = {"start_date": None, "end_date": None}
+        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
+            with patch(
+                "prefect_server.pollIALiRT.DatetimeProvider.end_of_hour",
+                return_value=datetime(2025, 6, 1),
+            ):
+                mock_flow_run.parameters = mock_params
+                name = generate_hk_flow_run_name()
+
+        assert "HK" in name
+
+
+class TestDoPollIALiRT:
+    def test_do_poll_ialirt_returns_downloaded_files(self, tmp_path):
+        downloaded_file = tmp_path / "ialirt.csv"
+        downloaded_file.touch()
+        mock_handler = MagicMock()
+        mock_handler.content_date = datetime(2025, 1, 15)
+
+        with (
+            patch("prefect_server.pollIALiRT.DownloadDateManager") as mock_dm,
+            patch(
+                "prefect_server.pollIALiRT.fetch_ialirt",
+                return_value={downloaded_file: mock_handler},
+            ),
+            patch("prefect_server.pollIALiRT.update_database_with_progress"),
+        ):
+            mock_dm_instance = MagicMock()
+            mock_dm_instance.get_dates_for_download.return_value = (
+                datetime(2025, 1, 1),
+                datetime(2025, 1, 31),
+            )
+            mock_dm.return_value = mock_dm_instance
+
+            result = do_poll_ialirt(
+                database=MagicMock(),
+                auth_code="auth",
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 31),
+                force_download=False,
+                logger=MagicMock(),
+            )
+
+        assert downloaded_file in result

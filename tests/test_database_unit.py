@@ -177,7 +177,12 @@ class TestDatabaseOperations:
 
     def test_get_all_active_files_excludes_deleted(self, sqlite_db):
         f1 = _make_file("active.cdf", "science/active.cdf", "h1")
-        f2 = _make_file("deleted.cdf", "science/deleted.cdf", "h2", deletion_date=datetime(2025, 1, 1))
+        f2 = _make_file(
+            "deleted.cdf",
+            "science/deleted.cdf",
+            "h2",
+            deletion_date=datetime(2025, 1, 1),
+        )
         sqlite_db.insert_files([f1, f2])
 
         results = sqlite_db.get_all_active_files()
@@ -186,14 +191,18 @@ class TestDatabaseOperations:
         assert "deleted.cdf" not in names
 
     def test_get_files_since_returns_newer_files(self, sqlite_db):
-        f = _make_file("new.cdf", "science/new.cdf", "h1", last_modified_date=datetime(2025, 6, 2))
+        f = _make_file(
+            "new.cdf", "science/new.cdf", "h1", last_modified_date=datetime(2025, 6, 2)
+        )
         sqlite_db.insert_file(f)
 
         results = sqlite_db.get_files_since(datetime(2025, 6, 1))
         assert any(f.name == "new.cdf" for f in results)
 
     def test_get_files_deleted_since_returns_deleted_files(self, sqlite_db):
-        f = _make_file("gone.cdf", "science/gone.cdf", "h_gone", deletion_date=datetime(2025, 6, 2))
+        f = _make_file(
+            "gone.cdf", "science/gone.cdf", "h_gone", deletion_date=datetime(2025, 6, 2)
+        )
         sqlite_db.insert_file(f)
 
         results = sqlite_db.get_files_deleted_since(datetime(2025, 6, 1))
@@ -234,7 +243,9 @@ class TestDatabaseOperations:
         results = sqlite_db.get_active_files_matching_patterns(["science/mag/*"])
         assert any(f.name == "file.cdf" for f in results)
 
-    def test_get_active_files_matching_patterns_empty_list_returns_empty(self, sqlite_db):
+    def test_get_active_files_matching_patterns_empty_list_returns_empty(
+        self, sqlite_db
+    ):
         results = sqlite_db.get_active_files_matching_patterns([])
         assert results == []
 

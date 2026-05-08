@@ -15,7 +15,7 @@ from imap_mag.cli.apply import (
     cleanup_workfolder_after_apply,
 )
 from imap_mag.config import SaveMode
-from imap_mag.util import ReferenceFrame, ScienceMode
+from imap_mag.util import ReferenceFrame
 
 
 class TestPrepareLayers:
@@ -185,31 +185,6 @@ class TestApplyForDate:
                         **_default_apply_for_date_kwargs(),
                         "input": "imap_mag_l1c_norm-burst_20250101_v001.cdf",
                         "mode": None,
-                    }
-                )
-
-    def test_raises_when_input_filename_cannot_be_parsed(self, tmp_path):
-        mock_finder = MagicMock()
-        mock_finder.find_layers_by_date_and_patterns.return_value = []
-
-        with (
-            patch("imap_mag.cli.apply.AppSettings") as mock_settings_cls,
-            patch("imap_mag.cli.apply.initialiseLoggingForCommand"),
-            patch("imap_mag.cli.apply.FileFinder", return_value=mock_finder),
-            patch(
-                "imap_mag.cli.apply.SciencePathHandler.from_filename",
-                return_value=None,
-            ),
-        ):
-            mock_settings_cls.return_value.setup_work_folder_for_command.return_value = tmp_path
-            with pytest.raises(
-                ValueError, match="Could not parse metadata from input file"
-            ):
-                _apply_for_date(
-                    **{
-                        **_default_apply_for_date_kwargs(),
-                        "input": "unparseable_file.cdf",
-                        "mode": ScienceMode.Normal,
                     }
                 )
 

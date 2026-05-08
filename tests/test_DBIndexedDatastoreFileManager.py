@@ -1095,7 +1095,9 @@ class TestDBIndexedDatastoreFileManagerUnit:
 
         return manager, mock_db, mock_settings
 
-    def test_delete_file_marks_file_as_deleted_and_removes_from_filesystem(self, tmp_path):
+    def test_delete_file_marks_file_as_deleted_and_removes_from_filesystem(
+        self, tmp_path
+    ):
         from unittest.mock import MagicMock, patch
 
         from imap_mag.io import DBIndexedDatastoreFileManager
@@ -1112,7 +1114,9 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file.deletion_date = None
 
         with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+            manager = DBIndexedDatastoreFileManager(
+                database=mock_db, settings=mock_settings
+            )
 
         manager._DBIndexedDatastoreFileManager__settings = mock_settings
         manager._DBIndexedDatastoreFileManager__database = mock_db
@@ -1123,7 +1127,9 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_db.save.assert_called_once_with(mock_file)
         assert not source_file.exists()
 
-    def test_delete_file_does_not_error_when_file_does_not_exist_on_filesystem(self, tmp_path):
+    def test_delete_file_does_not_error_when_file_does_not_exist_on_filesystem(
+        self, tmp_path
+    ):
         from unittest.mock import MagicMock, patch
 
         from imap_mag.io import DBIndexedDatastoreFileManager
@@ -1137,7 +1143,9 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file.deletion_date = None
 
         with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+            manager = DBIndexedDatastoreFileManager(
+                database=mock_db, settings=mock_settings
+            )
 
         manager._DBIndexedDatastoreFileManager__settings = mock_settings
         manager._DBIndexedDatastoreFileManager__database = mock_db
@@ -1168,7 +1176,9 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file.archive_to_new_file_path.return_value = mock_archived_file
 
         with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(database=mock_db, settings=mock_settings)
+            manager = DBIndexedDatastoreFileManager(
+                database=mock_db, settings=mock_settings
+            )
 
         manager._DBIndexedDatastoreFileManager__settings = mock_settings
         manager._DBIndexedDatastoreFileManager__database = mock_db

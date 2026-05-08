@@ -1,7 +1,5 @@
 """Tests for imap_db/main.py database CLI commands."""
 
-import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -110,7 +110,13 @@ class TestFileFromFile:
         test_file = tmp_path / "test.cdf"
         test_file.write_bytes(b"test content")
 
-        f = File.from_file(test_file, version=1, hash=None, content_date=datetime(2025, 1, 1), settings=mock_settings)
+        f = File.from_file(
+            test_file,
+            version=1,
+            hash=None,
+            content_date=datetime(2025, 1, 1),
+            settings=mock_settings,
+        )
 
         assert f.name == "test.cdf"
         assert f.version == 1
@@ -122,7 +128,13 @@ class TestFileFromFile:
         mock_settings.data_store = tmp_path
 
         with pytest.raises(FileNotFoundError):
-            File.from_file(tmp_path / "nonexistent.cdf", version=1, hash=None, content_date=None, settings=mock_settings)
+            File.from_file(
+                tmp_path / "nonexistent.cdf",
+                version=1,
+                hash=None,
+                content_date=None,
+                settings=mock_settings,
+            )
 
     def test_computes_hash_when_not_provided(self, tmp_path):
         mock_settings = MagicMock()
@@ -131,7 +143,9 @@ class TestFileFromFile:
         test_file = tmp_path / "test.cdf"
         test_file.write_bytes(b"content")
 
-        f = File.from_file(test_file, version=1, hash=None, content_date=None, settings=mock_settings)
+        f = File.from_file(
+            test_file, version=1, hash=None, content_date=None, settings=mock_settings
+        )
 
         assert f.hash is not None
         assert len(f.hash) > 0
@@ -143,7 +157,13 @@ class TestFileFromFile:
         test_file = tmp_path / "test.cdf"
         test_file.write_bytes(b"content")
 
-        f = File.from_file(test_file, version=1, hash="my_custom_hash", content_date=None, settings=mock_settings)
+        f = File.from_file(
+            test_file,
+            version=1,
+            hash="my_custom_hash",
+            content_date=None,
+            settings=mock_settings,
+        )
 
         assert f.hash == "my_custom_hash"
 
@@ -156,7 +176,9 @@ class TestFileFromFile:
         test_file = sub_dir / "test.cdf"
         test_file.write_bytes(b"content")
 
-        f = File.from_file(test_file, version=1, hash=None, content_date=None, settings=mock_settings)
+        f = File.from_file(
+            test_file, version=1, hash=None, content_date=None, settings=mock_settings
+        )
 
         assert "subdir" in f.path
         assert str(tmp_path) not in f.path
@@ -165,9 +187,15 @@ class TestFileFromFile:
 class TestFileFilterToLatestVersionsOnly:
     def test_selects_latest_version_per_date(self):
         files = [
-            _make_file(descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)),
-            _make_file(descriptor="mag-l1a", version=2, content_date=datetime(2025, 1, 1)),
-            _make_file(descriptor="mag-l1a", version=3, content_date=datetime(2025, 1, 1)),
+            _make_file(
+                descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)
+            ),
+            _make_file(
+                descriptor="mag-l1a", version=2, content_date=datetime(2025, 1, 1)
+            ),
+            _make_file(
+                descriptor="mag-l1a", version=3, content_date=datetime(2025, 1, 1)
+            ),
         ]
 
         result = File.filter_to_latest_versions_only(files)
@@ -177,8 +205,12 @@ class TestFileFilterToLatestVersionsOnly:
 
     def test_keeps_different_dates_separately(self):
         files = [
-            _make_file(descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)),
-            _make_file(descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 2)),
+            _make_file(
+                descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)
+            ),
+            _make_file(
+                descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 2)
+            ),
         ]
 
         result = File.filter_to_latest_versions_only(files)
@@ -198,7 +230,9 @@ class TestFileFilterToLatestVersionsOnly:
 
     def test_handles_mixed_dates_and_no_dates(self):
         files = [
-            _make_file(descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)),
+            _make_file(
+                descriptor="mag-l1a", version=1, content_date=datetime(2025, 1, 1)
+            ),
             _make_file(descriptor="mag-l1a", version=1, content_date=None),
         ]
 

@@ -2,6 +2,7 @@ import json
 import os
 import re
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -20,6 +21,35 @@ from tests.util.miscellaneous import (
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 PROGRESS_ITEM_ID = SpinTablePipeline.PROGRESS_ITEM_ID
+
+
+class TestPollSpinTableFlowGenerateName:
+    def test_generate_flow_run_name_with_auto_run(self):
+        from prefect_server.pollSpinTable import generate_flow_run_name
+
+        mock_params = {"run_parameters": AutomaticRunParameters()}
+
+        with patch("prefect_server.pollSpinTable.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            name = generate_flow_run_name()
+
+        assert "last-update" in name
+
+    def test_generate_flow_run_name_with_date_params(self):
+        from prefect_server.pollSpinTable import generate_flow_run_name
+
+        run_params = FetchByDatesRunParameters(
+            start_date=datetime(2025, 6, 1),
+            end_date=datetime(2025, 6, 30),
+        )
+        mock_params = {"run_parameters": run_params}
+
+        with patch("prefect_server.pollSpinTable.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            name = generate_flow_run_name()
+
+        assert "01-06-2025" in name
+
 
 SAMPLE_SPIN_FILE_CONTENT = "epoch,spin_period,spin_phase,spin_axis_ra,spin_axis_dec\n2026-03-30T00:00:00,15.0,0.0,180.0,90.0\n"
 

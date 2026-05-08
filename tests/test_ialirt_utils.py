@@ -1,10 +1,6 @@
 """Tests for ialirtUtils module."""
 
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from imap_mag.cli.ialirtUtils import (
     fetch_ialirt_files_for_work,
@@ -29,7 +25,9 @@ class TestFetchIalirtFilesForWork:
 
         assert result == []
 
-    def test_returns_empty_list_when_no_dates_or_files_provided_and_no_data(self, tmp_path):
+    def test_returns_empty_list_when_no_dates_or_files_provided_and_no_data(
+        self, tmp_path
+    ):
         data_store = tmp_path / "datastore"
         data_store.mkdir()
         work_folder = tmp_path / "work"

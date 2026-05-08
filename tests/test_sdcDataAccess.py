@@ -308,7 +308,12 @@ class TestQuerySdcFilesUnit:
 
     def test_returns_all_file_details_without_date_filters(self):
         client = self._make_client()
-        mock_files = [{"file_path": "imap_mag_l1a_20250101_v001.cdf", "ingestion_date": "20250102 12:00:00"}]
+        mock_files = [
+            {
+                "file_path": "imap_mag_l1a_20250101_v001.cdf",
+                "ingestion_date": "20250102 12:00:00",
+            }
+        ]
 
         with patch("imap_data_access.query", return_value=mock_files):
             result = client.query_sdc_files(level="l1a")
@@ -376,7 +381,9 @@ class TestQuerySdcFilesUnit:
         ]
 
         with patch("imap_data_access.query", return_value=mock_files):
-            result = client.query_sdc_files(ingestion_end_date=datetime(2025, 1, 5, 0, 0))
+            result = client.query_sdc_files(
+                ingestion_end_date=datetime(2025, 1, 5, 0, 0)
+            )
 
         assert len(result) == 2
         paths = [f["file_path"] for f in result]
@@ -392,7 +399,9 @@ class TestQuerySdcFilesUnit:
         ]
 
         with patch("imap_data_access.query", return_value=mock_files):
-            result = client.query_sdc_files(ingestion_start_date=datetime(2025, 1, 5, 0, 0, 0))
+            result = client.query_sdc_files(
+                ingestion_start_date=datetime(2025, 1, 5, 0, 0, 0)
+            )
 
         assert len(result) == 1
         assert result[0]["file_path"] == "after.cdf"
@@ -416,7 +425,10 @@ class TestSpiceQueryUnit:
         client = self._make_client()
         expected = [{"file_name": "sclk/imap_sclk_0032.tsc"}]
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context(expected)):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context(expected),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 result = client.spice_query()
@@ -426,7 +438,10 @@ class TestSpiceQueryUnit:
     def test_includes_start_ingest_date_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(ingest_start_day=date(2025, 1, 1))
@@ -437,7 +452,10 @@ class TestSpiceQueryUnit:
     def test_includes_end_ingest_date_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(ingest_end_date=date(2025, 1, 31))
@@ -448,7 +466,10 @@ class TestSpiceQueryUnit:
     def test_includes_file_name_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(file_name="imap_sclk_0032.tsc")
@@ -459,7 +480,10 @@ class TestSpiceQueryUnit:
     def test_includes_time_range_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(start_time=1000, end_time=2000)
@@ -471,7 +495,10 @@ class TestSpiceQueryUnit:
     def test_includes_kernel_type_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(kernel_type="attitude_history")
@@ -482,7 +509,10 @@ class TestSpiceQueryUnit:
     def test_includes_latest_flag_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query(latest=True)
@@ -493,7 +523,10 @@ class TestSpiceQueryUnit:
     def test_url_has_empty_query_string_with_no_params(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spice_query()
@@ -520,7 +553,10 @@ class TestSpinTableQueryUnit:
         client = self._make_client()
         expected = [{"file_path": "imap_2025_001_2025_001_01.spin"}]
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context(expected)):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context(expected),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 result = client.spin_table_query()
@@ -530,7 +566,10 @@ class TestSpinTableQueryUnit:
     def test_includes_both_dates_in_url(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spin_table_query(
@@ -545,7 +584,10 @@ class TestSpinTableQueryUnit:
     def test_url_has_empty_query_string_with_no_dates(self):
         client = self._make_client()
 
-        with patch("imap_data_access.io._make_request", return_value=self._make_mock_http_context([])):
+        with patch(
+            "imap_data_access.io._make_request",
+            return_value=self._make_mock_http_context([]),
+        ):
             with patch("requests.Request") as mock_req:
                 mock_req.return_value.prepare.return_value = MagicMock()
                 client.spin_table_query()
@@ -562,7 +604,9 @@ class TestDownloadUnit:
 
     def test_download_calls_imap_data_access_with_filename(self):
         client = self._make_client()
-        with patch("imap_data_access.download", return_value=Path("/tmp/file.cdf")) as mock_dl:
+        with patch(
+            "imap_data_access.download", return_value=Path("/tmp/file.cdf")
+        ) as mock_dl:
             result = client.download("file.cdf")
 
         mock_dl.assert_called_once_with("file.cdf")
@@ -589,7 +633,6 @@ class TestUploadUnit:
         return SDCDataAccess(None, Path("/tmp"))
 
     def test_upload_calls_imap_data_access_upload(self):
-        import imap_data_access
         client = self._make_client()
 
         with patch("imap_data_access.upload") as mock_upload:
@@ -599,10 +642,14 @@ class TestUploadUnit:
 
     def test_upload_raises_sdc_upload_error_on_api_failure(self):
         import imap_data_access.io
+
         from imap_mag.client.SDCDataAccess import SDCUploadError
 
         client = self._make_client()
-        with patch("imap_data_access.upload", side_effect=imap_data_access.io.IMAPDataAccessError("fail")):
+        with patch(
+            "imap_data_access.upload",
+            side_effect=imap_data_access.io.IMAPDataAccessError("fail"),
+        ):
             with pytest.raises(SDCUploadError, match="Failed to upload"):
                 client.upload("test_file.cdf")
 

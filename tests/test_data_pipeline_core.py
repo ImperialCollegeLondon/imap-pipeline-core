@@ -1,8 +1,8 @@
 """Tests for pipeline infrastructure: Record, Result, Stages, Pipeline, and stage implementations."""
 
 import asyncio
+import typing
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,10 +12,13 @@ from imap_mag.data_pipelines import (
     FetchByDatesRunParameters,
     Pipeline,
 )
+from imap_mag.data_pipelines.GetProcessingDatesStage import GetProcessingDatesStage
+from imap_mag.data_pipelines.PublishFileToDatastoreStage import (
+    PublishFileToDatastoreStage,
+)
 from imap_mag.data_pipelines.Record import FileRecord, Record
 from imap_mag.data_pipelines.Result import Result
 from imap_mag.data_pipelines.Stages import EndStage, SourceStage, Stage
-
 
 # ---------------------------------------------------------------------------
 # Record tests
@@ -94,7 +97,7 @@ class TestResult:
 class _ConcreteStage(Stage):
     """A minimal concrete Stage implementation for testing."""
 
-    processed_items: list = []
+    processed_items: typing.ClassVar[list] = []
 
     async def process(self, item: Record, context: dict, **kwargs):
         self.processed_items.append(item)
@@ -168,7 +171,9 @@ class TestStagePublishNext:
 class TestPipeline:
     def _make_simple_pipeline(self, items=None):
         if items is None:
-            items = [Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))]
+            items = [
+                Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
+            ]
 
         pipeline = Pipeline()
         run_params = FetchByDatesRunParameters(
@@ -196,7 +201,9 @@ class TestPipeline:
             pipeline.build(run_params, stages=[])
 
     def test_pipeline_run_result_contains_items(self):
-        items = [Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))]
+        items = [
+            Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
+        ]
         pipeline, run_params, stages = self._make_simple_pipeline(items)
         pipeline.build(run_params, stages=stages)
         asyncio.get_event_loop().run_until_complete(pipeline.run())
@@ -220,8 +227,6 @@ class TestPipeline:
 
 class TestGetProcessingDatesStage:
     def test_raises_when_no_progress_item_name_in_context(self):
-        from imap_mag.data_pipelines.GetProcessingDatesStage import GetProcessingDatesStage
-
         stage = GetProcessingDatesStage(database=None)
         stage._run_parameters = AutomaticRunParameters()
         stage._next_stage = AsyncMock()
@@ -231,8 +236,6 @@ class TestGetProcessingDatesStage:
             asyncio.get_event_loop().run_until_complete(stage.start({}))
 
     def test_publishes_record_with_date_range_for_explicit_dates(self):
-        from imap_mag.data_pipelines.GetProcessingDatesStage import GetProcessingDatesStage
-
         stage = GetProcessingDatesStage(database=None)
         run_params = FetchByDatesRunParameters(
             start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31)
@@ -250,8 +253,6 @@ class TestGetProcessingDatesStage:
         assert published_item.end_date == datetime(2025, 1, 31)
 
     def test_automatic_run_uses_database_progress(self):
-        from imap_mag.data_pipelines.GetProcessingDatesStage import GetProcessingDatesStage
-
         mock_db = MagicMock()
         mock_progress = MagicMock()
         mock_progress.get_last_checked_date.return_value = None
@@ -265,7 +266,9 @@ class TestGetProcessingDatesStage:
         stage._index = 0
 
         context = {"progress_item_name": "TEST"}
-        with patch("imap_mag.data_pipelines.GetProcessingDatesStage.DownloadDateManager") as mock_dm:
+        with patch(
+            "imap_mag.data_pipelines.GetProcessingDatesStage.DownloadDateManager"
+        ) as mock_dm:
             mock_dm_instance = MagicMock()
             mock_dm_instance.get_dates_for_download.return_value = (
                 datetime(2025, 1, 1),
@@ -284,8 +287,6 @@ class TestGetProcessingDatesStage:
 
 class TestPublishFileToDatastoreStage:
     def test_disabled_stage_passes_item_through(self, tmp_path):
-        from imap_mag.data_pipelines.PublishFileToDatastoreStage import PublishFileToDatastoreStage
-
         stage = PublishFileToDatastoreStage(enabled=False, database=None)
         stage._run_parameters = AutomaticRunParameters()
         stage._next_stage = AsyncMock()
@@ -301,8 +302,6 @@ class TestPublishFileToDatastoreStage:
         stage._next_stage.process.assert_called_once()
 
     def test_enabled_stage_calls_file_manager(self, tmp_path):
-        from imap_mag.data_pipelines.PublishFileToDatastoreStage import PublishFileToDatastoreStage
-
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
         mock_settings.work_folder = tmp_path
@@ -318,7 +317,9 @@ class TestPublishFileToDatastoreStage:
             "imap_mag.data_pipelines.PublishFileToDatastoreStage.DatastoreFileManager.CreateByMode",
             return_value=mock_manager,
         ):
-            stage = PublishFileToDatastoreStage(enabled=True, database=None, settings=mock_settings)
+            stage = PublishFileToDatastoreStage(
+                enabled=True, database=None, settings=mock_settings
+            )
             stage._run_parameters = AutomaticRunParameters()
             stage._next_stage = AsyncMock()
             stage._index = 0

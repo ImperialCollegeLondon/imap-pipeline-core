@@ -44,7 +44,10 @@ class TestGetMatlabCommand:
                 {"CI": "true", "MLM_LICENSE_TOKEN": "test-token"},
                 clear=False,
             ),
-            patch("mag_toolkit.calibration.MatlabWrapper.which", return_value="/usr/bin/matlab-batch"),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.which",
+                return_value="/usr/bin/matlab-batch",
+            ),
         ):
             result = get_matlab_command()
         assert result == "matlab-batch"
@@ -64,9 +67,14 @@ class TestGetMatlabCommand:
 
 class TestSetupMatlabPath:
     def test_runs_matlab_setup_command_and_returns_on_success(self):
-        mock_process = _make_mock_process(returncode=0, output_lines=["Setting up paths"])
+        mock_process = _make_mock_process(
+            returncode=0, output_lines=["Setting up paths"]
+        )
 
-        with patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process):
+        with patch(
+            "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+            return_value=mock_process,
+        ):
             setup_matlab_path(["/app/matlab"], "matlab")
 
         mock_process.wait.assert_called_once_with(timeout=60)
@@ -74,14 +82,20 @@ class TestSetupMatlabPath:
     def test_raises_runtime_error_when_matlab_returns_nonzero(self):
         mock_process = _make_mock_process(returncode=1)
 
-        with patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process):
+        with patch(
+            "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+            return_value=mock_process,
+        ):
             with pytest.raises(RuntimeError, match="MATLAB setup command failed"):
                 setup_matlab_path(["/app/matlab"], "matlab")
 
     def test_accepts_string_path_instead_of_list(self):
         mock_process = _make_mock_process(returncode=0)
 
-        with patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process) as mock_popen:
+        with patch(
+            "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+            return_value=mock_process,
+        ) as mock_popen:
             setup_matlab_path("/app/matlab", "matlab")
 
         mock_popen.assert_called_once()
@@ -94,9 +108,17 @@ class TestCallMatlab:
         mock_process = _make_mock_process(returncode=0)
 
         with (
-            patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process),
-            patch("mag_toolkit.calibration.MatlabWrapper.setup_matlab_path") as mock_setup,
-            patch("mag_toolkit.calibration.MatlabWrapper.get_matlab_command", return_value="matlab"),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.setup_matlab_path"
+            ) as mock_setup,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
         ):
             call_matlab("disp('hello')", first_call=True)
 
@@ -106,9 +128,17 @@ class TestCallMatlab:
         mock_process = _make_mock_process(returncode=0)
 
         with (
-            patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process),
-            patch("mag_toolkit.calibration.MatlabWrapper.setup_matlab_path") as mock_setup,
-            patch("mag_toolkit.calibration.MatlabWrapper.get_matlab_command", return_value="matlab"),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.setup_matlab_path"
+            ) as mock_setup,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
         ):
             call_matlab("disp('hello')", first_call=False)
 
@@ -118,9 +148,15 @@ class TestCallMatlab:
         mock_process = _make_mock_process(returncode=1)
 
         with (
-            patch("mag_toolkit.calibration.MatlabWrapper.subprocess.Popen", return_value=mock_process),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ),
             patch("mag_toolkit.calibration.MatlabWrapper.setup_matlab_path"),
-            patch("mag_toolkit.calibration.MatlabWrapper.get_matlab_command", return_value="matlab"),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
         ):
             with pytest.raises(RuntimeError, match="MATLAB command failed"):
                 call_matlab("disp('hello')")

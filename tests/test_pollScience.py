@@ -10,9 +10,10 @@ import pytest
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchScience import FetchScience
-from imap_mag.util import Environment, ScienceMode
+from imap_mag.util import Environment, ScienceLevel, ScienceMode
 from prefect_server.pollScience import (
     download_batch_of_science,
+    generate_flow_run_name,
     get_latest_ingestion_date,
     poll_science_flow,
 )
@@ -675,7 +676,6 @@ class TestPollScienceFlowUnit:
         )
 
         fake_path_1 = Path("/science1.cdf")
-        fake_path_2 = Path("/science2.cdf")
         call_count = 0
 
         def side_effect(*args, **kwargs):
@@ -752,3 +752,35 @@ class TestPollScienceFlowUnit:
         mock_logger.warning.assert_any_call(
             "First item in batch is the same as the previous batch. Stopping to avoid infinite loop."
         )
+
+
+class TestPollScienceFlowGenerateName:
+    def test_auto_run_includes_last_update(self):
+        mock_params = {
+            "level": ScienceLevel.l2,
+            "modes": [ScienceMode.Normal],
+            "start_date": None,
+            "end_date": None,
+        }
+        with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
+            with patch(
+                "prefect_server.pollScience.DatetimeProvider.end_of_today",
+                return_value=datetime(2025, 6, 1),
+            ):
+                mock_flow_run.parameters = mock_params
+                name = generate_flow_run_name()
+
+        assert "last-update" in name
+
+    def test_specific_dates_in_name(self):
+        mock_params = {
+            "level": ScienceLevel.l1c,
+            "modes": [ScienceMode.Normal],
+            "start_date": datetime(2025, 6, 1),
+            "end_date": datetime(2025, 6, 30),
+        }
+        with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            name = generate_flow_run_name()
+
+        assert "01-06-2025" in name
