@@ -17,6 +17,33 @@ from imap_mag.process.metakernel import MetaKernel
 from tests.util.database import test_database  # noqa: F401
 
 
+def _setup_mock_settings(mock_app_settings, work_folder=None):
+    """Wire mock AppSettings to return a settings object pointing at work_folder."""
+    if work_folder is None:
+        work_folder = Path(tempfile.gettempdir())
+    mock_settings = MagicMock()
+    mock_settings.setup_work_folder_for_command.return_value = work_folder
+    mock_app_settings.return_value = mock_settings
+    return mock_settings
+
+
+def _setup_mock_db_and_settings(
+    mock_database_class, mock_app_settings, work_folder=None
+):
+    """Wire mock Database (one attitude_history file) and mock AppSettings."""
+    mock_db = MagicMock()
+    mock_db.get_files_by_path.return_value = [
+        File(
+            path="spice/ck/test.bc",
+            file_meta={"kernel_type": "attitude_history"},
+            last_modified_date=datetime.now(UTC),
+        )
+    ]
+    mock_database_class.return_value = mock_db
+    mock_settings = _setup_mock_settings(mock_app_settings, work_folder=work_folder)
+    return mock_db, mock_settings
+
+
 class TestMetaKernelClass:
     """Tests for the MetaKernel class."""
 
@@ -522,7 +549,9 @@ class TestMetakernelBuilder:
                 end_time=datetime(2025, 10, 31),
                 files=files,
                 spice_folder=Path(tmpdir),
-                file_types={"SPACECRAFT_CLOCK"},  # attitude_history is not in this set → covered by continue
+                file_types={
+                    "SPACECRAFT_CLOCK"
+                },  # attitude_history is not in this set → covered by continue
             )
 
         # No attitude_history files loaded since we filtered to spacecraft_clock only
@@ -539,11 +568,7 @@ class TestGenerateSpiceMetakernel:
         self, mock_app_settings, mock_database_class
     ):
         """Test that conflicting options raise error."""
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = Path(
-            tempfile.gettempdir()
-        )
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_settings(mock_app_settings)
 
         with pytest.raises(ValueError, match="Cannot both publish"):
             generate_spice_metakernel(
@@ -562,12 +587,7 @@ class TestGenerateSpiceMetakernel:
         mock_db = MagicMock()
         mock_db.get_files_by_path.return_value = []
         mock_database_class.return_value = mock_db
-
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = Path(
-            tempfile.gettempdir()
-        )
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_settings(mock_app_settings)
 
         with pytest.raises(RuntimeError, match="No SPICE files found"):
             generate_spice_metakernel()
@@ -584,25 +604,8 @@ class TestGenerateSpiceMetakernel:
         mock_j2000_to_datetime,
     ):
         """Test listing files instead of generating metakernel."""
-        # Mock time conversion
         mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
-
-        # Setup mock database
-        mock_db = MagicMock()
-        mock_file = File(
-            path="spice/ck/test.bc",
-            file_meta={"kernel_type": "attitude_history"},
-            last_modified_date=datetime.now(UTC),
-        )
-        mock_db.get_files_by_path.return_value = [mock_file]
-        mock_database_class.return_value = mock_db
-
-        # Setup mock settings
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = Path(
-            tempfile.gettempdir()
-        )
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_db_and_settings(mock_database_class, mock_app_settings)
 
         # Setup mock metakernel
         mock_mk = MagicMock()
@@ -629,25 +632,8 @@ class TestGenerateSpiceMetakernel:
         mock_j2000_to_datetime,
     ):
         """Test that require_coverage option fails when gaps exist."""
-        # Mock time conversion
         mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
-
-        # Setup mock database
-        mock_db = MagicMock()
-        mock_file = File(
-            path="spice/ck/test.bc",
-            file_meta={"kernel_type": "attitude_history"},
-            last_modified_date=datetime.now(UTC),
-        )
-        mock_db.get_files_by_path.return_value = [mock_file]
-        mock_database_class.return_value = mock_db
-
-        # Setup mock settings
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = Path(
-            tempfile.gettempdir()
-        )
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_db_and_settings(mock_database_class, mock_app_settings)
 
         # Setup mock metakernel with gaps
         mock_mk = MagicMock()
@@ -664,11 +650,7 @@ class TestGenerateSpiceMetakernel:
     def test_generate_metakernel_raises_when_output_path_and_publish_both_set(
         self, mock_app_settings, mock_database_class
     ):
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = Path(
-            tempfile.gettempdir()
-        )
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_settings(mock_app_settings)
 
         with pytest.raises(ValueError, match="Cannot specify both"):
             generate_spice_metakernel(
@@ -689,19 +671,9 @@ class TestGenerateSpiceMetakernel:
         tmp_path,
     ):
         mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
-
-        mock_db = MagicMock()
-        mock_file = File(
-            path="spice/ck/test.bc",
-            file_meta={"kernel_type": "attitude_history"},
-            last_modified_date=datetime.now(UTC),
+        _setup_mock_db_and_settings(
+            mock_database_class, mock_app_settings, work_folder=tmp_path
         )
-        mock_db.get_files_by_path.return_value = [mock_file]
-        mock_database_class.return_value = mock_db
-
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = tmp_path
-        mock_app_settings.return_value = mock_settings
 
         mock_mk = MagicMock()
         mock_mk.return_tm_file.return_value = "\\begindata\n\\begintext\n"
@@ -729,21 +701,11 @@ class TestGenerateSpiceMetakernel:
         tmp_path,
     ):
         mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
-
-        mock_db = MagicMock()
-        mock_file = File(
-            path="spice/ck/test.bc",
-            file_meta={"kernel_type": "attitude_history"},
-            last_modified_date=datetime.now(UTC),
-        )
-        mock_db.get_files_by_path.return_value = [mock_file]
-        mock_database_class.return_value = mock_db
-
-        mock_settings = MagicMock()
         work_folder = tmp_path / "work"
         work_folder.mkdir()
-        mock_settings.setup_work_folder_for_command.return_value = work_folder
-        mock_app_settings.return_value = mock_settings
+        _setup_mock_db_and_settings(
+            mock_database_class, mock_app_settings, work_folder=work_folder
+        )
 
         mock_mk = MagicMock()
         mock_mk.return_tm_file.return_value = "\\begindata\n\\begintext\n"
@@ -772,19 +734,9 @@ class TestGenerateSpiceMetakernel:
         tmp_path,
     ):
         mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
-
-        mock_db = MagicMock()
-        mock_file = File(
-            path="spice/ck/test.bc",
-            file_meta={"kernel_type": "attitude_history"},
-            last_modified_date=datetime.now(UTC),
+        _setup_mock_db_and_settings(
+            mock_database_class, mock_app_settings, work_folder=tmp_path
         )
-        mock_db.get_files_by_path.return_value = [mock_file]
-        mock_database_class.return_value = mock_db
-
-        mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = tmp_path
-        mock_app_settings.return_value = mock_settings
 
         mock_mk = MagicMock()
         mock_mk.return_spice_files_in_order.return_value = []
