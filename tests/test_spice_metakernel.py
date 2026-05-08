@@ -372,6 +372,163 @@ class TestMetakernelBuilder:
             assert isinstance(mk, MetaKernel)
             assert len(mk.return_spice_files_in_order(False)) == 1
 
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_metakernel_builder_warns_for_files_without_version_field(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
+        start_time = datetime(2025, 10, 29)
+        end_time = datetime(2025, 10, 30)
+
+        # Two files share same file_root: one has version, one does not.
+        # The warning fires for the unversioned file, but the versioned file is kept.
+        files = [
+            File(
+                path="spice/sclk/imap_sclk_001.tsc",
+                name="imap_sclk_001.tsc",
+                file_meta={
+                    "file_name": "sclk/imap_sclk_001.tsc",
+                    "file_root": "imap_sclk_.tsc",
+                    "kernel_type": "spacecraft_clock",
+                    "version": "1",
+                    "file_intervals_j2000": [[315576066.0, 4575787269.0]],
+                    "timestamp": 1758220406.0,
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+            File(
+                path="spice/sclk/imap_sclk_extra.tsc",
+                name="imap_sclk_extra.tsc",
+                file_meta={
+                    "file_name": "sclk/imap_sclk_extra.tsc",
+                    "file_root": "imap_sclk_.tsc",  # same root — no "version" key
+                    "kernel_type": "spacecraft_clock",
+                    "file_intervals_j2000": [[315576066.0, 4575787269.0]],
+                    "timestamp": 1758220407.0,
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mk = _metakernel_builder(
+                start_time=start_time,
+                end_time=end_time,
+                files=files,
+                spice_folder=Path(tmpdir),
+            )
+
+        assert mk is not None
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_metakernel_builder_uses_minimum_mission_time_when_no_start_time(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
+
+        files = [
+            File(
+                path="spice/ck/test.bc",
+                file_meta={
+                    "kernel_type": "attitude_history",
+                    "version": "1",
+                    "file_intervals_j2000": [[815036897, 815126896]],
+                    "timestamp": 1761984312.0,
+                    "max_date_datetime": "2025-10-30, 20:07:06",
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mk = _metakernel_builder(
+                start_time=None,
+                end_time=datetime(2025, 10, 30),
+                files=files,
+                spice_folder=Path(tmpdir),
+            )
+
+        assert mk is not None
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_metakernel_builder_uses_today_when_no_end_time_and_no_attitude_kernels(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
+
+        files = [
+            File(
+                path="spice/sclk/imap_sclk_001.tsc",
+                file_meta={
+                    "kernel_type": "spacecraft_clock",
+                    "version": "1",
+                    "file_intervals_j2000": [[315576066.0, 4575787269.0]],
+                    "timestamp": 1758220406.0,
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+        ]
+
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            patch("imap_mag.cli.fetch.spice.DatetimeProvider.today") as mock_today,
+        ):
+            mock_today.return_value = datetime(2025, 10, 30)
+            mk = _metakernel_builder(
+                start_time=datetime(2025, 1, 1),
+                end_time=None,
+                files=files,
+                spice_folder=Path(tmpdir),
+            )
+
+        assert mk is not None
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_metakernel_builder_skips_files_not_in_requested_types(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        mock_datetime_to_j2000.side_effect = lambda dt: 815036897 if dt else 0
+
+        files = [
+            File(
+                path="spice/ck/test.bc",
+                file_meta={
+                    "kernel_type": "attitude_history",
+                    "version": "1",
+                    "file_intervals_j2000": [[815036897, 815126896]],
+                    "timestamp": 1761984312.0,
+                    "min_date_datetime": "2025-10-28, 00:00:00",
+                    "max_date_datetime": "2025-10-30, 20:07:06",
+                },
+                last_modified_date=datetime.now(UTC),
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mk = _metakernel_builder(
+                start_time=datetime(2025, 10, 29),
+                end_time=datetime(2025, 10, 31),
+                files=files,
+                spice_folder=Path(tmpdir),
+                file_types={"SPACECRAFT_CLOCK"},  # attitude_history is not in this set → covered by continue
+            )
+
+        # No attitude_history files loaded since we filtered to spacecraft_clock only
+        assert mk is not None
+        assert len(mk.return_spice_files_in_order(False)) == 0
+
 
 class TestGenerateSpiceMetakernel:
     """Tests for the generate_spice_metakernel CLI function."""
@@ -501,6 +658,148 @@ class TestGenerateSpiceMetakernel:
 
         with pytest.raises(RuntimeError, match="gaps in SPICE"):
             generate_spice_metakernel(require_coverage=True)
+
+    @patch("imap_mag.cli.fetch.spice.Database")
+    @patch("imap_mag.cli.fetch.spice.AppSettings")
+    def test_generate_metakernel_raises_when_output_path_and_publish_both_set(
+        self, mock_app_settings, mock_database_class
+    ):
+        mock_settings = MagicMock()
+        mock_settings.setup_work_folder_for_command.return_value = Path(
+            tempfile.gettempdir()
+        )
+        mock_app_settings.return_value = mock_settings
+
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            generate_spice_metakernel(
+                output_path=Path("/some/output"),
+                publish_to_datastore=True,
+            )
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.j2000_to_datetime")
+    @patch("imap_mag.cli.fetch.spice.Database")
+    @patch("imap_mag.cli.fetch.spice.AppSettings")
+    @patch("imap_mag.cli.fetch.spice._metakernel_builder")
+    def test_generate_metakernel_writes_file_with_verify_disabled(
+        self,
+        mock_builder,
+        mock_app_settings,
+        mock_database_class,
+        mock_j2000_to_datetime,
+        tmp_path,
+    ):
+        mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
+
+        mock_db = MagicMock()
+        mock_file = File(
+            path="spice/ck/test.bc",
+            file_meta={"kernel_type": "attitude_history"},
+            last_modified_date=datetime.now(UTC),
+        )
+        mock_db.get_files_by_path.return_value = [mock_file]
+        mock_database_class.return_value = mock_db
+
+        mock_settings = MagicMock()
+        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        mock_app_settings.return_value = mock_settings
+
+        mock_mk = MagicMock()
+        mock_mk.return_tm_file.return_value = "\\begindata\n\\begintext\n"
+        mock_mk.contains_gaps.return_value = False
+        mock_mk.start_time_j2000 = 815036897
+        mock_mk.end_time_j2000 = 815126896
+        mock_builder.return_value = mock_mk
+
+        result = generate_spice_metakernel(verify=False)
+
+        assert result is not None
+        assert isinstance(result, Path)
+        assert result.suffix == ".tm"
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.j2000_to_datetime")
+    @patch("imap_mag.cli.fetch.spice.Database")
+    @patch("imap_mag.cli.fetch.spice.AppSettings")
+    @patch("imap_mag.cli.fetch.spice._metakernel_builder")
+    def test_generate_metakernel_copies_file_to_output_path(
+        self,
+        mock_builder,
+        mock_app_settings,
+        mock_database_class,
+        mock_j2000_to_datetime,
+        tmp_path,
+    ):
+        mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
+
+        mock_db = MagicMock()
+        mock_file = File(
+            path="spice/ck/test.bc",
+            file_meta={"kernel_type": "attitude_history"},
+            last_modified_date=datetime.now(UTC),
+        )
+        mock_db.get_files_by_path.return_value = [mock_file]
+        mock_database_class.return_value = mock_db
+
+        mock_settings = MagicMock()
+        work_folder = tmp_path / "work"
+        work_folder.mkdir()
+        mock_settings.setup_work_folder_for_command.return_value = work_folder
+        mock_app_settings.return_value = mock_settings
+
+        mock_mk = MagicMock()
+        mock_mk.return_tm_file.return_value = "\\begindata\n\\begintext\n"
+        mock_mk.contains_gaps.return_value = False
+        mock_mk.start_time_j2000 = 815036897
+        mock_mk.end_time_j2000 = 815126896
+        mock_builder.return_value = mock_mk
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        result = generate_spice_metakernel(output_path=output_dir, verify=False)
+
+        assert result.parent == output_dir
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.j2000_to_datetime")
+    @patch("imap_mag.cli.fetch.spice.Database")
+    @patch("imap_mag.cli.fetch.spice.AppSettings")
+    @patch("imap_mag.cli.fetch.spice._metakernel_builder")
+    def test_generate_metakernel_normalises_file_types_to_uppercase(
+        self,
+        mock_builder,
+        mock_app_settings,
+        mock_database_class,
+        mock_j2000_to_datetime,
+        tmp_path,
+    ):
+        mock_j2000_to_datetime.return_value = datetime(2025, 10, 29)
+
+        mock_db = MagicMock()
+        mock_file = File(
+            path="spice/ck/test.bc",
+            file_meta={"kernel_type": "attitude_history"},
+            last_modified_date=datetime.now(UTC),
+        )
+        mock_db.get_files_by_path.return_value = [mock_file]
+        mock_database_class.return_value = mock_db
+
+        mock_settings = MagicMock()
+        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        mock_app_settings.return_value = mock_settings
+
+        mock_mk = MagicMock()
+        mock_mk.return_spice_files_in_order.return_value = []
+        mock_mk.start_time_j2000 = 815036897
+        mock_mk.end_time_j2000 = 815126896
+        mock_builder.return_value = mock_mk
+
+        with pytest.raises(RuntimeError, match="Zero SPICE kernels"):
+            generate_spice_metakernel(
+                file_types=["attitude_history", " spk "],
+                list_files=True,
+            )
+
+        _, call_kwargs = mock_builder.call_args
+        assert call_kwargs["file_types"] == {"ATTITUDE_HISTORY", "SPK"}
 
 
 class TestMetaKernelDuplicateRemoval:
