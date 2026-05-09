@@ -38,7 +38,7 @@ class TestCleanupFlowNoTasksMatchUnit:
                 "prefect_server.datastoreCleanupFlow.DBIndexedDatastoreFileManager",
             ),
         ):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 cleanup_datastore_flow.fn(task_names=["nonexistent_task"])
             )
 
