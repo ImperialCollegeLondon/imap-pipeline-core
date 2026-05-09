@@ -35,7 +35,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
         stage, _ = self._make_stage(tmp_path)
         item = Record(start_date=None, end_date=None)
         with pytest.raises(ValueError, match="start_date and end_date"):
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
     def test_raises_when_csv_content_empty(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
@@ -43,7 +43,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1))
         with pytest.raises(RuntimeError, match="empty CSV content"):
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
     def test_skips_day_when_csv_has_only_header(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
@@ -52,7 +52,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
         )
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_not_called()
 
@@ -63,7 +63,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
         )
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_called_once()
 
@@ -74,7 +74,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
         )
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 3))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         assert (
             mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.call_count

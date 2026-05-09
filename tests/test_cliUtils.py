@@ -1,7 +1,7 @@
 """Tests for cliUtils module."""
 
 import logging
-import time
+import os
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -75,9 +75,10 @@ class TestFetchFileForWork:
 
         old_file = source_folder / "data_v1.csv"
         old_file.write_text("old")
-        time.sleep(0.01)
+        os.utime(old_file, (1000, 1000))
         new_file = source_folder / "data_v2.csv"
         new_file.write_text("new")
+        os.utime(new_file, (2000, 2000))
 
         result = fetch_file_for_work(
             source_folder / "data_*.csv", work_folder, throw_if_not_found=True

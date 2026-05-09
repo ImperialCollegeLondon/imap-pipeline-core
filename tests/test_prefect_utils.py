@@ -70,9 +70,7 @@ class TestGetSecretOrEnvVar:
                 patch("prefect.context.FlowRunContext.get", return_value=None),
                 patch("prefect.context.TaskRunContext.get", return_value=None),
             ):
-                result = asyncio.get_event_loop().run_until_complete(
-                    get_secret_or_env_var("secret_name", "MY_VAR")
-                )
+                result = asyncio.run(get_secret_or_env_var("secret_name", "MY_VAR"))
 
         assert result == "my_value"
 
@@ -84,9 +82,7 @@ class TestGetSecretOrEnvVar:
             env_backup = os.environ.pop("MISSING_VAR", None)
             try:
                 with pytest.raises(ValueError, match="both undefined"):
-                    asyncio.get_event_loop().run_until_complete(
-                        get_secret_or_env_var("secret_name", "MISSING_VAR")
-                    )
+                    asyncio.run(get_secret_or_env_var("secret_name", "MISSING_VAR"))
             finally:
                 if env_backup is not None:
                     os.environ["MISSING_VAR"] = env_backup
@@ -103,9 +99,7 @@ class TestGetSecretBlock:
             return_value=mock_secret,
         ):
             with pytest.raises(ValueError, match="empty"):
-                asyncio.get_event_loop().run_until_complete(
-                    get_secret_block("empty_secret")
-                )
+                asyncio.run(get_secret_block("empty_secret"))
 
     def test_returns_value_when_secret_exists(self):
         mock_secret = MagicMock()
@@ -116,9 +110,7 @@ class TestGetSecretBlock:
             new_callable=AsyncMock,
             return_value=mock_secret,
         ):
-            result = asyncio.get_event_loop().run_until_complete(
-                get_secret_block("my_secret")
-            )
+            result = asyncio.run(get_secret_block("my_secret"))
 
         assert result == "my_secret_value"
 
@@ -129,6 +121,4 @@ class TestGetSecretBlock:
             side_effect=ValueError("Block not found"),
         ):
             with pytest.raises(ValueError):
-                asyncio.get_event_loop().run_until_complete(
-                    get_secret_block("nonexistent_secret")
-                )
+                asyncio.run(get_secret_block("nonexistent_secret"))

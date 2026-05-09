@@ -38,14 +38,14 @@ class TestDownloadSpinTableFilesStageProcess:
         stage, _ = self._make_stage(tmp_path)
         item = Record(start_date=None, end_date=None)
         with pytest.raises(ValueError, match="start_date and end_date"):
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
     def test_returns_early_when_no_spin_files_found(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
         mock_client.spin_table_query.return_value = []
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_not_called()
 
@@ -54,7 +54,7 @@ class TestDownloadSpinTableFilesStageProcess:
         mock_client.spin_table_query.return_value = [{"ingestion_date": "2025-01-15"}]
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_not_called()
 
@@ -68,7 +68,7 @@ class TestDownloadSpinTableFilesStageProcess:
         ]
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         mock_client.download_spin_table.assert_not_called()
 
@@ -86,7 +86,7 @@ class TestDownloadSpinTableFilesStageProcess:
         mock_client.download_spin_table.return_value = empty_file
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
-        asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+        asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_not_called()
 
@@ -118,7 +118,7 @@ class TestDownloadSpinTableFilesStageProcess:
             item = Record(
                 start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31)
             )
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_called_once()
 
@@ -143,7 +143,7 @@ class TestDownloadSpinTableFilesStageProcess:
             item = Record(
                 start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31)
             )
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
         stage._next_stage.process.assert_not_called()
 
@@ -197,6 +197,6 @@ class TestDownloadSpinTableFilesStageProcess:
             item = Record(
                 start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31)
             )
-            asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+            asyncio.run(stage.process(item, {}))
 
         mock_manager.add_file.assert_called_once()

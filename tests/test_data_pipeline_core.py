@@ -124,7 +124,7 @@ class TestEndStage:
         end._next_stage = None
 
         item = Record(value="collected")
-        asyncio.get_event_loop().run_until_complete(end.process(item, {}))
+        asyncio.run(end.process(item, {}))
 
         assert len(end.results) == 1
 
@@ -134,7 +134,7 @@ class TestEndStage:
         end._run_parameters = AutomaticRunParameters()
         end._next_stage = None
 
-        asyncio.get_event_loop().run_until_complete(end.stage_completed({}))
+        asyncio.run(end.stage_completed({}))
 
         pipeline._completed.assert_called_once()
 
@@ -148,7 +148,7 @@ class TestStagePublishNext:
         stage._index = 0
 
         item = Record(value="test")
-        asyncio.get_event_loop().run_until_complete(stage.publish_next(item, {}))
+        asyncio.run(stage.publish_next(item, {}))
 
         next_stage.process.assert_called_once()
 
@@ -160,7 +160,7 @@ class TestStagePublishNext:
 
         item = Record(value="test")
         with pytest.raises(RuntimeError, match="no next stage"):
-            asyncio.get_event_loop().run_until_complete(stage.publish_next(item, {}))
+            asyncio.run(stage.publish_next(item, {}))
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ class TestPipeline:
     def test_pipeline_run_completes_successfully(self):
         pipeline, run_params, stages = self._make_simple_pipeline()
         pipeline.build(run_params, stages=stages)
-        asyncio.get_event_loop().run_until_complete(pipeline.run())
+        asyncio.run(pipeline.run())
         result = pipeline.get_results()
         assert result is not None
 
@@ -206,7 +206,7 @@ class TestPipeline:
         ]
         pipeline, run_params, stages = self._make_simple_pipeline(items)
         pipeline.build(run_params, stages=stages)
-        asyncio.get_event_loop().run_until_complete(pipeline.run())
+        asyncio.run(pipeline.run())
         result = pipeline.get_results()
         assert result.success is True
         assert len(result.data_items) >= 0
@@ -216,7 +216,7 @@ class TestPipeline:
         pipeline.initial_context = {"custom_key": "custom_value"}
         stages = [_ConcreteSource([Record(value="x")])]
         pipeline.build(AutomaticRunParameters(), stages=stages)
-        asyncio.get_event_loop().run_until_complete(pipeline.run())
+        asyncio.run(pipeline.run())
         # No assertion needed - just verify no exception
 
 
@@ -233,7 +233,7 @@ class TestGetProcessingDatesStage:
         stage._index = 0
 
         with pytest.raises((KeyError, Exception)):
-            asyncio.get_event_loop().run_until_complete(stage.start({}))
+            asyncio.run(stage.start({}))
 
     def test_publishes_record_with_date_range_for_explicit_dates(self):
         stage = GetProcessingDatesStage(database=None)
@@ -245,7 +245,7 @@ class TestGetProcessingDatesStage:
         stage._index = 0
 
         context = {"progress_item_name": "TEST"}
-        asyncio.get_event_loop().run_until_complete(stage.start(context))
+        asyncio.run(stage.start(context))
 
         stage._next_stage.process.assert_called_once()
         published_item = stage._next_stage.process.call_args[0][0]
@@ -275,7 +275,7 @@ class TestGetProcessingDatesStage:
                 datetime(2025, 1, 31),
             )
             mock_dm.return_value = mock_dm_instance
-            asyncio.get_event_loop().run_until_complete(stage.start(context))
+            asyncio.run(stage.start(context))
 
         stage._next_stage.process.assert_called_once()
 
@@ -297,7 +297,7 @@ class TestPublishFileToDatastoreStage:
         item = FileRecord(f, datetime(2025, 1, 1))
         context = {}
 
-        asyncio.get_event_loop().run_until_complete(stage.process(item, context))
+        asyncio.run(stage.process(item, context))
 
         stage._next_stage.process.assert_called_once()
 
@@ -330,6 +330,6 @@ class TestPublishFileToDatastoreStage:
                 "imap_mag.data_pipelines.PublishFileToDatastoreStage.FilePathHandlerSelector.find_by_path",
                 return_value=mock_handler,
             ):
-                asyncio.get_event_loop().run_until_complete(stage.process(item, {}))
+                asyncio.run(stage.process(item, {}))
 
         mock_manager.add_file.assert_called_once()

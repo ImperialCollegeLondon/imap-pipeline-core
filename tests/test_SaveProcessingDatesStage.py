@@ -115,7 +115,7 @@ class TestSaveProcessingDatesStageProcess:
         context = _make_context()
         item = Record(value="test")
 
-        asyncio.get_event_loop().run_until_complete(stage.process(item, context))
+        asyncio.run(stage.process(item, context))
 
         stage._next_stage.process.assert_called_once()
 
@@ -127,7 +127,7 @@ class TestSaveProcessingDatesStageProcess:
         context[PROGRESS_DATE_CONTEXT_KEY] = datetime(2025, 7, 4)
         item = Record(value="test")
 
-        asyncio.get_event_loop().run_until_complete(stage.process(item, context))
+        asyncio.run(stage.process(item, context))
 
         wp = context["workflow_progress"]
         assert wp.progress_timestamp == datetime(2025, 7, 4)
@@ -140,6 +140,6 @@ class TestSaveProcessingDatesStageCompleted:
         stage._run_parameters = AutomaticRunParameters()
         context = _make_context()
 
-        asyncio.get_event_loop().run_until_complete(stage.stage_completed(context))
+        asyncio.run(stage.stage_completed(context))
 
         mock_db.save.assert_called()

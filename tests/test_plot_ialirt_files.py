@@ -60,7 +60,7 @@ def _make_ialirt_df(n_rows=3):
     )
 
 
-class TestMergeScineceAndHkData:
+class TestMergeScienceAndHkData:
     def test_returns_empty_dataframe_when_both_inputs_empty(self):
         result = _merge_science_and_hk(pd.DataFrame(), pd.DataFrame())
         assert result.empty

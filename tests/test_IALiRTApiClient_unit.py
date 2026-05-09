@@ -11,7 +11,7 @@ def _make_client():
 
 
 class TestIALiRTApiClientGetAllByDates:
-    def test_returns_empty_when_start_equals_end(self):
+    def test_returns_empty_when_duration_below_minimum_threshold(self):
         client = _make_client()
         start = datetime(2025, 1, 1, 0, 0, 0)
         end = start + timedelta(seconds=3)
