@@ -46,7 +46,7 @@ class TestValidateAndCompleteParameters:
             )
 
     def test_l1b_modes_only_adds_default_sensors(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        _modes, sensors, _frames = _validate_and_complete_parameters(
             ScienceLevel.l1b, [ScienceMode.Normal], None, None
         )
         assert sensors is not None
@@ -54,7 +54,7 @@ class TestValidateAndCompleteParameters:
         assert MAGSensor.OBS in sensors
 
     def test_l1b_sensors_only_adds_default_modes(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        modes, _sensors, _frames = _validate_and_complete_parameters(
             ScienceLevel.l1b, None, [MAGSensor.IBS], None
         )
         assert modes is not None
@@ -68,7 +68,7 @@ class TestValidateAndCompleteParameters:
             )
 
     def test_l2_modes_only_adds_default_reference_frames(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        _modes, _sensors, frames = _validate_and_complete_parameters(
             ScienceLevel.l2, [ScienceMode.Normal], None, None
         )
         assert frames is not None
@@ -76,7 +76,7 @@ class TestValidateAndCompleteParameters:
         assert ReferenceFrame.DSRF in frames
 
     def test_l2_frames_only_adds_default_modes(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        modes, _sensors, _frames = _validate_and_complete_parameters(
             ScienceLevel.l2, None, None, [ReferenceFrame.GSE]
         )
         assert modes is not None
@@ -84,13 +84,13 @@ class TestValidateAndCompleteParameters:
         assert ScienceMode.Burst in modes
 
     def test_l1d_modes_only_adds_reference_frames(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        _modes, _sensors, frames = _validate_and_complete_parameters(
             ScienceLevel.l1d, [ScienceMode.Normal], None, None
         )
         assert frames is not None
 
     def test_l1c_sensors_only_adds_default_modes(self):
-        modes, sensors, frames = _validate_and_complete_parameters(
+        modes, _sensors, _frames = _validate_and_complete_parameters(
             ScienceLevel.l1c, None, [MAGSensor.OBS], None
         )
         assert modes is not None
@@ -99,7 +99,7 @@ class TestValidateAndCompleteParameters:
     def test_l1a_modes_and_sensors_returned_unchanged(self):
         input_modes = [ScienceMode.Normal]
         input_sensors = [MAGSensor.IBS]
-        modes, sensors, frames = _validate_and_complete_parameters(
+        modes, sensors, _frames = _validate_and_complete_parameters(
             ScienceLevel.l1a, input_modes, input_sensors, None
         )
         assert modes == input_modes

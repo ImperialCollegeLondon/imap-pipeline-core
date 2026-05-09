@@ -19,7 +19,7 @@ def _make_mock_process(returncode=0, output_lines=None):
     mock_process = MagicMock()
     mock_process.returncode = returncode
     # readline returns lines then "" to signal end
-    mock_process.stdout.readline.side_effect = output_lines + [""]
+    mock_process.stdout.readline.side_effect = [*output_lines, ""]
     mock_process.wait.return_value = None
     return mock_process
 
