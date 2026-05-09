@@ -165,7 +165,7 @@ def test_migration_skips_file_already_having_data_hash(
     store_dir.mkdir(parents=True)
 
     # Use the full helper that DOES write data_hash (current code path)
-    from tests.test_DBIndexedDatastoreFileManager import _write_layer_pair
+    from tests.integration.test_DBIndexedDatastoreFileManager import _write_layer_pair
 
     json_path, csv_path = _write_layer_pair(
         store_dir, "quality-norm", date, 1, csv_content
