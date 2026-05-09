@@ -23,7 +23,7 @@ from tests.util.miscellaneous import (
 )
 
 IALIRT_PACKET_DEFINITION = (
-    Path(__file__).parent.parent / "src" / "imap_mag" / "packet_def"
+    Path(__file__).parent.parent.parent / "src" / "imap_mag" / "packet_def"
 )
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from imap_mag.util.CCSDSBinaryPacketFile import CCSDSBinaryPacketFile
 
-TEST_DATA = Path(__file__).parent / "test_data"
+TEST_DATA = Path(__file__).parent.parent / "test_data"
 HK_PW_PKTS = TEST_DATA / "MAG_HSK_PW.pkts"
 
 

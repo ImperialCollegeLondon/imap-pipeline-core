@@ -7,10 +7,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import imap_data_access
+import imap_data_access.io
 import pytest
 from pydantic import SecretStr
 
-from imap_mag.client.SDCDataAccess import SDCDataAccess
+from imap_mag.cli.fetch.spice import fetch_spice
+from imap_mag.client.SDCDataAccess import SDCDataAccess, SDCUploadError
 from imap_mag.util import Environment
 
 
@@ -641,10 +643,6 @@ class TestUploadUnit:
         mock_upload.assert_called_once_with("test_file.cdf")
 
     def test_upload_raises_sdc_upload_error_on_api_failure(self):
-        import imap_data_access.io
-
-        from imap_mag.client.SDCDataAccess import SDCUploadError
-
         client = self._make_client()
         with patch(
             "imap_data_access.upload",
@@ -742,7 +740,7 @@ def test_spice_download(wiremock_manager, temp_folder_path):
     # Setup download response - return the actual test SPICE file
     # Note: imap_data_access adds /imap/spice/ prefix to the download path
     spice_file_path = (
-        Path(__file__).parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
+        Path(__file__).parent.parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
     )
     wiremock_manager.add_file_mapping(
         "/download/imap/spice/sclk/imap_sclk_0032.tsc",
@@ -787,7 +785,7 @@ def test_spice_download_multiple_files(wiremock_manager, temp_folder_path):
     # Setup download responses - we'll use the same file for all downloads as a test
     # Note: imap_data_access adds /imap/spice/ prefix to the download path
     spice_file_path = (
-        Path(__file__).parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
+        Path(__file__).parent.parent / "test_data" / "spice" / "imap_sclk_0032.tsc"
     )
 
     for item in sample_data:
@@ -813,8 +811,6 @@ def call_fetch_spice(wiremock_manager, start_date):
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        from imap_mag.cli.fetch.spice import fetch_spice
-
         downloaded = fetch_spice(
             ingest_start_day=start_date,
         )

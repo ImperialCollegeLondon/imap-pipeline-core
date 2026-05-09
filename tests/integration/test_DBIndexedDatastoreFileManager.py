@@ -8,12 +8,14 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from imap_db.model import File
 from imap_mag import __version__
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io import (
     DatastoreFileManager,
@@ -1073,11 +1075,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
     """Unit tests for DBIndexedDatastoreFileManager without Docker."""
 
     def _make_manager(self, tmp_path, mock_db=None):
-        from unittest.mock import MagicMock, patch
-
-        from imap_mag.config.AppSettings import AppSettings
-        from imap_mag.io import DBIndexedDatastoreFileManager
-
         mock_settings = MagicMock(spec=AppSettings)
         mock_settings.data_store = tmp_path
 
@@ -1098,10 +1095,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
     def test_delete_file_marks_file_as_deleted_and_removes_from_filesystem(
         self, tmp_path
     ):
-        from unittest.mock import MagicMock, patch
-
-        from imap_mag.io import DBIndexedDatastoreFileManager
-
         mock_db = MagicMock(spec=Database)
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
@@ -1130,10 +1123,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
     def test_delete_file_does_not_error_when_file_does_not_exist_on_filesystem(
         self, tmp_path
     ):
-        from unittest.mock import MagicMock, patch
-
-        from imap_mag.io import DBIndexedDatastoreFileManager
-
         mock_db = MagicMock(spec=Database)
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
@@ -1155,10 +1144,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file.set_deleted.assert_called_once()
 
     def test_archive_file_copies_to_archive_and_marks_deleted(self, tmp_path):
-        from unittest.mock import MagicMock, patch
-
-        from imap_mag.io import DBIndexedDatastoreFileManager
-
         mock_db = MagicMock(spec=Database)
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path

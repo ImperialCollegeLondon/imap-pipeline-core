@@ -17,8 +17,9 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     Validity,
     ValueType,
 )
+from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
-DATASTORE = Path(__file__).parent / "datastore"
+DATASTORE = Path(__file__).parent.parent / "datastore"
 LAYER_CSV = (
     DATASTORE / "calibration/layers/2025/10/imap_mag_noop-layer-data_20251017_v001.csv"
 )
@@ -191,7 +192,6 @@ class TestCalibrationLayerConvertToRawEpoch:
 
 class TestCalibrationLayerSetMetadata:
     def test_set_metadata_updates_validity_from_science_layer(self):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         layer = _make_layer_with_contents()
         science = ScienceLayer(
@@ -224,7 +224,6 @@ class TestCalibrationLayerSetMetadata:
         assert layer.mission == Mission.IMAP
 
     def test_set_metadata_raises_when_contents_none(self):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         layer = _make_layer_with_contents()
         layer._contents = None
@@ -256,7 +255,6 @@ class TestCalibrationLayerSetMetadata:
 
 class TestCalibrationLayerCreateZeroOffsetLayer:
     def _make_science_layer(self):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         science = ScienceLayer(
             id="sci",
@@ -287,7 +285,6 @@ class TestCalibrationLayerCreateZeroOffsetLayer:
         return science
 
     def test_creates_zero_offset_layer_from_science(self):
-        from mag_toolkit.calibration import CalibrationLayer
 
         science = self._make_science_layer()
         result = CalibrationLayer.create_zero_offset_layer_from_science(science)
@@ -298,14 +295,11 @@ class TestCalibrationLayerCreateZeroOffsetLayer:
         assert result._contents[CONSTANTS.CSV_VARS.OFFSET_X].iloc[0] == 0.0
 
     def test_raises_when_science_layer_is_none(self):
-        from mag_toolkit.calibration import CalibrationLayer
 
         with pytest.raises(ValueError, match="Science layer must be provided"):
             CalibrationLayer.create_zero_offset_layer_from_science(None)
 
     def test_raises_when_science_layer_has_no_data_path(self):
-        from mag_toolkit.calibration import CalibrationLayer
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         science = ScienceLayer(
             id="sci",
@@ -355,7 +349,6 @@ class TestCalibrationLayerWriteToJsonWithNullDataFilename:
 
 class TestCreateZeroOffsetLayerWithContentDate:
     def test_creates_layer_with_data_filename_when_content_date_set(self):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         science = ScienceLayer(
             id="sci",
@@ -397,7 +390,6 @@ class TestCreateZeroOffsetLayerWithContentDate:
         assert result.metadata.data_filename is not None
 
     def test_raises_when_science_contents_none_after_load(self):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         science = ScienceLayer(
             id="sci",
@@ -433,7 +425,6 @@ class TestValuesFromCsvEmpty:
 
 class TestScienceLayerWriteToCsv:
     def test_write_to_csv_raises_when_contents_none(self, tmp_path):
-        from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
         layer = ScienceLayer(
             id="test",

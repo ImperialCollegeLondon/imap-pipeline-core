@@ -1,7 +1,6 @@
 import os
 import re
 from datetime import datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 
@@ -10,7 +9,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
 from imap_mag.util import Environment, HKPacket
-from prefect_server.pollHK import generate_flow_run_name, poll_hk_flow
+from prefect_server.pollHK import poll_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
@@ -537,34 +536,3 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 
         assert workflow_progress.get_last_checked_date() is None
         assert workflow_progress.get_progress_timestamp() is None
-
-
-class TestPollHKFlowGenerateName:
-    def test_auto_run_includes_last_update(self):
-        mock_params = {
-            "hk_packets": list(HKPacket),
-            "start_date": None,
-            "end_date": None,
-        }
-        with patch("prefect_server.pollHK.flow_run") as mock_flow_run:
-            with patch(
-                "prefect_server.pollHK.DatetimeProvider.end_of_today",
-                return_value=datetime(2025, 6, 1, 23, 59, 59),
-            ):
-                mock_flow_run.parameters = mock_params
-                name = generate_flow_run_name()
-
-        assert "last-update" in name
-        assert "all-HK" in name
-
-    def test_specific_dates_included_in_name(self):
-        mock_params = {
-            "hk_packets": [HKPacket.SID1],
-            "start_date": datetime(2025, 6, 1),
-            "end_date": datetime(2025, 6, 30),
-        }
-        with patch("prefect_server.pollHK.flow_run") as mock_flow_run:
-            mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
-
-        assert "01-06-2025" in name

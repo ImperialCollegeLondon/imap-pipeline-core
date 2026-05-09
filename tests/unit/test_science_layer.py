@@ -17,7 +17,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 )
 from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
-DATASTORE = Path(__file__).parent / "datastore"
+DATASTORE = Path(__file__).parent.parent / "datastore"
 SCIENCE_CDF = (
     DATASTORE / "science/mag/l1c/2025/10/imap_mag_l1c_norm-mago_20251017_v001.cdf"
 )

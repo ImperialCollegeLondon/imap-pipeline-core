@@ -22,7 +22,7 @@ from imap_mag.util.constants import CONSTANTS
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
 
 IALIRT_PACKET_DEFINITION = (
-    Path(__file__).parent.parent / "src" / "imap_mag" / "packet_def"
+    Path(__file__).parent.parent.parent / "src" / "imap_mag" / "packet_def"
 )
 
 

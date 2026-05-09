@@ -5,13 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
+from imap_db.model import Base, File
 from imap_mag.db.Database import Database, update_database_with_progress
 
 
 def _make_file(name, path, hash_val, *, deletion_date=None, last_modified_date=None):
     """Build a minimal valid File object for testing."""
-    from imap_db.model import File
-
     kwargs = dict(
         name=name,
         path=path,
@@ -84,8 +83,6 @@ class TestDatabaseInit:
 
 class TestUpdateDatabaseWithProgress:
     def test_updates_last_checked_timestamp(self, tmp_path):
-        from imap_db.model import Base
-
         db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
         Base.metadata.create_all(db.engine)
 
@@ -99,8 +96,6 @@ class TestUpdateDatabaseWithProgress:
         assert progress.progress_timestamp == latest
 
     def test_does_not_update_progress_when_latest_is_older(self, tmp_path):
-        from imap_db.model import Base
-
         db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
         Base.metadata.create_all(db.engine)
 
@@ -117,8 +112,6 @@ class TestUpdateDatabaseWithProgress:
         assert progress.progress_timestamp == newer_progress
 
     def test_handles_none_latest_timestamp(self, tmp_path):
-        from imap_db.model import Base
-
         db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
         Base.metadata.create_all(db.engine)
 
@@ -132,8 +125,6 @@ class TestUpdateDatabaseWithProgress:
 class TestDatabaseOperations:
     @pytest.fixture
     def sqlite_db(self, tmp_path):
-        from imap_db.model import Base
-
         db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
         Base.metadata.create_all(db.engine)
         return db
