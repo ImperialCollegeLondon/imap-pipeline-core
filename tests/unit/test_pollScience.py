@@ -1,6 +1,5 @@
 """Unit tests for pollScience helper functions and flow name generation."""
 
-import asyncio
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,6 +13,7 @@ from prefect_server.pollScience import (
     get_latest_ingestion_date,
     poll_science_flow,
 )
+
 
 class TestGetLatestIngestionDate:
     def _make_handler_with_ingestion(self, ingestion_date: datetime | None):

@@ -10,6 +10,7 @@ from imap_mag.check import IALiRTAnomaly, SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt as check_ialirt_cli
 from prefect_server.checkIALiRT import check_ialirt_flow, send_monthly_test_message
 
+
 class TestSendMonthlyTestMessage:
     """Unit tests for send_monthly_test_message without Docker."""
 

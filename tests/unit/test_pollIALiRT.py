@@ -15,6 +15,7 @@ from prefect_server.pollIALiRT import (
     poll_ialirt_hk_flow,
 )
 
+
 class TestDoPollUnit:
     """Unit tests for _do_poll helper function without Docker."""
 
