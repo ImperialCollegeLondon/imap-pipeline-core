@@ -32,6 +32,11 @@ def mock_datetime_provider_today_20251021(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 21))
 
 
+@pytest.fixture(scope="function", autouse=False)
+def mock_datetime_provider_today_20251025(monkeypatch):
+    monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 25))
+
+
 def _setup_ialirt_datastore(
     temp_datastore: Path,  # noqa: F811
     date_str: str,
