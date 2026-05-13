@@ -16,6 +16,7 @@ from calibration_generation.cal_utils import (
     get_default_matrices,
     get_one_sensor_stacked_offsets,
     get_stacked_identity_matrices,
+    get_versioned_matrices,
     verify_frame_transforms,
     verify_offsets,
 )
@@ -26,6 +27,9 @@ app = typer.Typer()
 class VALID_MATRIX_TYPES(Enum):
     IDENTITY = "identity"
     DEFAULT = "default"
+    VERSION_1 = "version_1"
+    VERSION_8 = "version_8"
+    VERSION_9 = "version_9"
 
 
 class OFFSET_TYPES(Enum):
@@ -101,7 +105,12 @@ def ialirt(
         frame_transform_magi = get_stacked_identity_matrices()
     elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
         frame_transform_mago, frame_transform_magi = get_default_matrices()
-
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_1:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(1)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_8:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(8)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_9:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(9)
     offsets = get_offsets(offset_type)
     g = gradiometer_value * np.eye(3, 3)
     fn = generate_ialirt_file(
@@ -129,6 +138,12 @@ def l2(
         frame_transform_magi = get_stacked_identity_matrices()
     elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
         frame_transform_mago, frame_transform_magi = get_default_matrices()
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_1:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(1)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_8:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(8)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_9:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(9)
 
     fn = generate_l2_file(
         version=version,
@@ -161,6 +176,12 @@ def l1d(
         frame_transform_magi = get_stacked_identity_matrices()
     elif matrix_type == VALID_MATRIX_TYPES.DEFAULT:
         frame_transform_mago, frame_transform_magi = get_default_matrices()
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_1:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(1)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_8:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(8)
+    elif matrix_type == VALID_MATRIX_TYPES.VERSION_9:
+        frame_transform_mago, frame_transform_magi = get_versioned_matrices(9)
 
     g = gradiometer_value * np.eye(3, 3)
 
