@@ -91,6 +91,15 @@ async def poll_ialirt_flow(
             }
         ),
     ] = False,
+    force_notification: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force notification",
+                "description": "If true, the flow will send a notification even if no new data was downloaded.",
+            }
+        ),
+    ] = False,
     wait_for_new_data_to_arrive: Annotated[
         bool,
         Field(
@@ -169,6 +178,7 @@ async def poll_ialirt_flow(
             start_date=DatetimeProvider.today() - timedelta(days=2),
             end_date=DatetimeProvider.now(),
             combined_plot=True,
+            force_latest_update=True,
         )
 
         # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
@@ -176,7 +186,9 @@ async def poll_ialirt_flow(
             pytz.timezone("Europe/London")
         )
 
-        if wait_for_new_data_to_arrive and (uk_end_time.hour == 6):
+        if wait_for_new_data_to_arrive and (
+            uk_end_time.hour == 6 or force_notification
+        ):
             imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                 imap_notification_webhook_name
             )

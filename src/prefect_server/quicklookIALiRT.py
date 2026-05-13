@@ -53,6 +53,15 @@ async def quicklook_ialirt_flow(
             }
         ),
     ] = False,
+    force_latest_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force update of latest image",
+                "description": "Whether to force the update of the latest quicklook I-ALiRT image",
+            }
+        ),
+    ] = False,
 ) -> None:
     """
     Plot I-ALiRT data from data store.
@@ -63,4 +72,5 @@ async def quicklook_ialirt_flow(
         end_date=end_date,
         combined_plot=combined_plot,
         save_mode=SaveMode.LocalAndDatabase,
+        force_latest_update=force_latest_update,
     )
