@@ -1095,9 +1095,7 @@ class TestDBIndexedDatastoreFileManagerUnit:
     def test_delete_file_marks_file_as_deleted_and_removes_from_filesystem(
         self, tmp_path
     ):
-        mock_db = MagicMock(spec=Database)
-        mock_settings = MagicMock()
-        mock_settings.data_store = tmp_path
+        manager, mock_db, _ = self._make_manager(tmp_path)
 
         source_file = tmp_path / "test_file.csv"
         source_file.write_text("content")
@@ -1105,14 +1103,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file = MagicMock(spec=File)
         mock_file.path = "test_file.csv"
         mock_file.deletion_date = None
-
-        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(
-                database=mock_db, settings=mock_settings
-            )
-
-        manager._DBIndexedDatastoreFileManager__settings = mock_settings
-        manager._DBIndexedDatastoreFileManager__database = mock_db
 
         manager.delete_file(mock_file)
 
@@ -1123,30 +1113,18 @@ class TestDBIndexedDatastoreFileManagerUnit:
     def test_delete_file_does_not_error_when_file_does_not_exist_on_filesystem(
         self, tmp_path
     ):
-        mock_db = MagicMock(spec=Database)
-        mock_settings = MagicMock()
-        mock_settings.data_store = tmp_path
+        manager, _mock_db, _ = self._make_manager(tmp_path)
 
         mock_file = MagicMock(spec=File)
         mock_file.path = "nonexistent_file.csv"
         mock_file.deletion_date = None
-
-        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(
-                database=mock_db, settings=mock_settings
-            )
-
-        manager._DBIndexedDatastoreFileManager__settings = mock_settings
-        manager._DBIndexedDatastoreFileManager__database = mock_db
 
         manager.delete_file(mock_file)
 
         mock_file.set_deleted.assert_called_once()
 
     def test_archive_file_copies_to_archive_and_marks_deleted(self, tmp_path):
-        mock_db = MagicMock(spec=Database)
-        mock_settings = MagicMock()
-        mock_settings.data_store = tmp_path
+        manager, mock_db, _ = self._make_manager(tmp_path)
 
         source_file = tmp_path / "subdir" / "test_file.csv"
         source_file.parent.mkdir(parents=True)
@@ -1159,14 +1137,6 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file = MagicMock(spec=File)
         mock_file.path = "subdir/test_file.csv"
         mock_file.archive_to_new_file_path.return_value = mock_archived_file
-
-        with patch("imap_mag.io.DBIndexedDatastoreFileManager.DatastoreFileManager"):
-            manager = DBIndexedDatastoreFileManager(
-                database=mock_db, settings=mock_settings
-            )
-
-        manager._DBIndexedDatastoreFileManager__settings = mock_settings
-        manager._DBIndexedDatastoreFileManager__database = mock_db
 
         manager.archive_file(mock_file, archive_folder)
 

@@ -19,17 +19,9 @@ from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
 class TestCleanupFlowNoTasksMatchUnit:
     def test_cleanup_flow_returns_skipped_when_no_tasks_match(self):
-        mock_settings = MagicMock()
-        mock_settings.datastore_cleanup.tasks = []
-        mock_settings.datastore_cleanup.dry_run = False
-
         mock_db = MagicMock()
 
         with (
-            patch(
-                "prefect_server.datastoreCleanupFlow.AppSettings",
-                return_value=mock_settings,
-            ),
             patch(
                 "prefect_server.datastoreCleanupFlow.Database",
                 return_value=mock_db,

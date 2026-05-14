@@ -13,6 +13,7 @@ from imap_mag.data_pipelines import (
 )
 from imap_mag.data_pipelines.SpinTablePipeline import SpinTablePipeline
 from imap_mag.io.file.SpinTablePathHandler import SpinTablePathHandler
+from prefect_server.pollSpinTable import generate_flow_run_name
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
@@ -25,7 +26,6 @@ PROGRESS_ITEM_ID = SpinTablePipeline.PROGRESS_ITEM_ID
 
 class TestPollSpinTableFlowGenerateName:
     def test_generate_flow_run_name_with_auto_run(self):
-        from prefect_server.pollSpinTable import generate_flow_run_name
 
         mock_params = {"run_parameters": AutomaticRunParameters()}
 
@@ -36,7 +36,6 @@ class TestPollSpinTableFlowGenerateName:
         assert "last-update" in name
 
     def test_generate_flow_run_name_with_date_params(self):
-        from prefect_server.pollSpinTable import generate_flow_run_name
 
         run_params = FetchByDatesRunParameters(
             start_date=datetime(2025, 6, 1),

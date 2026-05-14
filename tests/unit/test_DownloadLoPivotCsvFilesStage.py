@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import FetchByDatesRunParameters
 from imap_mag.data_pipelines.DownloadLoPivotCsvFilesStage import (
     DownloadLoPivotCsvFilesStage,
@@ -15,14 +16,8 @@ from imap_mag.data_pipelines.Record import Record
 
 class TestDownloadLoPivotCsvFilesStageProcess:
     def _make_stage(self, tmp_path, client=None):
-        mock_settings = MagicMock()
-        mock_settings.fetch_webtcad = MagicMock()
-        mock_settings.fetch_webtcad.api = MagicMock()
-        mock_settings.fetch_webtcad.api.system_id = "IMAP"
-        mock_settings.setup_work_folder_for_command.return_value = tmp_path
-
         mock_client = client or MagicMock()
-        stage = DownloadLoPivotCsvFilesStage(client=mock_client, settings=mock_settings)
+        stage = DownloadLoPivotCsvFilesStage(client=mock_client, settings=AppSettings())  # type: ignore
         stage._run_parameters = FetchByDatesRunParameters(
             start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1)
         )

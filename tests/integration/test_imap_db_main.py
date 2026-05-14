@@ -2,10 +2,11 @@
 
 from unittest.mock import MagicMock, patch
 
+from imap_db.main import create_db, drop_db, query_db, upgrade_db
+
 
 class TestCreateDb:
     def test_create_db_when_database_does_not_exist(self):
-        from imap_db.main import create_db
 
         with (
             patch("imap_db.main.database_exists", return_value=False),
@@ -16,7 +17,6 @@ class TestCreateDb:
         mock_create.assert_called_once()
 
     def test_create_db_skips_when_database_exists(self):
-        from imap_db.main import create_db
 
         with (
             patch("imap_db.main.database_exists", return_value=True),
@@ -27,7 +27,6 @@ class TestCreateDb:
         mock_create.assert_not_called()
 
     def test_create_db_with_schema_creates_tables(self):
-        from imap_db.main import create_db
 
         mock_engine = MagicMock()
 
@@ -41,7 +40,6 @@ class TestCreateDb:
         mock_base.metadata.create_all.assert_called_once_with(mock_engine)
 
     def test_create_db_with_data_adds_sample_file(self):
-        from imap_db.main import create_db
 
         mock_session = MagicMock()
         mock_session.__enter__ = MagicMock(return_value=mock_session)
@@ -60,7 +58,6 @@ class TestCreateDb:
 
 class TestDropDb:
     def test_drop_db_when_database_exists(self):
-        from imap_db.main import drop_db
 
         with (
             patch("imap_db.main.database_exists", return_value=True),
@@ -71,7 +68,6 @@ class TestDropDb:
         mock_drop.assert_called_once()
 
     def test_drop_db_skips_when_database_does_not_exist(self):
-        from imap_db.main import drop_db
 
         with (
             patch("imap_db.main.database_exists", return_value=False),
@@ -84,7 +80,6 @@ class TestDropDb:
 
 class TestQueryDb:
     def test_query_db_runs_select_statement(self):
-        from imap_db.main import query_db
 
         mock_session = MagicMock()
         mock_session.scalars.return_value = []
@@ -98,7 +93,6 @@ class TestQueryDb:
 
 class TestUpgradeDb:
     def test_upgrade_db_runs_alembic_migration(self):
-        from imap_db.main import upgrade_db
 
         with patch("imap_db.main.command") as mock_command:
             upgrade_db()
