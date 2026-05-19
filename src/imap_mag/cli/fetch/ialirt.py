@@ -33,8 +33,7 @@ def _create_fetch_ialirt(app_settings: AppSettings) -> FetchIALiRT:
     )
 
     datastore_finder = FileFinder(app_settings.data_store)
-    # work_folder = app_settings.setup_work_folder_for_command(instrument_settings)
-    work_folder = Path.cwd()
+    work_folder = app_settings.setup_work_folder_for_command(instrument_settings)
 
     initialiseLoggingForCommand(
         work_folder
@@ -115,8 +114,7 @@ def fetch_ialirt(
     else:
         logger.debug(f"Downloaded {len(downloaded_files)} files.")
 
-    # return _publish_files(app_settings, downloaded_files, fetch_mode, instrument)
-    return downloaded_files
+    return _publish_files(app_settings, downloaded_files, fetch_mode, instrument)
 
 
 # E.g.,
