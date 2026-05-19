@@ -18,6 +18,7 @@ class IALiRTPathHandler(IFilePathHandler):
     root_folder: str = "ialirt"
 
     mission: str = "imap"
+    instrument: str = "mag"
     content_date: datetime | None = None  # date data belongs to
     extension: str = "csv"
 
@@ -37,7 +38,13 @@ class IALiRTPathHandler(IFilePathHandler):
         super()._check_property_values("file name", ["content_date"])
         assert self.content_date
 
-        return f"{self.mission}_ialirt_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
+        date_str = self.content_date.strftime("%Y%m%d")
+
+        # if instrument is mag, skipt it in the name to match legacy filenames
+        if self.instrument.lower() == "mag":
+            return f"{self.mission}_ialirt_{date_str}.{self.extension}"
+        else:
+            return f"{self.mission}_{self.instrument.lower()}_ialirt_{date_str}.{self.extension}"
 
     def add_metadata(self, metadata: dict) -> None:
         raise NotImplementedError()
@@ -47,18 +54,33 @@ class IALiRTPathHandler(IFilePathHandler):
 
     @classmethod
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
+
         match = re.match(
-            r"imap_ialirt_(?P<date>\d{8})\.(?P<ext>\w+)",
+            r"imap_ialirt_(?P<instrument>\w+)_(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
             f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with HK regex."
         )
 
-        if match is None:
-            return None
-        else:
+        if match:
             return cls(
+                instrument=match["instrument"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 extension=match["ext"],
             )
+
+        # Legacy name If no instrument group found it is mag
+        filename_str = Path(filename).name
+        mag_match = re.match(
+            r"imap_ialirt_(?P<date>\d{8})\.(?P<ext>\w+)",
+            filename_str,
+        )
+
+        if mag_match:
+            return cls(
+                instrument="mag",
+                content_date=datetime.strptime(mag_match["date"], "%Y%m%d"),
+                extension=mag_match["ext"],
+            )
+        return None

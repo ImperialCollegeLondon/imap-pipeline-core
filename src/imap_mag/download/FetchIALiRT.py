@@ -37,21 +37,25 @@ class FetchIALiRT:
         self.__datastore_finder = datastore_finder
         self.__packetDefinitionFolder = get_packet_definition_folder(packet_definition)
 
-    def download_mag_to_csv(
+    def download_instrument_data(
         self,
+        instrument: str,
         start_date: datetime,
         end_date: datetime,
-    ) -> dict[Path, IALiRTPathHandler]:
-        """Retrieve I-ALiRT MAG science data."""
+    ) -> dict[Path, IFilePathHandler]:
+        """Retrieve I-ALiRT science data for a specific instrument."""
+
+        processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
+        process_fn = processing_map.get(instrument.lower(), lambda df: df)
 
         return self.__download_to_csv(
-            instrument="mag",
+            instrument=instrument,
             start_date=start_date,
             end_date=end_date,
             path_handler_factory=lambda content_date: IALiRTPathHandler(
-                content_date=content_date
+                content_date=content_date, instrument=instrument
             ),
-            process_fn=lambda df: process_ialirt_mag_data(df),
+            process_fn=process_fn,
             max_hours_per_chunk=4,  # Limit to 4 hours per chunk to avoid 400 error
         )
 
@@ -59,7 +63,7 @@ class FetchIALiRT:
         self,
         start_date: datetime,
         end_date: datetime,
-    ) -> dict[Path, IALiRTHKPathHandler]:
+    ) -> dict[Path, IFilePathHandler]:
         """Retrieve I-ALiRT MAG HK data."""
 
         return self.__download_to_csv(
@@ -197,7 +201,7 @@ class FetchIALiRT:
                     f"I-ALiRT {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
                 )
 
-                downloaded_files[file_path] = path_handler
+                downloaded_files[file_path] = path_handler  # type: ignore
         else:
             logger.debug(f"No {instrument} data downloaded from I-ALiRT Data Access.")
 

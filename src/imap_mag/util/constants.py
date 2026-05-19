@@ -30,3 +30,12 @@ class CONSTANTS:
         IALIRT_PROGRESS_ID = "MAG_IALIRT"
         IALIRT_HK_PROGRESS_ID = "MAG_IALIRT_HK"
         IALIRT_VALIDATION_ID = "IALIRT_VALIDATION"
+
+    class INSTRUMENTS:
+        MAG_IALIRT = "mag"
+        MAG_IALIRT_HK = "mag_hk"
+        IALIRT_HIT = "hit"
+        IALIRT_SWE = "swe"
+        IALIRT_SWAPI = "swapi"
+        IALIRT_CODICE_LO = "codice_lo"
+        IALIRT_CODICE_HI = "codice_hi"

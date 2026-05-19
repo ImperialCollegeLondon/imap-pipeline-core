@@ -66,7 +66,17 @@ class IALiRTApiClient:
                 logger.debug(
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
                 )
-                latest_date = max_chunk_date + timedelta(seconds=1)
+
+                next_date = max_chunk_date + timedelta(seconds=1)
+
+                if next_date <= latest_date:
+                    logger.warning(
+                        f"Data timestamps did not advance past {latest_date}. Forcing window forward to {end_date_this_chunk}"
+                    )
+                    latest_date = end_date_this_chunk
+                else:
+                    latest_date = next_date
+
             elif end_date_this_chunk < end_date:
                 logger.debug(
                     f"No data downloaded between {latest_date} and {end_date_this_chunk}, but end date not reached. Advancing latest_date to {end_date_this_chunk} to continue downloading."

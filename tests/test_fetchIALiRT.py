@@ -17,7 +17,7 @@ from imap_mag.download.FetchIALiRT import (
     process_ialirt_mag_data,
 )
 from imap_mag.io import FileFinder
-from imap_mag.io.file import IALiRTPathHandler
+from imap_mag.io.file import IFilePathHandler
 from imap_mag.util.constants import CONSTANTS
 from tests.util.miscellaneous import temp_datastore  # noqa: F401
 
@@ -49,9 +49,12 @@ def test_fetch_ialirt_no_data(
     )  # return empty list
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -86,9 +89,12 @@ def test_fetch_ialirt_single_day_no_existing_data(
     ]
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -141,9 +147,12 @@ def test_fetch_ialirt_multiple_days_no_existing_data(
     ]
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -206,9 +215,12 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
         f.write("2025-05-02T01:00:00,13,14,15\n")
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -276,9 +288,12 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_colu
         f.write("2025-05-02T01:00:00,15,16,17,18,19\n")
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -353,9 +368,12 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_col
         f.write("2025-05-02T01:00:00,19,20,21\n")
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -423,9 +441,12 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
         f.write("2025-05-02T04:00:00,13,14,15\n")
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.
@@ -510,9 +531,12 @@ def test_fetch_ialirt_duplicate_timestamps_different_instruments(
     ]
 
     # Exercise.
-    actual_downloaded: dict[Path, IALiRTPathHandler] = fetch_ialirt.download_mag_to_csv(
-        start_date=datetime(2025, 5, 2),
-        end_date=datetime(2025, 5, 3),
+    actual_downloaded: dict[Path, IFilePathHandler] = (
+        fetch_ialirt.download_instrument_data(
+            instrument="mag",
+            start_date=datetime(2025, 5, 2),
+            end_date=datetime(2025, 5, 3),
+        )
     )
 
     # Verify.

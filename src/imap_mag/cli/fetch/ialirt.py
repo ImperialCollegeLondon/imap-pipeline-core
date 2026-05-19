@@ -10,21 +10,31 @@ from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchIALiRT import FetchIALiRT
 from imap_mag.io import DatastoreFileManager, FileFinder
-from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.util.constants import CONSTANTS
 
 logger = logging.getLogger(__name__)
+
+VALID_INSTRUMENTS = [
+    value
+    for attr, value in CONSTANTS.INSTRUMENTS.__dict__.items()
+    if not attr.startswith("__") and isinstance(value, str)
+]
 
 
 def _create_fetch_ialirt(app_settings: AppSettings) -> FetchIALiRT:
     """Create a FetchIALiRT instance with common configuration."""
 
+    instrument_settings = app_settings.fetch_ialirt
+
     data_access = IALiRTApiClient(
-        app_settings.fetch_ialirt.api.auth_code,
-        app_settings.fetch_ialirt.api.url_base,
+        instrument_settings.api.auth_code,
+        instrument_settings.api.url_base,
     )
+
     datastore_finder = FileFinder(app_settings.data_store)
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_ialirt)
+    # work_folder = app_settings.setup_work_folder_for_command(instrument_settings)
+    work_folder = Path.cwd()
 
     initialiseLoggingForCommand(
         work_folder
@@ -39,11 +49,18 @@ def _publish_files(
     app_settings: AppSettings,
     downloaded_files: dict[Path, IFilePathHandler],
     fetch_mode: FetchMode,
+    instrument: str = CONSTANTS.INSTRUMENTS.MAG_IALIRT,
 ) -> dict[Path, IFilePathHandler]:
     """Publish downloaded files to data store."""
 
-    if not app_settings.fetch_ialirt.publish_to_data_store:
-        logger.info("Files not published to data store based on config.")
+    config_attr = f"fetch_{instrument}"
+
+    instrument_settings = getattr(app_settings, config_attr)
+
+    if not instrument_settings.publish_to_data_store:
+        logger.info(
+            f"Files for {instrument.upper()} not published to data store based on config."
+        )
         return downloaded_files
 
     datastore_manager = DatastoreFileManager.CreateByMode(
@@ -64,6 +81,10 @@ def _publish_files(
 def fetch_ialirt(
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    instrument: Annotated[
+        str,
+        typer.Option(help="Instrument to download data for (e.g., 'mag')"),
+    ] = CONSTANTS.INSTRUMENTS.MAG_IALIRT,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -71,26 +92,31 @@ def fetch_ialirt(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IALiRTPathHandler]:
-    """Download I-ALiRT MAG data from SDC."""
+) -> dict[Path, IFilePathHandler]:
+    """Download I-ALiRT data from SDC for a specific instrument."""
+
+    if instrument.lower() not in [v.lower() for v in VALID_INSTRUMENTS]:
+        raise typer.BadParameter(
+            f"'{instrument}' is not a valid instrument. Choose from: {', '.join(VALID_INSTRUMENTS)}"
+        )
 
     app_settings = AppSettings()  # type: ignore
 
     fetch = _create_fetch_ialirt(app_settings)
 
-    downloaded_ialirt: dict[Path, IALiRTPathHandler] = fetch.download_mag_to_csv(
+    downloaded_files: dict[Path, IFilePathHandler] = fetch.download_instrument_data(
+        instrument=instrument,
         start_date=start_date,
         end_date=end_date,
     )
 
-    if not downloaded_ialirt:
-        logger.info(f"No I-ALiRT MAG data downloaded from {start_date} to {end_date}.")
+    if not downloaded_files:
+        logger.info(f"No I-ALiRT {instrument.upper()} data downloaded.")
     else:
-        logger.debug(
-            f"Downloaded {len(downloaded_ialirt)} files:\n{', '.join(str(f) for f in downloaded_ialirt.keys())}"
-        )
+        logger.debug(f"Downloaded {len(downloaded_files)} files.")
 
-    return _publish_files(app_settings, downloaded_ialirt, fetch_mode)
+    # return _publish_files(app_settings, downloaded_files, fetch_mode, instrument)
+    return downloaded_files
 
 
 # E.g.,
@@ -105,7 +131,7 @@ def fetch_ialirt_hk(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IALiRTHKPathHandler]:
+) -> dict[Path, IFilePathHandler]:
     """Download I-ALiRT MAG HK data from SDC."""
 
     app_settings = AppSettings()  # type: ignore
@@ -114,7 +140,7 @@ def fetch_ialirt_hk(
 
     logger.info(f"Downloading I-ALiRT MAG HK from {start_date} to {end_date}.")
 
-    downloaded_hk: dict[Path, IALiRTHKPathHandler] = fetch.download_mag_hk_to_csv(
+    downloaded_hk: dict[Path, IFilePathHandler] = fetch.download_mag_hk_to_csv(
         start_date=start_date,
         end_date=end_date,
     )
