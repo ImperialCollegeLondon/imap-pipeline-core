@@ -59,15 +59,16 @@ class FetchIALiRT:
             max_hours_per_chunk=4,  # Limit to 4 hours per chunk to avoid 400 error
         )
 
-    def download_mag_hk_to_csv(
+    def download_instrument_hk_data(
         self,
+        instrument: str,
         start_date: datetime,
         end_date: datetime,
     ) -> dict[Path, IFilePathHandler]:
         """Retrieve I-ALiRT MAG HK data."""
 
         return self.__download_to_csv(
-            instrument="mag_hk",
+            instrument=instrument,
             start_date=start_date,
             end_date=end_date,
             path_handler_factory=lambda content_date: IALiRTHKPathHandler(
@@ -255,7 +256,7 @@ def process_ialirt_hk_data(
 
     # Flatten nested mag_hk_status dict into individual columns with mag_hk_ prefix
     if "mag_hk_status" in df.columns:
-        status_df = pd.json_normalize(df["mag_hk_status"])
+        status_df = pd.json_normalize(df["mag_hk_status"])  # type: ignore
         status_df.columns = [f"mag_hk_{col}" for col in status_df.columns]
         status_df.index = df.index
         df = pd.concat([df.drop(columns=["mag_hk_status"]), status_df], axis=1)

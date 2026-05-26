@@ -1,3 +1,4 @@
+import asyncio
 import fnmatch
 import logging
 import os
@@ -7,15 +8,22 @@ from pathlib import Path
 
 from crump import CrumpConfig, sync_file_to_db
 from crump.cdf_extractor import extract_cdf_to_tabular_file
-from prefect import flow
+from prefect import flow, task
 from prefect.states import Completed, Failed
 from prefect_sqlalchemy import SqlAlchemyConnector
 
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
+from imap_mag.util import DatetimeProvider
+from imap_mag.util.constants import (
+    CONSTANTS,
+    VALID_IALIRT_HK_INSTRUMENTS,
+    VALID_IALIRT_INSTRUMENTS,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.prefectUtils import try_get_prefect_logger
+from prefect_server.pollIALiRT import run_ialirt_pipeline_task
+from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
 
 logger = logging.getLogger(__name__)
 
@@ -85,22 +93,19 @@ async def _get_database_connectionstring(
     return db_url
 
 
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POSTGRES_UPLOAD,
+@task(
+    name="Upload Instrument Files to Postgres",
     log_prints=True,
 )
 async def upload_new_files_to_postgres(
+    instrument: str,
+    db_url: str,
     find_files_after: datetime | None = None,
-    paths_to_match: list[str] | None = None,
     how_many: int | None = None,
     job_name: str | None = None,
-    db_env_name_or_block_name_or_block: str
-    | SqlAlchemyConnector
-    | None = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
-    progress_key="postgres-upload",
 ):
     """
-    Upload new CSV and CDF files to PostgreSQL database using crump.
+    Upload new CSV and CDF files for a specific instrument to PostgreSQL database using crump.
 
     This flow:
     1. Finds new/modified files since last run (or since find_files_after)
@@ -124,9 +129,8 @@ async def upload_new_files_to_postgres(
     db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
     started = datetime.now(tz=UTC)
 
-    db_url = await _get_database_connectionstring(
-        app_settings, db_env_name_or_block_name_or_block
-    )
+    progress_key = f"postgres-upload-{instrument.lower()}"
+    paths_to_match = [f"*{instrument.lower()}*"]
 
     # Get workflow progress
     workflow_progress = db.get_workflow_progress(progress_key)
@@ -146,7 +150,7 @@ async def upload_new_files_to_postgres(
     )
 
     logger.info(
-        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date} matching patterns: {paths_to_match}"
+        f"[{instrument.upper()}] Looking for files modified after {last_modified_date}"
     )
 
     # Get new files from database
@@ -161,7 +165,7 @@ async def upload_new_files_to_postgres(
         if any(fnmatch.fnmatch(f.path, p) for p in paths_to_match)
     ]
     logger.info(
-        f"Found {len(new_files_db)} new files. Checked against {len(paths_to_match)} patterns from settings and {len(files)} files match"
+        f"[{instrument.upper()}] Found {len(new_files_db)} new files. Checked against {len(paths_to_match)} patterns from settings and {len(files)} files match"
     )
 
     if files:
@@ -304,7 +308,7 @@ async def upload_new_files_to_postgres(
             result = Failed(message=f"All {failed_count} files failed")
         else:
             result = Completed(
-                message="No work to do 💤", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME
+                message="No work to do", name=PREFECT_CONSTANTS.SKIPPED_STATE_NAME
             )
 
     db.save(workflow_progress)
@@ -312,3 +316,66 @@ async def upload_new_files_to_postgres(
         f"PostgreSQL upload complete: {uploaded_count} succeeded, {failed_count} failed"
     )
     return result
+
+
+@flow(name="Hourly I-ALiRT Postgres Sync", log_prints=True)
+async def ialirt_sync_flow(
+    timeout_seconds: int = 300,  # 5 minutes
+    db_block: str = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
+):
+    """
+    Runs continuously for one hour, polling and uploading all 8 instruments
+    every 5 minutes.
+    """
+    logger = try_get_prefect_logger(__name__)
+    app_settings = AppSettings()  # type: ignore
+
+    auth_code = await get_secret_or_env_var(
+        PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
+        CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
+    )
+    db_url = await _get_database_connectionstring(app_settings, db_block)
+
+    start_time = DatetimeProvider.now()
+    end_of_hour = start_time.replace(minute=59, second=50, microsecond=0)
+
+    logger.info(f"Starting Master Loop. Target shutdown time: {end_of_hour}")
+
+    iteration = 1
+    while True:
+        current_time = DatetimeProvider.now()
+
+        if (end_of_hour - current_time).total_seconds() < timeout_seconds:
+            logger.info(
+                "Approaching hour boundary. Shutting down gracefully to allow next hourly container to take over."
+            )
+            break
+
+        logger.info(f"--- Starting 5-Minute Polling Batch #{iteration} ---")
+
+        upload_futures = []
+        for inst in VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS:
+            # Run the I-ALiRT pipeline for this instrument
+            pipeline_future = run_ialirt_pipeline_task.submit(
+                instrument=inst, auth_code=auth_code
+            )
+
+            # Upload new files to Postgres
+            upload_future = upload_new_files_to_postgres.submit(
+                instrument=inst, db_url=db_url, wait_for=[pipeline_future]
+            )  # type: ignore
+
+            upload_futures.append(upload_future)
+
+        # Wait for all tasks to finish this batch
+        for fut in upload_futures:
+            await fut.wait()
+
+        logger.info(
+            f"Batch #{iteration} complete. Sleeping for {timeout_seconds} seconds."
+        )
+
+        await asyncio.sleep(timeout_seconds)
+        iteration += 1
+
+    return Completed(message="Hourly I-ALiRT Sync completed successfully.")

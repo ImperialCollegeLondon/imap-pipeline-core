@@ -40,7 +40,7 @@ class IALiRTPathHandler(IFilePathHandler):
 
         date_str = self.content_date.strftime("%Y%m%d")
 
-        # if instrument is mag, skipt it in the name to match legacy filenames
+        # if instrument is mag, skip it in the name to match legacy filenames
         if self.instrument.lower() == "mag":
             return f"{self.mission}_ialirt_{date_str}.{self.extension}"
         else:
@@ -70,7 +70,7 @@ class IALiRTPathHandler(IFilePathHandler):
                 extension=match["ext"],
             )
 
-        # Legacy name If no instrument group found it is mag
+        # Legacy name - mag
         filename_str = Path(filename).name
         mag_match = re.match(
             r"imap_ialirt_(?P<date>\d{8})\.(?P<ext>\w+)",

@@ -11,15 +11,13 @@ from imap_mag.config import AppSettings, FetchMode
 from imap_mag.download.FetchIALiRT import FetchIALiRT
 from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
-from imap_mag.util.constants import CONSTANTS
+from imap_mag.util.constants import (
+    CONSTANTS,
+    VALID_IALIRT_HK_INSTRUMENTS,
+    VALID_IALIRT_INSTRUMENTS,
+)
 
 logger = logging.getLogger(__name__)
-
-VALID_INSTRUMENTS = [
-    value
-    for attr, value in CONSTANTS.INSTRUMENTS.__dict__.items()
-    if not attr.startswith("__") and isinstance(value, str)
-]
 
 
 def _create_fetch_ialirt(app_settings: AppSettings) -> FetchIALiRT:
@@ -48,7 +46,7 @@ def _publish_files(
     app_settings: AppSettings,
     downloaded_files: dict[Path, IFilePathHandler],
     fetch_mode: FetchMode,
-    instrument: str = CONSTANTS.INSTRUMENTS.MAG_IALIRT,
+    instrument: str = CONSTANTS.INSTRUMENTS.IALIRT_MAG,
 ) -> dict[Path, IFilePathHandler]:
     """Publish downloaded files to data store."""
 
@@ -83,7 +81,7 @@ def fetch_ialirt(
     instrument: Annotated[
         str,
         typer.Option(help="Instrument to download data for (e.g., 'mag')"),
-    ] = CONSTANTS.INSTRUMENTS.MAG_IALIRT,
+    ] = CONSTANTS.INSTRUMENTS.IALIRT_MAG,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -91,12 +89,12 @@ def fetch_ialirt(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IFilePathHandler]:
+) -> dict[Path, IFilePathHandler]:  # type: ignore
     """Download I-ALiRT data from SDC for a specific instrument."""
 
-    if instrument.lower() not in [v.lower() for v in VALID_INSTRUMENTS]:
+    if instrument.lower() not in [v.lower() for v in VALID_IALIRT_INSTRUMENTS]:
         raise typer.BadParameter(
-            f"'{instrument}' is not a valid instrument. Choose from: {', '.join(VALID_INSTRUMENTS)}"
+            f"'{instrument}' is not a valid instrument. Choose from: {', '.join(VALID_IALIRT_INSTRUMENTS)}"
         )
 
     app_settings = AppSettings()  # type: ignore
@@ -122,6 +120,10 @@ def fetch_ialirt(
 def fetch_ialirt_hk(
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
+    instrument: Annotated[
+        str,
+        typer.Option(help="Instrument to download HK data for (e.g., 'mag')"),
+    ] = CONSTANTS.INSTRUMENTS.IALIRT_MAG_HK,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -132,13 +134,19 @@ def fetch_ialirt_hk(
 ) -> dict[Path, IFilePathHandler]:
     """Download I-ALiRT MAG HK data from SDC."""
 
+    if instrument.lower() not in [v.lower() for v in VALID_IALIRT_HK_INSTRUMENTS]:
+        raise typer.BadParameter(
+            f"'{instrument}' is not a valid instrument. Choose from: {', '.join(VALID_IALIRT_HK_INSTRUMENTS)}"
+        )
+
     app_settings = AppSettings()  # type: ignore
 
     fetch = _create_fetch_ialirt(app_settings)
 
     logger.info(f"Downloading I-ALiRT MAG HK from {start_date} to {end_date}.")
 
-    downloaded_hk: dict[Path, IFilePathHandler] = fetch.download_mag_hk_to_csv(
+    downloaded_hk: dict[Path, IFilePathHandler] = fetch.download_instrument_hk_data(
+        instrument=instrument,
         start_date=start_date,
         end_date=end_date,
     )
