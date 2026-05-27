@@ -91,6 +91,7 @@ async def run_ialirt_polling_pipeline_task(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     flow_run_name=generate_flow_run_name,
     log_prints=True,
+    validate_parameters=False,  # Allow passing through to tasks without Prefect trying to validate the complex types
 )
 async def poll_ialirt_flow(
     run_parameters: Annotated[
@@ -102,13 +103,8 @@ async def poll_ialirt_flow(
                 "description": "Select 'Automatic' to use database trackers, or 'Fetch By Dates' to backfill specific time windows.",
             },
         ),
-    ],
-    timeout_seconds: Annotated[
-        int,
-        Field(
-            description="The polling interval in seconds. Defaults to 300 (5 minutes)."
-        ),
-    ] = PREFECT_CONSTANTS.POLL_IALIRT.DEFAULT_TIMEOUT_SECONDS,
+    ] = AutomaticRunParameters(),
+    timeout_seconds: int = 300,
     use_database: bool = True,
 ):
     """
