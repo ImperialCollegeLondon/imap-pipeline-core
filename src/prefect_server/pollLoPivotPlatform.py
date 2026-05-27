@@ -53,7 +53,7 @@ async def poll_lo_pivot_platform_flow(
     """Poll low pivot platform angle data from WebTCAD LaTiS API."""
 
     database = Database() if use_database else None
-    settings = AppSettings()
+    settings = AppSettings()  # type: ignore
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_LO_PIVOT_PLATFORM.WEBPODA_AUTH_CODE_SECRET_NAME,

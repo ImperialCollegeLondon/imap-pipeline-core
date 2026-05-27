@@ -18,6 +18,7 @@ class PREFECT_CONSTANTS:
         IALIRT_HK_UPDATED = "imap_mag.ialirt_hk.updated"
 
     class POLL_IALIRT:
+        DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
         IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
 
@@ -64,7 +65,7 @@ class PREFECT_CONSTANTS:
 
     class FLOW_NAMES:
         POLL_IALIRT = "poll-ialirt"
-        POLL_IALIRT_HK = "poll-ialirt-hk"
+        IALIRT_POSTGRES_SYNC = "ialirt-postgres-sync"
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
@@ -83,6 +84,7 @@ class PREFECT_CONSTANTS:
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
+        IALIRT_POSTGRES_SYNC = "ialirt-postgres-sync"
         POLL_IALIRT_HK = "poll_ialirt_hk"
         POLL_HK = "poll_hk"
         POLL_SCIENCE = "poll_science"
