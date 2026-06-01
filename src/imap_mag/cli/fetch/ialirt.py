@@ -101,18 +101,18 @@ def fetch_ialirt(
 
     fetch = _create_fetch_ialirt(app_settings)
 
-    downloaded_files: dict[Path, IFilePathHandler] = fetch.download_instrument_data(
+    downloaded_ialirt: dict[Path, IFilePathHandler] = fetch.download_instrument_data(
         instrument=instrument,
         start_date=start_date,
         end_date=end_date,
     )
 
-    if not downloaded_files:
+    if not downloaded_ialirt:
         logger.info(f"No I-ALiRT {instrument.upper()} data downloaded.")
     else:
-        logger.debug(f"Downloaded {len(downloaded_files)} files.")
+        logger.debug(f"Downloaded {len(downloaded_ialirt)} files.")
 
-    return _publish_files(app_settings, downloaded_files, fetch_mode, instrument)
+    return _publish_files(app_settings, downloaded_ialirt, fetch_mode, instrument)
 
 
 # E.g.,

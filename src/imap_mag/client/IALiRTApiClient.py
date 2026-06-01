@@ -69,10 +69,8 @@ class IALiRTApiClient:
 
                 next_date = max_chunk_date + timedelta(seconds=1)
 
+                # avoid getting stuck if API keeps returning same data without advancing in time
                 if next_date <= latest_date:
-                    logger.warning(
-                        f"Data timestamps did not advance past {latest_date}. Forcing window forward to {end_date_this_chunk}"
-                    )
                     latest_date = end_date_this_chunk
                 else:
                     latest_date = next_date
