@@ -50,9 +50,10 @@ def _publish_files(
 ) -> dict[Path, IFilePathHandler]:
     """Publish downloaded files to data store."""
 
-    config_attr = f"fetch_{instrument}"
-
-    instrument_settings = getattr(app_settings, config_attr)
+    instrument_settings = getattr(
+        app_settings,
+        "fetch_ialirt_hk" if instrument.endswith("_hk") else "fetch_ialirt",
+    )
 
     if not instrument_settings.publish_to_data_store:
         logger.info(
@@ -152,9 +153,7 @@ def fetch_ialirt_hk(
     )
 
     if not downloaded_hk:
-        logger.info(
-            f"No I-ALiRT MAG HK data downloaded from {start_date} to {end_date}."
-        )
+        logger.info(f"No I-ALiRT HK data downloaded from {start_date} to {end_date}.")
     else:
         logger.debug(
             f"Downloaded {len(downloaded_hk)} files:\n{', '.join(str(f) for f in downloaded_hk.keys())}"

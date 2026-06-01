@@ -69,7 +69,7 @@ class IALiRTApiClient:
 
                 next_date = max_chunk_date + timedelta(seconds=1)
 
-                # avoid getting stuck if API keeps returning same data without advancing in time
+                # avoid getting stuck if I-ALiRT keeps returning same data without advancing in time
                 if next_date <= latest_date:
                     latest_date = end_date_this_chunk
                 else:

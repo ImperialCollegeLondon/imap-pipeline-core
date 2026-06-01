@@ -15,7 +15,8 @@ class PREFECT_CONSTANTS:
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
-        IALIRT_HK_UPDATED = "imap_mag.ialirt_hk.updated"
+        IALIRT_HK_UPDATED = "imap.ialirt_hk.updated"
+        IALIRT_UPDATED = "imap.ialirt.updated"
 
     class POLL_IALIRT:
         DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes

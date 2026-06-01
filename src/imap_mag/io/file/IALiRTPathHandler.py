@@ -40,7 +40,8 @@ class IALiRTPathHandler(IFilePathHandler):
 
         date_str = self.content_date.strftime("%Y%m%d")
 
-        # if instrument is mag, skip it in the name to match legacy filenames
+        # if instrument is mag, skip it in the name while other instruments include it
+        # e.g. mag data: imap_ialirt_20260201.csv while swe data: imap_ialirt_swe_20260201.csv
         if self.instrument.lower() == "mag":
             return f"{self.mission}_ialirt_{date_str}.{self.extension}"
         else:

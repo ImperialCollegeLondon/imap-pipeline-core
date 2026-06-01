@@ -68,8 +68,9 @@ async def run_ialirt_polling_pipeline_task(
     if not result.success:
         raise RuntimeError(f"I-ALiRT Pipeline failed for {instrument}: {result}")
 
+    logger = try_get_prefect_logger(__name__)
+
     if instrument.endswith("_hk"):
-        logger = try_get_prefect_logger(__name__)
         logger.debug(
             f"Emitting {PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED} event for {instrument}"
         )
@@ -87,6 +88,24 @@ async def run_ialirt_polling_pipeline_task(
             logger.error(
                 f"Failed to emit {PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED} event"
             )
+    else:
+        logger.debug(
+            f"Emitting {PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED} event for {instrument}"
+        )
+
+        event: Event | None = emit_event(
+            event=PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED,
+            resource={
+                "prefect.resource.id": f"prefect.flow-run.{flow_run.id}",
+                "prefect.resource.name": flow_run.name,
+                "prefect.resource.role": "flow-run",
+            },
+            payload={"instrument": instrument, "status": "completed"},
+        )
+        if event is None:
+            logger.error(
+                f"Failed to emit {PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED} event"
+            )
     return result
 
 
@@ -94,7 +113,7 @@ async def run_ialirt_polling_pipeline_task(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     flow_run_name=generate_flow_run_name,
     log_prints=True,
-    validate_parameters=False,  # Allow passing through to tasks without Prefect trying to validate the complex types
+    validate_parameters=False,  # Avoid Prefect trying to validate the complex types
 )
 async def poll_ialirt_flow(
     run_parameters: Annotated[
