@@ -25,7 +25,7 @@ fetch_binary:
 
 fetch_ialirt:
     api:
-        url_base: 'https://ialirt.imap-mission.com'
+        url_base: 'https://ialirt.dev.imap-mission.com'
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
