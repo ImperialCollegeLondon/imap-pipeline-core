@@ -150,6 +150,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         # Delete original from filesystem
         source_path.unlink()
+        # Delete from filesystem if it exists
+        if source_path.exists():
+            logger.info(f"Deleting file {source_path} from filesystem.")
+            source_path.unlink()
+        else:
+            logger.warning(
+                f"File {source_path} does not exist on filesystem. It may have already been deleted."
+            )
 
     def delete_file(self, file: File) -> None:
         """
@@ -167,13 +175,23 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             else Path(file.path)
         )
 
-        # Mark as deleted in database first
-        file.set_deleted()
-        self.__database.save(file)
-
         # Delete from filesystem if it exists
         if file_path.exists():
+            logger.debug(f"Deleting file {file_path} from filesystem.")
             file_path.unlink()
+        else:
+            logger.warning(
+                f"File {file_path} does not exist on filesystem. It may have already been deleted."
+            )
+
+        if file_path.exists():
+            logger.error(f"Failed to delete file {file_path} from filesystem.")
+            raise FileExistsError(f"Failed to delete file {file_path} from filesystem.")
+        else:
+            # Mark as deleted in database first
+            file.set_deleted()
+            self.__database.save(file)
+            logger.debug(f"Deleted file {file_path} from filesystem and DB")
 
     def __get_matching_database_files(
         self, path_handler: SequenceablePathHandler

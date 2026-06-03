@@ -255,7 +255,7 @@ async def test_cleanup_datastore_deletes_non_latest(
     capture_cli_logs,
     test_database,
     temp_datastore,
-    prefect_test_fixture,  # noqa: F811
+    # prefect_test_fixture,
 ):
     """Test that cleanup deletes non-latest files."""
     test_files_info = [
@@ -275,8 +275,9 @@ async def test_cleanup_datastore_deletes_non_latest(
 
         file = _create_test_file_from_path(file_path_str, id, days_old=60)
         test_database.insert_file(file)
+        assert file_path.exists()
 
-    await cleanup_datastore_flow(
+    await cleanup_datastore_flow.fn(
         task_names=["delete-all-non-latest-hk-l1-versions"],
         dry_run=False,
     )
@@ -284,14 +285,8 @@ async def test_cleanup_datastore_deletes_non_latest(
     assert "Deleted" in capture_cli_logs.text
 
     # v001 deleted, v002 still exists
-    assert not (
-        temp_datastore
-        / "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv"
-    ).exists()
-    assert (
-        temp_datastore
-        / "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v002.csv"
-    ).exists()
+    assert not (temp_datastore / test_files_info[0][0]).exists()
+    assert (temp_datastore / test_files_info[1][0]).exists()
 
 
 @pytest.mark.asyncio
