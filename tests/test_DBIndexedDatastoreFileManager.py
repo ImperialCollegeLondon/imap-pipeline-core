@@ -131,18 +131,19 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
         extension="txt",
     )
 
-    mock_database.get_files.return_value = [
-        File(
-            name=path_handler.get_filename(),
-            path=path_handler.get_folder_structure(),
-            descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
-            version=1,
-            hash=hashlib.md5(b"some content").hexdigest(),
-            size=0,
-            content_date=datetime(2025, 5, 2),
-            software_version=__version__,
-        )
-    ]
+    existing_file = File(
+        name=path_handler.get_filename(),
+        path=path_handler.get_folder_structure(),
+        descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
+        version=1,
+        hash=hashlib.md5(b"some content").hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        software_version=__version__,
+    )
+
+    mock_database.get_files.return_value = [existing_file]
+    mock_database.get_files_by_path.return_value = [existing_file]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_datastore_manager.add_file.side_effect = lambda *_: (
@@ -161,12 +162,66 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     mock_database.insert_file.assert_not_called()
 
     assert (
-        f"File {test_file} already exists in database and is the same. Skipping insertion."
+        f"File {test_file} already exists in database with same hash"
         in capture_cli_logs.text
     )
 
     assert actual_file == test_file
     assert actual_path_handler == path_handler
+
+
+def test_DBIndexedDatastoreFileManager_add_file_for_existing_deleted_file_undeletes_file_record(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+    capture_cli_logs,
+    temp_datastore,
+    dynamic_work_folder,
+) -> None:
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+
+    existing_file = File(
+        name=path_handler.get_filename(),
+        path=path_handler.get_folder_structure(),
+        descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
+        version=1,
+        hash=hashlib.md5(b"some content").hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        software_version=__version__,
+        deletion_date=datetime(2025, 5, 3),
+        last_modified_date=datetime(2025, 5, 3),
+    )
+
+    mock_database.get_files.return_value = [existing_file]
+    mock_database.get_files_by_path.return_value = [existing_file]
+
+    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "some content"),
+        path_handler,
+    )
+
+    # Exercise.
+    (actual_file, _) = database_manager.add_file(original_file, path_handler)
+
+    # Verify.
+    mock_database.save.assert_called()
+    assert existing_file.deletion_date is None
+    assert existing_file.last_modified_date > datetime(2025, 5, 3)
+    assert actual_file == test_file
 
 
 def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_in_database(
@@ -193,6 +248,16 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
         extension="txt",
     )
 
+    existing_file = File(
+        name="imap_mag_l1_hsk-pw_20250502_v002.txt",
+        path="hk/mag/l1/hsk-pw/2025/05",
+        descriptor="imap_mag_l1_hsk-pw",
+        version=2,
+        hash=hashlib.md5(b"some content").hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        software_version=__version__,
+    )
     mock_database.get_files.side_effect = [
         [
             File(
@@ -205,18 +270,10 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
                 content_date=datetime(2025, 5, 2),
                 software_version=__version__,
             ),
-            File(
-                name="imap_mag_l1_hsk-pw_20250502_v002.txt",
-                path="hk/mag/l1/hsk-pw/2025/05",
-                descriptor="imap_mag_l1_hsk-pw",
-                version=2,
-                hash=hashlib.md5(b"some content").hexdigest(),
-                size=0,
-                content_date=datetime(2025, 5, 2),
-                software_version=__version__,
-            ),
+            existing_file,
         ]
     ]
+    mock_database.get_files_by_path.return_value = [existing_file]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     mock_datastore_manager.add_file.side_effect = lambda *_: (
@@ -237,7 +294,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
     mock_database.insert_file.assert_not_called()
 
     assert (
-        f"File {test_file} already exists in database and is the same. Skipping insertion."
+        f"File {test_file} already exists in database with same hash"
         in capture_cli_logs.text
     )
 

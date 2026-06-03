@@ -69,9 +69,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         # Add file to database
         if skip_database_insertion:
-            logger.info(
-                f"File {destination_file} already exists in database and is the same. Skipping insertion."
+            files = self.__database.get_files_by_path(
+                File.get_datastore_relative_path(destination_file, self.__settings)
             )
+            if len(files) == 0:
+                raise FileNotFoundError(
+                    f"File {destination_file} expected to exist in database but was not found."
+                )
+            elif len(files) > 1:
+                raise ValueError(
+                    f"Multiple files with path {destination_file} found in database when only one expected."
+                )
+            else:
+                file = files[0]
+                logger.info(
+                    f"File {destination_file} already exists in database with same hash. Updating existing record with new metadata if necessary."
+                )
+                file.set_updated(path_handler)
+                self.__database.save(file)
         else:
             logger.info(f"Inserting {destination_file} into database.")
 
@@ -169,11 +184,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             db: Database instance
             deletion_date: Timestamp to record as deletion date
         """
-        file_path = (
-            self.__settings.data_store / file.path
-            if not Path(file.path).is_absolute()
-            else Path(file.path)
-        )
+        file_path = file.get_full_path(self.__settings)
 
         # Delete from filesystem if it exists
         if file_path.exists():
