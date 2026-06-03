@@ -142,11 +142,12 @@ datastore_cleanup:
           files_older_than: "24h"
           keep_latest_version_only: false
           cleanup_mode: "delete"
-        - name: "delete-30day-old-non-latest-science-versions"
+        - name: "delete-5day-old-non-latest-science-versions"
           paths_to_match:
               - "*science/mag/l1b/*"
               - "*science/mag/l1c/*"
-          files_older_than: "30d"
+              - "*science/mag/l2/*"
+          files_older_than: "5d"
           keep_latest_version_only: true
           cleanup_mode: "delete"
         - name: "delete-all-12week-old-quicklooks"
