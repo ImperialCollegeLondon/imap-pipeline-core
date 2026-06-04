@@ -19,11 +19,6 @@ def _db_record_for_path(test_database, rel_path: str) -> File | None:
     return records[0] if records else None
 
 
-# ---------------------------------------------------------------------------
-# Case 1 - file exists in both disk and database (active)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_index_datastore_skips_already_indexed_file(
     capture_cli_logs,
@@ -58,12 +53,6 @@ async def test_index_datastore_skips_already_indexed_file(
     assert record is not None
     assert record.hash == "existing-hash"
     assert record.deletion_date is None
-    assert "skipped" in capture_cli_logs.text
-
-
-# ---------------------------------------------------------------------------
-# Case 2 - file exists on disk but is not in the database
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -88,11 +77,6 @@ async def test_index_datastore_indexes_new_file(
     assert record is not None
     assert record.deletion_date is None
     assert "indexed" in capture_cli_logs.text
-
-
-# ---------------------------------------------------------------------------
-# Case 3 - file is on disk and in DB but has been soft-deleted
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -141,11 +125,6 @@ async def test_index_datastore_restores_soft_deleted_file(
     assert "restored" in capture_cli_logs.text
 
 
-# ---------------------------------------------------------------------------
-# No recognisable files in datastore
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_index_datastore_empty_datastore(
     capture_cli_logs,
@@ -161,62 +140,3 @@ async def test_index_datastore_empty_datastore(
     # Should complete without errors; no files indexed
     records = test_database.get_files()
     assert len(records) == 0
-
-
-# ---------------------------------------------------------------------------
-# Counts reflected in the log output
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_index_datastore_reports_counts_in_logs(
-    capture_cli_logs,
-    test_database,
-    temp_datastore,
-    prefect_test_fixture,  # noqa: F811
-):
-    """Log output should summarise what was indexed."""
-    new_path = (
-        "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv"
-    )
-    _make_hk_file(temp_datastore, new_path, content="fresh")
-
-    await index_datastore_flow()
-
-    assert "indexed" in capture_cli_logs.text.lower()
-
-
-@pytest.mark.asyncio
-async def test_index_datastore_reports_restored_in_logs(
-    capture_cli_logs,
-    test_database,
-    temp_datastore,
-    prefect_test_fixture,  # noqa: F811
-):
-    """Log output should mention restored files when applicable."""
-    rel_path = (
-        "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv"
-    )
-    full_path = temp_datastore / rel_path
-    _make_hk_file(temp_datastore, rel_path)
-
-    deleted_record = File(
-        name=full_path.name,
-        path=rel_path,
-        descriptor=File.get_descriptor_from_filename(full_path.name),
-        version=1,
-        hash="some-hash",
-        size=full_path.stat().st_size,
-        content_date=None,
-        software_version="1.0.0",
-    )
-    test_database.insert_file(deleted_record)
-
-    record = _db_record_for_path(test_database, rel_path)
-    assert record is not None
-    record.set_deleted()
-    test_database.save(record)
-
-    await index_datastore_flow()
-
-    assert "restored" in capture_cli_logs.text.lower()

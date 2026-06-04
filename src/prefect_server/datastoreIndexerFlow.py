@@ -9,6 +9,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io.DBIndexedDatastoreFileManager import (
     DBIndexedDatastoreFileManager,
+    IndexResult,
 )
 from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -63,11 +64,11 @@ async def index_datastore_flow():
 
         result = datastore_manager.index_existing_file(file, path_handler)
 
-        if result == "indexed":
+        if result == IndexResult.INDEXED:
             total_indexed += 1
-        elif result == "skipped":
+        elif result == IndexResult.SKIPPED:
             total_skipped += 1
-        elif result == "restored":
+        elif result == IndexResult.RESTORED:
             total_restored += 1
 
     logger.info(
@@ -84,7 +85,7 @@ async def index_datastore_flow():
     if total_skipped > 0:
         parts.append(f"{total_skipped} skipped")
 
-    if parts:
+    if total_indexed > 0 or total_restored > 0:
         return Completed(message="Files: " + ", ".join(parts))
     else:
         return Completed(
