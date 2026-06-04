@@ -213,6 +213,7 @@ async def test_index_datastore_reports_restored_in_logs(
     test_database.insert_file(deleted_record)
 
     record = _db_record_for_path(test_database, rel_path)
+    assert record is not None
     record.set_deleted()
     test_database.save(record)
 

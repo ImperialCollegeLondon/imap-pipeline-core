@@ -200,16 +200,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 return "skipped"
 
         # Case 2: no record at all — create one
-        version: int = (
-            path_handler.get_sequence()
-            if path_handler.supports_sequencing()
-            and isinstance(path_handler, SequenceablePathHandler)
-            else (
-                path_handler.version
-                if isinstance(path_handler, VersionedPathHandler)
-                else 0
-            )
-        )
+        if path_handler.supports_sequencing() and isinstance(
+            path_handler, SequenceablePathHandler
+        ):
+            version: int = path_handler.get_sequence()
+        elif isinstance(path_handler, VersionedPathHandler):
+            version = path_handler.version
+        else:
+            version = 0
 
         new_file = File.from_file(
             file=file,
