@@ -151,7 +151,7 @@ def test_update_database_update_needed_old_data(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
-def test_database_insert_file_same_name_different_hash(
+def test_database_upsert_file_same_name_different_hash(
     test_database,  # noqa: F811
     capture_cli_logs,
 ) -> None:
@@ -172,7 +172,7 @@ def test_database_insert_file_same_name_different_hash(
         software_version=__version__,
     )
 
-    test_database.insert_file(file1)
+    test_database.upsert_file(file1)
 
     test_file2 = create_test_file(
         Path(tempfile.gettempdir()) / "test_file.txt", "some other content"
@@ -191,7 +191,7 @@ def test_database_insert_file_same_name_different_hash(
     )
 
     # Exercise.
-    test_database.insert_file(file2)
+    test_database.upsert_file(file2)
 
     # Verify.
     database_files = test_database.get_files(name="test_file.txt")
@@ -199,6 +199,6 @@ def test_database_insert_file_same_name_different_hash(
     assert database_files[0].hash == hashlib.md5(b"some other content").hexdigest()
 
     assert (
-        f"File {test_file2!s} already exists in database with different hash. Replacing."
+        f"File {test_file2!s} record being merged with existing record"
         in capture_cli_logs.text
     )

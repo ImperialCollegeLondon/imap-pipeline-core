@@ -35,6 +35,7 @@ class File(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
     path: Mapped[str] = mapped_column(String(256), unique=True)
+
     descriptor: Mapped[str] = mapped_column(String(128))
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
@@ -68,16 +69,41 @@ class File(Base):
 
         return full_path
 
-    def set_updated(self, path_handler) -> None:
-        now = DatetimeProvider.now()
-        if self.deletion_date is not None:
-            logger.warning(
-                f"File {self.path} is marked as deleted on {self.deletion_date} but is being updated. Clearing deletion date."
+    def merge_record(self, new_file: Self) -> bool:
+        """Merge this file record with a new copy of the file. Returns true if an update was made, false if the existing record is unchanged."""
+        if self.path != new_file.path or self.name != new_file.name:
+            raise ValueError(
+                f"Attempting to merge file {self.path} with a different file {new_file.path}"
             )
-        self.deletion_date = None
+
+        if (
+            self.hash == new_file.hash
+            and self.size == new_file.size
+            and self.file_meta == new_file.file_meta
+            and self.deletion_date == new_file.deletion_date
+            and self.descriptor == new_file.descriptor
+            and self.content_date == new_file.content_date
+            and self.version == new_file.version
+        ):
+            logger.info(f"File record is identical - no updates needed for {self.path}")
+            return False
+
+        logger.info(
+            f"File {new_file.path} record being merged with existing record {self.id}. Updating database entry."
+        )
+
+        self.hash = new_file.hash
+        self.size = new_file.size
+        self.file_meta = new_file.file_meta
+        self.deletion_date = new_file.deletion_date
+        self.descriptor = new_file.descriptor
+        self.content_date = new_file.content_date
+        self.version = new_file.version
+
+        now = DatetimeProvider.now()
         self.last_modified_date = now
         self.software_version = __version__
-        self.file_meta = path_handler.get_metadata()
+        return True
 
     def archive_to_new_file_path(self, new_path: Path) -> Self:
         """Create a new File object for the archived file and mark this file as deleted.

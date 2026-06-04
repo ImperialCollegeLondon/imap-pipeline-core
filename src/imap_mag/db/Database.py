@@ -71,29 +71,27 @@ class Database:
 
         return self.__active_session
 
-    def insert_file(self, file: File) -> None:
+    def upsert_file(self, file: File) -> None:
         """Insert a file into the database."""
-        self.insert_files([file])
+        self.upsert_files([file])
 
     @__session_manager()
-    def insert_files(self, files: list[File]) -> None:
+    def upsert_files(self, files: list[File]) -> None:
         session = self.__get_active_session()
         for file in files:
-            # check file does not already exist
-            existing_file = (
-                session.query(File).filter_by(name=file.name, path=file.path).first()
-            )
-            if existing_file is not None:
-                if existing_file.hash == file.hash:
-                    logger.warning(
-                        f"File {file.path} already exists in database. Skipping."
-                    )
-                else:
-                    logger.info(
-                        f"File {file.path} already exists in database with different hash. Replacing."
-                    )
-                    existing_file.hash = file.hash
-                continue
+            # check file does not already exist if this is a new file record (id is none)
+            if file.id is None:
+                existing_file = (
+                    session.query(File)
+                    .filter_by(name=file.name, path=file.path)
+                    .first()
+                )
+                if existing_file is not None:
+                    if not existing_file.merge_record(file):
+                        continue
+
+                    # otherwise we update the existing database record instead of adding a new one
+                    file = existing_file
 
             session.add(file)
 

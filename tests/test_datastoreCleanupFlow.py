@@ -233,7 +233,7 @@ async def test_cleanup_datastore_dry_run(
         create_test_file(file_path, "test content")
 
         file = _create_test_file_from_path(file_path_str, id, days_old=60)
-        test_database.insert_file(file)
+        test_database.upsert_file(file)
 
     await cleanup_datastore_flow(
         task_names=["delete-all-non-latest-hk-l1-versions"],
@@ -274,7 +274,7 @@ async def test_cleanup_datastore_deletes_non_latest(
         create_test_file(file_path, "test content")
 
         file = _create_test_file_from_path(file_path_str, id, days_old=60)
-        test_database.insert_file(file)
+        test_database.upsert_file(file)
         assert file_path.exists()
 
     await cleanup_datastore_flow.fn(
@@ -316,7 +316,7 @@ async def test_cleanup_datastore_respects_min_age(
 
         file = _create_test_file_from_path(file_path_str, id, days_old=0)
         file.last_modified_date = recent_date
-        test_database.insert_file(file)
+        test_database.upsert_file(file)
 
     await cleanup_datastore_flow(
         task_names=["delete-all-non-latest-hk-l1-versions"],
@@ -365,7 +365,7 @@ async def test_cleanup_datastore_archives_files(
         create_test_file(file_path, "test content")
 
         file = _create_test_file_from_path(file_path_str, id, days_old=60)
-        test_database.insert_file(file)
+        test_database.upsert_file(file)
 
     # Mock the config to use archive mode
     from imap_mag.config.AppSettings import AppSettings
@@ -474,7 +474,7 @@ async def test_cleanup_datastore_max_file_operations(
         file_path = temp_datastore / file_path_str
         create_test_file(file_path, "test content")
         file = _create_test_file_from_path(file_path_str, id, days_old=60)
-        test_database.insert_file(file)
+        test_database.upsert_file(file)
 
     # Only allow 2 operations
     await cleanup_datastore_flow(

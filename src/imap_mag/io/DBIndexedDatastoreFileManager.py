@@ -69,26 +69,11 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         # Add file to database
         if skip_database_insertion:
-            files = self.__database.get_files_by_path(
-                File.get_datastore_relative_path(destination_file, self.__settings)
+            logger.info(
+                f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
-            if len(files) == 0:
-                raise FileNotFoundError(
-                    f"File {destination_file} expected to exist in database but was not found."
-                )
-            elif len(files) > 1:
-                raise ValueError(
-                    f"Multiple files with path {destination_file} found in database when only one expected."
-                )
-            else:
-                file = files[0]
-                logger.info(
-                    f"File {destination_file} already exists in database with same hash. Updating existing record with new metadata if necessary."
-                )
-                file.set_updated(path_handler)
-                self.__database.save(file)
         else:
-            logger.info(f"Inserting {destination_file} into database.")
+            logger.info(f"Upserting {destination_file} into database.")
 
             version: int = (
                 path_handler.get_sequence()
@@ -117,7 +102,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 if base_meta:
                     new_file.file_meta = {**(base_meta or {})}
 
-                self.__database.insert_file(new_file)
+                self.__database.upsert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 destination_file.unlink()
@@ -160,8 +145,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             new_db_path = dest_path.relative_to(self.__settings.data_store)
 
         archived_file = file.archive_to_new_file_path(new_db_path)
-        self.__database.insert_file(archived_file)
-        self.__database.save(file)
+        self.__database.upsert_files([archived_file, file])
 
         # Delete original from filesystem
         source_path.unlink()

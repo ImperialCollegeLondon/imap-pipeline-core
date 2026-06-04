@@ -114,7 +114,7 @@ def test_migration_populates_data_hash_and_updates_db_hash(
 
     # Insert a DB record with an incorrect/placeholder hash
     relative_json_path = json_path.relative_to(tmp_path)
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name=json_path.name,
@@ -174,7 +174,7 @@ def test_migration_skips_file_already_having_data_hash(
 
     # DB record already has the correct hash
     relative_json_path = json_path.relative_to(tmp_path)
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name=json_path.name,
@@ -224,7 +224,7 @@ def test_migration_skips_deleted_db_records(
     )
 
     relative_json_path = json_path.relative_to(tmp_path)
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name=json_path.name,
@@ -267,7 +267,7 @@ def test_migration_skips_missing_datastore_file_gracefully(
     date = datetime(2026, 1, 4)
 
     # Insert a DB record that points to a non-existent file
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_quality-norm-layer_20260104_v001.json",

@@ -16,6 +16,7 @@ from imap_db.model import File
 from imap_mag import __version__
 from imap_mag.db import Database
 from imap_mag.io import (
+    DatastoreFileManager,
     DBIndexedDatastoreFileManager,
     IDatastoreFileManager,
 )
@@ -93,7 +94,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
         path_handler,
     )
 
-    mock_database.insert_file.side_effect = lambda file: check_inserted_file(
+    mock_database.upsert_file.side_effect = lambda file: check_inserted_file(
         file, test_file, version=1, file_name="test_file1.txt"
     )
 
@@ -133,7 +134,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
 
     existing_file = File(
         name=path_handler.get_filename(),
-        path=path_handler.get_folder_structure(),
+        path=str(path_handler.get_full_path()),
         descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
         version=1,
         hash=hashlib.md5(b"some content").hexdigest(),
@@ -159,7 +160,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     # Verify.
     mock_datastore_manager.add_file.assert_called_once_with(original_file, path_handler)
 
-    mock_database.insert_file.assert_not_called()
+    mock_database.upsert_file.assert_not_called()
 
     assert (
         f"File {test_file} already exists in database with same hash"
@@ -168,60 +169,6 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
 
     assert actual_file == test_file
     assert actual_path_handler == path_handler
-
-
-def test_DBIndexedDatastoreFileManager_add_file_for_existing_deleted_file_undeletes_file_record(
-    mock_datastore_manager: mock.Mock,
-    mock_database: mock.Mock,
-    capture_cli_logs,
-    temp_datastore,
-    dynamic_work_folder,
-) -> None:
-    # Set up.
-    database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
-    )
-
-    original_file = create_test_file(
-        Path(tempfile.gettempdir()) / "some_file", "some content"
-    )
-    path_handler = HKDecodedPathHandler(
-        version=1,
-        descriptor="hsk-pw",
-        content_date=datetime(2025, 5, 2),
-        extension="txt",
-    )
-
-    existing_file = File(
-        name=path_handler.get_filename(),
-        path=path_handler.get_folder_structure(),
-        descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
-        version=1,
-        hash=hashlib.md5(b"some content").hexdigest(),
-        size=0,
-        content_date=datetime(2025, 5, 2),
-        software_version=__version__,
-        deletion_date=datetime(2025, 5, 3),
-        last_modified_date=datetime(2025, 5, 3),
-    )
-
-    mock_database.get_files.return_value = [existing_file]
-    mock_database.get_files_by_path.return_value = [existing_file]
-
-    test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
-        create_test_file(test_file, "some content"),
-        path_handler,
-    )
-
-    # Exercise.
-    (actual_file, _) = database_manager.add_file(original_file, path_handler)
-
-    # Verify.
-    mock_database.save.assert_called()
-    assert existing_file.deletion_date is None
-    assert existing_file.last_modified_date > datetime(2025, 5, 3)
-    assert actual_file == test_file
 
 
 def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_in_database(
@@ -250,7 +197,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
 
     existing_file = File(
         name="imap_mag_l1_hsk-pw_20250502_v002.txt",
-        path="hk/mag/l1/hsk-pw/2025/05",
+        path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt",
         descriptor="imap_mag_l1_hsk-pw",
         version=2,
         hash=hashlib.md5(b"some content").hexdigest(),
@@ -262,7 +209,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
         [
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
-                path="hk/mag/l1/hsk-pw/2025/05",
+                path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt",
                 descriptor="imap_mag_l1_hsk-pw",
                 version=1,
                 hash="",
@@ -291,7 +238,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
         original_file, matched_path_handler
     )
 
-    mock_database.insert_file.assert_not_called()
+    mock_database.upsert_file.assert_not_called()
 
     assert (
         f"File {test_file} already exists in database with same hash"
@@ -336,7 +283,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
         [
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
-                path="hk/mag/l1/hsk-pw/2025/05",
+                path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt",
                 descriptor="imap_mag_l1_hsk-pw",
                 version=1,
                 hash=0,
@@ -346,7 +293,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
             ),
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v002.txt",
-                path="hk/mag/l1/hsk-pw/2025/05",
+                path="hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt",
                 descriptor="imap_mag_l1_hsk-pw",
                 version=2,
                 hash=0,
@@ -356,7 +303,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
             ),
         ]
     ]
-    mock_database.insert_file.side_effect = lambda file: check_inserted_file(
+    mock_database.upsert_file.side_effect = lambda file: check_inserted_file(
         file, test_file, version=3, file_name="test_file3.txt"
     )
 
@@ -378,7 +325,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
         f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in capture_cli_logs.text
     )
-    assert f"Inserting {test_file} into database." in capture_cli_logs.text
+    assert f"Upserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
     assert actual_path_handler == unique_path_handler
@@ -439,7 +386,7 @@ def test_DBIndexedDatastoreFileManager_errors_database_error(
         path_handler,
     )
 
-    mock_database.insert_file.side_effect = ArithmeticError("Database error")
+    mock_database.upsert_file.side_effect = ArithmeticError("Database error")
 
     # Exercise and verify.
     with pytest.raises(ArithmeticError):
@@ -482,7 +429,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
         unique_path_handler,
     )
 
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_l0_hsk-pw_20250502_001.txt",
@@ -529,7 +476,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
         f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt')} already exists in database and is different. Increasing version to 3."
         in capture_cli_logs.text
     )
-    assert f"Inserting {test_file} into database." in capture_cli_logs.text
+    assert f"Upserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
     assert actual_path_handler == unique_path_handler
@@ -571,7 +518,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
         unique_path_handler,
     )
 
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_l1_hsk-pw_20250502_v001.txt",
@@ -618,7 +565,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
         f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
         in capture_cli_logs.text
     )
-    assert f"Inserting {test_file} into database." in capture_cli_logs.text
+    assert f"Upserting {test_file} into database." in capture_cli_logs.text
 
     assert actual_file == test_file
     assert actual_path_handler == unique_path_handler
@@ -667,7 +614,7 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
 
     # Verify
 
-    assert f"Inserting {original_file} into database." in capture_cli_logs.text
+    assert f"Upserting {original_file} into database." in capture_cli_logs.text
 
     assert len(database_files) == 1
     assert database_files[0].name == ancillary_file_name
@@ -745,11 +692,11 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
 
     # Pre-populate DB with v001 JSON record whose hash is the companion CSV hash
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_quality-norm-layer_20260116_v001.json",
-                path="calibration/layers/2026/01",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v001.json",
                 descriptor="imap_mag_quality-norm-layer",
                 version=1,
                 hash=csv_hash,
@@ -819,11 +766,11 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
         "old and new CSV hashes must differ for this test"
     )
 
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_quality-norm-layer_20260116_v001.json",
-                path="calibration/layers/2026/01",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v001.json",
                 descriptor="imap_mag_quality-norm-layer",
                 version=1,
                 hash=old_csv_hash,
@@ -903,7 +850,7 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
     csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
 
     # Pre-populate DB with v001 and v002, both soft-deleted
-    test_database.insert_files(
+    test_database.upsert_files(
         [
             File(
                 name="imap_mag_quality-norm-layer_20260101_v001.json",
@@ -938,8 +885,7 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
         descriptor="quality-norm", content_date=date, version=1
     )
     dest_json = (
-        Path(tempfile.gettempdir())
-        / "imap_mag_quality-norm-layer_20260101_v001_del_test.json"
+        Path(tempfile.gettempdir()) / "imap_mag_quality-norm-layer_20260101_v001.json"
     )
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(
@@ -1013,3 +959,112 @@ def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
     now = datetime.now(UTC).replace(tzinfo=None)
     assert database_files[0].last_modified_date is not None
     assert abs((database_files[0].last_modified_date - now).total_seconds()) < 5
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_DBIndexedDatastoreFileManager_add_file_with_deleted_file_to_real_postgres_sets_last_modified_date_and_undeletes_in_database(
+    test_database,  # noqa: F811
+    temp_datastore,
+) -> None:
+    # Set up.
+    real_datastore_manager = DatastoreFileManager(temp_datastore)
+    database_manager = DBIndexedDatastoreFileManager(
+        real_datastore_manager, test_database
+    )
+
+    file_contents = "some content"
+    new_file = create_test_file(
+        Path(tempfile.gettempdir()) / "imap_mag_l1_hsk-pw_20250502_v001.txt",
+        file_contents,
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    existing_file_record = File(
+        name=path_handler.get_filename(),
+        path=str(path_handler.get_full_path()),
+        descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
+        version=1,
+        hash=hashlib.md5(file_contents.encode()).hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        software_version=__version__,
+        deletion_date=datetime(2025, 5, 3),
+        last_modified_date=datetime(2025, 5, 3),
+    )
+
+    test_database.upsert_files([existing_file_record])
+
+    # Exercise.
+    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+
+    # assert only one file record exists and it is not deleted, with last modified updated to now
+    database_files = test_database.get_files()
+    assert len(database_files) == 1
+    assert "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt" in str(
+        actual_file
+    )
+    assert database_files[0].deletion_date is None
+    assert database_files[0].last_modified_date is not None
+    assert database_files[0].size > 0
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_postgres_does_nothing(
+    test_database,  # noqa: F811
+    temp_datastore,
+) -> None:
+    # Set up.
+    real_datastore_manager = DatastoreFileManager(temp_datastore)
+    database_manager = DBIndexedDatastoreFileManager(
+        real_datastore_manager, test_database
+    )
+
+    file_contents = "some content"
+    new_file = create_test_file(
+        Path(tempfile.gettempdir()) / "imap_mag_l1_hsk-pw_20250502_v001.txt",
+        file_contents,
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    existing_file_record = File(
+        name=path_handler.get_filename(),
+        path=str(path_handler.get_full_path()),
+        descriptor=File.get_descriptor_from_filename(path_handler.get_filename()),
+        version=1,
+        hash=hashlib.md5(file_contents.encode()).hexdigest(),
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        last_modified_date=datetime(2025, 5, 3),
+        software_version=__version__,
+    )
+
+    test_database.upsert_files([existing_file_record])
+
+    # Exercise.
+    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+
+    # assert only one file record exists and it is not deleted, with last modified updated to now
+    database_files = test_database.get_files()
+    assert len(database_files) == 1
+    assert "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt" in str(
+        actual_file
+    )
+    assert database_files[0].name == "imap_mag_l1_hsk-pw_20250502_v001.txt"
+    assert database_files[0].version == 1
+    assert database_files[0].hash == hashlib.md5(file_contents.encode()).hexdigest()
+    assert database_files[0].path == str(path_handler.get_full_path())
+    assert database_files[0].deletion_date is None
