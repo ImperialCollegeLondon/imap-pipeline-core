@@ -156,6 +156,77 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 f"File {source_path} does not exist on filesystem. It may have already been deleted."
             )
 
+    def index_existing_file(self, file: Path, path_handler: IFilePathHandler) -> str:
+        """Index an already-present datastore file into the database.
+
+        Handles three cases:
+        - File is active in the database (skip, return "skipped").
+        - File is not in the database at all (create record, return "indexed").
+        - File is in the database but marked as deleted (restore record, return "restored").
+
+        Args:
+            file: Absolute path to the file in the datastore.
+            path_handler: Path handler for the file.
+
+        Returns:
+            "skipped", "indexed", or "restored".
+        """
+        try:
+            relative_path = (
+                file.absolute()
+                .relative_to(self.__settings.data_store.absolute())
+                .as_posix()
+            )
+        except ValueError:
+            relative_path = file.as_posix()
+
+        existing_files: list[File] = self.__database.get_files(
+            File.path == relative_path
+        )
+
+        if existing_files:
+            file_record = existing_files[0]
+            if file_record.deletion_date is not None:
+                # Case 3: record exists but is marked deleted — restore it
+                logger.info(f"Restoring deleted database record for {relative_path}.")
+                file_record.deletion_date = None
+                self.__database.save(file_record)
+                return "restored"
+            else:
+                # Case 1: record is already active — nothing to do
+                logger.debug(
+                    f"File {relative_path} already indexed in database. Skipping."
+                )
+                return "skipped"
+
+        # Case 2: no record at all — create one
+        version: int = (
+            path_handler.get_sequence()
+            if path_handler.supports_sequencing()
+            and isinstance(path_handler, SequenceablePathHandler)
+            else (
+                path_handler.version
+                if isinstance(path_handler, VersionedPathHandler)
+                else 0
+            )
+        )
+
+        new_file = File.from_file(
+            file=file,
+            version=version,
+            hash=path_handler.get_content_identity(file),
+            content_date=path_handler.get_content_date_for_indexing(),
+            settings=self.__settings,
+        )
+
+        base_meta = path_handler.get_metadata()
+        if base_meta:
+            new_file.file_meta = {**(base_meta or {})}
+
+        logger.info(f"Indexing {relative_path} into database.")
+        self.__database.insert_file(new_file)
+        return "indexed"
+
     def delete_file(self, file: File) -> None:
         """
         Delete a file and mark it as deleted in the database.
