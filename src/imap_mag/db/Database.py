@@ -93,7 +93,9 @@ class Database:
                     # otherwise we update the existing database record instead of adding a new one
                     file = existing_file
 
-            session.add(file)
+                session.add(file)
+            else:
+                session.merge(file)
 
     @__session_manager(expire_on_commit=False)
     def get_files(self, *args, **kwargs) -> list[File]:
