@@ -147,8 +147,6 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         archived_file = file.archive_to_new_file_path(new_db_path)
         self.__database.upsert_files([archived_file, file])
 
-        # Delete original from filesystem
-        source_path.unlink()
         # Delete from filesystem if it exists
         if source_path.exists():
             logger.info(f"Deleting file {source_path} from filesystem.")
