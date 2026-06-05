@@ -34,9 +34,7 @@ class Database:
         return os.getenv("SQLALCHEMY_URL")
 
     @staticmethod
-    def __session_manager(
-        **session_kwargs,
-    ):
+    def __session_manager(readonly=False, **session_kwargs):
         """Manage session scope for database operations."""
 
         def outer_wrapper(func):
@@ -47,13 +45,15 @@ class Database:
                     self.__active_session = session
                     value = func(self, *args, **kwargs)
 
-                    session.commit()
-                    logger.debug("Database session committed.")
+                    if not readonly:
+                        session.commit()
+                        logger.debug("Database session committed.")
 
                     return value
                 except Exception as e:
-                    session.rollback()
-                    logger.error(f"Database session rolled back due to error: {e}")
+                    if not readonly:
+                        session.rollback()
+                        logger.error(f"Database session rolled back due to error: {e}")
                     raise e
                 finally:
                     session.close()
@@ -102,7 +102,7 @@ class Database:
         session = self.__get_active_session()
         return session.query(File).filter(*args).filter_by(**kwargs).all()
 
-    @__session_manager(expire_on_commit=False)
+    @__session_manager(readonly=True, expire_on_commit=False)
     def get_files_by_path(self, path: str, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
         return (
