@@ -26,6 +26,7 @@ from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollScience import poll_science_flow
+from prefect_server.pollSmallForces import poll_small_forces_flow
 from prefect_server.pollSpice import poll_spice_flow
 from prefect_server.pollSpinTable import poll_spin_table_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
@@ -160,6 +161,13 @@ async def adeploy_flows(local_debug: bool = False):
     poll_spin_table_deployable = poll_spin_table_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPIN_TABLE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPIN_TABLE_CRON),
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
+    poll_small_forces_deployable = poll_small_forces_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SMALL_FORCES,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SMALL_FORCES_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
@@ -429,6 +437,7 @@ async def adeploy_flows(local_debug: bool = False):
         poll_science_deployable,
         poll_lo_pivot_platform_deployable,
         poll_spin_table_deployable,
+        poll_small_forces_deployable,
         publish_deployable,
         check_ialirt_deployable,
         quicklook_ialirt_deployable,
