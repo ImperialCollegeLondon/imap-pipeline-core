@@ -28,7 +28,7 @@ async def test_upload_shared_docs_flow_does_upload_a_file_locally(
     with Environment(
         MAG_DATA_STORE=str(DATASTORE),
     ):
-        test_database.insert_file(
+        test_database.upsert_file(
             File.from_file(
                 upload_file, 1, "NOT-REAL-HASH", datetime(2025, 10, 17), AppSettings()
             )
@@ -81,7 +81,7 @@ async def test_upload_shared_docs_flow_does_delete_a_file_locally(
         file_record = File.from_file(
             upload_file, 1, "NOT-REAL-HASH", datetime(2025, 10, 17), AppSettings()
         )
-        test_database.insert_file(file_record)
+        test_database.upsert_file(file_record)
 
         destination = LocalFileSystem(basepath=sharepoint.as_posix())
         await destination.save(
@@ -161,7 +161,7 @@ async def test_upload_shared_docs_flow_delete_respects_patterns(
             deletion_date=datetime.now(),
             software_version="1.0.0",
         )
-        test_database.insert_file(file_record)
+        test_database.upsert_file(file_record)
 
         destination = LocalFileSystem(basepath=sharepoint.as_posix())
         await destination.save(
@@ -194,7 +194,7 @@ async def test_upload_shared_docs_flow_tracks_delete_progress_separately(
         file_record = File.from_file(
             upload_file, 1, "NOT-REAL-HASH", datetime(2025, 10, 17), AppSettings()
         )
-        test_database.insert_file(file_record)
+        test_database.upsert_file(file_record)
 
         destination = LocalFileSystem(basepath=sharepoint.as_posix())
         await destination.save(

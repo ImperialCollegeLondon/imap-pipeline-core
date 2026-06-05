@@ -70,10 +70,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Add file to database
         if skip_database_insertion:
             logger.info(
-                f"File {destination_file} already exists in database and is the same. Skipping insertion."
+                f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
         else:
-            logger.info(f"Inserting {destination_file} into database.")
+            logger.info(f"Upserting {destination_file} into database.")
 
             version: int = (
                 path_handler.get_sequence()
@@ -102,7 +102,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 if base_meta:
                     new_file.file_meta = {**(base_meta or {})}
 
-                self.__database.insert_file(new_file)
+                self.__database.upsert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 destination_file.unlink()
@@ -145,11 +145,16 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             new_db_path = dest_path.relative_to(self.__settings.data_store)
 
         archived_file = file.archive_to_new_file_path(new_db_path)
-        self.__database.insert_file(archived_file)
-        self.__database.save(file)
+        self.__database.upsert_files([archived_file, file])
 
-        # Delete original from filesystem
-        source_path.unlink()
+        # Delete from filesystem if it exists
+        if source_path.exists():
+            logger.info(f"Deleting file {source_path} from filesystem.")
+            source_path.unlink()
+        else:
+            logger.warning(
+                f"File {source_path} does not exist on filesystem. It may have already been deleted."
+            )
 
     def delete_file(self, file: File) -> None:
         """
@@ -161,19 +166,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             db: Database instance
             deletion_date: Timestamp to record as deletion date
         """
-        file_path = (
-            self.__settings.data_store / file.path
-            if not Path(file.path).is_absolute()
-            else Path(file.path)
-        )
-
-        # Mark as deleted in database first
-        file.set_deleted()
-        self.__database.save(file)
+        file_path = file.get_full_path(self.__settings)
 
         # Delete from filesystem if it exists
         if file_path.exists():
+            logger.debug(f"Deleting file {file_path} from filesystem.")
             file_path.unlink()
+        else:
+            logger.warning(
+                f"File {file_path} does not exist on filesystem. It may have already been deleted."
+            )
+
+        if file_path.exists():
+            logger.error(f"Failed to delete file {file_path} from filesystem.")
+            raise FileExistsError(f"Failed to delete file {file_path} from filesystem.")
+        else:
+            file.set_deleted()
+            self.__database.save(file)
+            logger.debug(f"Deleted file {file_path} from filesystem and DB")
 
     def __get_matching_database_files(
         self, path_handler: SequenceablePathHandler
@@ -229,10 +239,11 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         )
 
         if matching_files:
-            logger.info(
-                f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
-            )
-            path_handler.set_sequence(matching_files[0].version)
+            if path_handler.get_sequence() != matching_files[0].version:
+                logger.info(
+                    f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                )
+                path_handler.set_sequence(matching_files[0].version)
             return True
 
         # Find the next available version slot
