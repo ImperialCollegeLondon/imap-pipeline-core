@@ -736,7 +736,6 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     assert path_handler.version == 1
     db_files = test_database.get_files()
     assert len(db_files) == 1  # only the pre-existing v001 record
-    assert "already exists in database at version 1. Reusing." in capture_cli_logs.text
 
 
 @pytest.mark.skipif(

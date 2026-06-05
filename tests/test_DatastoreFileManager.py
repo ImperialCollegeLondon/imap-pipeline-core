@@ -74,7 +74,7 @@ def test_copy_file_same_content(capture_cli_logs, temp_folder_path):
 
     # Verify.
     assert (
-        f"File {Path(f'{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt')} already exists and is the same. Skipping update."
+        f"File {Path(f'{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt')} already exists and is the same - skip copy into datastore."
         in capture_cli_logs.text
     )
 
@@ -126,7 +126,7 @@ def test_copy_file_second_existing_file_with_same_content(
         in capture_cli_logs.text
     )
     assert (
-        f"File {Path(f'{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v002.txt')} already exists and is the same. Skipping update."
+        f"File {Path(f'{temp_folder_path}/hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v002.txt')} already exists and is the same - skip copy into datastore."
         in capture_cli_logs.text
     )
 

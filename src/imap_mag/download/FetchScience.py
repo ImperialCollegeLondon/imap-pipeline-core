@@ -93,6 +93,7 @@ class FetchScience:
                         ),
                         version=int(file["version"].lstrip("v")),
                         extension="cdf",
+                        version_is_locked=True,  # lock version for files downloaded from SDC as they should not be changed
                     )
                     max_downloads_reached = (
                         max_downloads is not None and len(downloaded) >= max_downloads

@@ -239,10 +239,11 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         )
 
         if matching_files:
-            logger.info(
-                f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
-            )
-            path_handler.set_sequence(matching_files[0].version)
+            if path_handler.get_sequence() != matching_files[0].version:
+                logger.info(
+                    f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                )
+                path_handler.set_sequence(matching_files[0].version)
             return True
 
         # Find the next available version slot

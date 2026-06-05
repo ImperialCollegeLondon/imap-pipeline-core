@@ -19,6 +19,8 @@ class SciencePathHandler(StandardSPDFPathHandler):
     root_folder: str = "science"
     ingestion_date: datetime | None = None  # date data was ingested by SDC
 
+    version_is_locked: bool = False
+
     def get_mode(self) -> ScienceMode:
         return (
             ScienceMode.Burst
@@ -44,8 +46,26 @@ class SciencePathHandler(StandardSPDFPathHandler):
             / self.content_date.strftime("%Y/%m")
         ).as_posix()
 
+    def set_sequence(self, sequence: int) -> None:
+        if self.version_is_locked and sequence != self.version:
+            raise ValueError(
+                "This science file version is locked and cannot be changed."
+            )
+
+        super().set_sequence(sequence)
+
+    def increase_sequence(self) -> None:
+        if self.version_is_locked:
+            raise ValueError(
+                "This science file version is locked and cannot be changed."
+            )
+
+        super().increase_sequence()
+
     @classmethod
-    def from_filename(cls, filename: str | Path) -> "SciencePathHandler | None":
+    def from_filename(
+        cls, filename: str | Path, version_is_locked: bool = False
+    ) -> "SciencePathHandler | None":
         match = re.match(
             r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             Path(filename).name,
@@ -63,4 +83,5 @@ class SciencePathHandler(StandardSPDFPathHandler):
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 version=int(match["version"]),
                 extension=match["ext"],
+                version_is_locked=version_is_locked,
             )

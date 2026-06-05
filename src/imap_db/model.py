@@ -88,8 +88,14 @@ class File(Base):
             logger.info(f"File record is identical - no updates needed for {self.path}")
             return False
 
+        action = "Updating db record"
+        if self.deletion_date is None and new_file.deletion_date is not None:
+            action = "Set db record deleted"
+        if self.deletion_date is not None and new_file.deletion_date is None:
+            action = "Undeleting db record"
+
         logger.info(
-            f"File {new_file.path} record being merged with existing record {self.id}. Updating database entry."
+            f"File {new_file.path} record being merged with existing record {self.id}. {action}."
         )
 
         self.hash = new_file.hash
