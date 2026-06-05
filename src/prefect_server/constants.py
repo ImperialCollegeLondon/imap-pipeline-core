@@ -33,6 +33,9 @@ class PREFECT_CONSTANTS:
     class POLL_SPIN_TABLE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
+    class POLL_SMALL_FORCES:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
     class ENV_VAR_NAMES:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
@@ -71,6 +74,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
         POLL_SPIN_TABLE = "poll-spin-table"
+        POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"

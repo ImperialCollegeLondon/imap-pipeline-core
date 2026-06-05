@@ -254,5 +254,58 @@ class SDCDataAccess:
         logger.debug(f"Downloading spin table file {file_path} from SDC.")
         return imap_data_access.download(file_path)
 
+    def small_forces_query(
+        self,
+        start_ingest_date: date | None = None,
+        end_ingest_date: date | None = None,
+    ) -> list[dict[str, str]]:
+        """Query small forces files from the SDC API.
+
+        Args:
+            start_ingest_date: Start date for ingestion date filter
+            end_ingest_date: End date for ingestion date filter
+
+        Returns:
+            List of dictionaries containing small forces file metadata
+        """
+        params = []
+        date_format = "%Y%m%d"
+
+        if start_ingest_date:
+            params.append(
+                f"start_ingest_date={start_ingest_date.strftime(date_format)}"
+            )
+
+        if end_ingest_date:
+            params.append(f"end_ingest_date={end_ingest_date.strftime(date_format)}")
+
+        query_string = "&".join(params)
+        url = f"{self.get_url_base()}/small-forces-table?{query_string}"
+
+        logger.info("Querying small forces files with URL: %s", url)
+
+        request = requests.Request("GET", url).prepare()
+
+        with imap_data_access.io._make_request(request) as response:
+            items = response.json()
+            logger.debug("Received JSON: %s", items)
+
+        return items
+
+    def download_small_forces(self, file_path: str) -> Path:
+        """Download a small forces file from the SDC API.
+
+        The file_path from the API is like 'imap/spice/activities/imap_2026_036_2026_037_hist_01.sff'.
+        We download it using the SDC download mechanism.
+
+        Args:
+            file_path: The file path as returned by the small forces API
+
+        Returns:
+            Path to the downloaded file
+        """
+        logger.debug(f"Downloading small forces file {file_path} from SDC.")
+        return imap_data_access.download(file_path)
+
     def get_url_base(self):
         return imap_data_access.config["DATA_ACCESS_URL"]
