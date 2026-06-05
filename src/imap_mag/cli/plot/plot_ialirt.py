@@ -51,6 +51,13 @@ def plot_ialirt(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    force_latest_update: Annotated[
+        bool,
+        typer.Option(
+            "--force-latest-update",
+            help="Whether to force the update of the latest image in the database, even if it already exists. This can be useful if you want to ensure that the latest data is always up to date.",
+        ),
+    ] = False,
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
@@ -110,6 +117,7 @@ def plot_ialirt(
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 == DatetimeProvider.today()
+                or force_latest_update
             ):
                 latest_handler = LatestFilePathHandler(
                     root=(

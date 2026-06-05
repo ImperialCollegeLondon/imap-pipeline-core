@@ -183,4 +183,4 @@ def insert_test_files_into_database(test_database, test_files, app_settings):
             app_settings,
         )
         file.last_modified_date = last_modified_date
-        test_database.insert_file(file)
+        test_database.upsert_file(file)

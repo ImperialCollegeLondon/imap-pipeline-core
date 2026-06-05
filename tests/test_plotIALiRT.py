@@ -32,6 +32,11 @@ def mock_datetime_provider_today_20251021(monkeypatch):
     monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 21))
 
 
+@pytest.fixture(scope="function", autouse=False)
+def mock_datetime_provider_today_20251025(monkeypatch):
+    monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 25))
+
+
 def _setup_ialirt_datastore(
     temp_datastore: Path,  # noqa: F811
     date_str: str,
@@ -143,6 +148,39 @@ def test_plot_ialirt_todays_data_added_to_database(
         start_date=datetime(2025, 10, 21, 0, 0, 0),
         end_date=datetime(2025, 10, 21, 23, 59, 59),
         save_mode=SaveMode.LocalAndDatabase,
+    )
+
+    # Verify.
+    assert len(generated_plots) == 1
+    assert (temp_datastore / "quicklook" / "ialirt" / "latest.png").exists()
+
+    files_in_db = test_database.get_files()
+    assert len(files_in_db) == 2
+
+    assert any(
+        file.path == "quicklook/ialirt/2025/10/imap_quicklook_ialirt_20251021.png"
+        for file in files_in_db
+    )
+    assert any(file.path == "quicklook/ialirt/latest.png" for file in files_in_db)
+
+
+def test_force_latest_update_ialirt_plot(
+    temp_datastore: Path,  # noqa: F811
+    test_database,  # noqa: F811
+    mock_datetime_provider_today_20251025,
+    dynamic_work_folder,
+) -> None:
+    # Set up.
+    _setup_ialirt_datastore(temp_datastore, "20251021", "2025/10")
+
+    assert len(test_database.get_files()) == 0
+
+    # Execute.
+    generated_plots = plot_ialirt(
+        start_date=datetime(2025, 10, 21, 0, 0, 0),
+        end_date=datetime(2025, 10, 21, 23, 59, 59),
+        save_mode=SaveMode.LocalAndDatabase,
+        force_latest_update=True,
     )
 
     # Verify.

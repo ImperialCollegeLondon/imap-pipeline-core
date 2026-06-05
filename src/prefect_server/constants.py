@@ -50,6 +50,7 @@ class PREFECT_CONSTANTS:
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
+        IMAP_CRON_DATASTORE_INDEXER = "IMAP_CRON_DATASTORE_INDEXER"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -80,6 +81,7 @@ class PREFECT_CONSTANTS:
         SHAREPOINT_UPLOAD = "sharepoint-upload"
         POSTGRES_UPLOAD = "postgres-upload"
         DATASTORE_CLEANUP = "datastore-cleanup"
+        DATASTORE_INDEXER = "datastore-indexer"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
@@ -99,3 +101,4 @@ class PREFECT_CONSTANTS:
         SHAREPOINT_UPLOAD = "sharepoint_upload"
         POSTGRES_UPLOAD = "postgres_upload"
         DATASTORE_CLEANUP = "datastore_cleanup"
+        DATASTORE_INDEXER = "datastore_indexer"
