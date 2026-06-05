@@ -108,7 +108,7 @@ jobs:
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
 
       - name: Login to GitHub Container registry ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           registry: ghcr.io
@@ -317,7 +317,7 @@ jobs:
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
 
       - name: Login to GitHub Container registry ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           registry: ghcr.io
