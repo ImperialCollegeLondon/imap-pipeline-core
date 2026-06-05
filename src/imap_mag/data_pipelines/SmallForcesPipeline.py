@@ -5,8 +5,8 @@ from imap_mag.data_pipelines import (
     FetchByDatesRunParameters,
     Pipeline,
 )
-from imap_mag.data_pipelines.DownloadSmallForcesFileStage import (
-    DownloadSmallForcesFileStage,
+from imap_mag.data_pipelines.DownloadSmallForcesFilesStage import (
+    DownloadSmallForcesFilesStage,
 )
 from imap_mag.data_pipelines.GetProcessingDatesStage import (
     DateResolutionMode,
@@ -39,7 +39,7 @@ class SmallForcesPipeline(Pipeline):
                     database=self._database,
                     date_resolution_mode=DateResolutionMode.DATE_ONLY,
                 ),
-                DownloadSmallForcesFileStage(
+                DownloadSmallForcesFilesStage(
                     client=self._client,
                     settings=self._settings,
                     database=self._database,

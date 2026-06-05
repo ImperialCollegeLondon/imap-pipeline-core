@@ -213,7 +213,9 @@ async def test_poll_small_forces_first_ever_run(
     # Verify workflow progress was updated
     workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
     assert workflow_progress.get_last_checked_date() == NOW
-    assert workflow_progress.get_progress_timestamp() == datetime(2025, 6, 2, 1, 50, 9)
+    assert workflow_progress.get_progress_timestamp() == datetime(
+        2025, 10, 13, 18, 5, 10
+    )
 
 
 @pytest.mark.skipif(
