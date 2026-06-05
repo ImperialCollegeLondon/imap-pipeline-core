@@ -134,7 +134,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Delete from filesystem if it exists
         if source_path.exists():
             logger.info(f"Deleting file {source_path} from filesystem.")
-        source_path.unlink()
+            source_path.unlink()
         else:
             logger.warning(
                 f"File {source_path} does not exist on filesystem. It may have already been deleted."
@@ -157,18 +157,19 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         Returns:
             IndexResult.SKIPPED, IndexResult.INDEXED, or IndexResult.RESTORED.
         """
-        try:
-            relative_path = (
-                file.absolute()
-                .relative_to(self.__settings.data_store.absolute())
-                .as_posix()
-            )
-        except ValueError:
-            relative_path = file.as_posix()
+        relative_path = File.get_datastore_relative_path(file, self.__settings)
+        existing_files: list[File] = self.__database.get_files_by_path(relative_path)
 
-        existing_files: list[File] = self.__database.get_files(
-            File.path == relative_path
-        )
+        if len(existing_files) > 1:
+            logger.warning(
+                f"Multiple database records found for {relative_path}. Ignoring deleted records"
+            )
+            existing_files = [f for f in existing_files if f.deletion_date is None]
+
+        if len(existing_files) > 1:
+            raise Exception(
+                f"Multiple database records found for {relative_path}. This should not happen. Check database integrity."
+            )
 
         if existing_files:
             file_record = existing_files[0]
@@ -185,7 +186,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         new_file = self.__create_file_record(file, path_handler)
         logger.info(f"Indexing {relative_path} into database.")
-        self.__database.insert_file(new_file)
+        self.__database.upsert_file(new_file)
         return IndexResult.INDEXED
 
     def delete_file(self, file: File) -> None:
@@ -207,19 +208,17 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             logger.warning(
                 f"File {file_path} does not exist on filesystem. It may have already been deleted."
-        )
+            )
 
         if file_path.exists():
             logger.error(f"Failed to delete file {file_path} from filesystem.")
             raise FileExistsError(f"Failed to delete file {file_path} from filesystem.")
         else:
-        file.set_deleted()
-        self.__database.save(file)
+            file.set_deleted()
+            self.__database.save(file)
             logger.debug(f"Deleted file {file_path} from filesystem and DB")
 
-    def __create_file_record(
-        self, file: Path, path_handler: IFilePathHandler
-    ) -> File:
+    def __create_file_record(self, file: Path, path_handler: IFilePathHandler) -> File:
         """Create a File database record from a file and its path handler."""
         if path_handler.supports_sequencing() and isinstance(
             path_handler, SequenceablePathHandler
@@ -299,10 +298,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         if matching_files:
             if path_handler.get_sequence() != matching_files[0].version:
-            logger.info(
-                f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
-            )
-            path_handler.set_sequence(matching_files[0].version)
+                logger.info(
+                    f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                )
+                path_handler.set_sequence(matching_files[0].version)
             return True
 
         # Find the next available version slot

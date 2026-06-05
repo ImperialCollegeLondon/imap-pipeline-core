@@ -58,7 +58,7 @@ async def index_datastore_flow():
         )
 
         if path_handler is None:
-            logger.debug(f"No path handler found for {file}. Skipping.")
+            logger.warning(f"No path handler found for {file}. Skipping.")
             total_no_handler += 1
             continue
 
@@ -69,6 +69,7 @@ async def index_datastore_flow():
         elif result == IndexResult.SKIPPED:
             total_skipped += 1
         elif result == IndexResult.RESTORED:
+            logger.info(f"Restored file {file} in database by clearing deletion date.")
             total_restored += 1
 
     logger.info(

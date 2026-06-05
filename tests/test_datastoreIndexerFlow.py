@@ -21,10 +21,8 @@ def _db_record_for_path(test_database, rel_path: str) -> File | None:
 
 @pytest.mark.asyncio
 async def test_index_datastore_skips_already_indexed_file(
-    capture_cli_logs,
     test_database,
     temp_datastore,
-    prefect_test_fixture,  # noqa: F811
 ):
     """File on disk and already active in DB should be skipped without changes."""
     rel_path = (
@@ -44,9 +42,9 @@ async def test_index_datastore_skips_already_indexed_file(
         content_date=None,
         software_version="1.0.0",
     )
-    test_database.insert_file(existing)
+    test_database.upsert_file(existing)
 
-    await index_datastore_flow()
+    await index_datastore_flow.fn()
 
     # Record should be unchanged (hash not overwritten)
     record = _db_record_for_path(test_database, rel_path)
@@ -57,10 +55,7 @@ async def test_index_datastore_skips_already_indexed_file(
 
 @pytest.mark.asyncio
 async def test_index_datastore_indexes_new_file(
-    capture_cli_logs,
-    test_database,
-    temp_datastore,
-    prefect_test_fixture,  # noqa: F811
+    capture_cli_logs, test_database, temp_datastore
 ):
     """File on disk with no DB record should be inserted into the database."""
     rel_path = (
@@ -71,7 +66,7 @@ async def test_index_datastore_indexes_new_file(
     # Confirm there is no existing record
     assert _db_record_for_path(test_database, rel_path) is None
 
-    await index_datastore_flow()
+    await index_datastore_flow.fn()
 
     record = _db_record_for_path(test_database, rel_path)
     assert record is not None
@@ -81,10 +76,7 @@ async def test_index_datastore_indexes_new_file(
 
 @pytest.mark.asyncio
 async def test_index_datastore_restores_soft_deleted_file(
-    capture_cli_logs,
-    test_database,
-    temp_datastore,
-    prefect_test_fixture,  # noqa: F811
+    capture_cli_logs, test_database, temp_datastore
 ):
     """File on disk whose DB record has a deletion_date should have it cleared."""
     rel_path = (
@@ -104,7 +96,7 @@ async def test_index_datastore_restores_soft_deleted_file(
         content_date=None,
         software_version="1.0.0",
     )
-    test_database.insert_file(deleted_record)
+    test_database.upsert_file(deleted_record)
 
     # Mark it as deleted
     record = _db_record_for_path(test_database, rel_path)
@@ -115,7 +107,7 @@ async def test_index_datastore_restores_soft_deleted_file(
     deletion_ts = record.deletion_date
     assert deletion_ts is not None
 
-    await index_datastore_flow()
+    await index_datastore_flow.fn()
 
     restored = _db_record_for_path(test_database, rel_path)
     assert restored is not None
@@ -127,15 +119,13 @@ async def test_index_datastore_restores_soft_deleted_file(
 
 @pytest.mark.asyncio
 async def test_index_datastore_empty_datastore(
-    capture_cli_logs,
     test_database,
     clean_datastore,
-    prefect_test_fixture,  # noqa: F811
 ):
     """A datastore containing only files without recognised handlers is handled gracefully."""
     create_test_file(clean_datastore / "unknown_file.xyz", "irrelevant")
 
-    await index_datastore_flow()
+    await index_datastore_flow.fn()
 
     # Should complete without errors; no files indexed
     records = test_database.get_files()

@@ -419,7 +419,9 @@ def generate_spice_metakernel(
     # get all SPICE files from the database except MK files
     mk_folder = SPICEPathHandler.get_root_folder() + os.path.sep + METAKERNEL_FOLDER
     files = database.get_files_by_path(
-        SPICEPathHandler.get_root_folder(), ~File.path.startswith(mk_folder)
+        SPICEPathHandler.get_root_folder(),
+        ~File.path.startswith(mk_folder),
+        File.deletion_date.is_(None),
     )  # type: ignore
 
     if not files:
