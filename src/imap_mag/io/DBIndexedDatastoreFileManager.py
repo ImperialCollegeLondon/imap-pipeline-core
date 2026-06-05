@@ -181,7 +181,6 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             logger.error(f"Failed to delete file {file_path} from filesystem.")
             raise FileExistsError(f"Failed to delete file {file_path} from filesystem.")
         else:
-            # Mark as deleted in database first
             file.set_deleted()
             self.__database.save(file)
             logger.debug(f"Deleted file {file_path} from filesystem and DB")
