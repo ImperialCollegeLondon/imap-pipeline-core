@@ -239,20 +239,43 @@ class SDCDataAccess:
 
         return items
 
-    def download_spin_table(self, file_path: str) -> Path:
-        """Download a spin table file from the SDC API.
-
-        The file_path from the API is like 'imap/spice/spin/imap_2026_089_2026_090_01.spin'.
-        We download it using the SDC download mechanism.
+    def small_forces_query(
+        self,
+        start_ingest_date: date | None = None,
+        end_ingest_date: date | None = None,
+    ) -> list[dict[str, str]]:
+        """Query small forces files from the SDC API.
 
         Args:
-            file_path: The file path as returned by the spin table API
+            start_ingest_date: Start date for ingestion date filter
+            end_ingest_date: End date for ingestion date filter
 
         Returns:
-            Path to the downloaded file
+            List of dictionaries containing small forces file metadata
         """
-        logger.debug(f"Downloading spin table file {file_path} from SDC.")
-        return imap_data_access.download(file_path)
+        params = []
+        date_format = "%Y%m%d"
+
+        if start_ingest_date:
+            params.append(
+                f"start_ingest_date={start_ingest_date.strftime(date_format)}"
+            )
+
+        if end_ingest_date:
+            params.append(f"end_ingest_date={end_ingest_date.strftime(date_format)}")
+
+        query_string = "&".join(params)
+        url = f"{self.get_url_base()}/small-forces-table?{query_string}"
+
+        logger.info("Querying small forces files with URL: %s", url)
+
+        request = requests.Request("GET", url).prepare()
+
+        with imap_data_access.io._make_request(request) as response:
+            items = response.json()
+            logger.debug("Received JSON: %s", items)
+
+        return items
 
     def get_url_base(self):
         return imap_data_access.config["DATA_ACCESS_URL"]

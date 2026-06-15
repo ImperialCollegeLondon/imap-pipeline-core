@@ -6,15 +6,15 @@ from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, Record, Stage
 from imap_mag.data_pipelines.Record import FileRecord
 from imap_mag.db import Database
 from imap_mag.io import DatastoreFileManager, IDatastoreFileManager
-from imap_mag.io.file.SpinTablePathHandler import SpinTablePathHandler
+from imap_mag.io.file.SmallForcesPathHandler import SmallForcesPathHandler
 from imap_mag.util.Humaniser import Humaniser
 from imap_mag.util.TimeConversion import TimeConversion
 
 
-class DownloadSpinTableFilesStage(Stage):
-    """Downloads spin table files from the SDC API and publishes them to the datastore.
+class DownloadSmallForcesFilesStage(Stage):
+    """Downloads small forces files from the SDC API and publishes them to the datastore.
 
-    This stage combines download and publish because spin table metadata from the API
+    This stage combines download and publish because small forces metadata from the API
     (start_date, end_date, version, ingestion_date) needs to be indexed in the database,
     and this metadata is only available at download time.
     """
@@ -39,28 +39,30 @@ class DownloadSpinTableFilesStage(Stage):
     async def process(self, item: Record, context: dict, **kwargs):
         if not item or not item.start_date or not item.end_date:
             raise ValueError(
-                "DownloadSpinTableFilesStage requires a Record with start_date and end_date"
+                "DownloadSmallForcesFilesStage requires a Record with start_date and end_date"
             )
 
         start_date = item.start_date
         end_date = item.end_date
 
         self.logger.info(
-            f"Querying spin table files from {start_date} to {end_date}..."
+            f"Querying small forces files from {start_date} to {end_date}..."
         )
 
-        spin_files = self.client.spin_table_query(
+        small_forces_files = self.client.small_forces_query(
             start_ingest_date=start_date.date()
             if hasattr(start_date, "date")
             else start_date,
             end_ingest_date=end_date.date() if hasattr(end_date, "date") else end_date,
         )
 
-        if not spin_files:
-            self.logger.info("No spin table files found for the given date range.")
+        if not small_forces_files:
+            self.logger.info("No small forces files found for the given date range.")
             return
 
-        self.logger.info(f"Found {len(spin_files)} spin table files to download.")
+        self.logger.info(
+            f"Found {len(small_forces_files)} small forces files to download."
+        )
 
         output_manager: IDatastoreFileManager | None = None
         if self.settings.fetch_spice.publish_to_data_store:
@@ -70,11 +72,11 @@ class DownloadSpinTableFilesStage(Stage):
                 database=self.database,
             )
 
-        for file_meta in spin_files:
+        for file_meta in small_forces_files:
             file_path_str = file_meta.get("file_path")
             if not file_path_str:
                 self.logger.warning(
-                    f"Spin table entry missing file_path: {file_meta}. Skipping."
+                    f"Small forces entry missing file_path: {file_meta}. Skipping."
                 )
                 continue
 
@@ -102,10 +104,10 @@ class DownloadSpinTableFilesStage(Stage):
                 f"Downloaded {Humaniser.format_bytes(file_size)} {downloaded_file}"
             )
 
-            handler = SpinTablePathHandler.from_filename(downloaded_file)
+            handler = SmallForcesPathHandler.from_filename(downloaded_file)
             if handler is None:
                 self.logger.error(
-                    f"Could not parse {downloaded_file} into SpinTablePathHandler. Skipping."
+                    f"Could not parse {downloaded_file} into SmallForcesPathHandler. Skipping."
                 )
                 continue
 

@@ -36,6 +36,9 @@ class PREFECT_CONSTANTS:
     class POLL_SPIN_TABLE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
+    class POLL_SMALL_FORCES:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
     class ENV_VAR_NAMES:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
@@ -50,6 +53,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
         POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
+        POLL_SMALL_FORCES_CRON = "IMAP_CRON_POLL_SMALL_FORCES"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
@@ -74,6 +78,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
         POLL_SPIN_TABLE = "poll-spin-table"
+        POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -98,6 +103,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE = "poll_spice"
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
         POLL_SPIN_TABLE = "poll_spin_table"
+        POLL_SMALL_FORCES = "poll_small_forces"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
