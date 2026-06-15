@@ -91,7 +91,7 @@ class DownloadSmallForcesFilesStage(Stage):
                 )
                 continue
 
-            downloaded_file: Path = self.client.download_small_forces(file_path_str)
+            downloaded_file: Path = self.client.download(file_path_str)
             file_size = downloaded_file.stat().st_size
 
             if file_size == 0:
