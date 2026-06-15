@@ -6,7 +6,8 @@ class PREFECT_CONSTANTS:
 
     SKIPPED_STATE_NAME = "Skipped"
 
-    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-sharepoint"
+    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-box"
+    DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY = "box-upload"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
@@ -19,7 +20,9 @@ class PREFECT_CONSTANTS:
 
     class POLL_IALIRT:
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
-        IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
+        IALIRT_QUICKLOOK_SHAREPOINT_URL = (
+            "https://imperialcollegelondon.box.com/s/jwwydh31hpb6a96t2agqht88vmmc5iah"
+        )
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
@@ -31,6 +34,9 @@ class PREFECT_CONSTANTS:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
     class POLL_SPIN_TABLE:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
+    class POLL_SMALL_FORCES:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
     class ENV_VAR_NAMES:
@@ -47,6 +53,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
         POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
+        POLL_SMALL_FORCES_CRON = "IMAP_CRON_POLL_SMALL_FORCES"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
@@ -71,6 +78,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
         POLL_SPIN_TABLE = "poll-spin-table"
+        POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -95,6 +103,7 @@ class PREFECT_CONSTANTS:
         POLL_SPICE = "poll_spice"
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
         POLL_SPIN_TABLE = "poll_spin_table"
+        POLL_SMALL_FORCES = "poll_small_forces"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
