@@ -47,7 +47,7 @@ async def upload_shared_docs_flow(
     how_many: int | None = None,
     do_uploads: bool = True,
     do_deletes: bool = True,
-    workflow_progress_key: str = "sharepoint-upload",
+    workflow_progress_key: str = PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY,
 ):
     """
     Publish new files to sharepoint/box/whatever configured cloud storage
