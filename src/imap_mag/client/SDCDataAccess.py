@@ -255,4 +255,5 @@ class SDCDataAccess:
         return imap_data_access.download(file_path)
 
     def get_url_base(self):
-        return imap_data_access.config["DATA_ACCESS_URL"]
+        url = imap_data_access.config["DATA_ACCESS_URL"]
+        return url.rstrip("/") if url else url
