@@ -6,7 +6,8 @@ class PREFECT_CONSTANTS:
 
     SKIPPED_STATE_NAME = "Skipped"
 
-    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-sharepoint"
+    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-box"
+    DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY = "box-upload"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"

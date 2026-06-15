@@ -212,9 +212,11 @@ async def test_upload_shared_docs_flow_tracks_delete_progress_separately(
         assert expected_path.exists()
 
         # Check progress keys are separate
-        upload_progress = test_database.get_workflow_progress("sharepoint-upload")
+        upload_progress = test_database.get_workflow_progress(
+            PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY
+        )
         delete_progress = test_database.get_workflow_progress(
-            "sharepoint-upload-deletes"
+            PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY + "-deletes"
         )
 
         assert upload_progress.progress_timestamp is not None
@@ -231,6 +233,6 @@ async def test_upload_shared_docs_flow_tracks_delete_progress_separately(
 
         # Verify delete progress was updated
         delete_progress = test_database.get_workflow_progress(
-            "sharepoint-upload-deletes"
+            PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY + "-deletes"
         )
         assert delete_progress.progress_timestamp is not None
