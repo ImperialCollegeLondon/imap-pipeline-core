@@ -32,17 +32,18 @@ OFFSETS_DATASTORE_PATH = Path("science-ancillary/l2-offsets/2025/10") / OFFSETS_
 def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
     """Add WireMock mapping for a successful SDC upload."""
 
-    aws_url = f"https://s3.us-west-2.amazonaws.com/imap/mag/{upload_file.as_posix()}?some-amazon-s3-query-params=12345"
+    s3_upload_path = f"/s3-upload/{upload_file.name}"
+    s3_upload_url = wiremock_manager.get_url().rstrip("/") + s3_upload_path
 
     wiremock_manager.add_string_mapping(
         f"/upload/{upload_file.name}",
-        json.dumps(aws_url),
+        json.dumps(s3_upload_url),
     )
     wiremock_manager.add_mapping(
         Mapping(
             request=MappingRequest(
                 method=HttpMethods.PUT,
-                url=aws_url,
+                url=s3_upload_path,
             ),
             response=MappingResponse(
                 status=200,
