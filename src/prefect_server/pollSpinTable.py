@@ -45,7 +45,7 @@ async def poll_spin_table_flow(
                 "description": "Parameters for the pipeline run. If 'start_date' and 'end_date' are not provided, the pipeline will automatically determine the date range based on the last workflow progress.",
             }
         ),
-    ],
+    ] = AutomaticRunParameters(),
     use_database: bool = True,
 ):
     """Poll spin table files from SDC API."""

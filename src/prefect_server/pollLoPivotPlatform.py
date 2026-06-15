@@ -46,7 +46,7 @@ async def poll_lo_pivot_platform_flow(
                 "description": "Parameters for the pipeline run. If 'start_date' and 'end_date' are not provided, the pipeline will automatically determine the date range based on the last workflow progress.",
             }
         ),
-    ],
+    ] = AutomaticRunParameters(),
     # Avoid reading/writing to db - just download the files
     use_database: bool = True,
 ):
