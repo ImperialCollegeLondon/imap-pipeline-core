@@ -19,7 +19,9 @@ class PREFECT_CONSTANTS:
 
     class POLL_IALIRT:
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
-        IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
+        IALIRT_QUICKLOOK_SHAREPOINT_URL = (
+            "https://imperialcollegelondon.box.com/s/jwwydh31hpb6a96t2agqht88vmmc5iah"
+        )
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
