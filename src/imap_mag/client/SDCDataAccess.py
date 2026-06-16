@@ -28,7 +28,9 @@ class SDCDataAccess:
             auth_code.get_secret_value() if auth_code else None
         )
         imap_data_access.config["DATA_DIR"] = data_dir
-        imap_data_access.config["DATA_ACCESS_URL"] = sdc_url
+        imap_data_access.config["DATA_ACCESS_URL"] = (
+            sdc_url.rstrip("/") if sdc_url else sdc_url
+        )
 
     @staticmethod
     def get_file_path(
@@ -278,4 +280,5 @@ class SDCDataAccess:
         return items
 
     def get_url_base(self):
-        return imap_data_access.config["DATA_ACCESS_URL"]
+        url = imap_data_access.config["DATA_ACCESS_URL"]
+        return url.rstrip("/") if url else url
