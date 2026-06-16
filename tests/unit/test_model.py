@@ -88,18 +88,18 @@ class TestFileGetDatastoreRelativePath:
         mock_settings.data_store = Path("/data/store")
 
         f = _make_file(path="/data/store/spice/ck/test.cdf")
-        result = f.get_datastore_relative_path(mock_settings)
+        result = File.get_datastore_relative_path(Path(f.path), mock_settings)
 
-        assert result == Path("spice/ck/test.cdf")
+        assert result == "spice/ck/test.cdf"
 
     def test_returns_original_path_when_outside_datastore(self):
         mock_settings = MagicMock()
         mock_settings.data_store = Path("/data/store")
 
         f = _make_file(path="/other/location/test.cdf")
-        result = f.get_datastore_relative_path(mock_settings)
+        result = File.get_datastore_relative_path(Path(f.path), mock_settings)
 
-        assert result == Path("/other/location/test.cdf")
+        assert result == "/other/location/test.cdf"
 
 
 class TestFileFromFile:

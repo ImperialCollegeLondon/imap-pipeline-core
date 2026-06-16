@@ -131,7 +131,7 @@ class TestDatabaseOperations:
 
     def test_insert_and_get_file(self, sqlite_db):
         f = _make_file("test.cdf", "science/mag/l2/test.cdf", "abc123")
-        sqlite_db.insert_file(f)
+        sqlite_db.upsert_file(f)
 
         files = sqlite_db.get_files(name="test.cdf")
         assert len(files) == 1
@@ -139,19 +139,19 @@ class TestDatabaseOperations:
 
     def test_insert_duplicate_file_same_hash_skips(self, sqlite_db):
         f1 = _make_file("dup.cdf", "science/dup.cdf", "same_hash")
-        sqlite_db.insert_file(f1)
+        sqlite_db.upsert_file(f1)
         f2 = _make_file("dup.cdf", "science/dup.cdf", "same_hash")
-        sqlite_db.insert_file(f2)
+        sqlite_db.upsert_file(f2)
 
         files = sqlite_db.get_files(name="dup.cdf")
         assert len(files) == 1
 
     def test_insert_duplicate_file_different_hash_updates(self, sqlite_db):
         f1 = _make_file("upd.cdf", "science/upd.cdf", "hash_v1")
-        sqlite_db.insert_file(f1)
+        sqlite_db.upsert_file(f1)
 
         f2 = _make_file("upd.cdf", "science/upd.cdf", "hash_v2")
-        sqlite_db.insert_file(f2)
+        sqlite_db.upsert_file(f2)
 
         files = sqlite_db.get_files(name="upd.cdf")
         assert len(files) == 1
@@ -160,7 +160,7 @@ class TestDatabaseOperations:
     def test_get_files_by_path(self, sqlite_db):
         f1 = _make_file("f1.cdf", "science/mag/l2/f1.cdf", "h1")
         f2 = _make_file("f2.cdf", "hk/mag/l1/f2.cdf", "h2")
-        sqlite_db.insert_files([f1, f2])
+        sqlite_db.upsert_files([f1, f2])
 
         results = sqlite_db.get_files_by_path("science/")
         assert len(results) == 1
@@ -174,7 +174,7 @@ class TestDatabaseOperations:
             "h2",
             deletion_date=datetime(2025, 1, 1),
         )
-        sqlite_db.insert_files([f1, f2])
+        sqlite_db.upsert_files([f1, f2])
 
         results = sqlite_db.get_all_active_files()
         names = [f.name for f in results]
@@ -185,7 +185,7 @@ class TestDatabaseOperations:
         f = _make_file(
             "new.cdf", "science/new.cdf", "h1", last_modified_date=datetime(2025, 6, 2)
         )
-        sqlite_db.insert_file(f)
+        sqlite_db.upsert_file(f)
 
         results = sqlite_db.get_files_since(datetime(2025, 6, 1))
         assert any(f.name == "new.cdf" for f in results)
@@ -194,7 +194,7 @@ class TestDatabaseOperations:
         f = _make_file(
             "gone.cdf", "science/gone.cdf", "h_gone", deletion_date=datetime(2025, 6, 2)
         )
-        sqlite_db.insert_file(f)
+        sqlite_db.upsert_file(f)
 
         results = sqlite_db.get_files_deleted_since(datetime(2025, 6, 1))
         assert any(f.name == "gone.cdf" for f in results)
@@ -222,14 +222,14 @@ class TestDatabaseOperations:
 
     def test_get_files_by_path_pattern_returns_matching(self, sqlite_db):
         f = _make_file("match.cdf", "science/mag/l2/match.cdf", "hm")
-        sqlite_db.insert_file(f)
+        sqlite_db.upsert_file(f)
 
         results = sqlite_db.get_files_by_path_pattern("science/mag/%")
         assert any(f.name == "match.cdf" for f in results)
 
     def test_get_active_files_matching_patterns_uses_fnmatch(self, sqlite_db):
         f = _make_file("file.cdf", "science/mag/l2/file.cdf", "hf")
-        sqlite_db.insert_file(f)
+        sqlite_db.upsert_file(f)
 
         results = sqlite_db.get_active_files_matching_patterns(["science/mag/*"])
         assert any(f.name == "file.cdf" for f in results)
@@ -250,7 +250,7 @@ class TestDatabaseOperations:
             )
             for i in range(5)
         ]
-        sqlite_db.insert_files(files)
+        sqlite_db.upsert_files(files)
 
         results = sqlite_db.get_files_since(datetime(2025, 6, 1), how_many=2)
         assert len(results) <= 2

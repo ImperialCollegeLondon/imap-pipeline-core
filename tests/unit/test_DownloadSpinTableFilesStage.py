@@ -70,7 +70,7 @@ class TestDownloadSpinTableFilesStageProcess:
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
         asyncio.run(stage.process(item, {}))
 
-        mock_client.download_spin_table.assert_not_called()
+        mock_client.download.assert_not_called()
 
     def test_skips_empty_downloaded_files(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
@@ -83,7 +83,7 @@ class TestDownloadSpinTableFilesStageProcess:
                 "ingestion_date": "2025-01-16T00:00:00",
             }
         ]
-        mock_client.download_spin_table.return_value = empty_file
+        mock_client.download.return_value = empty_file
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 31))
         asyncio.run(stage.process(item, {}))
@@ -105,7 +105,7 @@ class TestDownloadSpinTableFilesStageProcess:
                 "version": "v001",
             }
         ]
-        mock_client.download_spin_table.return_value = csv_file
+        mock_client.download.return_value = csv_file
 
         mock_handler = MagicMock()
         mock_handler.get_content_date_for_indexing.return_value = datetime(2025, 1, 15)
@@ -134,7 +134,7 @@ class TestDownloadSpinTableFilesStageProcess:
                 "ingestion_date": "2025-01-16T00:00:00",
             }
         ]
-        mock_client.download_spin_table.return_value = csv_file
+        mock_client.download.return_value = csv_file
 
         with patch(
             "imap_mag.data_pipelines.DownloadSpinTableFilesStage.SpinTablePathHandler.from_filename",
@@ -166,7 +166,7 @@ class TestDownloadSpinTableFilesStageProcess:
                 "version": "v001",
             }
         ]
-        mock_client.download_spin_table.return_value = csv_file
+        mock_client.download.return_value = csv_file
 
         mock_handler = MagicMock()
         mock_handler.get_content_date_for_indexing.return_value = datetime(2025, 1, 15)
