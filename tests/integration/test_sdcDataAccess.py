@@ -618,7 +618,7 @@ class TestDownloadUnit:
         client = self._make_client()
         expected_path = Path("/tmp/spin.spin")
         with patch("imap_data_access.download", return_value=expected_path) as mock_dl:
-            result = client.download_spin_table("imap/spice/spin/spin.spin")
+            result = client.download("imap/spice/spin/spin.spin")
 
         mock_dl.assert_called_once_with("imap/spice/spin/spin.spin")
         assert result == expected_path

@@ -1103,6 +1103,7 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file = MagicMock(spec=File)
         mock_file.path = "test_file.csv"
         mock_file.deletion_date = None
+        mock_file.get_full_path.return_value = source_file
 
         manager.delete_file(mock_file)
 
@@ -1118,6 +1119,7 @@ class TestDBIndexedDatastoreFileManagerUnit:
         mock_file = MagicMock(spec=File)
         mock_file.path = "nonexistent_file.csv"
         mock_file.deletion_date = None
+        mock_file.get_full_path.return_value = tmp_path / "nonexistent_file.csv"
 
         manager.delete_file(mock_file)
 
@@ -1141,6 +1143,5 @@ class TestDBIndexedDatastoreFileManagerUnit:
         manager.archive_file(mock_file, archive_folder)
 
         assert (archive_folder / "subdir" / "test_file.csv").exists()
-        mock_db.insert_file.assert_called_once_with(mock_archived_file)
-        mock_db.save.assert_called_once_with(mock_file)
+        mock_db.upsert_files.assert_called_once_with([mock_archived_file, mock_file])
         assert not source_file.exists()
