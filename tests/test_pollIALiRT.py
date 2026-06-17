@@ -9,7 +9,7 @@ import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     END_OF_HOUR,
@@ -349,76 +349,3 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
 
     # Verify.
     mock_teams_webhook_block.notify.assert_called_once()
-
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_hk_autoflow_first_ever_run(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    wiremock_manager.reset()
-
-    define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_hk_flow(
-            wait_for_new_data_to_arrive=False,
-        )
-
-    # Verify.
-    verify_available_ialirt_hk(
-        test_database,
-        END_OF_HOUR.replace(microsecond=0),
-        TODAY,
-    )
-
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 2)
-
-    wiremock_manager.reset()
-
-    define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_hk_flow(
-            wait_for_new_data_to_arrive=False,
-            start_date=start_date,
-            end_date=end_date,
-        )
-
-    # Verify.
-    verify_available_ialirt_hk(
-        test_database,
-        end_date,
-        start_date,
-    )

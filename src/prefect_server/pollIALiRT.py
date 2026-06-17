@@ -176,7 +176,7 @@ async def poll_ialirt_flow(
     ] = True,
 ):
     """
-    Runs continuously for one hour, sequentially polling the SDC API
+    Runs continuously for one hour, sequentially polling the API
     for all 8 instruments every 5 minutes.
     """
     logger = try_get_prefect_logger(__name__)
