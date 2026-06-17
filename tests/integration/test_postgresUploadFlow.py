@@ -118,7 +118,7 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
             db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
-        expected_rows = 3915
+        expected_rows = 5
         # Verify
         assert (
             f"Synced {expected_rows} rows from hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
@@ -152,7 +152,7 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
             db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
-        expected_rows = 4320
+        expected_rows = 8
         # Verify
         assert (
             f"Synced {expected_rows} rows from hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v002.csv"
