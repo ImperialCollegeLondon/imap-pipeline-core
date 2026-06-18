@@ -14,6 +14,7 @@ from imap_mag.data_pipelines.GetProcessingDatesStage import (
 )
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 
 
 class SmallForcesPipeline(Pipeline):
@@ -24,8 +25,9 @@ class SmallForcesPipeline(Pipeline):
         database: Database | None,
         settings: AppSettings,
         client: SDCDataAccess,
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
-        super().__init__(settings=settings)
+        super().__init__(settings=settings, datetime_provider=datetime_provider)
 
         self.initial_context = {"progress_item_name": self.PROGRESS_ITEM_ID}
         self._database = database
@@ -38,6 +40,7 @@ class SmallForcesPipeline(Pipeline):
                 GetProcessingDatesStage(
                     database=self._database,
                     date_resolution_mode=DateResolutionMode.DATE_ONLY,
+                    datetime_provider=self._datetime_provider,
                 ),
                 DownloadSmallForcesFilesStage(
                     client=self._client,

@@ -9,7 +9,8 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchBinary import FetchBinary
 from imap_mag.process.HKProcessor import HKProcessor
 from imap_mag.util import Environment, HKPacket
-from prefect_server.pollHK import poll_hk_flow
+from imap_mag.util.DatetimeProvider import DatetimeProvider
+from prefect_server.pollHK import PollHKFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
@@ -17,7 +18,6 @@ from tests.util.miscellaneous import (
     NOW,
     TEST_DATA,
     TODAY,
-    mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -168,7 +168,6 @@ async def test_poll_hk_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -212,11 +211,12 @@ async def test_poll_hk_autoflow_first_ever_run(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollHKFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow(hk_packets=available_hk + not_available_hk)
+        await flow_instance.poll_hk_flow(hk_packets=available_hk + not_available_hk)
 
     # Verify.
     verify_not_available_hk(test_database, not_available_hk)
@@ -237,7 +237,6 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -278,11 +277,12 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollHKFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow(hk_packets=available_hk)
+        await flow_instance.poll_hk_flow(hk_packets=available_hk)
 
     # Verify.
     verify_available_hk(
@@ -303,7 +303,6 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     force_database_update,
     capture_cli_logs,
     dynamic_work_folder,
@@ -349,11 +348,12 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollHKFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow(
+        await flow_instance.poll_hk_flow(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
@@ -382,7 +382,6 @@ async def test_poll_hk_specify_ert_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -428,11 +427,12 @@ async def test_poll_hk_specify_ert_start_end_dates(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollHKFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await poll_hk_flow(
+        await flow_instance.poll_hk_flow(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
@@ -473,7 +473,6 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     mock_functionality_to_fail_on_call,
 ):
     # Set up.
@@ -511,6 +510,7 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
     define_unavailable_data_webpoda_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollHKFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with (
         pytest.raises(
             RuntimeError,
@@ -521,7 +521,7 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
             IMAP_WEBPODA_TOKEN="12345",
         ),
     ):
-        await poll_hk_flow(
+        await flow_instance.poll_hk_flow(
             hk_packets=hk_to_poll,
         )
 

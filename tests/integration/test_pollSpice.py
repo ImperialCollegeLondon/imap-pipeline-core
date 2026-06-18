@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollSpice import poll_spice_flow
+from imap_mag.util import Environment
+from imap_mag.util.DatetimeProvider import DatetimeProvider
+from prefect_server.pollSpice import PollSpiceFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     NOW,
     TODAY,
     TOMORROW,
-    mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -96,12 +96,11 @@ async def test_poll_spice_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     clean_datastore,
 ):
     """Test downloading a new SPICE file for the first time (no previous progress)."""
     # Set up.
-    ingestion_timestamp = DatetimeProvider.now() - timedelta(hours=14)
+    ingestion_timestamp = NOW - timedelta(hours=14)
 
     # Use the actual test SPICE file
     test_spice_file = Path("tests/test_data/spice/imap_sclk_0032.tsc")
@@ -121,11 +120,12 @@ async def test_poll_spice_autoflow_first_ever_run(
     )
 
     # Exercise.
+    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await poll_spice_flow()
+        await flow_instance.poll_spice_flow()
 
     # Verify.
     # Database should be updated with progress
@@ -147,7 +147,6 @@ async def test_poll_spice_autoflow_no_new_data(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     clean_datastore,
 ):
     """Test that nothing is downloaded when there is no new data (file already downloaded)."""
@@ -166,11 +165,12 @@ async def test_poll_spice_autoflow_no_new_data(
     define_unavailable_spice_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
+    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await poll_spice_flow()
+        await flow_instance.poll_spice_flow()
 
     # Verify.
     # Database progress should be updated with last checked date but progress timestamp should remain the same
@@ -192,7 +192,6 @@ async def test_poll_spice_autoflow_download_newer_file(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     clean_datastore,
 ):
     """Test downloading a newer file and verify progress is updated correctly."""
@@ -224,11 +223,12 @@ async def test_poll_spice_autoflow_download_newer_file(
     )
 
     # Exercise.
+    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await poll_spice_flow()
+        await flow_instance.poll_spice_flow()
 
     # Verify.
     # Database should be updated with new progress timestamp

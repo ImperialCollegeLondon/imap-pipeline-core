@@ -9,17 +9,13 @@ import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import (
-    poll_ialirt_flow,
-    poll_ialirt_hk_flow,
-)
+from prefect_server.pollIALiRT import PollIALiRTFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     END_OF_HOUR,
     NOW,
     TODAY,
     YESTERDAY,
-    mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import (  # noqa: F401
     mock_teams_webhook_block,
@@ -155,7 +151,6 @@ def check_file_existence(
 async def test_poll_ialirt_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
@@ -165,11 +160,12 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     define_available_ialirt_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(
+        await flow_instance.poll_ialirt_flow(
             wait_for_new_data_to_arrive=False, plot_last_3_days=False
         )
 
@@ -189,7 +185,6 @@ async def test_poll_ialirt_autoflow_first_ever_run(
 async def test_poll_ialirt_autoflow_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
@@ -207,11 +202,12 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     )
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(
+        await flow_instance.poll_ialirt_flow(
             wait_for_new_data_to_arrive=False, plot_last_3_days=False
         )
 
@@ -231,7 +227,6 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
 async def test_poll_ialirt_autoflow_specify_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
@@ -244,11 +239,12 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
     define_available_ialirt_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(
+        await flow_instance.poll_ialirt_flow(
             wait_for_new_data_to_arrive=False,
             plot_last_3_days=False,
             start_date=start_date,
@@ -279,37 +275,24 @@ NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
 )
 
 
-@pytest.fixture(autouse=False)
-def mock_datetime_provider_for_6am_uk_time(monkeypatch):
-    now = NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME
-    today = NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    yesterday = today - timedelta(days=1)
-    end_of_hour = now.replace(minute=59, second=59, microsecond=999999)
-    num_calls = -1
+class AdvancingDatetimeProvider(DatetimeProvider):
+    def __init__(self, fixed_now: datetime, step: timedelta) -> None:
+        super().__init__(fixed_now=fixed_now)
+        self._start_now = fixed_now
+        self._step = step
+        self._num_calls = -1
+        self._fixed_end_of_hour = fixed_now.replace(
+            minute=59,
+            second=59,
+            microsecond=999999,
+        )
 
-    def return_now(self):
-        nonlocal num_calls
-        num_calls += 1
-        return now + timedelta(seconds=5 * num_calls)
+    def now(self) -> datetime:
+        self._num_calls += 1
+        return self._start_now + (self._step * self._num_calls)
 
-    monkeypatch.setattr(DatetimeProvider, "now", return_now)
-    monkeypatch.setattr(
-        DatetimeProvider,
-        "today",
-        lambda self, date_type=None: today,
-    )
-    monkeypatch.setattr(
-        DatetimeProvider, "yesterday", lambda self, date_type=None: yesterday
-    )
-    monkeypatch.setattr(
-        DatetimeProvider,
-        "end_of_hour",
-        lambda self: end_of_hour,
-    )
-
-    return (yesterday, end_of_hour)
+    def end_of_hour(self) -> datetime:
+        return self._fixed_end_of_hour
 
 
 @pytest.fixture
@@ -329,7 +312,6 @@ def mock_quicklook_ialirt_flow(mocker) -> None:
 async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider_for_6am_uk_time,
     mock_quicklook_ialirt_flow,
     prefect_test_fixture,  # noqa: F811
     mock_teams_webhook_block,  # noqa: F811
@@ -338,15 +320,21 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
     # Set up.
     wiremock_manager.reset()
 
-    yesterday, end_of_hour = mock_datetime_provider_for_6am_uk_time
+    datetime_provider = AdvancingDatetimeProvider(
+        fixed_now=NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME,
+        step=timedelta(seconds=5),
+    )
+    yesterday = datetime_provider.yesterday()
+    end_of_hour = datetime_provider.end_of_hour()
     define_available_ialirt_mappings(wiremock_manager, yesterday, end_of_hour)
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=datetime_provider)
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_flow(
+        await flow_instance.poll_ialirt_flow(
             wait_for_new_data_to_arrive=True,
             timeout=5,
             plot_last_3_days=True,
@@ -364,7 +352,6 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
 async def test_poll_ialirt_hk_autoflow_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
@@ -374,11 +361,12 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
     define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_hk_flow(
+        await flow_instance.poll_ialirt_hk_flow(
             wait_for_new_data_to_arrive=False,
         )
 
@@ -398,7 +386,6 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
 async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
@@ -411,11 +398,12 @@ async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
     define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
+    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await poll_ialirt_hk_flow(
+        await flow_instance.poll_ialirt_hk_flow(
             wait_for_new_data_to_arrive=False,
             start_date=start_date,
             end_date=end_date,

@@ -58,28 +58,6 @@ def temp_datastore():
 
 
 @pytest.fixture(autouse=False)
-def mock_datetime_provider(monkeypatch):
-    """Mock DatetimeProvider to specific time."""
-
-    monkeypatch.setattr(DatetimeProvider, "now", lambda self: NOW)
-    monkeypatch.setattr(DatetimeProvider, "today", lambda self, date_type=None: TODAY)
-    monkeypatch.setattr(
-        DatetimeProvider, "tomorrow", lambda self, date_type=None: TOMORROW
-    )
-    monkeypatch.setattr(
-        DatetimeProvider, "yesterday", lambda self, date_type=None: YESTERDAY
-    )
-    monkeypatch.setattr(DatetimeProvider, "start_of_hour", lambda self: START_OF_HOUR)
-    monkeypatch.setattr(DatetimeProvider, "end_of_hour", lambda self: END_OF_HOUR)
-    monkeypatch.setattr(DatetimeProvider, "end_of_today", lambda self: END_OF_TODAY)
-    monkeypatch.setattr(
-        DatetimeProvider,
-        "beginning_of_imap",
-        lambda self, date_type=None: BEGINNING_OF_IMAP,
-    )
-
-
-@pytest.fixture(autouse=False)
 def fixed_datetime_provider() -> DatetimeProvider:
     """Return a DatetimeProvider fixed to the test constants time."""
     return DatetimeProvider(fixed_now=NOW)

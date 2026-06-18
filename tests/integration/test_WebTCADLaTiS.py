@@ -14,7 +14,6 @@ from imap_mag.config.FetchConfig import (
     FetchWebTCADLaTiSConfig,
 )
 from imap_mag.util.Subsystem import Subsystem
-from tests.util.miscellaneous import mock_datetime_provider  # noqa: F401
 
 
 @pytest.mark.skipif(

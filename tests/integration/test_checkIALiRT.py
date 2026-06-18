@@ -6,15 +6,15 @@ from unittest import mock
 import pytest
 from prefect.exceptions import FailedRun
 
-from imap_mag.util import CONSTANTS, DatetimeProvider
-from prefect_server.checkIALiRT import check_ialirt_flow
+from imap_mag.util import CONSTANTS
+from imap_mag.util.DatetimeProvider import DatetimeProvider
+from prefect_server.checkIALiRT import CheckIALiRTFlow, check_ialirt_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
     TEST_DATA,
     TODAY,
     YESTERDAY,
-    mock_datetime_provider,  # noqa: F401
     temp_datastore,  # noqa: F401
 )
 from tests.util.prefect_test_utils import (  # noqa: F401
@@ -28,11 +28,13 @@ async def test_check_ialirt_no_issues(
     temp_datastore,  # noqa: F811
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     capture_cli_logs,
 ):
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
+    flow_instance = CheckIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
+    await flow_instance.check_ialirt_flow(
+        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
+    )
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -79,11 +81,11 @@ async def test_check_ialirt_no_files_default_dates(
     temp_datastore,  # noqa: F811
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     capture_cli_logs,
 ):
     # Exercise.
-    await check_ialirt_flow()
+    flow_instance = CheckIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
+    await flow_instance.check_ialirt_flow()
 
     # Verify.
     assert (
@@ -107,23 +109,22 @@ NOW_FIRST_MONDAY_OF_MONTH = NOW.replace(
 )
 
 
-@pytest.fixture(autouse=False)
-def mock_datetime_provider_first_monday_of_month(monkeypatch):
-    monkeypatch.setattr(DatetimeProvider, "now", lambda self: NOW_FIRST_MONDAY_OF_MONTH)
-
-
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.asyncio
 async def test_check_ialirt_first_monday_of_month_first_time(
     temp_datastore,  # noqa: F811
     test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider_first_monday_of_month,
+    prefect_test_fixture,  # noqa: F811,
     mock_teams_webhook_block,  # noqa: F811
     capture_cli_logs,
 ) -> None:
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
+    flow = CheckIALiRTFlow(
+        datetime_provider=DatetimeProvider(fixed_now=NOW_FIRST_MONDAY_OF_MONTH)
+    )
+    await flow.check_ialirt_flow(
+        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
+    )
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -144,7 +145,6 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     temp_datastore,  # noqa: F811
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider_first_monday_of_month,
     mock_teams_webhook_block,  # noqa: F811
     capture_cli_logs,
 ) -> None:
@@ -158,7 +158,12 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     test_database.save(ialirt_check_workflow)
 
     # Exercise.
-    await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
+    flow = CheckIALiRTFlow(
+        datetime_provider=DatetimeProvider(fixed_now=NOW_FIRST_MONDAY_OF_MONTH)
+    )
+    await flow.check_ialirt_flow(
+        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
+    )
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text

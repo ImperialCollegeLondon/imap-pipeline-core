@@ -64,7 +64,11 @@ class PollLoPivotPlatformFlow:
         )
         settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
 
-        pipeline = LoPivotPlatformPipeline(database=database, settings=settings)
+        pipeline = LoPivotPlatformPipeline(
+            database=database,
+            settings=settings,
+            datetime_provider=self._datetime_provider,
+        )
         pipeline.build(run_parameters)
         await pipeline.run()
         result = pipeline.get_results()

@@ -13,16 +13,14 @@ from imap_mag.data_pipelines import (
 )
 from imap_mag.data_pipelines.LoPivotPlatformPipeline import LoPivotPlatformPipeline
 from imap_mag.util import Environment
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Subsystem import Subsystem
-from prefect_server.pollLoPivotPlatform import (
-    poll_lo_pivot_platform_flow,
-)
+from prefect_server.pollLoPivotPlatform import PollLoPivotPlatformFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     NOW,
     TODAY,
-    mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -114,7 +112,6 @@ async def test_poll_lo_pivot_platform_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -132,8 +129,11 @@ async def test_poll_lo_pivot_platform_first_ever_run(
     # No data for other days
     define_unavailable_latis_mapping(wiremock_manager)
 
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     await execute_flow_under_test(
-        wiremock_manager, prefect_test_fixture=prefect_test_fixture
+        wiremock_manager,
+        prefect_test_fixture=prefect_test_fixture,
+        datetime_provider=datetime_provider,
     )
 
     # Verify file exists for BEGINNING_OF_IMAP
@@ -156,7 +156,6 @@ async def test_poll_lo_pivot_platform_without_a_database(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -174,8 +173,12 @@ async def test_poll_lo_pivot_platform_without_a_database(
     # No data for other days
     define_unavailable_latis_mapping(wiremock_manager)
 
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     await execute_flow_under_test(
-        wiremock_manager, use_database=False, prefect_test_fixture=prefect_test_fixture
+        wiremock_manager,
+        use_database=False,
+        prefect_test_fixture=prefect_test_fixture,
+        datetime_provider=datetime_provider,
     )
 
     # Verify file exists for BEGINNING_OF_IMAP
@@ -190,7 +193,6 @@ async def test_poll_lo_pivot_platform_without_a_database(
 async def test_poll_lo_pivot_platform_continue_from_previous(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -215,7 +217,8 @@ async def test_poll_lo_pivot_platform_continue_from_previous(
 
     define_unavailable_latis_mapping(wiremock_manager)
 
-    await execute_flow_under_test(wiremock_manager)
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    await execute_flow_under_test(wiremock_manager, datetime_provider=datetime_provider)
 
     # Verify file exists for the next day
     check_file_existence(next_day)
@@ -234,7 +237,6 @@ async def test_poll_lo_pivot_platform_continue_from_previous(
 async def test_poll_lo_pivot_platform_no_new_data(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -244,7 +246,8 @@ async def test_poll_lo_pivot_platform_no_new_data(
     # Only empty data available
     define_unavailable_latis_mapping(wiremock_manager)
 
-    await execute_flow_under_test(wiremock_manager)
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    await execute_flow_under_test(wiremock_manager, datetime_provider=datetime_provider)
 
     # Verify workflow progress was checked but not advanced
     workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
@@ -260,7 +263,6 @@ async def test_poll_lo_pivot_platform_no_new_data(
 async def test_poll_lo_pivot_platform_manual_date_range(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -286,7 +288,10 @@ async def test_poll_lo_pivot_platform_manual_date_range(
 
     define_unavailable_latis_mapping(wiremock_manager)
 
-    await execute_flow_under_test(wiremock_manager, start_date, end_date)
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    await execute_flow_under_test(
+        wiremock_manager, start_date, end_date, datetime_provider=datetime_provider
+    )
 
     # Verify files exist for both days
     check_file_existence(start_date)
@@ -306,7 +311,6 @@ async def test_poll_lo_pivot_platform_manual_date_range(
 async def test_poll_lo_pivot_platform_force_redownload_does_download_file_already_downloaded_in_progress(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -329,8 +333,13 @@ async def test_poll_lo_pivot_platform_force_redownload_does_download_file_alread
 
     define_unavailable_latis_mapping(wiremock_manager)
 
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     await execute_flow_under_test(
-        wiremock_manager, start_date, end_date, force_redownload=True
+        wiremock_manager,
+        start_date,
+        end_date,
+        force_redownload=True,
+        datetime_provider=datetime_provider,
     )
 
     # Verify file exists
@@ -349,7 +358,6 @@ async def test_poll_lo_pivot_platform_force_redownload_does_download_file_alread
 async def test_poll_lo_pivot_platform_dont_update_progress_if_option_not_to_is_set(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -372,11 +380,13 @@ async def test_poll_lo_pivot_platform_dont_update_progress_if_option_not_to_is_s
 
     define_unavailable_latis_mapping(wiremock_manager)
 
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     await execute_flow_under_test(
         wiremock_manager,
         start_date,
         end_date,
         do_not_update_progress=True,
+        datetime_provider=datetime_provider,
     )
 
     # Verify file exists
@@ -395,7 +405,6 @@ async def test_poll_lo_pivot_platform_dont_update_progress_if_option_not_to_is_s
 async def test_poll_lo_pivot_platform_already_up_to_date(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -410,7 +419,8 @@ async def test_poll_lo_pivot_platform_already_up_to_date(
 
     define_unavailable_latis_mapping(wiremock_manager)
 
-    await execute_flow_under_test(wiremock_manager)
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    await execute_flow_under_test(wiremock_manager, datetime_provider=datetime_provider)
 
     # Progress should remain the same
     updated_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
@@ -425,7 +435,6 @@ async def test_poll_lo_pivot_platform_already_up_to_date(
 async def test_poll_lo_pivot_platform_skips_days_without_data(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -457,7 +466,10 @@ async def test_poll_lo_pivot_platform_skips_days_without_data(
     )
     define_unavailable_latis_mapping(wiremock_manager)
 
-    await execute_flow_under_test(wiremock_manager, day1, day3)
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    await execute_flow_under_test(
+        wiremock_manager, day1, day3, datetime_provider=datetime_provider
+    )
 
     # Only day2 should have a file
     check_file_not_exists(day1)
@@ -477,16 +489,19 @@ async def execute_flow_under_test(
     use_database=True,
     prefect_test_fixture=None,  # noqa: F811
     do_not_update_progress=False,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ):
+    flow_instance = PollLoPivotPlatformFlow(datetime_provider=datetime_provider)
+
     with Environment(
         MAG_FETCH_WEBTCAD_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
         # If prefect_test_fixture is provided, it means we are running within a Prefect test and should call the flow function directly. Otherwise, we are running the test without Prefect and should call the flow as a normal async function.
         func_under_test = (
-            poll_lo_pivot_platform_flow
+            flow_instance.poll_lo_pivot_platform_flow
             if prefect_test_fixture
-            else poll_lo_pivot_platform_flow.fn
+            else flow_instance.poll_lo_pivot_platform_flow.fn
         )
 
         mode = (

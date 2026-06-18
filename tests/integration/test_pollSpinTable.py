@@ -13,11 +13,11 @@ from imap_mag.data_pipelines import (
 )
 from imap_mag.data_pipelines.SpinTablePipeline import SpinTablePipeline
 from imap_mag.io.file.SpinTablePathHandler import SpinTablePathHandler
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.pollSpinTable import generate_flow_run_name
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
-    mock_datetime_provider,  # noqa: F401
 )
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -183,21 +183,22 @@ def test_spin_table_path_handler_returns_none_for_non_spin_files():
 async def test_poll_spin_table_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """On first run with no progress, download spin tables from beginning of IMAP to today."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
+    # need to make BEGINNING_OF_IMAP = YESTERDAY - timedelta(days=1)  # 2025-06-01
     wiremock_manager.reset()
 
     # Create response data with dates matching BEGINNING_OF_IMAP
     api_response = [
         {
             "file_path": "imap/spice/spin/imap_2025_152_2025_153_01.spin",
-            "start_date": "2025-06-01, 00:00:00",
-            "end_date": "2025-06-02, 00:00:00",
+            "start_date": "2025-09-24, 00:00:00",
+            "end_date": "2025-09-25, 00:00:00",
             "version": "01",
-            "ingestion_date": "2025-06-02, 01:50:09",
+            "ingestion_date": "2025-09-25, 01:50:09",
         },
     ]
 
@@ -207,14 +208,16 @@ async def test_poll_spin_table_first_ever_run(
         "imap/spice/spin/imap_2025_152_2025_153_01.spin",
     )
 
-    await execute_pipeline_under_test(wiremock_manager, test_database)
+    await execute_pipeline_under_test(
+        wiremock_manager, test_database, datetime_provider=datetime_provider
+    )
 
     check_spin_file_existence("imap_2025_152_2025_153_01.spin")
 
     # Verify workflow progress was updated
     workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
     assert workflow_progress.get_last_checked_date() == NOW
-    assert workflow_progress.get_progress_timestamp() == datetime(2025, 6, 2, 1, 50, 9)
+    assert workflow_progress.get_progress_timestamp() == datetime(2025, 9, 25, 1, 50, 9)
 
 
 @pytest.mark.skipif(
@@ -225,16 +228,18 @@ async def test_poll_spin_table_first_ever_run(
 async def test_poll_spin_table_no_new_data(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """When API returns no files, progress timestamp stays unchanged."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     wiremock_manager.reset()
 
     define_empty_spin_table_api_mapping(wiremock_manager)
 
-    await execute_pipeline_under_test(wiremock_manager, test_database)
+    await execute_pipeline_under_test(
+        wiremock_manager, test_database, datetime_provider=datetime_provider
+    )
 
     workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
     assert workflow_progress.get_last_checked_date() == NOW
@@ -249,11 +254,11 @@ async def test_poll_spin_table_no_new_data(
 async def test_poll_spin_table_manual_date_range(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """Manually specify date range to download specific spin table files."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     wiremock_manager.reset()
 
     start_date = datetime(2026, 4, 1)
@@ -276,7 +281,11 @@ async def test_poll_spin_table_manual_date_range(
     )
 
     await execute_pipeline_under_test(
-        wiremock_manager, test_database, start_date=start_date, end_date=end_date
+        wiremock_manager,
+        test_database,
+        start_date=start_date,
+        end_date=end_date,
+        datetime_provider=datetime_provider,
     )
 
     check_spin_file_existence("imap_2026_091_2026_092_01.spin")
@@ -296,11 +305,11 @@ async def test_poll_spin_table_manual_date_range(
 async def test_poll_spin_table_continue_from_previous(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """On subsequent run, start from after last progress."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     wiremock_manager.reset()
 
     # Set previous progress
@@ -325,7 +334,9 @@ async def test_poll_spin_table_continue_from_previous(
         "imap/spice/spin/imap_2025_153_2025_154_01.spin",
     )
 
-    await execute_pipeline_under_test(wiremock_manager, test_database)
+    await execute_pipeline_under_test(
+        wiremock_manager, test_database, datetime_provider=datetime_provider
+    )
 
     check_spin_file_existence("imap_2025_153_2025_154_01.spin")
 
@@ -342,20 +353,20 @@ async def test_poll_spin_table_continue_from_previous(
 async def test_poll_spin_table_indexes_metadata_in_database(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """Verify that spin table metadata is indexed in the database."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     wiremock_manager.reset()
 
     api_response = [
         {
             "file_path": "imap/spice/spin/imap_2025_152_2025_153_01.spin",
-            "start_date": "2025-06-01, 00:00:00",
-            "end_date": "2025-06-02, 00:00:00",
+            "start_date": "2025-09-24, 00:00:00",
+            "end_date": "2025-09-25, 00:00:00",
             "version": "01",
-            "ingestion_date": "2025-06-02, 01:50:09",
+            "ingestion_date": "2025-09-25, 01:50:09",
         },
     ]
 
@@ -365,16 +376,18 @@ async def test_poll_spin_table_indexes_metadata_in_database(
         "imap/spice/spin/imap_2025_152_2025_153_01.spin",
     )
 
-    await execute_pipeline_under_test(wiremock_manager, test_database)
+    await execute_pipeline_under_test(
+        wiremock_manager, test_database, datetime_provider=datetime_provider
+    )
 
     # Verify the file is in the database with metadata
     files = test_database.get_files_by_path("spice/spin")
     assert len(files) == 1
     assert files[0].file_meta is not None
-    assert files[0].file_meta["start_date"] == "2025-06-01, 00:00:00"
-    assert files[0].file_meta["end_date"] == "2025-06-02, 00:00:00"
+    assert files[0].file_meta["start_date"] == "2025-09-24, 00:00:00"
+    assert files[0].file_meta["end_date"] == "2025-09-25, 00:00:00"
     assert files[0].file_meta["version"] == "01"
-    assert files[0].file_meta["ingestion_date"] == "2025-06-02, 01:50:09"
+    assert files[0].file_meta["ingestion_date"] == "2025-09-25, 01:50:09"
     assert files[0].version == 1
 
 
@@ -386,20 +399,20 @@ async def test_poll_spin_table_indexes_metadata_in_database(
 async def test_poll_spin_table_without_database(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
     """Test that the pipeline works without a database."""
+    datetime_provider = DatetimeProvider(fixed_now=NOW)
     wiremock_manager.reset()
 
     api_response = [
         {
             "file_path": "imap/spice/spin/imap_2025_152_2025_153_01.spin",
-            "start_date": "2025-06-01, 00:00:00",
-            "end_date": "2025-06-02, 00:00:00",
+            "start_date": "2025-09-24, 00:00:00",
+            "end_date": "2025-09-25, 00:00:00",
             "version": "01",
-            "ingestion_date": "2025-06-02, 01:50:09",
+            "ingestion_date": "2025-09-25, 01:50:09",
         },
     ]
 
@@ -410,7 +423,10 @@ async def test_poll_spin_table_without_database(
     )
 
     await execute_pipeline_under_test(
-        wiremock_manager, test_database, use_database=False
+        wiremock_manager,
+        test_database,
+        use_database=False,
+        datetime_provider=datetime_provider,
     )
 
     check_spin_file_existence("imap_2025_152_2025_153_01.spin")
@@ -422,6 +438,7 @@ async def execute_pipeline_under_test(
     start_date=None,
     end_date=None,
     use_database=True,
+    datetime_provider=DatetimeProvider(fixed_now=NOW),
 ):
     from imap_mag.client.SDCDataAccess import SDCDataAccess
     from imap_mag.util import Environment
@@ -448,7 +465,10 @@ async def execute_pipeline_under_test(
             run_params = AutomaticRunParameters()
 
         pipeline = SpinTablePipeline(
-            database=database, settings=settings, client=client
+            database=database,
+            settings=settings,
+            client=client,
+            datetime_provider=datetime_provider,
         )
         pipeline.build(run_params)
         await pipeline.run()
