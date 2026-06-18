@@ -7,12 +7,12 @@ import pytest
 from imap_db.model import WorkflowProgress
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.db import Database
-from tests.util.miscellaneous import (  # noqa: F401  # noqa: F401
+from imap_mag.util.DatetimeProvider import DatetimeProvider
+from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     END_OF_TODAY,
     NOW,
     YESTERDAY,
-    mock_datetime_provider,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -24,9 +24,12 @@ def get_dates_for_download(
     original_start_date,
     original_end_date,
     validate_with_database,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
     **kwargs,
 ):
-    date_manager = DownloadDateManager(packet_name, database, **kwargs)
+    date_manager = DownloadDateManager(
+        packet_name, database, datetime_provider=datetime_provider, **kwargs
+    )
 
     packet_dates = date_manager.get_dates_for_download(
         original_start_date=original_start_date,
@@ -48,13 +51,14 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
     capture_cli_logs,
     mock_database,
     validate_with_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
     workflow_progress.item_name = "MAG_SCI_NORM"
 
     mock_database.get_workflow_progress.return_value = workflow_progress
+
+    dp = DatetimeProvider(fixed_now=NOW)
 
     # Exercise
     result = get_dates_for_download(
@@ -63,6 +67,7 @@ def test_get_start_end_dates_no_dates_defined_empty_database(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -91,7 +96,6 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     capture_cli_logs,
     mock_database,
     validate_with_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -100,6 +104,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
     mock_database.get_workflow_progress.return_value = workflow_progress
 
     original_end_date = datetime(2025, 2, 13, 12, 34, 0)
+    dp = DatetimeProvider(fixed_now=NOW)
 
     # Exercise
     result = get_dates_for_download(
@@ -108,6 +113,7 @@ def test_get_start_end_dates_end_date_defined_empty_database(
         original_start_date=None,
         original_end_date=original_end_date,
         validate_with_database=validate_with_database,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -131,7 +137,6 @@ def test_get_start_end_dates_end_date_defined_empty_database(
 def test_get_start_end_dates_both_dates_defined_empty_database(
     capture_cli_logs,
     mock_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -141,6 +146,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
 
     original_start_date = datetime(2025, 2, 12, 0, 0, 0)
     original_end_date = datetime(2025, 2, 13, 12, 34, 0)
+    dp = DatetimeProvider(fixed_now=NOW)
 
     # Exercise
     result = get_dates_for_download(
@@ -149,6 +155,7 @@ def test_get_start_end_dates_both_dates_defined_empty_database(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=False,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -177,7 +184,6 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     mock_database,
     validate_with_database,
     time_buffer,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -185,6 +191,8 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
     workflow_progress.progress_timestamp = datetime(2025, 3, 21, 12, 45, 7)
 
     mock_database.get_workflow_progress.return_value = workflow_progress
+
+    dp = DatetimeProvider(fixed_now=NOW)
 
     # Exercise
     result = get_dates_for_download(
@@ -194,6 +202,7 @@ def test_get_start_end_dates_no_dates_defined_with_progress_timestamp(
         original_end_date=None,
         validate_with_database=validate_with_database,
         progress_time_buffer=time_buffer,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -222,7 +231,6 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
     capture_cli_logs,
     mock_database,
     validate_with_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     original_last_checked_date = YESTERDAY + timedelta(hours=1)
@@ -233,6 +241,8 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
 
     mock_database.get_workflow_progress.return_value = workflow_progress
 
+    dp = DatetimeProvider(fixed_now=NOW)
+
     # Exercise
     result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
@@ -240,6 +250,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date(
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -268,7 +279,6 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
     capture_cli_logs,
     mock_database,
     validate_with_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     older_than_yesterday = datetime(2025, 3, 21, 12, 45, 7)
@@ -280,6 +290,8 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
 
     mock_database.get_workflow_progress.return_value = workflow_progress
 
+    dp = DatetimeProvider(fixed_now=NOW)
+
     # Exercise
     result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
@@ -287,6 +299,7 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
         original_start_date=None,
         original_end_date=None,
         validate_with_database=validate_with_database,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -313,7 +326,6 @@ def test_get_start_end_dates_no_dates_defined_with_last_checked_date_older_than_
 def test_get_start_end_dates_not_up_to_date(
     capture_cli_logs,
     mock_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -322,6 +334,7 @@ def test_get_start_end_dates_not_up_to_date(
     mock_database.get_workflow_progress.return_value = workflow_progress
 
     original_start_date = datetime(2025, 3, 21, 12, 45, 7)
+    dp = DatetimeProvider(fixed_now=NOW)
 
     # Exercise
     result = get_dates_for_download(
@@ -330,6 +343,7 @@ def test_get_start_end_dates_not_up_to_date(
         original_start_date=original_start_date,
         original_end_date=None,
         validate_with_database=True,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -357,7 +371,6 @@ def test_get_start_end_dates_not_up_to_date(
 def test_get_start_end_dates_fully_up_to_date(
     capture_cli_logs,
     mock_database,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -369,6 +382,8 @@ def test_get_start_end_dates_fully_up_to_date(
     original_start_date = workflow_progress.progress_timestamp - timedelta(days=2)
     original_end_date = workflow_progress.progress_timestamp - timedelta(days=1)
 
+    dp = DatetimeProvider(fixed_now=NOW)
+
     # Exercise
     result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
@@ -376,6 +391,7 @@ def test_get_start_end_dates_fully_up_to_date(
         original_start_date=original_start_date,
         original_end_date=original_end_date,
         validate_with_database=True,
+        datetime_provider=dp,
     )
 
     # Verify
@@ -396,7 +412,6 @@ def test_get_start_end_dates_partially_up_to_date(
     capture_cli_logs,
     mock_database,
     time_buffer,
-    mock_datetime_provider,  # noqa: F811
 ) -> None:
     # Set up
     workflow_progress = WorkflowProgress()
@@ -408,6 +423,8 @@ def test_get_start_end_dates_partially_up_to_date(
     original_start_date = workflow_progress.progress_timestamp - timedelta(days=1)
     original_end_date = workflow_progress.progress_timestamp + timedelta(days=1)
 
+    dp = DatetimeProvider(fixed_now=NOW)
+
     # Exercise
     result = get_dates_for_download(
         packet_name="MAG_SCI_NORM",
@@ -416,6 +433,7 @@ def test_get_start_end_dates_partially_up_to_date(
         original_end_date=original_end_date,
         validate_with_database=True,
         progress_time_buffer=time_buffer,
+        datetime_provider=dp,
     )
 
     # Verify

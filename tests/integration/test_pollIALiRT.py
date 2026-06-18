@@ -289,7 +289,7 @@ def mock_datetime_provider_for_6am_uk_time(monkeypatch):
     end_of_hour = now.replace(minute=59, second=59, microsecond=999999)
     num_calls = -1
 
-    def return_now():
+    def return_now(self):
         nonlocal num_calls
         num_calls += 1
         return now + timedelta(seconds=5 * num_calls)
@@ -298,13 +298,15 @@ def mock_datetime_provider_for_6am_uk_time(monkeypatch):
     monkeypatch.setattr(
         DatetimeProvider,
         "today",
-        lambda: today,
+        lambda self, date_type=None: today,
     )
-    monkeypatch.setattr(DatetimeProvider, "yesterday", lambda: yesterday)
+    monkeypatch.setattr(
+        DatetimeProvider, "yesterday", lambda self, date_type=None: yesterday
+    )
     monkeypatch.setattr(
         DatetimeProvider,
         "end_of_hour",
-        lambda: end_of_hour,
+        lambda self: end_of_hour,
     )
 
     return (yesterday, end_of_hour)

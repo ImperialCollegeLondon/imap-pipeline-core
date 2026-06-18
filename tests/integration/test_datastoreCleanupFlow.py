@@ -7,7 +7,6 @@ import pytest
 
 from imap_db.model import File
 from imap_mag.config.DatastoreCleanupConfig import CleanupMode, CleanupTask
-from imap_mag.util import DatetimeProvider
 from prefect_server.datastoreCleanupFlow import (
     _get_files_to_cleanup,
     _identify_non_latest_versions,
@@ -111,7 +110,7 @@ class TestGetFilesToCleanup:
         assert len(result) == 1
         assert result[0].path == "hk/mag/l1/old_v001.csv"
 
-    def test_keeps_latest_version_only(self, mock_datetime_provider):
+    def test_keeps_latest_version_only(self):
         files = [
             _create_test_file_from_path(
                 "hk/mag/l1/file_20251101_v001.csv", 1, days_old=60
@@ -189,8 +188,10 @@ class TestCleanupTaskValidation:
 
 def _create_test_file_from_path(path: str, file_id: int, days_old: int = 0) -> File:
     """Create a mock File object for testing."""
+    from imap_mag.util.DatetimeProvider import DatetimeProvider
+
     modified_date = (
-        DatetimeProvider.now() - timedelta(days=days_old) + timedelta(seconds=1)
+        DatetimeProvider().now() - timedelta(days=days_old) + timedelta(seconds=1)
     )
     name = Path(path).name
 
@@ -330,7 +331,9 @@ async def test_cleanup_datastore_respects_min_age(
         ),
     ]
 
-    recent_date = DatetimeProvider.now() - timedelta(minutes=30)
+    from imap_mag.util.DatetimeProvider import DatetimeProvider
+
+    recent_date = DatetimeProvider().now() - timedelta(minutes=30)
 
     for file_path_str, id in test_files_info:
         file_path = temp_datastore / file_path_str

@@ -8,6 +8,7 @@ import pytest
 
 from imap_mag.check import IALiRTAnomaly, SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt as check_ialirt_cli
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.checkIALiRT import check_ialirt_flow, send_monthly_test_message
 
 
@@ -36,15 +37,15 @@ class TestSendMonthlyTestMessage:
         with (
             patch("prefect_server.checkIALiRT.Database", return_value=mock_db),
             patch(
-                "prefect_server.checkIALiRT.DatetimeProvider.now",
-                return_value=first_monday,
-            ),
-            patch(
                 "prefect_server.checkIALiRT.MicrosoftTeamsWebhook.aload",
                 return_value=mock_webhook,
             ),
         ):
-            await send_monthly_test_message(logger, "test-webhook")
+            await send_monthly_test_message(
+                logger,
+                "test-webhook",
+                datetime_provider=DatetimeProvider(fixed_now=first_monday),
+            )
 
         mock_webhook.notify.assert_called_once()
 
@@ -59,14 +60,12 @@ class TestSendMonthlyTestMessage:
         mock_db = MagicMock()
         mock_db.get_workflow_progress.return_value = mock_progress
 
-        with (
-            patch("prefect_server.checkIALiRT.Database", return_value=mock_db),
-            patch(
-                "prefect_server.checkIALiRT.DatetimeProvider.now",
-                return_value=regular_tuesday,
-            ),
-        ):
-            await send_monthly_test_message(logger, "test-webhook")
+        with patch("prefect_server.checkIALiRT.Database", return_value=mock_db):
+            await send_monthly_test_message(
+                logger,
+                "test-webhook",
+                datetime_provider=DatetimeProvider(fixed_now=regular_tuesday),
+            )
 
         logger.debug.assert_called_once()
 
@@ -83,14 +82,12 @@ class TestSendMonthlyTestMessage:
         mock_db = MagicMock()
         mock_db.get_workflow_progress.return_value = mock_progress
 
-        with (
-            patch("prefect_server.checkIALiRT.Database", return_value=mock_db),
-            patch(
-                "prefect_server.checkIALiRT.DatetimeProvider.now",
-                return_value=first_monday,
-            ),
-        ):
-            await send_monthly_test_message(logger, "test-webhook")
+        with patch("prefect_server.checkIALiRT.Database", return_value=mock_db):
+            await send_monthly_test_message(
+                logger,
+                "test-webhook",
+                datetime_provider=DatetimeProvider(fixed_now=first_monday),
+            )
 
         logger.debug.assert_called_once()
 
@@ -105,14 +102,12 @@ class TestSendMonthlyTestMessage:
         mock_db = MagicMock()
         mock_db.get_workflow_progress.return_value = mock_progress
 
-        with (
-            patch("prefect_server.checkIALiRT.Database", return_value=mock_db),
-            patch(
-                "prefect_server.checkIALiRT.DatetimeProvider.now",
-                return_value=regular_tuesday,
-            ),
-        ):
-            await send_monthly_test_message(logger, "test-webhook")
+        with patch("prefect_server.checkIALiRT.Database", return_value=mock_db):
+            await send_monthly_test_message(
+                logger,
+                "test-webhook",
+                datetime_provider=DatetimeProvider(fixed_now=regular_tuesday),
+            )
 
         mock_progress.update_last_checked_timestamp.assert_called_once_with(
             regular_tuesday

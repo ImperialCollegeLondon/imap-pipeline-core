@@ -109,7 +109,7 @@ NOW_FIRST_MONDAY_OF_MONTH = NOW.replace(
 
 @pytest.fixture(autouse=False)
 def mock_datetime_provider_first_monday_of_month(monkeypatch):
-    monkeypatch.setattr(DatetimeProvider, "now", lambda: NOW_FIRST_MONDAY_OF_MONTH)
+    monkeypatch.setattr(DatetimeProvider, "now", lambda self: NOW_FIRST_MONDAY_OF_MONTH)
 
 
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")

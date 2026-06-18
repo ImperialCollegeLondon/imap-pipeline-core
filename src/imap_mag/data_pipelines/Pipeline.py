@@ -15,8 +15,13 @@ logger = logging.getLogger(__name__)
 class Pipeline:
     STARTED_CONTEXT_KEY = "started"
 
-    def __init__(self, settings: AppSettings = AppSettings()):
+    def __init__(
+        self,
+        settings: AppSettings = AppSettings(),
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
+    ):
         self._settings = settings
+        self._datetime_provider = datetime_provider
         self._run_parameters: PipelineRunParameters | None = None
         self.is_running = False
         self.is_completed = False
@@ -54,7 +59,7 @@ class Pipeline:
 
         self.is_running = True
         first_stage = self._stages[0]
-        start_time = DatetimeProvider.now()
+        start_time = self._datetime_provider.now()
         pipeline_context = {
             self.STARTED_CONTEXT_KEY: start_time,
         } | self.initial_context  # merge with any initial context provided
@@ -72,7 +77,7 @@ class Pipeline:
             )
 
         logger.info(
-            f"Pipeline completed in {DatetimeProvider.now() - start_time}. end context: {pipeline_context}"
+            f"Pipeline completed in {self._datetime_provider.now() - start_time}. end context: {pipeline_context}"
         )
 
     def _completed(self):

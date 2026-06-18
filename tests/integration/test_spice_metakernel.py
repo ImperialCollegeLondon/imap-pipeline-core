@@ -505,16 +505,17 @@ class TestMetakernelBuilder:
             ),
         ]
 
-        with (
-            tempfile.TemporaryDirectory() as tmpdir,
-            patch("imap_mag.cli.fetch.spice.DatetimeProvider.today") as mock_today,
-        ):
-            mock_today.return_value = datetime(2025, 10, 30)
+        from imap_mag.util.DatetimeProvider import DatetimeProvider
+
+        with tempfile.TemporaryDirectory() as tmpdir:
             mk = _metakernel_builder(
                 start_time=datetime(2025, 1, 1),
                 end_time=None,
                 files=files,
                 spice_folder=Path(tmpdir),
+                datetime_provider=DatetimeProvider(
+                    fixed_now=datetime(2025, 10, 30, 12, 0, 0)
+                ),
             )
 
         assert mk is not None

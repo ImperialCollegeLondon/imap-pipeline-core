@@ -10,9 +10,11 @@ from imap_mag.data_pipelines.GetProcessingDatesStage import (
     GetProcessingDatesStage,
 )
 from imap_mag.data_pipelines.Record import Record
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     END_OF_TODAY,
+    NOW,
     TODAY,
     YESTERDAY,
 )
@@ -52,11 +54,10 @@ def _build_pipeline_with_stage(
 
 
 @pytest.mark.asyncio
-async def test_raises_when_progress_item_name_missing_from_context(
-    mock_datetime_provider,
-):
+async def test_raises_when_progress_item_name_missing_from_context():
     """Stage raises ValueError if progress_item_name is not in context."""
-    stage = GetProcessingDatesStage(database=None)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
     collector = _CollectorStage()
     pipeline = dp.Pipeline()
     # Do NOT set progress_item_name in initial_context
@@ -75,11 +76,10 @@ async def test_raises_when_progress_item_name_missing_from_context(
 
 
 @pytest.mark.asyncio
-async def test_automatic_run_publishes_dates_from_beginning_of_imap(
-    mock_datetime_provider,
-):
+async def test_automatic_run_publishes_dates_from_beginning_of_imap():
     """With AutomaticRunParameters and no database, stage uses IMAP start to end-of-today."""
-    stage = GetProcessingDatesStage(database=None)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
     pipeline, collector = _build_pipeline_with_stage(
         stage,
         run_parameters=dp.AutomaticRunParameters(),
@@ -97,12 +97,13 @@ async def test_automatic_run_publishes_dates_from_beginning_of_imap(
 
 
 @pytest.mark.asyncio
-async def test_fetch_by_dates_publishes_explicit_dates(mock_datetime_provider):
+async def test_fetch_by_dates_publishes_explicit_dates():
     """With FetchByDatesRunParameters, stage uses the provided start and end dates."""
     explicit_start = datetime(2026, 1, 1, 10, 0, 0)
     explicit_end = datetime(2026, 1, 15, 18, 0, 0)
 
-    stage = GetProcessingDatesStage(database=None)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
     pipeline, collector = _build_pipeline_with_stage(
         stage,
         run_parameters=dp.FetchByDatesRunParameters(
@@ -123,13 +124,12 @@ async def test_fetch_by_dates_publishes_explicit_dates(mock_datetime_provider):
 
 
 @pytest.mark.asyncio
-async def test_fetch_by_dates_with_start_date_only_uses_end_of_today(
-    mock_datetime_provider,
-):
+async def test_fetch_by_dates_with_start_date_only_uses_end_of_today():
     """When only start_date is set (no end_date), stage defaults end to end-of-today."""
     explicit_start = datetime(2026, 1, 1, 10, 0, 0)
 
-    stage = GetProcessingDatesStage(database=None)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
     pipeline, collector = _build_pipeline_with_stage(
         stage,
         run_parameters=dp.FetchByDatesRunParameters(
@@ -150,12 +150,13 @@ async def test_fetch_by_dates_with_start_date_only_uses_end_of_today(
 
 
 @pytest.mark.asyncio
-async def test_force_redownload_overrides_database_progress(mock_datetime_provider):
+async def test_force_redownload_overrides_database_progress():
     """force_redownload=True forces the requested dates regardless of download state."""
     explicit_start = datetime(2026, 1, 1)
     explicit_end = datetime(2026, 1, 5)
 
-    stage = GetProcessingDatesStage(database=None)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
     pipeline, collector = _build_pipeline_with_stage(
         stage,
         run_parameters=dp.FetchByDatesRunParameters(
@@ -177,14 +178,16 @@ async def test_force_redownload_overrides_database_progress(mock_datetime_provid
 
 
 @pytest.mark.asyncio
-async def test_date_only_mode_strips_time_components(mock_datetime_provider):
+async def test_date_only_mode_strips_time_components():
     """DATE_ONLY mode truncates start to midnight and extends end to end-of-day."""
     explicit_start = datetime(2026, 1, 10, 14, 30, 0)
     explicit_end = datetime(2026, 1, 20, 9, 15, 0)
 
+    dp_instance = DatetimeProvider(fixed_now=NOW)
     stage = GetProcessingDatesStage(
         database=None,
         date_resolution_mode=DateResolutionMode.DATE_ONLY,
+        datetime_provider=dp_instance,
     )
     pipeline, collector = _build_pipeline_with_stage(
         stage,
@@ -206,9 +209,7 @@ async def test_date_only_mode_strips_time_components(mock_datetime_provider):
 
 
 @pytest.mark.asyncio
-async def test_nothing_published_when_download_dates_already_up_to_date(
-    mock_datetime_provider,
-):
+async def test_nothing_published_when_download_dates_already_up_to_date():
     """Stage publishes nothing when the database says all data is already current."""
     from unittest.mock import MagicMock
 
@@ -221,7 +222,8 @@ async def test_nothing_published_when_download_dates_already_up_to_date(
 
     mock_db.get_workflow_progress.return_value = future_progress
 
-    stage = GetProcessingDatesStage(database=mock_db)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=mock_db, datetime_provider=dp_instance)
     collector = _CollectorStage()
     pipeline = dp.Pipeline()
     pipeline.initial_context = {"progress_item_name": "test-item"}
@@ -243,9 +245,7 @@ async def test_nothing_published_when_download_dates_already_up_to_date(
 
 
 @pytest.mark.asyncio
-async def test_never_update_mode_does_not_update_progress_when_nothing_to_do(
-    mock_datetime_provider,
-):
+async def test_never_update_mode_does_not_update_progress_when_nothing_to_do():
     """NEVER_UPDATE_PROGRESS mode skips progress update even on empty result."""
     from unittest.mock import MagicMock
 
@@ -256,7 +256,8 @@ async def test_never_update_mode_does_not_update_progress_when_nothing_to_do(
     future_progress.progress_timestamp = END_OF_TODAY  # already up-to-date
     mock_db.get_workflow_progress.return_value = future_progress
 
-    stage = GetProcessingDatesStage(database=mock_db)
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=mock_db, datetime_provider=dp_instance)
     collector = _CollectorStage()
     pipeline = dp.Pipeline()
     pipeline.initial_context = {"progress_item_name": "test-item"}

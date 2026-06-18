@@ -5,36 +5,22 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
 from diffimg import diff
 
 from imap_mag.cli.plot.plot_ialirt import plot_ialirt
 from imap_mag.config import SaveMode
-from imap_mag.util import CONSTANTS, DatetimeProvider
+from imap_mag.util import CONSTANTS
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
-    END_OF_TODAY,
-    NOW,
     TEST_DATA,
     TEST_TRUTH,
-    TODAY,
-    mock_datetime_provider,  # noqa: F401
     temp_datastore,  # noqa: F401
 )
 
 IALIRT_PACKET_DEFINITION = (
     Path(__file__).parent.parent.parent / "src" / "imap_mag" / "packet_def"
 )
-
-
-@pytest.fixture(scope="function", autouse=False)
-def mock_datetime_provider_today_20251021(monkeypatch):
-    monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 21))
-
-
-@pytest.fixture(scope="function", autouse=False)
-def mock_datetime_provider_today_20251025(monkeypatch):
-    monkeypatch.setattr(DatetimeProvider, "today", lambda: datetime(2025, 10, 25))
 
 
 def _setup_ialirt_datastore(
@@ -63,30 +49,41 @@ def _setup_ialirt_datastore(
 def test_plot_ialirt(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
 ) -> None:
+    # Dates hardcoded to match the truth image (generated with NOW=2025-06-03 12:37:09).
+    truth_now = datetime(2025, 6, 3, 12, 37, 9)
+    truth_today = truth_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    truth_end_of_today = truth_today.replace(
+        hour=23, minute=59, second=59, microsecond=999999
+    )
+
     # Set up.
     _setup_ialirt_datastore(
-        temp_datastore, TODAY.strftime("%Y%m%d"), TODAY.strftime("%Y/%m")
+        temp_datastore,
+        truth_today.strftime("%Y%m%d"),
+        truth_today.strftime("%Y/%m"),
     )
 
     ialirt_progress = test_database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
     )
-    ialirt_progress.update_progress_timestamp(NOW)
+    ialirt_progress.update_progress_timestamp(truth_now)
     test_database.save(ialirt_progress)
 
     validation_progress = test_database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
-    validation_progress.update_last_checked_timestamp(NOW - timedelta(hours=1))
+    validation_progress.update_last_checked_timestamp(truth_now - timedelta(hours=1))
     test_database.save(validation_progress)
 
     expected_figure = TEST_TRUTH / "ialirt_quicklook.png"
 
     # Execute.
-    generated_plots = plot_ialirt(start_date=TODAY, end_date=END_OF_TODAY)
+    dp = DatetimeProvider(fixed_now=truth_now)
+    generated_plots = plot_ialirt(
+        start_date=truth_today, end_date=truth_end_of_today, datetime_provider=dp
+    )
 
     # Verify.
     assert len(generated_plots) == 1
@@ -115,16 +112,17 @@ def test_plot_ialirt(
 def test_plot_ialirt_todays_data_copies_to_latest_figure(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
-    mock_datetime_provider_today_20251021,
     dynamic_work_folder,
 ) -> None:
     # Set up.
     _setup_ialirt_datastore(temp_datastore, "20251021", "2025/10")
 
     # Execute.
+    dp = DatetimeProvider(fixed_now=datetime(2025, 10, 21, 12, 0, 0))
     generated_plots = plot_ialirt(
         start_date=datetime(2025, 10, 21, 0, 0, 0),
         end_date=datetime(2025, 10, 21, 23, 59, 59),
+        datetime_provider=dp,
     )
 
     # Verify.
@@ -135,7 +133,6 @@ def test_plot_ialirt_todays_data_copies_to_latest_figure(
 def test_plot_ialirt_todays_data_added_to_database(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
-    mock_datetime_provider_today_20251021,
     dynamic_work_folder,
 ) -> None:
     # Set up.
@@ -144,10 +141,12 @@ def test_plot_ialirt_todays_data_added_to_database(
     assert len(test_database.get_files()) == 0
 
     # Execute.
+    dp = DatetimeProvider(fixed_now=datetime(2025, 10, 21, 12, 0, 0))
     generated_plots = plot_ialirt(
         start_date=datetime(2025, 10, 21, 0, 0, 0),
         end_date=datetime(2025, 10, 21, 23, 59, 59),
         save_mode=SaveMode.LocalAndDatabase,
+        datetime_provider=dp,
     )
 
     # Verify.
@@ -167,7 +166,6 @@ def test_plot_ialirt_todays_data_added_to_database(
 def test_force_latest_update_ialirt_plot(
     temp_datastore: Path,  # noqa: F811
     test_database,  # noqa: F811
-    mock_datetime_provider_today_20251025,
     dynamic_work_folder,
 ) -> None:
     # Set up.
@@ -176,11 +174,13 @@ def test_force_latest_update_ialirt_plot(
     assert len(test_database.get_files()) == 0
 
     # Execute.
+    dp = DatetimeProvider(fixed_now=datetime(2025, 10, 25, 12, 0, 0))
     generated_plots = plot_ialirt(
         start_date=datetime(2025, 10, 21, 0, 0, 0),
         end_date=datetime(2025, 10, 21, 23, 59, 59),
         save_mode=SaveMode.LocalAndDatabase,
         force_latest_update=True,
+        datetime_provider=dp,
     )
 
     # Verify.
