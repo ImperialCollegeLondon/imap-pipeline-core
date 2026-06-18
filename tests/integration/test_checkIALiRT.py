@@ -53,12 +53,19 @@ async def test_check_ialirt_with_issues(
     prefect_test_fixture,  # noqa: F811
     capture_cli_logs,
 ):
+    before = CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
-    # Exercise.
-    with pytest.raises(
-        FailedRun, match=re.escape("Anomalies detected in I-ALiRT data.")
-    ):
-        await check_ialirt_flow(files=[TEST_DATA / "ialirt_hk_data_with_anomalies.csv"])
+
+    try:
+        # Exercise.
+        with pytest.raises(
+            FailedRun, match=re.escape("Anomalies detected in I-ALiRT data.")
+        ):
+            await check_ialirt_flow(
+                files=[TEST_DATA / "ialirt_hk_data_with_anomalies.csv"]
+            )
+    finally:
+        CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = before
 
     # Verify.
     assert "Detected 7 anomalies in I-ALiRT data:" in capture_cli_logs.text

@@ -507,18 +507,22 @@ def test_check_ialirt_with_issues(
     temp_datastore,
     capture_cli_logs,
 ):
+    before = CONSTANTS.IALIRT_PACKET_DEFINITION_FILE
     CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05_unittest.yaml"
     # Exercise.
-    result = runner.invoke(
-        app,
-        [
-            "check",
-            "ialirt",
-            "--files",
-            str(TEST_DATA / "ialirt_hk_data_with_anomalies.csv"),
-        ],
-        env={"MAG_DATA_STORE": str(temp_datastore)},
-    )
+    try:
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "ialirt",
+                "--files",
+                str(TEST_DATA / "ialirt_hk_data_with_anomalies.csv"),
+            ],
+            env={"MAG_DATA_STORE": str(temp_datastore)},
+        )
+    finally:
+        CONSTANTS.IALIRT_PACKET_DEFINITION_FILE = before
 
     print("\n" + str(result.stdout))
 
