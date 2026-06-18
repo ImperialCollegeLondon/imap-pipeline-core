@@ -18,6 +18,8 @@ from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
+skipped_option = typer.Option(parser=lambda _: _, hidden=True, expose_value=False)
+
 
 # E.g.,
 # imap-mag plot ialirt --start-date 2025-01-02 --end-date 2025-01-03
@@ -58,7 +60,7 @@ def plot_ialirt(
             help="Whether to force the update of the latest image in the database, even if it already exists. This can be useful if you want to ensure that the latest data is always up to date.",
         ),
     ] = False,
-    datetime_provider: DatetimeProvider = DatetimeProvider(),
+    datetime_provider: Annotated[DatetimeProvider, skipped_option] = DatetimeProvider(),
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
