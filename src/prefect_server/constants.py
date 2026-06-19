@@ -30,8 +30,8 @@ class PREFECT_CONSTANTS:
     class POLL_SCIENCE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
-    class POLL_LO_PIVOT_PLATFORM:
-        WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
+    class POLL_WEBTCAD:
+        WEBTCAD_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
     class POLL_SPIN_TABLE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
@@ -52,6 +52,8 @@ class PREFECT_CONSTANTS:
         POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
+        POLL_HI45_ESA_STEP_CRON = "IMAP_CRON_POLL_HI45_ESA_STEP"
+        POLL_HI90_ESA_STEP_CRON = "IMAP_CRON_POLL_HI90_ESA_STEP"
         POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
         POLL_SMALL_FORCES_CRON = "IMAP_CRON_POLL_SMALL_FORCES"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
@@ -77,6 +79,8 @@ class PREFECT_CONSTANTS:
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
+        POLL_HI45_ESA_STEP = "poll-hi45-esa-step"
+        POLL_HI90_ESA_STEP = "poll-hi90-esa-step"
         POLL_SPIN_TABLE = "poll-spin-table"
         POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
@@ -102,6 +106,8 @@ class PREFECT_CONSTANTS:
         POLL_L1D = "poll_l1d_science"
         POLL_SPICE = "poll_spice"
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
+        POLL_HI45_ESA_STEP = "poll_hi45_esa_step"
+        POLL_HI90_ESA_STEP = "poll_hi90_esa_step"
         POLL_SPIN_TABLE = "poll_spin_table"
         POLL_SMALL_FORCES = "poll_small_forces"
         PUBLISH = "publish"
