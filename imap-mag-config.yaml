@@ -7,8 +7,7 @@
 work_folder: '.work'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
-datastore:
-    disk_usage_threshold: 0.95  # Block delivery when filesystem is >= 95 % full
+disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
 sdc: &sdc_creds
     url_base: 'https://api.dev.imap-mission.com'
