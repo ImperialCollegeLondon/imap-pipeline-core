@@ -1,4 +1,12 @@
+import shutil
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pytest
+
 from imap_mag.config import AppSettings, NestedAliasEnvSettingsSource
+from imap_mag.config.CommandConfig import CommandConfig
 
 
 def test_custom_env_settings_no_aliases_loads_default():
@@ -121,3 +129,49 @@ def test_custom_env_settings_ignores_empty_nested_aliases():
 
     # Verify.
     assert not settings_overrides
+
+
+# ── CommandConfig work-folder disk space checks ───────────────────────────────
+
+
+def _fake_disk_usage(used_fraction: float):
+    total = 1_000_000_000
+    used = int(total * used_fraction)
+    return shutil.disk_usage(Path("/"))._replace(
+        total=total, used=used, free=total - used
+    )  # type: ignore[attr-defined]
+
+
+def _app_settings(work_folder: Path, threshold: float):
+    return SimpleNamespace(work_folder=work_folder, disk_usage_threshold=threshold)
+
+
+def test_setup_work_folder_blocked_when_disk_full(tmp_path):
+    """setup_work_folder raises OSError when disk usage meets the threshold."""
+    config = CommandConfig()
+    settings = _app_settings(tmp_path, threshold=0.95)
+
+    with patch("shutil.disk_usage", return_value=_fake_disk_usage(0.95)):
+        with pytest.raises(OSError, match=r"95\.0%.*threshold"):
+            config.setup_work_folder(settings)
+
+
+def test_setup_work_folder_allowed_when_disk_has_space(tmp_path):
+    """setup_work_folder succeeds when disk usage is below the threshold."""
+    config = CommandConfig()
+    settings = _app_settings(tmp_path, threshold=0.95)
+
+    with patch("shutil.disk_usage", return_value=_fake_disk_usage(0.50)):
+        result = config.setup_work_folder(settings)
+
+    assert result == tmp_path
+
+
+def test_setup_work_folder_blocked_for_sub_folder(tmp_path):
+    """setup_work_folder checks disk space even for nested sub-folders."""
+    config = CommandConfig(work_sub_folder="science")
+    settings = _app_settings(tmp_path, threshold=0.95)
+
+    with patch("shutil.disk_usage", return_value=_fake_disk_usage(0.99)):
+        with pytest.raises(OSError, match="threshold"):
+            config.setup_work_folder(settings)

@@ -11,7 +11,6 @@ from pydantic_settings import (
 
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
-from imap_mag.config.DatastoreConfig import DatastoreConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
     FetchIALiRTConfig,
@@ -48,7 +47,7 @@ class AppSettings(BaseSettings):
     work_folder: Path = Path(".work")  # type: ignore
     data_store: Path
     packet_definition: Path
-    datastore: DatastoreConfig = DatastoreConfig()
+    disk_usage_threshold: float = 0.95
 
     # Command settings
     check_ialirt: CommandConfig
