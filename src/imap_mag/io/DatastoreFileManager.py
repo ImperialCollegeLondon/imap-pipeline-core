@@ -17,9 +17,30 @@ class DatastoreFileManager(IDatastoreFileManager):
     """Manage output files."""
 
     location: Path
+    disk_usage_threshold: float
 
-    def __init__(self, datastore_path: Path) -> None:
+    def __init__(
+        self, datastore_path: Path, disk_usage_threshold: float = 0.95
+    ) -> None:
         self.location = datastore_path
+        self.disk_usage_threshold = disk_usage_threshold
+
+    def _check_disk_space(self) -> None:
+        """Raise OSError if the datastore filesystem exceeds the usage threshold."""
+        check_path = self.location
+        while not check_path.exists() and check_path != check_path.parent:
+            check_path = check_path.parent
+        if not check_path.exists():
+            return
+
+        usage = shutil.disk_usage(check_path)
+        used_fraction = usage.used / usage.total
+        if used_fraction >= self.disk_usage_threshold:
+            raise OSError(
+                f"Datastore disk usage is {used_fraction:.1%}, which meets or exceeds the "
+                f"{self.disk_usage_threshold:.1%} threshold. "
+                f"File delivery to {self.location} is blocked to protect the datastore."
+            )
 
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
         """Add file to output location."""
@@ -27,6 +48,8 @@ class DatastoreFileManager(IDatastoreFileManager):
         if not original_file.exists():
             logger.error(f"File {original_file} does not exist.")
             raise FileNotFoundError(f"File {original_file} does not exist.")
+
+        self._check_disk_space()
 
         if not self.location.exists():
             logger.debug(f"Output location does not exist. Creating {self.location}.")
@@ -158,7 +181,10 @@ class DatastoreFileManager(IDatastoreFileManager):
     ) -> IDatastoreFileManager:
         """Retrieve output manager based on destination and mode."""
 
-        manager: IDatastoreFileManager = DatastoreFileManager(settings.data_store)
+        manager: IDatastoreFileManager = DatastoreFileManager(
+            settings.data_store,
+            disk_usage_threshold=settings.datastore.disk_usage_threshold,
+        )
 
         if use_database:
             from imap_mag.io.DBIndexedDatastoreFileManager import (

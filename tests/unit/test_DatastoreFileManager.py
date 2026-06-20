@@ -2,8 +2,10 @@
 
 import json
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -364,3 +366,87 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
 
     assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v002.csv"
     assert csv_result.read_bytes() == work_csv.read_bytes()
+
+
+# ── Disk space threshold checks ───────────────────────────────────────────────
+
+
+def _disk_usage_at(used_fraction: float) -> shutil.disk_usage.__class__:
+    total = 1_000_000_000  # 1 GB
+    used = int(total * used_fraction)
+    return shutil.disk_usage(Path("/"))._replace(
+        total=total, used=used, free=total - used
+    )  # type: ignore[attr-defined]
+
+
+def test_add_file_blocked_when_disk_usage_meets_threshold(temp_folder_path):
+    """add_file raises OSError when disk usage equals the configured threshold."""
+    manager = DatastoreFileManager(temp_folder_path, disk_usage_threshold=0.95)
+    original_file = create_test_file(Path(f"{temp_folder_path}/source.txt"))
+
+    with patch("shutil.disk_usage", return_value=_disk_usage_at(0.95)):
+        with pytest.raises(OSError, match=r"95\.0%.*threshold"):
+            manager.add_file(
+                original_file,
+                HKDecodedPathHandler(
+                    descriptor="pwr",
+                    content_date=datetime(2025, 5, 2),
+                    extension="txt",
+                ),
+            )
+
+
+def test_add_file_blocked_when_disk_usage_exceeds_threshold(temp_folder_path):
+    """add_file raises OSError when disk usage is above the configured threshold."""
+    manager = DatastoreFileManager(temp_folder_path, disk_usage_threshold=0.95)
+    original_file = create_test_file(Path(f"{temp_folder_path}/source.txt"))
+
+    with patch("shutil.disk_usage", return_value=_disk_usage_at(0.99)):
+        with pytest.raises(OSError, match=r"99\.0%.*threshold"):
+            manager.add_file(
+                original_file,
+                HKDecodedPathHandler(
+                    descriptor="pwr",
+                    content_date=datetime(2025, 5, 2),
+                    extension="txt",
+                ),
+            )
+
+
+def test_add_file_allowed_when_disk_usage_below_threshold(temp_folder_path):
+    """add_file succeeds when disk usage is below the configured threshold."""
+    manager = DatastoreFileManager(temp_folder_path, disk_usage_threshold=0.95)
+    original_file = create_test_file(Path(f"{temp_folder_path}/source.txt"))
+
+    with patch("shutil.disk_usage", return_value=_disk_usage_at(0.94)):
+        (destination, _) = manager.add_file(
+            original_file,
+            HKDecodedPathHandler(
+                descriptor="pwr",
+                content_date=datetime(2025, 5, 2),
+                extension="txt",
+            ),
+        )
+
+    assert destination.exists()
+
+
+def test_add_file_uses_parent_when_datastore_not_yet_created(tmp_path):
+    """_check_disk_space resolves to an existing ancestor when the datastore dir is absent."""
+    nonexistent = tmp_path / "new" / "nested" / "datastore"
+    manager = DatastoreFileManager(nonexistent, disk_usage_threshold=0.95)
+    original_file = create_test_file(tmp_path / "source.txt")
+
+    with patch("shutil.disk_usage", return_value=_disk_usage_at(0.99)) as mock_usage:
+        with pytest.raises(OSError, match="threshold"):
+            manager.add_file(
+                original_file,
+                HKDecodedPathHandler(
+                    descriptor="pwr",
+                    content_date=datetime(2025, 5, 2),
+                    extension="txt",
+                ),
+            )
+        # Should have been called on an existing path (the tmp_path ancestor)
+        called_path = mock_usage.call_args[0][0]
+        assert called_path.exists()
