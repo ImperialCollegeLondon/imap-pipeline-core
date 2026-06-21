@@ -5,11 +5,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import mag_toolkit.calibration.MatlabWrapper as matlab_wrapper
 from mag_toolkit.calibration.MatlabWrapper import (
     call_matlab,
     get_matlab_command,
     setup_matlab_path,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_matlab_path_initialized():
+    """Reset the process-level path-setup guard so each test is deterministic."""
+    matlab_wrapper._matlab_path_initialized = False
+    yield
+    matlab_wrapper._matlab_path_initialized = False
 
 
 def _make_mock_process(returncode=0, output_lines=None):
@@ -121,6 +130,31 @@ class TestCallMatlab:
             ),
         ):
             call_matlab("disp('hello')", first_call=True)
+
+        mock_setup.assert_called_once()
+
+    def test_skips_setup_on_subsequent_first_calls_in_same_process(self):
+        """Path setup should only run once per process even with first_call=True."""
+        mock_process = _make_mock_process(returncode=0)
+        # Two call_matlab invocations, so readline must keep signalling EOF.
+        mock_process.stdout.readline.side_effect = None
+        mock_process.stdout.readline.return_value = ""
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.setup_matlab_path"
+            ) as mock_setup,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+        ):
+            call_matlab("disp('one')", first_call=True)
+            call_matlab("disp('two')", first_call=True)
 
         mock_setup.assert_called_once()
 

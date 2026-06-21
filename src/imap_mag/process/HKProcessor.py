@@ -4,6 +4,7 @@ import re
 from collections.abc import Generator
 from copy import deepcopy
 from datetime import date, datetime
+from functools import cache
 from pathlib import Path
 
 import pandas as pd
@@ -26,6 +27,18 @@ from imap_mag.util import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@cache
+def _load_xtce_cached(xtce_path: str) -> spp.xtce.definitions.XtcePacketDefinition:
+    """Load and cache an XTCE packet definition.
+
+    XTCE definitions are static files, so parsing them once and reusing the
+    result avoids re-parsing the (multi-megabyte) XML on every packet file.
+    The returned definition is used read-only by ``parse_bytes``, which
+    produces new packet objects, so sharing it across calls is safe.
+    """
+    return spp.load_xtce(xtce_path)
 
 
 class HKProcessor(FileProcessor):
@@ -63,8 +76,8 @@ class HKProcessor(FileProcessor):
         packet : space_packet_parser.SpacePacket
             Parsed packet dictionary.
         """
-        # Set up the parser from the input packet definition
-        packet_definition = spp.load_xtce(xtce_packet_definition)
+        # Set up the parser from the input packet definition (cached across calls).
+        packet_definition = _load_xtce_cached(str(xtce_packet_definition))
 
         with open(packet_file, "rb") as binary_data:
             for binary_packet in spp.ccsds_generator(binary_data):
