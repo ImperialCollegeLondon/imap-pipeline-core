@@ -52,11 +52,13 @@ class CleanupTask(BaseModel):
             )
         return self
 
-    def get_file_age_cutoff(self) -> datetime:
+    def get_file_age_cutoff(
+        self, datetime_provider: DatetimeProvider = DatetimeProvider()
+    ) -> datetime:
         """Get the age cutoff datetime based on current time and files_older_than."""
 
         duration = parse_duration(self.files_older_than)
-        cutoff = DatetimeProvider.now() - duration
+        cutoff = datetime_provider.now() - duration
         return cutoff.replace(tzinfo=UTC)
 
 

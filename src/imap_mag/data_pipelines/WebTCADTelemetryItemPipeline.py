@@ -17,6 +17,7 @@ from imap_mag.data_pipelines.PublishFileToDatastoreStage import (
 )
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
+from imap_mag.util import DatetimeProvider
 
 
 class WebTCADTelemetryItemPipeline(Pipeline):
@@ -33,14 +34,16 @@ class WebTCADTelemetryItemPipeline(Pipeline):
         item: HKWebTCADItems,
         database: Database | None,
         settings: AppSettings,
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
-        super().__init__(settings=settings)
+        super().__init__(settings=settings, datetime_provider=datetime_provider)
 
         self.item = item
         self.progress_item_id = item.name
         self.initial_context = {"progress_item_name": self.progress_item_id}
         self._database = database
         self._client = WebTCADLaTiS(fetch_webtcad_config=settings.fetch_webtcad)
+        self._datetime_provider = datetime_provider
 
     def build(self, run_params: AutomaticRunParameters | FetchByDatesRunParameters):
         super().build(
@@ -49,6 +52,7 @@ class WebTCADTelemetryItemPipeline(Pipeline):
                 GetProcessingDatesStage(
                     database=self._database,
                     date_resolution_mode=DateResolutionMode.DATE_ONLY,
+                    datetime_provider=self._datetime_provider,
                 ),
                 DownloadWebTCADCsvFilesStage(
                     item=self.item,
