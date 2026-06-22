@@ -4,12 +4,19 @@ from imap_mag.client.WebTCADLaTiS import HKWebTCADItems, WebTCADLaTiS
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, FileRecord, Record, Stage
 from imap_mag.io.file import HKDecodedPathHandler
-from imap_mag.util.Subsystem import Subsystem
 
 
-class DownloadLoPivotCsvFilesStage(Stage):
-    def __init__(self, client: WebTCADLaTiS, settings: AppSettings):
+class DownloadWebTCADCsvFilesStage(Stage):
+    """Downloads daily CSV files for a WebTCAD telemetry item between the date range provided in the upstream Record."""
+
+    def __init__(
+        self,
+        item: HKWebTCADItems,
+        client: WebTCADLaTiS,
+        settings: AppSettings,
+    ):
         super().__init__()
+        self.item = item
         self.client = client
         self.settings = settings
 
@@ -23,7 +30,7 @@ class DownloadLoPivotCsvFilesStage(Stage):
     async def process(self, item: Record, context: dict, **kwargs):
         if not item or not item.start_date or not item.end_date:
             raise ValueError(
-                "DownloadLoPivotCsvFilesStage requires a Record with start_date and end_date"
+                "DownloadWebTCADCsvFilesStage requires a Record with start_date and end_date"
             )
 
         current_date: datetime = item.start_date  # type: ignore
@@ -32,13 +39,17 @@ class DownloadLoPivotCsvFilesStage(Stage):
         while current_date <= end_date:
             next_date = current_date + timedelta(days=1)
 
-            self.logger.info(f"Downloading day {current_date.strftime('%Y-%m-%d')}...")
+            self.logger.info(
+                f"Downloading {self.item.name} for day {current_date.strftime('%Y-%m-%d')}..."
+            )
 
-            csv_content = self.client.download_imap_lo_pivot_platform_angle_to_csv_file(
+            csv_content = self.client.download_analog_telemetry_item(
+                telemetry_item_id=self.item.tmid,
                 start_date=current_date,
                 end_date=next_date,
                 system_id=self.settings.fetch_webtcad.api.system_id,
                 mode=WebTCADLaTiS.TimeQueryMode.SPACECRAFT_TIME_MODE,
+                results_format=WebTCADLaTiS.ResultsFormat.CSV,
             )
 
             if not csv_content or csv_content.strip() == "":
@@ -46,17 +57,15 @@ class DownloadLoPivotCsvFilesStage(Stage):
                     f"Received empty CSV content for date {current_date.strftime('%Y-%m-%d')}"
                 )
 
-            # Check if the CSV has actual data (more than just a header line)
             lines = csv_content.strip().splitlines()
             if len(lines) <= 1:
                 self.logger.info(
                     f"No data for {current_date.strftime('%Y-%m-%d')}. Skipping."
                 )
             else:
-                # Write CSV to a temporary file in the work folder
                 filename = HKDecodedPathHandler(
-                    instrument=Subsystem.LO.short_name,
-                    descriptor=HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE.descriptor,
+                    instrument=self.item.instrument.short_name,
+                    descriptor=self.item.descriptor,
                     content_date=current_date,
                     extension="csv",
                 ).get_filename()

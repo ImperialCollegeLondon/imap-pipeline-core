@@ -63,6 +63,12 @@ def fixed_datetime_provider() -> DatetimeProvider:
     return DatetimeProvider(fixed_now=NOW)
 
 
+@pytest.fixture(autouse=False)
+def mock_datetime_provider(monkeypatch):
+    """Patch DatetimeProvider so any instance returns the test-constant time."""
+    monkeypatch.setattr(DatetimeProvider, "_get_now", lambda self: NOW)
+
+
 def create_test_file(file_path: Path, content: str | None = None) -> Path:
     """Create a file with the given content."""
 
