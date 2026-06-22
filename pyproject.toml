@@ -82,6 +82,10 @@ testpaths = [
 env = [
     "PREFECT_LOGGING_EXTRA_LOGGERS=imap_mag,imap_db,mag_toolkit,prefect_server,imap_data_access,ialirt_data_access",
     "PREFECT_LOGGING_LEVEL=INFO",
+    # Don't ship every flow/task log to the ephemeral Prefect API during tests - it
+    # adds significant per-flow-run overhead. Logs are still captured via Python
+    # logging (e.g. the capture_cli_logs fixture), so log assertions keep working.
+    "PREFECT_LOGGING_TO_API_ENABLED=false",
     "MPLBACKEND=Agg"
 ]
 

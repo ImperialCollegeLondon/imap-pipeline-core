@@ -173,8 +173,8 @@ async def test_poll_hk_autoflow_first_ever_run(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
-        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW_small.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS_small.pkts")),
         "MAG_HSK_PROCSTAT": os.path.abspath(str(TEST_DATA / "MAG_HSK_PROCSTAT.pkts")),
     }
 
@@ -242,7 +242,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW_small.pkts")),
     }
 
     progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
@@ -310,8 +310,8 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
-        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS_small.pkts")),
+        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI_small.pkts")),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -387,8 +387,8 @@ async def test_poll_hk_specify_ert_start_end_dates(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
-        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS_small.pkts")),
+        "MAG_HSK_SCI": os.path.abspath(str(TEST_DATA / "MAG_HSK_SCI_small.pkts")),
     }
 
     start_date = datetime(2025, 5, 1)
@@ -477,8 +477,8 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 ):
     # Set up.
     binary_files: dict[str, str] = {
-        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW.pkts")),
-        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS.pkts")),
+        "MAG_HSK_PW": os.path.abspath(str(TEST_DATA / "MAG_HSK_PW_small.pkts")),
+        "MAG_HSK_STATUS": os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS_small.pkts")),
         "MAG_HSK_PROCSTAT": os.path.abspath(str(TEST_DATA / "MAG_HSK_PROCSTAT.pkts")),
     }
 
