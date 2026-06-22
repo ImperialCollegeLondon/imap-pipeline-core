@@ -176,7 +176,7 @@ async def test_poll_science_flow_has_correct_workflow_start_date_on_first_ever_r
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_science_flow(modes=[ScienceMode.Normal])
+        await flow_instance.run(modes=[ScienceMode.Normal])
 
     # Verify.
     verify_available_modes(
@@ -229,7 +229,7 @@ async def test_poll_science_autoflow_continue_from_previous_download(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_science_flow(modes=[ScienceMode.Normal])
+        await flow_instance.run(modes=[ScienceMode.Normal])
 
     # Verify.
     verify_available_modes(
@@ -282,7 +282,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_science_flow(
+        await flow_instance.run(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
@@ -339,7 +339,7 @@ async def test_poll_science_specify_ingestion_start_end_dates(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_science_flow(
+        await flow_instance.run(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
@@ -406,7 +406,7 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
             IMAP_API_KEY="12345",
         ),
     ):
-        await flow_instance.poll_science_flow(
+        await flow_instance.run(
             modes=[ScienceMode.Normal],
         )
 

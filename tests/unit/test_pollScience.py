@@ -7,10 +7,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from imap_mag.util import ScienceLevel, ScienceMode
-from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.pollScience import (
-    PollScienceFlow,
     download_batch_of_science,
+    generate_flow_run_name,
     get_latest_ingestion_date,
     poll_science_flow,
 )
@@ -358,12 +357,9 @@ class TestPollScienceFlowGenerateName:
             "start_date": None,
             "end_date": None,
         }
-        flow_instance = PollScienceFlow(
-            datetime_provider=DatetimeProvider(fixed_now=datetime(2025, 6, 1))
-        )
         with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = flow_instance._generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -374,9 +370,8 @@ class TestPollScienceFlowGenerateName:
             "start_date": datetime(2025, 6, 1),
             "end_date": datetime(2025, 6, 30),
         }
-        flow_instance = PollScienceFlow()
         with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = flow_instance._generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "01-06-2025" in name

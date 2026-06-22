@@ -92,31 +92,8 @@ def get_latest_ingestion_date(downloaded_science):
 class PollScienceFlow:
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
-        self.poll_science_flow = flow(
-            self._poll_science_flow_impl,
-            name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
-            log_prints=True,
-            flow_run_name=self._generate_flow_run_name,
-        )
 
-    def _generate_flow_run_name(self) -> str:
-        parameters = flow_run.parameters
-
-        level: ScienceLevel = parameters["level"]
-        modes: list[ScienceMode] = parameters["modes"] or [
-            ScienceMode.Normal,
-            ScienceMode.Burst,
-        ]
-        start_date: str = (
-            parameters["start_date"].strftime("%d-%m-%Y")
-            if parameters["start_date"] is not None
-            else "last-update"
-        )
-        end_date = parameters["end_date"] or self._datetime_provider.end_of_today()
-
-        return f"Download-{','.join([m.short_name for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
-
-    async def _poll_science_flow_impl(
+    async def run(
         self,
         level: Annotated[
             ScienceLevel,
@@ -294,6 +271,106 @@ class PollScienceFlow:
         )
 
 
-_default_flow = PollScienceFlow()
-poll_science_flow = _default_flow.poll_science_flow
-generate_flow_run_name = _default_flow._generate_flow_run_name
+_default_instance = PollScienceFlow()
+
+
+def generate_flow_run_name() -> str:
+    parameters = flow_run.parameters
+
+    level: ScienceLevel = parameters["level"]
+    modes: list[ScienceMode] = parameters["modes"] or [
+        ScienceMode.Normal,
+        ScienceMode.Burst,
+    ]
+    start_date: str = (
+        parameters["start_date"].strftime("%d-%m-%Y")
+        if parameters["start_date"] is not None
+        else "last-update"
+    )
+    end_date = parameters["end_date"] or DatetimeProvider().end_of_today()
+
+    return f"Download-{','.join([m.short_name for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
+
+
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
+    log_prints=True,
+    flow_run_name=generate_flow_run_name,
+)
+async def poll_science_flow(
+    level: Annotated[
+        ScienceLevel,
+        Field(
+            json_schema_extra={
+                "title": "Level to download",
+                "description": "Processing level to download. Default is L1c.",
+            }
+        ),
+    ] = ScienceLevel.l1c,
+    reference_frames: Annotated[
+        list[ReferenceFrame] | None,
+        Field(
+            json_schema_extra={
+                "title": "Reference frame(s)",
+                "description": "Reference frame(s) to download for L2/L1D. None downloads all frames.",
+            }
+        ),
+    ] = None,
+    modes: Annotated[
+        list[ScienceMode] | None,
+        Field(
+            json_schema_extra={
+                "title": "Science modes to download",
+                "description": "List of science modes to download. Default (none) is both Normal and Burst.",
+            }
+        ),
+    ] = None,
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the mode (ingestion date).",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today (ingestion date).",
+            }
+        ),
+    ] = None,
+    force_ingestion_date: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force input dates to be ingestion dates",
+                "description": "If 'True' input dates are the ingestion date. Otherwise, input dates are in S/C clock time. Ignored if 'start_date' and 'end_date' are not provided.",
+            }
+        ),
+    ] = False,
+    force_database_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force database update",
+                "description": "Whether to force an update of the database with the downloaded science. Ignored if 'start_date' and 'end_date' are not provided.",
+            }
+        ),
+    ] = False,
+):
+    """
+    Poll science data from SDC.
+    """
+    await _default_instance.run(
+        level=level,
+        reference_frames=reference_frames,
+        modes=modes,
+        start_date=start_date,
+        end_date=end_date,
+        force_ingestion_date=force_ingestion_date,
+        force_database_update=force_database_update,
+    )

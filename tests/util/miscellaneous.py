@@ -11,9 +11,7 @@ import pytest
 from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider, Environment
 
-NOW = datetime(
-    2025, 10, 14, 12, 37, 9
-)  # should not be first Monday of month; after IMAP launch
+NOW = datetime(2025, 10, 14, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)  # 2025-10-14
 TOMORROW = TODAY + timedelta(days=1)  # 2025-10-15
 YESTERDAY = TODAY - timedelta(days=1)  # 2025-10-13
@@ -61,12 +59,6 @@ def temp_datastore():
 def fixed_datetime_provider() -> DatetimeProvider:
     """Return a DatetimeProvider fixed to the test constants time."""
     return DatetimeProvider(fixed_now=NOW)
-
-
-@pytest.fixture(autouse=False)
-def mock_datetime_provider(monkeypatch):
-    """Patch DatetimeProvider so any instance returns the test-constant time."""
-    monkeypatch.setattr(DatetimeProvider, "_get_now", lambda self: NOW)
 
 
 def create_test_file(file_path: Path, content: str | None = None) -> Path:

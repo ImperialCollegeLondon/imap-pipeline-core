@@ -28,34 +28,8 @@ from prefect_server.prefectUtils import (
 class PollHKFlow:
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
-        self.poll_hk_flow = flow(
-            self._poll_hk_flow_impl,
-            name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK,
-            log_prints=True,
-            flow_run_name=self._generate_flow_run_name,
-        )
 
-    def _generate_flow_run_name(self) -> str:
-        parameters = flow_run.parameters
-
-        hk_packets: list[HKPacket] = parameters["hk_packets"]  # type: ignore
-        start_date: str = (
-            parameters["start_date"].strftime("%d-%m-%Y")
-            if parameters["start_date"] is not None
-            else "last-update"
-        )
-        end_date = parameters["end_date"] or self._datetime_provider.end_of_today()
-
-        packet_names: list[str] = [hk.name for hk in hk_packets]
-
-        if packet_names == HKPacket.names():
-            packet_text: str = "all-HK"
-        else:
-            packet_text = f"{','.join(packet_names)}-Packets"
-
-        return f"Download-{packet_text}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
-
-    async def _poll_hk_flow_impl(
+    async def run(
         self,
         hk_packets: Annotated[
             list[HKPacket],
@@ -189,6 +163,91 @@ class PollHKFlow:
         logger.info("---------- Finished ----------")
 
 
-_default_flow = PollHKFlow()
-poll_hk_flow = _default_flow.poll_hk_flow
-generate_flow_run_name = _default_flow._generate_flow_run_name
+_default_instance = PollHKFlow()
+
+
+def generate_flow_run_name() -> str:
+    parameters = flow_run.parameters
+
+    hk_packets: list[HKPacket] = parameters["hk_packets"]  # type: ignore
+    start_date: str = (
+        parameters["start_date"].strftime("%d-%m-%Y")
+        if parameters["start_date"] is not None
+        else "last-update"
+    )
+    end_date = parameters["end_date"] or DatetimeProvider().end_of_today()
+
+    packet_names: list[str] = [hk.name for hk in hk_packets]
+
+    if packet_names == HKPacket.names():
+        packet_text: str = "all-HK"
+    else:
+        packet_text = f"{','.join(packet_names)}-Packets"
+
+    return (
+        f"Download-{packet_text}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
+    )
+
+
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK,
+    log_prints=True,
+    flow_run_name=generate_flow_run_name,
+)
+async def poll_hk_flow(
+    hk_packets: Annotated[
+        list[HKPacket],
+        Field(
+            json_schema_extra={
+                "title": "HK packets to download",
+                "description": "List of HK packets to download from WebPODA. Default is all MAG HK packets.",
+            },
+        ),
+    ] = [hk for hk in HKPacket],
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last progress date for the packet (ERT).",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of today (ERT).",
+            }
+        ),
+    ] = None,
+    force_ert: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force input dates in ERT",
+                "description": "If 'True' input dates are in Earth Received Time (ERT). Otherwise, input dates are in S/C clock time. Ignored if 'start_date' and 'end_date' are not provided.",
+            }
+        ),
+    ] = False,
+    force_database_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force database update",
+                "description": "Whether to force an update of the database with the downloaded packets. Ignored if 'start_date' and 'end_date' are not provided.",
+            }
+        ),
+    ] = False,
+):
+    """
+    Poll housekeeping data from WebPODA.
+    """
+    await _default_instance.run(
+        hk_packets=hk_packets,
+        start_date=start_date,
+        end_date=end_date,
+        force_ert=force_ert,
+        force_database_update=force_database_update,
+    )

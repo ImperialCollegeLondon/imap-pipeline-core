@@ -4,15 +4,14 @@ from datetime import datetime, timedelta
 import pytest
 
 from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
+from imap_mag.util import DatetimeProvider
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     NOW,
     TODAY,
-    mock_datetime_provider,  # noqa: F401
 )
-from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 from tests.util.webtcad_flow_helpers import (
     SAMPLE_CSV_EMPTY,
     SAMPLE_CSV_WITH_DATA,
@@ -31,6 +30,8 @@ async def execute_flow_under_test(wiremock_manager, **kwargs):
     await execute_webtcad_flow(
         poll_lo_pivot_platform_flow,
         wiremock_manager=wiremock_manager,
+        item=ITEM,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
         **kwargs,
     )
 
@@ -43,8 +44,6 @@ async def execute_flow_under_test(wiremock_manager, **kwargs):
 async def test_poll_lo_pivot_platform_first_ever_run(
     wiremock_manager,
     test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -60,9 +59,7 @@ async def test_poll_lo_pivot_platform_first_ever_run(
     )
     define_unavailable_latis_mapping(wiremock_manager, ITEM)
 
-    await execute_flow_under_test(
-        wiremock_manager, prefect_test_fixture=prefect_test_fixture
-    )
+    await execute_flow_under_test(wiremock_manager)
 
     assert_file_exists(ITEM, BEGINNING_OF_IMAP)
 
@@ -79,8 +76,6 @@ async def test_poll_lo_pivot_platform_first_ever_run(
 async def test_poll_lo_pivot_platform_without_a_database(
     wiremock_manager,
     test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -99,7 +94,6 @@ async def test_poll_lo_pivot_platform_without_a_database(
     await execute_flow_under_test(
         wiremock_manager,
         use_database=False,
-        prefect_test_fixture=prefect_test_fixture,
     )
 
     assert_file_exists(ITEM, BEGINNING_OF_IMAP)
@@ -113,7 +107,6 @@ async def test_poll_lo_pivot_platform_without_a_database(
 async def test_poll_lo_pivot_platform_continue_from_previous(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -153,7 +146,6 @@ async def test_poll_lo_pivot_platform_continue_from_previous(
 async def test_poll_lo_pivot_platform_no_new_data(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -177,7 +169,6 @@ async def test_poll_lo_pivot_platform_no_new_data(
 async def test_poll_lo_pivot_platform_manual_date_range(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -217,7 +208,6 @@ async def test_poll_lo_pivot_platform_manual_date_range(
 async def test_poll_lo_pivot_platform_force_redownload_does_download_file_already_downloaded_in_progress(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -261,7 +251,6 @@ async def test_poll_lo_pivot_platform_force_redownload_does_download_file_alread
 async def test_poll_lo_pivot_platform_dont_update_progress_if_option_not_to_is_set(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -304,7 +293,6 @@ async def test_poll_lo_pivot_platform_dont_update_progress_if_option_not_to_is_s
 async def test_poll_lo_pivot_platform_already_up_to_date(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -332,7 +320,6 @@ async def test_poll_lo_pivot_platform_already_up_to_date(
 async def test_poll_lo_pivot_platform_skips_days_without_data(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):

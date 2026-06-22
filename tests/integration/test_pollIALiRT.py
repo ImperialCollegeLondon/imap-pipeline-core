@@ -165,7 +165,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_flow(
+        await flow_instance.run(
             wait_for_new_data_to_arrive=False, plot_last_3_days=False
         )
 
@@ -207,7 +207,7 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_flow(
+        await flow_instance.run(
             wait_for_new_data_to_arrive=False, plot_last_3_days=False
         )
 
@@ -244,7 +244,7 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_flow(
+        await flow_instance.run(
             wait_for_new_data_to_arrive=False,
             plot_last_3_days=False,
             start_date=start_date,
@@ -334,7 +334,7 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_flow(
+        await flow_instance.run(
             wait_for_new_data_to_arrive=True,
             timeout=5,
             plot_last_3_days=True,
@@ -366,7 +366,7 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_hk_flow(
+        await flow_instance.run_hk(
             wait_for_new_data_to_arrive=False,
         )
 
@@ -403,7 +403,7 @@ async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.poll_ialirt_hk_flow(
+        await flow_instance.run_hk(
             wait_for_new_data_to_arrive=False,
             start_date=start_date,
             end_date=end_date,

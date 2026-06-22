@@ -125,7 +125,7 @@ async def test_poll_spice_autoflow_first_ever_run(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_spice_flow()
+        await flow_instance.run()
 
     # Verify.
     # Database should be updated with progress
@@ -170,7 +170,7 @@ async def test_poll_spice_autoflow_no_new_data(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_spice_flow()
+        await flow_instance.run()
 
     # Verify.
     # Database progress should be updated with last checked date but progress timestamp should remain the same
@@ -228,7 +228,7 @@ async def test_poll_spice_autoflow_download_newer_file(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.poll_spice_flow()
+        await flow_instance.run()
 
     # Verify.
     # Database should be updated with new progress timestamp

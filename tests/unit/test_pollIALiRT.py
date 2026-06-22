@@ -11,6 +11,8 @@ from prefect_server.pollIALiRT import (
     PollIALiRTFlow,
     _do_poll,
     do_poll_ialirt,
+    generate_flow_run_name,
+    generate_hk_flow_run_name,
 )
 
 
@@ -227,7 +229,7 @@ class TestPollIALiRTFlowUnit:
                 "prefect_server.pollIALiRT.do_poll_ialirt", return_value=[]
             ) as mock_do_poll,
         ):
-            await flow_instance.poll_ialirt_flow.fn(
+            await flow_instance.run(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
@@ -261,7 +263,7 @@ class TestPollIALiRTFlowUnit:
             ) as mock_quicklook,
         ):
             mock_quicklook.return_value = None
-            await flow_instance.poll_ialirt_flow.fn(
+            await flow_instance.run(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
@@ -295,7 +297,7 @@ class TestPollIALiRTHKFlowUnit:
                 "prefect_server.pollIALiRT.do_poll_ialirt_hk", return_value=[]
             ) as mock_do_poll,
         ):
-            await flow_instance.poll_ialirt_hk_flow.fn(
+            await flow_instance.run_hk(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
@@ -335,7 +337,7 @@ class TestPollIALiRTHKFlowUnit:
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await flow_instance.poll_ialirt_flow.fn(
+            await flow_instance.run(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
                 plot_last_3_days=False,
@@ -376,7 +378,7 @@ class TestPollIALiRTHKFlowUnitExtended:
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await flow_instance.poll_ialirt_hk_flow.fn(
+            await flow_instance.run_hk(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
             )
@@ -387,12 +389,9 @@ class TestPollIALiRTHKFlowUnitExtended:
 class TestPollIALiRTGenerateName:
     def test_name_with_no_dates_uses_last_update(self):
         mock_params = {"start_date": None, "end_date": None}
-        flow_instance = PollIALiRTFlow(
-            datetime_provider=DatetimeProvider(fixed_now=datetime(2025, 6, 1))
-        )
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = flow_instance._generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -401,21 +400,17 @@ class TestPollIALiRTGenerateName:
             "start_date": datetime(2025, 6, 1, 12, 0, 0),
             "end_date": datetime(2025, 6, 1, 13, 0, 0),
         }
-        flow_instance = PollIALiRTFlow()
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = flow_instance._generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "01-06-2025" in name
 
     def test_hk_name_with_no_dates(self):
         mock_params = {"start_date": None, "end_date": None}
-        flow_instance = PollIALiRTFlow(
-            datetime_provider=DatetimeProvider(fixed_now=datetime(2025, 6, 1))
-        )
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = flow_instance._generate_hk_flow_run_name()
+            name = generate_hk_flow_run_name()
 
         assert "HK" in name
 

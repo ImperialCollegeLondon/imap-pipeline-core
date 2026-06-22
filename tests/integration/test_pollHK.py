@@ -216,7 +216,7 @@ async def test_poll_hk_autoflow_first_ever_run(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await flow_instance.poll_hk_flow(hk_packets=available_hk + not_available_hk)
+        await flow_instance.run(hk_packets=available_hk + not_available_hk)
 
     # Verify.
     verify_not_available_hk(test_database, not_available_hk)
@@ -282,7 +282,7 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await flow_instance.poll_hk_flow(hk_packets=available_hk)
+        await flow_instance.run(hk_packets=available_hk)
 
     # Verify.
     verify_available_hk(
@@ -353,7 +353,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await flow_instance.poll_hk_flow(
+        await flow_instance.run(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
@@ -432,7 +432,7 @@ async def test_poll_hk_specify_ert_start_end_dates(
         MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        await flow_instance.poll_hk_flow(
+        await flow_instance.run(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
@@ -521,7 +521,7 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
             IMAP_WEBPODA_TOKEN="12345",
         ),
     ):
-        await flow_instance.poll_hk_flow(
+        await flow_instance.run(
             hk_packets=hk_to_poll,
         )
 

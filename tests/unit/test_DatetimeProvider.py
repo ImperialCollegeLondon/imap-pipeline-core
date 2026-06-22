@@ -128,8 +128,3 @@ class TestDatetimeProviderBeginningOfImap:
         assert result.year == 2025
         assert result.month == 9
         assert result.day == 24
-
-    def test_returns_date_type_when_requested(self):
-        result = DatetimeProvider().beginning_of_imap(date)
-        assert type(result) is date
-        assert result.year == 2025

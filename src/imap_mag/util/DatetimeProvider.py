@@ -13,6 +13,7 @@ class DatetimeProvider:
 
     def __init__(self, fixed_now: datetime | None = None) -> None:
         self._fixed_now = fixed_now
+        self._mission_start_date = datetime(2025, 9, 24, 0, 0, 0)
 
     def _get_now(self) -> datetime:
         if self._fixed_now is not None:
@@ -44,5 +45,5 @@ class DatetimeProvider:
     def end_of_today(self) -> datetime:
         return self.today().replace(hour=23, minute=59, second=59, microsecond=999999)
 
-    def beginning_of_imap(self, date_type: type[T] = datetime) -> T:
-        return self.today(date_type).replace(year=2025, month=9, day=24)
+    def beginning_of_imap(self) -> datetime:
+        return self._mission_start_date

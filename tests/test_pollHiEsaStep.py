@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
+from imap_mag.util import DatetimeProvider
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -13,9 +14,7 @@ from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
     NOW,
     TODAY,
-    mock_datetime_provider,  # noqa: F401
 )
-from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 from tests.util.webtcad_flow_helpers import (
     SAMPLE_CSV_WITH_DATA,
     assert_file_exists,
@@ -44,8 +43,6 @@ async def test_poll_hi_esa_step_first_ever_run_with_automatic_run_parameters(
     flow,
     wiremock_manager,
     test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -64,7 +61,8 @@ async def test_poll_hi_esa_step_first_ever_run_with_automatic_run_parameters(
     await execute_webtcad_flow(
         flow,
         wiremock_manager=wiremock_manager,
-        prefect_test_fixture=prefect_test_fixture,
+        item=item,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
     )
 
     assert_file_exists(item, BEGINNING_OF_IMAP)
@@ -85,7 +83,6 @@ async def test_poll_hi_esa_step_automatic_run_with_no_args_downloads_only_new_da
     flow,
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -108,7 +105,12 @@ async def test_poll_hi_esa_step_automatic_run_with_no_args_downloads_only_new_da
     )
     define_unavailable_latis_mapping(wiremock_manager, item)
 
-    await execute_webtcad_flow(flow, wiremock_manager=wiremock_manager)
+    await execute_webtcad_flow(
+        flow,
+        wiremock_manager=wiremock_manager,
+        item=item,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
+    )
 
     assert_file_not_exists(item, BEGINNING_OF_IMAP)
     assert_file_exists(item, next_day)
@@ -129,7 +131,6 @@ async def test_poll_hi_esa_step_manual_date_range_naive_dates(
     flow,
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -152,6 +153,8 @@ async def test_poll_hi_esa_step_manual_date_range_naive_dates(
     await execute_webtcad_flow(
         flow,
         wiremock_manager=wiremock_manager,
+        item=item,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
         start_date=start_date,
         end_date=end_date,
     )
@@ -175,7 +178,6 @@ async def test_poll_hi_esa_step_manual_date_range_with_timezones(
     flow,
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -200,6 +202,8 @@ async def test_poll_hi_esa_step_manual_date_range_with_timezones(
     await execute_webtcad_flow(
         flow,
         wiremock_manager=wiremock_manager,
+        item=item,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
         start_date=start_date,
         end_date=end_date,
     )
@@ -219,7 +223,6 @@ async def test_poll_hi_esa_step_already_up_to_date(
     flow,
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_datetime_provider,  # noqa: F811
     dynamic_work_folder,
     clean_datastore,
 ):
@@ -233,7 +236,12 @@ async def test_poll_hi_esa_step_already_up_to_date(
 
     define_unavailable_latis_mapping(wiremock_manager, item)
 
-    await execute_webtcad_flow(flow, wiremock_manager=wiremock_manager)
+    await execute_webtcad_flow(
+        flow,
+        wiremock_manager=wiremock_manager,
+        item=item,
+        datetime_provider=DatetimeProvider(fixed_now=NOW),
+    )
 
     updated_progress = test_database.get_workflow_progress(item.name)
     assert updated_progress.get_progress_timestamp() == progress_timestamp

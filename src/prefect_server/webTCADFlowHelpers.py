@@ -46,6 +46,7 @@ async def run_webtcad_pipeline(
     item: HKWebTCADItems,
     run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
     use_database: bool,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> None:
     """Build and run a ``WebTCADTelemetryItemPipeline`` for the given telemetry item.
 
@@ -64,7 +65,10 @@ async def run_webtcad_pipeline(
     settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
 
     pipeline = WebTCADTelemetryItemPipeline(
-        item=item, database=database, settings=settings
+        item=item,
+        database=database,
+        settings=settings,
+        datetime_provider=datetime_provider,
     )
     pipeline.build(run_parameters)
     await pipeline.run()
