@@ -14,7 +14,7 @@ from imap_mag.data_pipelines import (
 from imap_mag.data_pipelines.SpinTablePipeline import SpinTablePipeline
 from imap_mag.io.file.SpinTablePathHandler import SpinTablePathHandler
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.pollSpinTable import generate_flow_run_name
+from prefect_server.pollSpinTable import PollSpinTableFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
@@ -31,7 +31,7 @@ class TestPollSpinTableFlowGenerateName:
 
         with patch("prefect_server.pollSpinTable.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollSpinTableFlow.generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -45,7 +45,7 @@ class TestPollSpinTableFlowGenerateName:
 
         with patch("prefect_server.pollSpinTable.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollSpinTableFlow.generate_flow_run_name()
 
         assert "01-06-2025" in name
 

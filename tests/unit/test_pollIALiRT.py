@@ -11,8 +11,6 @@ from prefect_server.pollIALiRT import (
     PollIALiRTFlow,
     _do_poll,
     do_poll_ialirt,
-    generate_flow_run_name,
-    generate_hk_flow_run_name,
 )
 
 
@@ -391,7 +389,7 @@ class TestPollIALiRTGenerateName:
         mock_params = {"start_date": None, "end_date": None}
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollIALiRTFlow.generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -402,7 +400,7 @@ class TestPollIALiRTGenerateName:
         }
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollIALiRTFlow.generate_flow_run_name()
 
         assert "01-06-2025" in name
 
@@ -410,7 +408,7 @@ class TestPollIALiRTGenerateName:
         mock_params = {"start_date": None, "end_date": None}
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_hk_flow_run_name()
+            name = PollIALiRTFlow.generate_hk_flow_run_name()
 
         assert "HK" in name
 

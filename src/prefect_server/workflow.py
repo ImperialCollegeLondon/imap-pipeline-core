@@ -26,13 +26,13 @@ from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
 )
-from prefect_server.pollHK import poll_hk_flow
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollHK import PollHKFlow
+from prefect_server.pollIALiRT import PollIALiRTFlow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
-from prefect_server.pollScience import poll_science_flow
-from prefect_server.pollSmallForces import poll_small_forces_flow
-from prefect_server.pollSpice import poll_spice_flow
-from prefect_server.pollSpinTable import poll_spin_table_flow
+from prefect_server.pollScience import PollScienceFlow
+from prefect_server.pollSmallForces import PollSmallForcesFlow
+from prefect_server.pollSpice import PollSpiceFlow
+from prefect_server.pollSpinTable import PollSpinTableFlow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
@@ -121,7 +121,7 @@ async def adeploy_flows(local_debug: bool = False):
             f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
         )
 
-    poll_ialirt_deployable = poll_ialirt_flow.to_deployment(
+    poll_ialirt_deployable = PollIALiRTFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_CRON),
         job_variables=shared_job_variables,
@@ -131,14 +131,14 @@ async def adeploy_flows(local_debug: bool = False):
         ),
     )
 
-    poll_ialirt_hk_deployable = poll_ialirt_hk_flow.to_deployment(
+    poll_ialirt_hk_deployable = PollIALiRTFlow().run_hk.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_HK_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_hk_deployable = poll_hk_flow.to_deployment(
+    poll_hk_deployable = PollHKFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
         job_variables=shared_job_variables
@@ -146,7 +146,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_spice_deployable = poll_spice_flow.to_deployment(
+    poll_spice_deployable = PollSpiceFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPICE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
         job_variables=shared_job_variables,
@@ -176,14 +176,14 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_spin_table_deployable = poll_spin_table_flow.to_deployment(
+    poll_spin_table_deployable = PollSpinTableFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPIN_TABLE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPIN_TABLE_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_small_forces_deployable = poll_small_forces_flow.to_deployment(
+    poll_small_forces_deployable = PollSmallForcesFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SMALL_FORCES,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SMALL_FORCES_CRON),
         job_variables=shared_job_variables,
@@ -255,7 +255,7 @@ async def adeploy_flows(local_debug: bool = False):
             )
         )
 
-    poll_science_deployable = poll_science_flow.to_deployment(
+    poll_science_deployable = PollScienceFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SCIENCE,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],

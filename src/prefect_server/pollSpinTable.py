@@ -15,9 +15,33 @@ from prefect_server.prefectUtils import get_secret_or_env_var
 
 
 class PollSpinTableFlow:
+    @classmethod
+    def generate_flow_run_name(cls) -> str:
+        parameters = flow_run.parameters["run_parameters"]
+
+        start_date: str = (
+            parameters.start_date.strftime("%d-%m-%Y")
+            if hasattr(parameters, "start_date") and parameters.start_date is not None
+            else "last-update"
+        )
+        end_date = (
+            parameters.end_date
+            if hasattr(parameters, "end_date") and parameters.end_date is not None
+            else DatetimeProvider().end_of_today()
+        )
+
+        return (
+            f"Download-SpinTable-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
+        )
+
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
 
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SPIN_TABLE,
+        log_prints=True,
+        flow_run_name=lambda: PollSpinTableFlow.generate_flow_run_name(),
+    )
     async def run(
         self,
         run_parameters: Annotated[
@@ -56,46 +80,3 @@ class PollSpinTableFlow:
 
         if not result.success:
             raise RuntimeError(f"Pipeline failed: {result}")
-
-
-_default_instance = PollSpinTableFlow()
-
-
-def generate_flow_run_name() -> str:
-    parameters = flow_run.parameters["run_parameters"]
-
-    start_date: str = (
-        parameters.start_date.strftime("%d-%m-%Y")
-        if hasattr(parameters, "start_date") and parameters.start_date is not None
-        else "last-update"
-    )
-    end_date = (
-        parameters.end_date
-        if hasattr(parameters, "end_date") and parameters.end_date is not None
-        else DatetimeProvider().end_of_today()
-    )
-
-    return f"Download-SpinTable-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
-
-
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SPIN_TABLE,
-    log_prints=True,
-    flow_run_name=generate_flow_run_name,
-)
-async def poll_spin_table_flow(
-    run_parameters: Annotated[
-        AutomaticRunParameters | FetchByDatesRunParameters,
-        Field(
-            json_schema_extra={
-                "title": "Run parameters",
-                "description": "Parameters for the pipeline run. If 'start_date' and 'end_date' are not provided, the pipeline will automatically determine the date range based on the last workflow progress.",
-            }
-        ),
-    ] = AutomaticRunParameters(),
-    use_database: bool = True,
-):
-    """Poll spin table files from SDC API."""
-    await _default_instance.run(
-        run_parameters=run_parameters, use_database=use_database
-    )

@@ -1,13 +1,9 @@
-"""Ensures all module-level flow functions are compatible with Prefect deployments.
+"""Ensures all class-based flows expose @flow-decorated run methods.
 
-When a flow is triggered via a Prefect deployment, Prefect calls:
-    get_call_parameters(flow.fn, call_args, call_kwargs)
-which internally calls inspect.signature(flow.fn).bind(**kwargs).
-If flow.fn has 'self' in its signature (because it is an unbound method), Prefect
-raises ParameterBindError: missing a required argument: 'self'.
+The pattern used in this project is: @flow decorates the run method directly on
+the class. Prefect handles the descriptor protocol when called as instance.run().
+Deployments are created via SomeFlow().run.to_deployment(...).
 """
-
-import inspect
 
 import pytest
 
@@ -15,39 +11,62 @@ from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
 )
-from prefect_server.pollHK import poll_hk_flow
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollHK import PollHKFlow
+from prefect_server.pollIALiRT import PollIALiRTFlow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
-from prefect_server.pollScience import poll_science_flow
-from prefect_server.pollSmallForces import poll_small_forces_flow
-from prefect_server.pollSpice import poll_spice_flow
-from prefect_server.pollSpinTable import poll_spin_table_flow
+from prefect_server.pollScience import PollScienceFlow
+from prefect_server.pollSmallForces import PollSmallForcesFlow
+from prefect_server.pollSpice import PollSpiceFlow
+from prefect_server.pollSpinTable import PollSpinTableFlow
 
-ALL_FLOWS = [
+CLASS_BASED_FLOWS = [
+    (PollHKFlow, "run"),
+    (PollIALiRTFlow, "run"),
+    (PollIALiRTFlow, "run_hk"),
+    (PollScienceFlow, "run"),
+    (PollSmallForcesFlow, "run"),
+    (PollSpiceFlow, "run"),
+    (PollSpinTableFlow, "run"),
+]
+
+FUNCTIONAL_FLOWS = [
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
-    poll_hk_flow,
-    poll_ialirt_flow,
-    poll_ialirt_hk_flow,
     poll_lo_pivot_platform_flow,
-    poll_science_flow,
-    poll_small_forces_flow,
-    poll_spice_flow,
-    poll_spin_table_flow,
 ]
 
 
-@pytest.mark.parametrize("prefect_flow", ALL_FLOWS, ids=lambda f: f.name)
-def test_flow_fn_has_no_self_parameter(prefect_flow):
-    """Flow.fn must not have 'self' in its signature.
+@pytest.mark.parametrize(
+    "flow_cls,method", CLASS_BASED_FLOWS, ids=lambda x: getattr(x, "__name__", x)
+)
+def test_class_flow_has_flow_decorated_method(flow_cls, method):
+    """Each class-based flow must expose a @flow-decorated method."""
+    attr = getattr(flow_cls, method)
+    assert hasattr(attr, "fn"), (
+        f"{flow_cls.__name__}.{method} is not a Prefect @flow object — "
+        "missing the @flow decorator"
+    )
 
-    If a class method is wrapped with flow(self._method), Prefect extracts the
-    unbound function (which has 'self') and fails at deployment trigger time with
-    ParameterBindError: missing a required argument: 'self'.
-    """
+
+@pytest.mark.parametrize(
+    "flow_cls,method", CLASS_BASED_FLOWS, ids=lambda x: getattr(x, "__name__", x)
+)
+def test_class_flow_instance_has_flow_method(flow_cls, method):
+    """A fresh instance must expose the same @flow object."""
+    instance = flow_cls()
+    attr = getattr(instance, method)
+    assert hasattr(attr, "fn"), (
+        f"{flow_cls.__name__}().{method} is not accessible as a @flow object on an instance"
+    )
+
+
+@pytest.mark.parametrize("prefect_flow", FUNCTIONAL_FLOWS, ids=lambda f: f.name)
+def test_functional_flow_fn_has_no_self_parameter(prefect_flow):
+    """Module-level @flow functions must not have 'self' in their signature."""
+    import inspect
+
     sig = inspect.signature(prefect_flow.fn)
     assert "self" not in sig.parameters, (
         f"'{prefect_flow.name}'.fn has 'self' in its signature — "
-        "Prefect deployments will fail with ParameterBindError. "
-        "Fix: use a module-level @flow function instead of flow(self._method)."
+        "Prefect deployments will fail with ParameterBindError."
     )

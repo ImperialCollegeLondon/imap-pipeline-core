@@ -155,9 +155,51 @@ def _do_poll(
 
 
 class PollIALiRTFlow:
+    @classmethod
+    def generate_flow_run_name(cls) -> str:
+        parameters = flow_run.parameters
+
+        start_date: str = (
+            parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
+            if parameters["start_date"]
+            else "last-update"
+        )
+        end_date: datetime = (
+            parameters["end_date"]
+            if parameters["end_date"]
+            else DatetimeProvider().end_of_hour()
+        )
+
+        return (
+            f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+        )
+
+    @classmethod
+    def generate_hk_flow_run_name(cls) -> str:
+        parameters = flow_run.parameters
+
+        start_date: str = (
+            parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
+            if parameters["start_date"]
+            else "last-update"
+        )
+        end_date: datetime = (
+            parameters["end_date"]
+            if parameters["end_date"]
+            else DatetimeProvider().end_of_hour()
+        )
+
+        return f"Poll-IALiRT-HK-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
 
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
+        log_prints=True,
+        flow_run_name=lambda: PollIALiRTFlow.generate_flow_run_name(),
+        retries=1,
+    )
     async def run(
         self,
         start_date: Annotated[
@@ -324,6 +366,12 @@ class PollIALiRTFlow:
                     subject="I-ALiRT Latest Quicklook",
                 )  # type: ignore
 
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT_HK,
+        log_prints=True,
+        flow_run_name=lambda: PollIALiRTFlow.generate_hk_flow_run_name(),
+        retries=1,
+    )
     async def run_hk(
         self,
         start_date: Annotated[
@@ -418,213 +466,3 @@ class PollIALiRTFlow:
             updated_files.extend(files)
 
         logger.info("---------- End I-ALiRT MAG HK Poll ----------")
-
-
-_default_instance = PollIALiRTFlow()
-
-
-def generate_flow_run_name() -> str:
-    parameters = flow_run.parameters
-
-    start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters["start_date"]
-        else "last-update"
-    )
-    end_date: datetime = (
-        parameters["end_date"]
-        if parameters["end_date"]
-        else DatetimeProvider().end_of_hour()
-    )
-
-    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
-
-
-def generate_hk_flow_run_name() -> str:
-    parameters = flow_run.parameters
-
-    start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters["start_date"]
-        else "last-update"
-    )
-    end_date: datetime = (
-        parameters["end_date"]
-        if parameters["end_date"]
-        else DatetimeProvider().end_of_hour()
-    )
-
-    return (
-        f"Poll-IALiRT-HK-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
-    )
-
-
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
-    log_prints=True,
-    flow_run_name=generate_flow_run_name,
-    retries=1,
-)
-async def poll_ialirt_flow(
-    start_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "Start date",
-                "description": "Start date for the download. Default is the last update.",
-            }
-        ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "End date for the download. Default is the end of the hour.",
-            }
-        ),
-    ] = None,
-    force_download: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force download",
-                "description": "If true, the flow will download data even if it has already been downloaded before.",
-            }
-        ),
-    ] = False,
-    force_notification: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force notification",
-                "description": "If true, the flow will send a notification even if no new data was downloaded.",
-            }
-        ),
-    ] = False,
-    wait_for_new_data_to_arrive: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Wait for new data to arrive",
-                "description": "If true, the flow will poll for new data until the end date is reached.",
-            }
-        ),
-    ] = True,
-    timeout: Annotated[
-        int,
-        Field(
-            json_schema_extra={
-                "title": "Timeout",
-                "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
-            }
-        ),
-    ] = 5 * 60,  # 5 minutes
-    plot_last_3_days: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Plot last 3 days",
-                "description": "If true, the flow will generate a quicklook plot of the downloaded data over the last 3 days.",
-            }
-        ),
-    ] = True,
-    imap_notification_webhook_name: Annotated[
-        str,
-        Field(
-            default=None,
-            json_schema_extra={
-                "title": "IMAP Webhook Name",
-                "description": "Name of the notification webhook to use for IMAP alerts.",
-            },
-        ),
-    ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
-    notification_time: Annotated[
-        dt.time,
-        Field(
-            json_schema_extra={
-                "title": "Notification time",
-                "description": "UK local time at which to send the Teams notification. Default is 06:00.",
-            }
-        ),
-    ] = time(6, 0),
-) -> None:
-    """
-    Poll I-ALiRT MAG data from SDC.
-    """
-    await _default_instance.run(
-        start_date=start_date,
-        end_date=end_date,
-        force_download=force_download,
-        force_notification=force_notification,
-        wait_for_new_data_to_arrive=wait_for_new_data_to_arrive,
-        timeout=timeout,
-        plot_last_3_days=plot_last_3_days,
-        imap_notification_webhook_name=imap_notification_webhook_name,
-        notification_time=notification_time,
-    )
-
-
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT_HK,
-    log_prints=True,
-    flow_run_name=generate_hk_flow_run_name,
-    retries=1,
-)
-async def poll_ialirt_hk_flow(
-    start_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "Start date",
-                "description": "Start date for the download. Default is the last update.",
-            }
-        ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "End date for the download. Default is the end of the hour.",
-            }
-        ),
-    ] = None,
-    force_download: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force download",
-                "description": "If true, the flow will download data even if it has already been downloaded before.",
-            }
-        ),
-    ] = False,
-    wait_for_new_data_to_arrive: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Wait for new data to arrive",
-                "description": "If true, the flow will poll for new data until the end date is reached.",
-            }
-        ),
-    ] = True,
-    timeout: Annotated[
-        int,
-        Field(
-            json_schema_extra={
-                "title": "Timeout",
-                "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
-            }
-        ),
-    ] = 5 * 60,  # 5 minutes
-) -> None:
-    """
-    Poll I-ALiRT MAG HK data from SDC.
-    """
-    await _default_instance.run_hk(
-        start_date=start_date,
-        end_date=end_date,
-        force_download=force_download,
-        wait_for_new_data_to_arrive=wait_for_new_data_to_arrive,
-        timeout=timeout,
-    )

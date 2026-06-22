@@ -27,72 +27,93 @@ BATCH_SIZE = 30
 MAX_DOWNLOADS_PER_FLOW = 1000
 
 
-def download_batch_of_science(
-    level,
-    reference_frames,
-    modes,
-    start_date,
-    end_date,
-    logger,
-    database,
-    use_database,
-    use_ingestion_date,
-    progress_item_id,
-    packet_start_timestamp,
-    batch_size,
-    skip_items_count,
-) -> dict[Path, SciencePathHandler]:
-    logger.info(
-        f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
-    )
-
-    # Download files from SDC
-    downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
-        level=level,
-        reference_frames=reference_frames,
-        modes=modes,
-        start_date=start_date,
-        end_date=end_date,
-        use_ingestion_date=use_ingestion_date,
-        fetch_mode=FetchMode.DownloadAndUpdateProgress,
-        max_downloads=batch_size,
-        skip_items_count=skip_items_count,
-    )
-
-    # Update database with latest ingestion date as progress (for science)
-    if use_database:
-        latest_ingestion_date = get_latest_ingestion_date(downloaded_science)
-
-        update_database_with_progress(
-            progress_item_id=progress_item_id,
-            database=database,
-            checked_timestamp=packet_start_timestamp,
-            latest_timestamp=latest_ingestion_date,
-        )
-        logger.info(f"Database updated for {progress_item_id}.")
-    else:
-        logger.info(f"Database not updated for {progress_item_id}.")
-
-    return downloaded_science
-
-
-def get_latest_ingestion_date(downloaded_science):
-    ingestion_dates: list[datetime] = [
-        metadata.ingestion_date
-        for metadata in downloaded_science.values()
-        if metadata.ingestion_date
-    ]
-    latest_ingestion_date: datetime | None = (
-        max(ingestion_dates) if ingestion_dates else None
-    )
-
-    return latest_ingestion_date
-
-
 class PollScienceFlow:
+    @classmethod
+    def generate_flow_run_name(cls) -> str:
+        parameters = flow_run.parameters
+
+        level: ScienceLevel = parameters["level"]
+        modes: list[ScienceMode] = parameters["modes"] or [
+            ScienceMode.Normal,
+            ScienceMode.Burst,
+        ]
+        start_date: str = (
+            parameters["start_date"].strftime("%d-%m-%Y")
+            if parameters["start_date"] is not None
+            else "last-update"
+        )
+        end_date = parameters["end_date"] or DatetimeProvider().end_of_today()
+
+        return f"Download-{','.join([m.short_name for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
+
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
 
+    @staticmethod
+    def _get_latest_ingestion_date(
+        downloaded_science: dict[Path, SciencePathHandler],
+    ) -> datetime | None:
+        ingestion_dates: list[datetime] = [
+            metadata.ingestion_date
+            for metadata in downloaded_science.values()
+            if metadata.ingestion_date
+        ]
+        return max(ingestion_dates) if ingestion_dates else None
+
+    def _download_batch_of_science(
+        self,
+        level,
+        reference_frames,
+        modes,
+        start_date,
+        end_date,
+        logger,
+        database,
+        use_database,
+        use_ingestion_date,
+        progress_item_id,
+        packet_start_timestamp,
+        batch_size,
+        skip_items_count,
+    ) -> dict[Path, SciencePathHandler]:
+        logger.info(
+            f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
+        )
+
+        # Download files from SDC
+        downloaded_science: dict[Path, SciencePathHandler] = fetch_science(
+            level=level,
+            reference_frames=reference_frames,
+            modes=modes,
+            start_date=start_date,
+            end_date=end_date,
+            use_ingestion_date=use_ingestion_date,
+            fetch_mode=FetchMode.DownloadAndUpdateProgress,
+            max_downloads=batch_size,
+            skip_items_count=skip_items_count,
+        )
+
+        # Update database with latest ingestion date as progress (for science)
+        if use_database:
+            latest_ingestion_date = self._get_latest_ingestion_date(downloaded_science)
+
+            update_database_with_progress(
+                progress_item_id=progress_item_id,
+                database=database,
+                checked_timestamp=packet_start_timestamp,
+                latest_timestamp=latest_ingestion_date,
+            )
+            logger.info(f"Database updated for {progress_item_id}.")
+        else:
+            logger.info(f"Database not updated for {progress_item_id}.")
+
+        return downloaded_science
+
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
+        log_prints=True,
+        flow_run_name=lambda: PollScienceFlow.generate_flow_run_name(),
+    )
     async def run(
         self,
         level: Annotated[
@@ -227,7 +248,7 @@ class PollScienceFlow:
             total_batches
         ):  # arbitrary large number to prevent infinite loops
             with Environment(CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE, auth_code):
-                items = download_batch_of_science(
+                items = self._download_batch_of_science(
                     level,
                     reference_frames,
                     modes,
@@ -269,108 +290,3 @@ class PollScienceFlow:
         logger.info(
             f"Poll science flow complete. Downloaded total of {len(downloaded_science)} items."
         )
-
-
-_default_instance = PollScienceFlow()
-
-
-def generate_flow_run_name() -> str:
-    parameters = flow_run.parameters
-
-    level: ScienceLevel = parameters["level"]
-    modes: list[ScienceMode] = parameters["modes"] or [
-        ScienceMode.Normal,
-        ScienceMode.Burst,
-    ]
-    start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%Y")
-        if parameters["start_date"] is not None
-        else "last-update"
-    )
-    end_date = parameters["end_date"] or DatetimeProvider().end_of_today()
-
-    return f"Download-{','.join([m.short_name for m in modes])}-{level.value}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
-
-
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE,
-    log_prints=True,
-    flow_run_name=generate_flow_run_name,
-)
-async def poll_science_flow(
-    level: Annotated[
-        ScienceLevel,
-        Field(
-            json_schema_extra={
-                "title": "Level to download",
-                "description": "Processing level to download. Default is L1c.",
-            }
-        ),
-    ] = ScienceLevel.l1c,
-    reference_frames: Annotated[
-        list[ReferenceFrame] | None,
-        Field(
-            json_schema_extra={
-                "title": "Reference frame(s)",
-                "description": "Reference frame(s) to download for L2/L1D. None downloads all frames.",
-            }
-        ),
-    ] = None,
-    modes: Annotated[
-        list[ScienceMode] | None,
-        Field(
-            json_schema_extra={
-                "title": "Science modes to download",
-                "description": "List of science modes to download. Default (none) is both Normal and Burst.",
-            }
-        ),
-    ] = None,
-    start_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "Start date",
-                "description": "Start date for the download. Default is the last progress date for the mode (ingestion date).",
-            }
-        ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "End date for the download. Default is the end of today (ingestion date).",
-            }
-        ),
-    ] = None,
-    force_ingestion_date: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force input dates to be ingestion dates",
-                "description": "If 'True' input dates are the ingestion date. Otherwise, input dates are in S/C clock time. Ignored if 'start_date' and 'end_date' are not provided.",
-            }
-        ),
-    ] = False,
-    force_database_update: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded science. Ignored if 'start_date' and 'end_date' are not provided.",
-            }
-        ),
-    ] = False,
-):
-    """
-    Poll science data from SDC.
-    """
-    await _default_instance.run(
-        level=level,
-        reference_frames=reference_frames,
-        modes=modes,
-        start_date=start_date,
-        end_date=end_date,
-        force_ingestion_date=force_ingestion_date,
-        force_database_update=force_database_update,
-    )

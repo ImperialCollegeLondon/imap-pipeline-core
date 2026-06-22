@@ -7,12 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from imap_mag.util import ScienceLevel, ScienceMode
-from prefect_server.pollScience import (
-    download_batch_of_science,
-    generate_flow_run_name,
-    get_latest_ingestion_date,
-    poll_science_flow,
-)
+from prefect_server.pollScience import PollScienceFlow
 
 
 class TestGetLatestIngestionDate:
@@ -28,14 +23,14 @@ class TestGetLatestIngestionDate:
             Path("/a.cdf"): self._make_handler_with_ingestion(d1),
             Path("/b.cdf"): self._make_handler_with_ingestion(d2),
         }
-        result = get_latest_ingestion_date(handlers)
+        result = PollScienceFlow._get_latest_ingestion_date(handlers)
         assert result == d2
 
     def test_returns_none_when_all_ingestion_dates_are_none(self):
         handlers = {
             Path("/a.cdf"): self._make_handler_with_ingestion(None),
         }
-        result = get_latest_ingestion_date(handlers)
+        result = PollScienceFlow._get_latest_ingestion_date(handlers)
         assert result is None
 
     def test_ignores_none_ingestion_dates_and_returns_max(self):
@@ -44,11 +39,11 @@ class TestGetLatestIngestionDate:
             Path("/a.cdf"): self._make_handler_with_ingestion(None),
             Path("/b.cdf"): self._make_handler_with_ingestion(d1),
         }
-        result = get_latest_ingestion_date(handlers)
+        result = PollScienceFlow._get_latest_ingestion_date(handlers)
         assert result == d1
 
     def test_returns_none_for_empty_dict(self):
-        result = get_latest_ingestion_date({})
+        result = PollScienceFlow._get_latest_ingestion_date({})
         assert result is None
 
 
@@ -65,7 +60,7 @@ class TestDownloadBatchOfScience:
             ) as mock_fetch,
             patch("prefect_server.pollScience.update_database_with_progress"),
         ):
-            result = download_batch_of_science(
+            result = PollScienceFlow()._download_batch_of_science(
                 level=MagicMock(),
                 reference_frames=None,
                 modes=None,
@@ -95,7 +90,7 @@ class TestDownloadBatchOfScience:
                 "prefect_server.pollScience.update_database_with_progress"
             ) as mock_update,
         ):
-            download_batch_of_science(
+            PollScienceFlow()._download_batch_of_science(
                 level=MagicMock(),
                 reference_frames=None,
                 modes=None,
@@ -122,7 +117,7 @@ class TestDownloadBatchOfScience:
                 "prefect_server.pollScience.update_database_with_progress"
             ) as mock_update,
         ):
-            download_batch_of_science(
+            PollScienceFlow()._download_batch_of_science(
                 level=MagicMock(),
                 reference_frames=None,
                 modes=None,
@@ -141,20 +136,7 @@ class TestDownloadBatchOfScience:
 
 
 class TestPollScienceFlowUnit:
-    """Unit tests for poll_science_flow without Docker."""
-
-    def _base_patches(self):
-        return [
-            patch(
-                "prefect_server.pollScience.try_get_prefect_logger",
-                return_value=MagicMock(),
-            ),
-            patch("prefect_server.pollScience.Database", return_value=MagicMock()),
-            patch(
-                "prefect_server.pollScience.get_secret_or_env_var",
-                return_value="test-auth-code",
-            ),
-        ]
+    """Unit tests for PollScienceFlow.run without Docker."""
 
     @pytest.mark.asyncio
     async def test_logs_warning_when_force_database_update_without_force_ingestion_date(
@@ -177,7 +159,8 @@ class TestPollScienceFlowUnit:
                 "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
             ),
         ):
-            await poll_science_flow.fn(
+            await PollScienceFlow.run.fn(
+                PollScienceFlow(),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
                 force_database_update=True,
@@ -207,7 +190,8 @@ class TestPollScienceFlowUnit:
                 "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
             ),
         ):
-            await poll_science_flow.fn(
+            await PollScienceFlow.run.fn(
+                PollScienceFlow(),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
                 modes=[ScienceMode.Normal],
@@ -248,13 +232,15 @@ class TestPollScienceFlowUnit:
             patch(
                 "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
             ),
-            patch(
-                "prefect_server.pollScience.download_batch_of_science",
+            patch.object(
+                PollScienceFlow,
+                "_download_batch_of_science",
                 side_effect=side_effect,
             ),
             patch("asyncio.sleep"),
         ):
-            await poll_science_flow.fn(
+            await PollScienceFlow.run.fn(
+                PollScienceFlow(),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
             )
@@ -292,14 +278,16 @@ class TestPollScienceFlowUnit:
             patch(
                 "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
             ),
-            patch(
-                "prefect_server.pollScience.download_batch_of_science",
+            patch.object(
+                PollScienceFlow,
+                "_download_batch_of_science",
                 side_effect=side_effect,
             ),
             patch("prefect_server.pollScience.BATCH_SIZE", 1),
             patch("asyncio.sleep"),
         ):
-            await poll_science_flow.fn(
+            await PollScienceFlow.run.fn(
+                PollScienceFlow(),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
             )
@@ -332,14 +320,16 @@ class TestPollScienceFlowUnit:
             patch(
                 "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
             ),
-            patch(
-                "prefect_server.pollScience.download_batch_of_science",
+            patch.object(
+                PollScienceFlow,
+                "_download_batch_of_science",
                 side_effect=side_effect,
             ),
             patch("prefect_server.pollScience.BATCH_SIZE", 1),
             patch("asyncio.sleep"),
         ):
-            await poll_science_flow.fn(
+            await PollScienceFlow.run.fn(
+                PollScienceFlow(),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
             )
@@ -359,7 +349,7 @@ class TestPollScienceFlowGenerateName:
         }
         with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollScienceFlow.generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -372,6 +362,6 @@ class TestPollScienceFlowGenerateName:
         }
         with patch("prefect_server.pollScience.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+            name = PollScienceFlow.generate_flow_run_name()
 
         assert "01-06-2025" in name
