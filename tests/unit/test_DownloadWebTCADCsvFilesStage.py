@@ -1,4 +1,4 @@
-"""Tests for DownloadLoPivotCsvFilesStage."""
+"""Tests for DownloadWebTCADCsvFilesStage."""
 
 import asyncio
 from datetime import datetime
@@ -6,18 +6,23 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import FetchByDatesRunParameters
-from imap_mag.data_pipelines.DownloadLoPivotCsvFilesStage import (
-    DownloadLoPivotCsvFilesStage,
+from imap_mag.data_pipelines.DownloadWebTCADCsvFilesStage import (
+    DownloadWebTCADCsvFilesStage,
 )
 from imap_mag.data_pipelines.Record import Record
 
+ITEM = HKWebTCADItems.LO_PIVOT_PLATFORM_ANGLE
 
-class TestDownloadLoPivotCsvFilesStageProcess:
+
+class TestDownloadWebTCADCsvFilesStageProcess:
     def _make_stage(self, tmp_path, client=None):
         mock_client = client or MagicMock()
-        stage = DownloadLoPivotCsvFilesStage(client=mock_client, settings=AppSettings())  # type: ignore
+        stage = DownloadWebTCADCsvFilesStage(
+            item=ITEM, client=mock_client, settings=AppSettings()
+        )
         stage._run_parameters = FetchByDatesRunParameters(
             start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1)
         )
@@ -34,7 +39,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
 
     def test_raises_when_csv_content_empty(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
-        mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.return_value = ""
+        mock_client.download_analog_telemetry_item.return_value = ""
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1))
         with pytest.raises(RuntimeError, match="empty CSV content"):
@@ -42,9 +47,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
 
     def test_skips_day_when_csv_has_only_header(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
-        mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.return_value = (
-            "timestamp,angle"
-        )
+        mock_client.download_analog_telemetry_item.return_value = "timestamp,angle"
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 1))
         asyncio.run(stage.process(item, {}))
@@ -53,7 +56,7 @@ class TestDownloadLoPivotCsvFilesStageProcess:
 
     def test_publishes_file_when_data_present(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
-        mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.return_value = (
+        mock_client.download_analog_telemetry_item.return_value = (
             "timestamp,angle\n2025-01-01T00:00:00,45.0"
         )
 
@@ -64,14 +67,9 @@ class TestDownloadLoPivotCsvFilesStageProcess:
 
     def test_iterates_over_date_range(self, tmp_path):
         stage, mock_client = self._make_stage(tmp_path)
-        mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.return_value = (
-            "header_only"
-        )
+        mock_client.download_analog_telemetry_item.return_value = "header_only"
 
         item = Record(start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 3))
         asyncio.run(stage.process(item, {}))
 
-        assert (
-            mock_client.download_imap_lo_pivot_platform_angle_to_csv_file.call_count
-            == 3
-        )
+        assert mock_client.download_analog_telemetry_item.call_count == 3

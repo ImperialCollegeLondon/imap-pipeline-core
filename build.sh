@@ -39,7 +39,7 @@ if [ "$1" != "--skip-tests" ]; then
         # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
         -n auto --dist loadscope --maxprocesses=3
         # coverage parameters
-        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html
+        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --cov-fail-under=80
         --junitxml=test-results.xml # CI readable report
         --durations 10  # print top 10 slow tests
         tests # folder name of tests

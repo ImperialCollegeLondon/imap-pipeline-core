@@ -223,6 +223,7 @@ jobs:
           report_name: Coverage Report (${{ matrix.python-versions }})
           path: "coverage.xml"
           minimum_coverage: 80
+          fail_below_threshold: true
 
   matlab-build:
     strategy:
