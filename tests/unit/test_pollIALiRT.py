@@ -7,11 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.pollIALiRT import (
-    PollIALiRTFlow,
-    _do_poll,
-    do_poll_ialirt,
-)
+from prefect_server.pollIALiRT import PollIALiRTFlow
 
 
 class TestDoPollUnit:
@@ -33,7 +29,7 @@ class TestDoPollUnit:
             mock_dm.get_dates_for_download.return_value = None
             mock_dm_class.return_value = mock_dm
 
-            result = _do_poll(
+            result = PollIALiRTFlow._do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=datetime(2025, 1, 1),
@@ -66,7 +62,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value={})
 
-            result = _do_poll(
+            result = PollIALiRTFlow._do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -105,7 +101,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value=downloaded_files)
 
-            result = _do_poll(
+            result = PollIALiRTFlow._do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -147,7 +143,7 @@ class TestDoPollUnit:
             fetch_fn = MagicMock(return_value=downloaded_files)
             mock_emit.return_value = MagicMock()
 
-            _do_poll(
+            PollIALiRTFlow._do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -187,7 +183,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value=downloaded_files)
 
-            _do_poll(
+            PollIALiRTFlow._do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -224,7 +220,8 @@ class TestPollIALiRTFlowUnit:
                 return_value="auth-code",
             ),
             patch(
-                "prefect_server.pollIALiRT.do_poll_ialirt", return_value=[]
+                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
+                return_value=[],
             ) as mock_do_poll,
         ):
             await flow_instance.run(
@@ -254,13 +251,17 @@ class TestPollIALiRTFlowUnit:
                 "prefect_server.pollIALiRT.get_secret_or_env_var",
                 return_value="auth-code",
             ),
-            patch("prefect_server.pollIALiRT.do_poll_ialirt", return_value=[]),
             patch(
-                "prefect_server.pollIALiRT.quicklook_ialirt_flow",
-                new_callable=AsyncMock,
-            ) as mock_quicklook,
+                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
+                return_value=[],
+            ),
+            patch(
+                "prefect_server.pollIALiRT.QuicklookIALiRTFlow"
+            ) as mock_quicklook_cls,
         ):
-            mock_quicklook.return_value = None
+            mock_quicklook_instance = MagicMock()
+            mock_quicklook_instance.run = AsyncMock(return_value=None)
+            mock_quicklook_cls.return_value = mock_quicklook_instance
             await flow_instance.run(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
@@ -268,7 +269,7 @@ class TestPollIALiRTFlowUnit:
                 plot_last_3_days=True,
             )
 
-        mock_quicklook.assert_called_once()
+        mock_quicklook_instance.run.assert_called_once()
 
 
 class TestPollIALiRTHKFlowUnit:
@@ -292,7 +293,8 @@ class TestPollIALiRTHKFlowUnit:
                 return_value="auth-code",
             ),
             patch(
-                "prefect_server.pollIALiRT.do_poll_ialirt_hk", return_value=[]
+                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt_hk",
+                return_value=[],
             ) as mock_do_poll,
         ):
             await flow_instance.run_hk(
@@ -331,7 +333,8 @@ class TestPollIALiRTHKFlowUnit:
             ),
             patch.object(dp, "now", side_effect=fake_now),
             patch(
-                "prefect_server.pollIALiRT.do_poll_ialirt", return_value=[]
+                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
+                return_value=[],
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
@@ -372,7 +375,8 @@ class TestPollIALiRTHKFlowUnitExtended:
             ),
             patch.object(dp, "now", side_effect=fake_now),
             patch(
-                "prefect_server.pollIALiRT.do_poll_ialirt_hk", return_value=[]
+                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt_hk",
+                return_value=[],
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
@@ -435,7 +439,7 @@ class TestDoPollIALiRT:
             )
             mock_dm.return_value = mock_dm_instance
 
-            result = do_poll_ialirt(
+            result = PollIALiRTFlow._do_poll_ialirt(
                 database=MagicMock(),
                 auth_code="auth",
                 start_date=datetime(2025, 1, 1),

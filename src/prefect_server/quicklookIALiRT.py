@@ -12,16 +12,8 @@ from prefect_server.constants import PREFECT_CONSTANTS
 
 
 class QuicklookIALiRTFlow:
-    def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
-        self._datetime_provider = datetime_provider
-        self.quicklook_ialirt_flow = flow(
-            self._quicklook_ialirt_flow_impl,
-            name=PREFECT_CONSTANTS.FLOW_NAMES.QUICKLOOK_IALIRT,
-            log_prints=True,
-            flow_run_name=self._generate_flow_run_name,
-        )
-
-    def _generate_flow_run_name(self) -> str:
+    @classmethod
+    def generate_flow_run_name(cls) -> str:
         parameters = flow_run.parameters
 
         start_date = parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
@@ -29,7 +21,15 @@ class QuicklookIALiRTFlow:
 
         return f"Plot-IALiRT-from-{start_date}-to-{end_date}"
 
-    async def _quicklook_ialirt_flow_impl(
+    def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
+        self._datetime_provider = datetime_provider
+
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.QUICKLOOK_IALIRT,
+        log_prints=True,
+        flow_run_name=lambda: QuicklookIALiRTFlow.generate_flow_run_name(),
+    )
+    async def run(
         self,
         start_date: Annotated[
             datetime | None,
@@ -85,8 +85,3 @@ class QuicklookIALiRTFlow:
             force_latest_update=force_latest_update,
             datetime_provider=self._datetime_provider,
         )
-
-
-_default_flow = QuicklookIALiRTFlow()
-quicklook_ialirt_flow = _default_flow.quicklook_ialirt_flow
-generate_flow_run_name = _default_flow._generate_flow_run_name

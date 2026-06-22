@@ -7,6 +7,7 @@ Deployments are created via SomeFlow().run.to_deployment(...).
 
 import pytest
 
+from prefect_server.checkIALiRT import CheckIALiRTFlow
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -18,8 +19,10 @@ from prefect_server.pollScience import PollScienceFlow
 from prefect_server.pollSmallForces import PollSmallForcesFlow
 from prefect_server.pollSpice import PollSpiceFlow
 from prefect_server.pollSpinTable import PollSpinTableFlow
+from prefect_server.quicklookIALiRT import QuicklookIALiRTFlow
 
 CLASS_BASED_FLOWS = [
+    (CheckIALiRTFlow, "run"),
     (PollHKFlow, "run"),
     (PollIALiRTFlow, "run"),
     (PollIALiRTFlow, "run_hk"),
@@ -27,6 +30,7 @@ CLASS_BASED_FLOWS = [
     (PollSmallForcesFlow, "run"),
     (PollSpiceFlow, "run"),
     (PollSpinTableFlow, "run"),
+    (QuicklookIALiRTFlow, "run"),
 ]
 
 FUNCTIONAL_FLOWS = [

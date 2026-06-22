@@ -57,13 +57,12 @@ async def send_monthly_test_message(
 class CheckIALiRTFlow:
     def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
         self._datetime_provider = datetime_provider
-        self.check_ialirt_flow = flow(
-            self._check_ialirt_flow_impl,
-            name=PREFECT_CONSTANTS.FLOW_NAMES.CHECK_IALIRT,
-            log_prints=True,
-        )
 
-    async def _check_ialirt_flow_impl(
+    @flow(
+        name=PREFECT_CONSTANTS.FLOW_NAMES.CHECK_IALIRT,
+        log_prints=True,
+    )
+    async def run(
         self,
         files: Annotated[
             list[Path] | None,
@@ -136,7 +135,3 @@ class CheckIALiRTFlow:
                 )
 
             return Failed(message="Anomalies detected in I-ALiRT data.")
-
-
-_default_flow = CheckIALiRTFlow()
-check_ialirt_flow = _default_flow.check_ialirt_flow

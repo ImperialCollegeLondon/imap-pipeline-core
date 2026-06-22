@@ -8,7 +8,7 @@ from prefect.exceptions import FailedRun
 
 from imap_mag.util import CONSTANTS
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.checkIALiRT import CheckIALiRTFlow, check_ialirt_flow
+from prefect_server.checkIALiRT import CheckIALiRTFlow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     NOW,
@@ -32,9 +32,7 @@ async def test_check_ialirt_no_issues(
 ):
     # Exercise.
     flow_instance = CheckIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
-    await flow_instance.check_ialirt_flow(
-        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
-    )
+    await flow_instance.run(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -63,7 +61,7 @@ async def test_check_ialirt_with_issues(
         with pytest.raises(
             FailedRun, match=re.escape("Anomalies detected in I-ALiRT data.")
         ):
-            await check_ialirt_flow(
+            await CheckIALiRTFlow().run(
                 files=[TEST_DATA / "ialirt_hk_data_with_anomalies.csv"]
             )
     finally:
@@ -85,7 +83,7 @@ async def test_check_ialirt_no_files_default_dates(
 ):
     # Exercise.
     flow_instance = CheckIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
-    await flow_instance.check_ialirt_flow()
+    await flow_instance.run()
 
     # Verify.
     assert (
@@ -122,9 +120,7 @@ async def test_check_ialirt_first_monday_of_month_first_time(
     flow = CheckIALiRTFlow(
         datetime_provider=DatetimeProvider(fixed_now=NOW_FIRST_MONDAY_OF_MONTH)
     )
-    await flow.check_ialirt_flow(
-        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
-    )
+    await flow.run(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text
@@ -161,9 +157,7 @@ async def test_check_ialirt_first_monday_of_month_not_first_time(
     flow = CheckIALiRTFlow(
         datetime_provider=DatetimeProvider(fixed_now=NOW_FIRST_MONDAY_OF_MONTH)
     )
-    await flow.check_ialirt_flow(
-        files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"]
-    )
+    await flow.run(files=[TEST_DATA / "ialirt_hk_data_without_anomalies.csv"])
 
     # Verify.
     assert "No anomalies detected in I-ALiRT data." in capture_cli_logs.text

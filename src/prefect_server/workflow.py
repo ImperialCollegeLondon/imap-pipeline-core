@@ -12,7 +12,7 @@ from prefect.schedules import Cron
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
-from prefect_server.checkIALiRT import check_ialirt_flow
+from prefect_server.checkIALiRT import CheckIALiRTFlow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
@@ -36,7 +36,7 @@ from prefect_server.pollSpinTable import PollSpinTableFlow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
-from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
+from prefect_server.quicklookIALiRT import QuicklookIALiRTFlow
 from prefect_server.serverConfig import ServerConfig
 from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 
@@ -268,7 +268,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    check_ialirt_deployable = check_ialirt_flow.to_deployment(
+    check_ialirt_deployable = CheckIALiRTFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CHECK_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.CHECK_IALIRT_CRON),
         job_variables=shared_job_variables,
@@ -296,7 +296,7 @@ async def adeploy_flows(local_debug: bool = False):
         ],
     )
 
-    quicklook_ialirt_deployable = quicklook_ialirt_flow.to_deployment(
+    quicklook_ialirt_deployable = QuicklookIALiRTFlow().run.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
