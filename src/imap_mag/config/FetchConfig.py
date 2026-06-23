@@ -1,10 +1,10 @@
 from imap_mag.config.ApiSource import (
+    DSCOVRApiSource,
     IALiRTApiSource,
     SdcApiSource,
+    SOLAR1andACEApiSource,
     WebPodaApiSource,
     WebTCADLaTiSApiSource,
-    SOLAR1andACEApiSource,
-    DSCOVRApiSource,
 )
 from imap_mag.config.CommandConfig import CommandConfig
 

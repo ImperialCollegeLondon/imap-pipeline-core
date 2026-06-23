@@ -3,7 +3,6 @@
 import logging
 from datetime import datetime
 from time import time
-from turtle import st
 from typing import Any
 
 import requests
