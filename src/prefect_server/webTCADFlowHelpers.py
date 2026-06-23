@@ -34,7 +34,7 @@ def make_flow_run_name(label: str):
         end_date = (
             parameters.end_date
             if hasattr(parameters, "end_date") and parameters.end_date is not None
-            else DatetimeProvider.end_of_today()
+            else DatetimeProvider().end_of_today()
         )
 
         return f"Download-{label}-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
@@ -46,6 +46,7 @@ async def run_webtcad_pipeline(
     item: HKWebTCADItems,
     run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
     use_database: bool,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> None:
     """Build and run a ``WebTCADTelemetryItemPipeline`` for the given telemetry item.
 
@@ -64,7 +65,10 @@ async def run_webtcad_pipeline(
     settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
 
     pipeline = WebTCADTelemetryItemPipeline(
-        item=item, database=database, settings=settings
+        item=item,
+        database=database,
+        settings=settings,
+        datetime_provider=datetime_provider,
     )
     pipeline.build(run_parameters)
     await pipeline.run()

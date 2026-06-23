@@ -11,7 +11,8 @@ from imap_mag.data_pipelines import (
     FetchByDatesRunParameters,
     ProgressUpdateMode,
 )
-from imap_mag.util import Environment
+from imap_mag.util import DatetimeProvider, Environment
+from prefect_server.webTCADFlowHelpers import run_webtcad_pipeline
 
 WEBTCAD_URL_ENDPOINT_PATH = "/AnalogTelemetryItem_SID1"
 
@@ -89,6 +90,8 @@ async def execute_webtcad_flow(
     flow,
     *,
     wiremock_manager,
+    item: HKWebTCADItems | None = None,
+    datetime_provider: DatetimeProvider | None = None,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     force_redownload: bool = False,
@@ -98,16 +101,18 @@ async def execute_webtcad_flow(
 ) -> None:
     """Run a WebTCAD poll flow against the supplied WireMock instance.
 
-    If ``prefect_test_fixture`` is supplied the decorated flow is invoked (so tests
-    exercising the Prefect runtime work); otherwise the underlying ``.fn`` is called
-    directly to keep the test fast.
+    If ``datetime_provider`` is supplied, the pipeline is called directly (bypassing
+    the Prefect flow) so that a controlled datetime can be injected via DI. In that
+    case ``item`` must also be supplied.
+
+    If ``prefect_test_fixture`` is supplied (and ``datetime_provider`` is not) the
+    decorated flow is invoked so tests exercising the Prefect runtime work; otherwise
+    the underlying ``.fn`` is called directly to keep the test fast.
     """
     with Environment(
         MAG_FETCH_WEBTCAD_API_URL_BASE=wiremock_manager.get_url(),
         IMAP_WEBPODA_TOKEN="12345",
     ):
-        func_under_test = flow if prefect_test_fixture else flow.fn
-
         mode = (
             ProgressUpdateMode.NEVER_UPDATE_PROGRESS
             if do_not_update_progress
@@ -115,17 +120,30 @@ async def execute_webtcad_flow(
         )
 
         if start_date is None and end_date is None and not force_redownload:
-            await func_under_test(
-                run_parameters=AutomaticRunParameters(progress_mode=mode),
+            run_parameters = AutomaticRunParameters(progress_mode=mode)
+        else:
+            run_parameters = FetchByDatesRunParameters(
+                start_date=start_date,
+                end_date=end_date,
+                force_redownload=force_redownload,
+                progress_mode=mode,
+            )
+
+        if datetime_provider is not None:
+            # Bypass the Prefect flow entirely and call the pipeline directly so that
+            # the controlled datetime_provider is injected via DI.
+            assert item is not None, (
+                "item must be provided when datetime_provider is supplied"
+            )
+            await run_webtcad_pipeline(
+                item=item,
+                run_parameters=run_parameters,
                 use_database=use_database,
+                datetime_provider=datetime_provider,
             )
         else:
+            func_under_test = flow if prefect_test_fixture else flow.fn
             await func_under_test(
-                run_parameters=FetchByDatesRunParameters(
-                    start_date=start_date,
-                    end_date=end_date,
-                    force_redownload=force_redownload,
-                    progress_mode=mode,
-                ),
+                run_parameters=run_parameters,
                 use_database=use_database,
             )

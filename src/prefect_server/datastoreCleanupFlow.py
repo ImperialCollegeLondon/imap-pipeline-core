@@ -13,6 +13,7 @@ from imap_mag.db import Database
 from imap_mag.io.DBIndexedDatastoreFileManager import (
     DBIndexedDatastoreFileManager,
 )
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import try_get_prefect_logger
 
@@ -30,6 +31,7 @@ def _identify_non_latest_versions(files: list[File]) -> list[File]:
 def _get_files_to_cleanup(
     files: list[File],
     task: CleanupTask,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> list[File]:
     """
     Get files that should be cleaned up based on task configuration.
@@ -37,7 +39,7 @@ def _get_files_to_cleanup(
     Args:
         files: Files matching the task's path patterns
         task: Cleanup task configuration
-        age_cutoff: Files older than this will be considered for cleanup
+        datetime_provider: DatetimeProvider instance for time-based filtering
 
     Returns:
         List of files to clean up
@@ -52,7 +54,7 @@ def _get_files_to_cleanup(
         candidates = files
 
     # Filter by age
-    cutoff = task.get_file_age_cutoff()
+    cutoff = task.get_file_age_cutoff(datetime_provider)
     files_to_cleanup = []
     for f in candidates:
         file_modified = f.last_modified_date
@@ -140,7 +142,9 @@ async def cleanup_datastore_flow(
             continue
 
         # Get files to clean up
-        files_to_cleanup = _get_files_to_cleanup(matched_files, task)
+        files_to_cleanup = _get_files_to_cleanup(
+            matched_files, task, DatetimeProvider()
+        )
 
         if not files_to_cleanup:
             logger.info(f"  No files to clean up for task '{task.name}'")

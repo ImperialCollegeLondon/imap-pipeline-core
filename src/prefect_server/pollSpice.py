@@ -3,7 +3,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated
 
-from prefect import flow, get_run_logger
+from prefect import flow
 from prefect.runtime import flow_run
 from pydantic import Field
 
@@ -14,7 +14,7 @@ from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import SPICEPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, TimeConversion
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.prefectUtils import get_secret_or_env_var
+from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
 
 
 def generate_flow_run_name() -> str:
@@ -38,7 +38,7 @@ def generate_flow_run_name() -> str:
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SPICE,
     log_prints=True,
-    flow_run_name=generate_flow_run_name,
+    flow_run_name=lambda: generate_flow_run_name(),
 )
 async def poll_spice_flow(
     ingest_start_day: Annotated[
@@ -113,15 +113,25 @@ async def poll_spice_flow(
             }
         ),
     ] = False,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
 ):
     """
     Poll SPICE kernel files from SDC.
     """
 
-    logger = get_run_logger()
+    logger = try_get_prefect_logger(__name__)
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
+    )
     database = Database()
     progress_item_id = "SPICE"
-    date_manager = DownloadDateManager(progress_item_id, database)
+    date_manager = DownloadDateManager(
+        progress_item_id, database, datetime_provider=datetime_provider
+    )
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,
@@ -129,7 +139,7 @@ async def poll_spice_flow(
     )
 
     # Track when we started checking for files
-    check_timestamp = DatetimeProvider.now()
+    check_timestamp = datetime_provider.now()
 
     # If this is an automated flow run, use the database to figure out what to download
     fields_all_none_means_automated = (
@@ -144,7 +154,7 @@ async def poll_spice_flow(
     use_database: bool = force_database_update or automated_flow_run
 
     if ingest_start_day is not None and ingest_end_date is None:
-        ingest_end_date = DatetimeProvider.tomorrow().date()
+        ingest_end_date = datetime_provider.tomorrow().date()
 
     # Get dates for download
     ingest_date_filter_source = "user input"
@@ -158,9 +168,12 @@ async def poll_spice_flow(
     if safe_download_dates is None:
         raise ValueError(f"No dates for download of {progress_item_id}")
 
-    if safe_download_dates[1] == DatetimeProvider.end_of_today():
+    if safe_download_dates[1] == datetime_provider.end_of_today():
         # SDC API is exclusive on end dates!
-        safe_download_dates = (safe_download_dates[0], DatetimeProvider.tomorrow())
+        safe_download_dates = (
+            safe_download_dates[0],
+            datetime_provider.tomorrow(),
+        )
 
     if (
         safe_download_dates[0] != ingest_start_day
