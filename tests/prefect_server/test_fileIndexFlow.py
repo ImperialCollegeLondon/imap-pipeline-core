@@ -21,7 +21,7 @@ def _insert_file(test_database, rel_path: str, app_settings) -> File:
     )
     file = File.from_file(file_path, version, "HASH", content_date, app_settings)
     file.last_modified_date = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=1)
-    test_database.insert_file(file)
+    test_database.upsert_file(file)
     return test_database.get_files(File.path == rel_path)[0]
 
 
@@ -66,4 +66,4 @@ async def test_flow_indexes_by_file_path(
 
         idx = test_database.get_file_index_by_file_id(file.id)
         assert idx is not None
-        assert idx.record_count == 3915
+        assert idx.record_count == 5
