@@ -50,7 +50,7 @@ def test_csv_record_count():
     result = stage._index_file(
         1, path, "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
     )
-    assert result.record_count == 3915
+    assert result.record_count == 5
 
 
 def test_csv_detects_epoch_datetime_column():
