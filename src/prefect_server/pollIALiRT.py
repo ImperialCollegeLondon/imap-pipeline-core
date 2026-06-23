@@ -1,6 +1,6 @@
 import asyncio
 import datetime as dt
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -276,14 +276,14 @@ class PollIALiRTFlow:
             ),
         ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
         notification_time: Annotated[
-            dt.time,
+            str,
             Field(
                 json_schema_extra={
-                    "title": "Notification time",
-                    "description": "UK local time at which to send the Teams notification. Default is 06:00.",
+                    "title": "Notification hour",
+                    "description": "UK local time (HH:MM) for the hour in which to send the Teams notification. Default is 06:00 so any time between 6:00-6:59.",
                 }
             ),
-        ] = time(6, 0),
+        ] = "06:00",
     ) -> None:
         """
         Poll I-ALiRT MAG data from SDC.
@@ -291,6 +291,7 @@ class PollIALiRTFlow:
 
         logger = try_get_prefect_logger(__name__)
         database = Database()
+        notification_time_parsed = dt.time.fromisoformat(notification_time)
 
         auth_code = await get_secret_or_env_var(
             PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
@@ -346,7 +347,7 @@ class PollIALiRTFlow:
             )
 
             if wait_for_new_data_to_arrive and (
-                uk_end_time.hour == notification_time.hour or force_notification
+                uk_end_time.hour == notification_time_parsed.hour or force_notification
             ):
                 imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                     imap_notification_webhook_name
