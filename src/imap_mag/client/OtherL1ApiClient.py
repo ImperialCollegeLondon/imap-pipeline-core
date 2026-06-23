@@ -124,12 +124,8 @@ class OtherL1ApiClient:
         try:
             mag_cols = mag_data[0]
             plasma_cols = plasma_data[0]
-            mag_data_dicts = [
-                dict(zip(mag_cols, row)) for row in mag_data[1:]
-            ]
-            plasma_data_dicts = [
-                dict(zip(plasma_cols, row)) for row in plasma_data[1:]
-            ]
+            mag_data_dicts = [dict(zip(mag_cols, row)) for row in mag_data[1:]]
+            plasma_data_dicts = [dict(zip(plasma_cols, row)) for row in plasma_data[1:]]
         except Exception as e:
             logger.error(f"Error converting DSCOVR data to dictionaries: {e}")
             return []
