@@ -13,8 +13,10 @@ from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
+    FetchDSCOVRConfig,
     FetchIALiRTConfig,
     FetchScienceConfig,
+    FetchSOLAR1andACEConfig,
     FetchSpiceConfig,
     FetchWebTCADLaTiSConfig,
 )
@@ -62,6 +64,8 @@ class AppSettings(BaseSettings):
     upload: UploadConfig
     postgres_upload: PostgresUploadConfig
     datastore_cleanup: DatastoreCleanupConfig
+    fetch_solar1_ace: FetchSOLAR1andACEConfig
+    fetch_dscovr: FetchDSCOVRConfig
 
     # functions
     def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:

@@ -3,6 +3,8 @@ from imap_mag.config.ApiSource import (
     SdcApiSource,
     WebPodaApiSource,
     WebTCADLaTiSApiSource,
+    SOLAR1andACEApiSource,
+    DSCOVRApiSource,
 )
 from imap_mag.config.CommandConfig import CommandConfig
 
@@ -30,3 +32,13 @@ class FetchSpiceConfig(CommandConfig):
 class FetchWebTCADLaTiSConfig(CommandConfig):
     api: WebTCADLaTiSApiSource
     publish_to_data_store: bool = True
+
+
+class FetchSOLAR1andACEConfig(CommandConfig):
+    api: SOLAR1andACEApiSource
+    publish_to_data_store: bool = False
+
+
+class FetchDSCOVRConfig(CommandConfig):
+    api: DSCOVRApiSource
+    publish_to_data_store: bool = False
