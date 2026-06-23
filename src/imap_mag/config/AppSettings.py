@@ -47,6 +47,7 @@ class AppSettings(BaseSettings):
     work_folder: Path = Path(".work")  # type: ignore
     data_store: Path
     packet_definition: Path
+    disk_usage_threshold: float = 0.95
 
     # Command settings
     check_ialirt: CommandConfig
