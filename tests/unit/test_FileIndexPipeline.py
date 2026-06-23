@@ -30,7 +30,7 @@ def _insert_file(
     file.last_modified_date = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(
         seconds=modified_offset_seconds
     )
-    test_database.insert_file(file)
+    test_database.upsert_file(file)
     return test_database.get_files(File.path == file_path_str)[0]
 
 
