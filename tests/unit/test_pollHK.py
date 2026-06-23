@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 from imap_mag.util import HKPacket
-from prefect_server.pollHK import PollHKFlow
+from prefect_server.pollHK import generate_flow_run_name
 
 
 class TestPollHKFlowGenerateName:
@@ -16,7 +16,7 @@ class TestPollHKFlowGenerateName:
         }
         with patch("prefect_server.pollHK.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = PollHKFlow.generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "last-update" in name
         assert "all-HK" in name
@@ -29,6 +29,6 @@ class TestPollHKFlowGenerateName:
         }
         with patch("prefect_server.pollHK.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = PollHKFlow.generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "01-06-2025" in name

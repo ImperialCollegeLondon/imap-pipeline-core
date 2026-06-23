@@ -299,11 +299,10 @@ class AdvancingDatetimeProvider(DatetimeProvider):
 
 @pytest.fixture
 def mock_quicklook_ialirt_flow(mocker) -> None:
-    mock_instance = mock.MagicMock()
-    mock_instance.run = mock.AsyncMock(return_value=None)
     mocker.patch(
-        "prefect_server.pollIALiRT.QuicklookIALiRTFlow",
-        return_value=mock_instance,
+        "prefect_server.pollIALiRT.quicklook_ialirt_flow",
+        new_callable=mock.AsyncMock,
+        return_value=None,
     )
 
 

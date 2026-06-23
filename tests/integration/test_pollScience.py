@@ -11,7 +11,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.util import Environment, ScienceMode
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.pollScience import PollScienceFlow
+from prefect_server.pollScience import poll_science_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
@@ -171,12 +171,14 @@ async def test_poll_science_flow_has_correct_workflow_start_date_on_first_ever_r
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollScienceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run(modes=[ScienceMode.Normal])
+        await poll_science_flow(
+            modes=[ScienceMode.Normal],
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
 
     # Verify.
     verify_available_modes(
@@ -224,12 +226,14 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollScienceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run(modes=[ScienceMode.Normal])
+        await poll_science_flow(
+            modes=[ScienceMode.Normal],
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
 
     # Verify.
     verify_available_modes(
@@ -277,16 +281,16 @@ async def test_poll_science_specify_packets_and_start_end_dates(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollScienceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run(
+        await poll_science_flow(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
             force_database_update=force_database_update,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -334,17 +338,17 @@ async def test_poll_science_specify_ingestion_start_end_dates(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollScienceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run(
+        await poll_science_flow(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
             force_database_update=True,
             force_ingestion_date=True,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -395,7 +399,6 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
     define_unavailable_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollScienceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with (
         pytest.raises(
             RuntimeError,
@@ -406,8 +409,9 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
             IMAP_API_KEY="12345",
         ),
     ):
-        await flow_instance.run(
+        await poll_science_flow(
             modes=[ScienceMode.Normal],
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.

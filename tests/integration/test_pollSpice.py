@@ -7,7 +7,7 @@ import pytest
 
 from imap_mag.util import Environment
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.pollSpice import PollSpiceFlow
+from prefect_server.pollSpice import poll_spice_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     BEGINNING_OF_IMAP,
@@ -120,12 +120,11 @@ async def test_poll_spice_autoflow_first_ever_run(
     )
 
     # Exercise.
-    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run()
+        await poll_spice_flow(datetime_provider=DatetimeProvider(fixed_now=NOW))
 
     # Verify.
     # Database should be updated with progress
@@ -165,12 +164,11 @@ async def test_poll_spice_autoflow_no_new_data(
     define_unavailable_spice_data_sdc_mappings(wiremock_manager)
 
     # Exercise.
-    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run()
+        await poll_spice_flow(datetime_provider=DatetimeProvider(fixed_now=NOW))
 
     # Verify.
     # Database progress should be updated with last checked date but progress timestamp should remain the same
@@ -223,12 +221,11 @@ async def test_poll_spice_autoflow_download_newer_file(
     )
 
     # Exercise.
-    flow_instance = PollSpiceFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
         IMAP_API_KEY="12345",
     ):
-        await flow_instance.run()
+        await poll_spice_flow(datetime_provider=DatetimeProvider(fixed_now=NOW))
 
     # Verify.
     # Database should be updated with new progress timestamp

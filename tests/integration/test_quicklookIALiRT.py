@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from prefect_server.quicklookIALiRT import QuicklookIALiRTFlow
+from prefect_server.quicklookIALiRT import generate_flow_run_name, quicklook_ialirt_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     TEST_DATA,
@@ -22,7 +22,7 @@ class TestQuicklookIALiRTFlowUnit:
         }
         with patch("prefect_server.quicklookIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = QuicklookIALiRTFlow.generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "2025" in name
 
@@ -31,8 +31,7 @@ class TestQuicklookIALiRTFlowUnit:
         mock_plot = MagicMock()
 
         with patch("prefect_server.quicklookIALiRT.plot_ialirt", mock_plot):
-            await QuicklookIALiRTFlow.run.fn(
-                QuicklookIALiRTFlow(),
+            await quicklook_ialirt_flow.fn(
                 start_date=datetime(2025, 6, 1),
                 end_date=datetime(2025, 6, 2),
             )
@@ -70,7 +69,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     )
 
     # Exercise.
-    await QuicklookIALiRTFlow().run(
+    await quicklook_ialirt_flow(
         start_date=datetime(2025, 10, 21), end_date=datetime(2025, 10, 21, 23, 59, 59)
     )
 

@@ -229,13 +229,11 @@ class TestPollIALiRTFlowUnit:
                 return_value=[],
             ),
             patch(
-                "prefect_server.pollIALiRT.QuicklookIALiRTFlow"
-            ) as mock_quicklook_cls,
+                "prefect_server.pollIALiRT.quicklook_ialirt_flow",
+                new_callable=AsyncMock,
+            ) as mock_quicklook_flow,
         ):
-            mock_quicklook_instance = MagicMock()
-            mock_quicklook_instance.run = AsyncMock(return_value=None)
-            mock_quicklook_cls.return_value = mock_quicklook_instance
-            await poll_ialirt_flow(
+            await poll_ialirt_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
@@ -243,7 +241,7 @@ class TestPollIALiRTFlowUnit:
                 datetime_provider=dp,
             )
 
-        mock_quicklook_instance.run.assert_called_once()
+        mock_quicklook_flow.assert_called_once()
 
 
 class TestPollIALiRTHKFlowUnit:
@@ -270,7 +268,7 @@ class TestPollIALiRTHKFlowUnit:
                 return_value=[],
             ) as mock_do_poll,
         ):
-            await poll_ialirt_hk_flow(
+            await poll_ialirt_hk_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
@@ -311,7 +309,7 @@ class TestPollIALiRTHKFlowUnit:
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await poll_ialirt_flow(
+            await poll_ialirt_flow.fn(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
                 plot_last_3_days=False,
@@ -353,7 +351,7 @@ class TestPollIALiRTHKFlowUnitExtended:
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await poll_ialirt_hk_flow(
+            await poll_ialirt_hk_flow.fn(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
                 datetime_provider=dp,

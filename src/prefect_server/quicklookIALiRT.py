@@ -11,77 +11,81 @@ from imap_mag.util import DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 
 
-class QuicklookIALiRTFlow:
-    @classmethod
-    def generate_flow_run_name(cls) -> str:
-        parameters = flow_run.parameters
+def generate_flow_run_name() -> str:
+    parameters = flow_run.parameters
 
-        start_date = parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        end_date = parameters["end_date"].strftime("%d-%m-%YT%H:%M:%S")
+    start_date = parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
+    end_date = parameters["end_date"].strftime("%d-%m-%YT%H:%M:%S")
 
-        return f"Plot-IALiRT-from-{start_date}-to-{end_date}"
+    return f"Plot-IALiRT-from-{start_date}-to-{end_date}"
 
-    def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
-        self._datetime_provider = datetime_provider
 
-    @flow(
-        name=PREFECT_CONSTANTS.FLOW_NAMES.QUICKLOOK_IALIRT,
-        log_prints=True,
-        flow_run_name=lambda: QuicklookIALiRTFlow.generate_flow_run_name(),
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.QUICKLOOK_IALIRT,
+    log_prints=True,
+    flow_run_name=lambda: generate_flow_run_name(),
+)
+async def quicklook_ialirt_flow(
+    start_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Start date for the download. Default is the last update.",
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "End date for the download. Default is the end of the hour.",
+            }
+        ),
+    ] = None,
+    combined_plot: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Combined data into one plot",
+                "description": "Whether to create a combined plot of all I-ALiRT data from start to end date.",
+            }
+        ),
+    ] = False,
+    force_latest_update: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force update of latest image",
+                "description": "Whether to force the update of the latest quicklook I-ALiRT image",
+            }
+        ),
+    ] = False,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
+) -> None:
+    """
+    Plot I-ALiRT data from data store.
+    """
+
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
     )
-    async def run(
-        self,
-        start_date: Annotated[
-            datetime | None,
-            Field(
-                json_schema_extra={
-                    "title": "Start date",
-                    "description": "Start date for the download. Default is the last update.",
-                }
-            ),
-        ] = None,
-        end_date: Annotated[
-            datetime | None,
-            Field(
-                json_schema_extra={
-                    "title": "End date",
-                    "description": "End date for the download. Default is the end of the hour.",
-                }
-            ),
-        ] = None,
-        combined_plot: Annotated[
-            bool,
-            Field(
-                json_schema_extra={
-                    "title": "Combined data into one plot",
-                    "description": "Whether to create a combined plot of all I-ALiRT data from start to end date.",
-                }
-            ),
-        ] = False,
-        force_latest_update: Annotated[
-            bool,
-            Field(
-                json_schema_extra={
-                    "title": "Force update of latest image",
-                    "description": "Whether to force the update of the latest quicklook I-ALiRT image",
-                }
-            ),
-        ] = False,
-    ) -> None:
-        """
-        Plot I-ALiRT data from data store.
-        """
 
-        if start_date is None:
-            start_date = self._datetime_provider.today() - timedelta(days=2)
-        if end_date is None:
-            end_date = self._datetime_provider.end_of_today()
+    if start_date is None:
+        start_date = datetime_provider.today() - timedelta(days=2)
+    if end_date is None:
+        end_date = datetime_provider.end_of_today()
 
-        plot_ialirt(
-            start_date=start_date,
-            end_date=end_date,
-            combined_plot=combined_plot,
-            save_mode=SaveMode.LocalAndDatabase,
-            force_latest_update=force_latest_update,
-            datetime_provider=self._datetime_provider,
-        )
+    plot_ialirt(
+        start_date=start_date,
+        end_date=end_date,
+        combined_plot=combined_plot,
+        save_mode=SaveMode.LocalAndDatabase,
+        force_latest_update=force_latest_update,
+        datetime_provider=datetime_provider,
+    )

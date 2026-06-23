@@ -19,7 +19,7 @@ from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
-from prefect_server.quicklookIALiRT import QuicklookIALiRTFlow
+from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 
 
 def _do_poll(
@@ -297,7 +297,7 @@ async def poll_ialirt_flow(
     logger.info("---------- End I-ALiRT MAG Poll ----------")
 
     if plot_last_3_days:
-        await QuicklookIALiRTFlow().run(
+        await quicklook_ialirt_flow(
             start_date=datetime_provider.today() - timedelta(days=2),
             end_date=datetime_provider.now(),
             combined_plot=True,

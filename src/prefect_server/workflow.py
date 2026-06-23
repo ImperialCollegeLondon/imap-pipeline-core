@@ -26,17 +26,17 @@ from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
 )
-from prefect_server.pollHK import PollHKFlow
+from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
-from prefect_server.pollScience import PollScienceFlow
-from prefect_server.pollSmallForces import PollSmallForcesFlow
-from prefect_server.pollSpice import PollSpiceFlow
-from prefect_server.pollSpinTable import PollSpinTableFlow
+from prefect_server.pollScience import poll_science_flow
+from prefect_server.pollSmallForces import poll_small_forces_flow
+from prefect_server.pollSpice import poll_spice_flow
+from prefect_server.pollSpinTable import poll_spin_table_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
-from prefect_server.quicklookIALiRT import QuicklookIALiRTFlow
+from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 from prefect_server.serverConfig import ServerConfig
 from prefect_server.uploadSharedDocsFlow import upload_shared_docs_flow
 
@@ -138,7 +138,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_hk_deployable = PollHKFlow().run.to_deployment(
+    poll_hk_deployable = poll_hk_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HK_CRON),
         job_variables=shared_job_variables
@@ -146,7 +146,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_spice_deployable = PollSpiceFlow().run.to_deployment(
+    poll_spice_deployable = poll_spice_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPICE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
         job_variables=shared_job_variables,
@@ -176,14 +176,14 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_spin_table_deployable = PollSpinTableFlow().run.to_deployment(
+    poll_spin_table_deployable = poll_spin_table_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPIN_TABLE,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPIN_TABLE_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    poll_small_forces_deployable = PollSmallForcesFlow().run.to_deployment(
+    poll_small_forces_deployable = poll_small_forces_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SMALL_FORCES,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SMALL_FORCES_CRON),
         job_variables=shared_job_variables,
@@ -255,7 +255,7 @@ async def adeploy_flows(local_debug: bool = False):
             )
         )
 
-    poll_science_deployable = PollScienceFlow().run.to_deployment(
+    poll_science_deployable = poll_science_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SCIENCE,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
@@ -296,7 +296,7 @@ async def adeploy_flows(local_debug: bool = False):
         ],
     )
 
-    quicklook_ialirt_deployable = QuicklookIALiRTFlow().run.to_deployment(
+    quicklook_ialirt_deployable = quicklook_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
