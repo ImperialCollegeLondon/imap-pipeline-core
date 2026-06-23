@@ -7,7 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.pollIALiRT import PollIALiRTFlow
+from prefect_server.pollIALiRT import (
+    _do_poll,
+    generate_flow_run_name,
+    generate_hk_flow_run_name,
+    poll_ialirt_flow,
+    poll_ialirt_hk_flow,
+)
 
 
 class TestDoPollUnit:
@@ -29,7 +35,7 @@ class TestDoPollUnit:
             mock_dm.get_dates_for_download.return_value = None
             mock_dm_class.return_value = mock_dm
 
-            result = PollIALiRTFlow._do_poll(
+            result = _do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=datetime(2025, 1, 1),
@@ -62,7 +68,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value={})
 
-            result = PollIALiRTFlow._do_poll(
+            result = _do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -101,7 +107,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value=downloaded_files)
 
-            result = PollIALiRTFlow._do_poll(
+            result = _do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -143,7 +149,7 @@ class TestDoPollUnit:
             fetch_fn = MagicMock(return_value=downloaded_files)
             mock_emit.return_value = MagicMock()
 
-            PollIALiRTFlow._do_poll(
+            _do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -183,7 +189,7 @@ class TestDoPollUnit:
 
             fetch_fn = MagicMock(return_value=downloaded_files)
 
-            PollIALiRTFlow._do_poll(
+            _do_poll(
                 database=mock_db,
                 auth_code="test-key",
                 start_date=None,
@@ -203,43 +209,10 @@ class TestPollIALiRTFlowUnit:
     """Unit tests for poll_ialirt_flow without Docker."""
 
     @pytest.mark.asyncio
-    async def test_flow_calls_do_poll_ialirt_and_returns(self):
-        mock_logger = MagicMock()
-        mock_db = MagicMock()
-        dp = DatetimeProvider(fixed_now=datetime(2025, 1, 1, 23, 59))
-        flow_instance = PollIALiRTFlow(datetime_provider=dp)
-
-        with (
-            patch(
-                "prefect_server.pollIALiRT.try_get_prefect_logger",
-                return_value=mock_logger,
-            ),
-            patch("prefect_server.pollIALiRT.Database", return_value=mock_db),
-            patch(
-                "prefect_server.pollIALiRT.get_secret_or_env_var",
-                return_value="auth-code",
-            ),
-            patch(
-                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
-                return_value=[],
-            ) as mock_do_poll,
-        ):
-            await flow_instance.run(
-                start_date=datetime(2025, 1, 1),
-                end_date=datetime(2025, 1, 2),
-                wait_for_new_data_to_arrive=False,
-                plot_last_3_days=False,
-            )
-
-        mock_do_poll.assert_called_once()
-        mock_logger.info.assert_called()
-
-    @pytest.mark.asyncio
     async def test_flow_generates_quicklook_when_plot_last_3_days_true(self):
         mock_logger = MagicMock()
         mock_db = MagicMock()
         dp = DatetimeProvider(fixed_now=datetime(2025, 1, 1, 23, 59))
-        flow_instance = PollIALiRTFlow(datetime_provider=dp)
 
         with (
             patch(
@@ -252,7 +225,7 @@ class TestPollIALiRTFlowUnit:
                 return_value="auth-code",
             ),
             patch(
-                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
+                "prefect_server.pollIALiRT._do_poll",
                 return_value=[],
             ),
             patch(
@@ -262,11 +235,12 @@ class TestPollIALiRTFlowUnit:
             mock_quicklook_instance = MagicMock()
             mock_quicklook_instance.run = AsyncMock(return_value=None)
             mock_quicklook_cls.return_value = mock_quicklook_instance
-            await flow_instance.run(
+            await poll_ialirt_flow(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
                 plot_last_3_days=True,
+                datetime_provider=dp,
             )
 
         mock_quicklook_instance.run.assert_called_once()
@@ -280,7 +254,6 @@ class TestPollIALiRTHKFlowUnit:
         mock_logger = MagicMock()
         mock_db = MagicMock()
         dp = DatetimeProvider(fixed_now=datetime(2025, 1, 1, 23, 59))
-        flow_instance = PollIALiRTFlow(datetime_provider=dp)
 
         with (
             patch(
@@ -293,14 +266,15 @@ class TestPollIALiRTHKFlowUnit:
                 return_value="auth-code",
             ),
             patch(
-                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt_hk",
+                "prefect_server.pollIALiRT._do_poll",
                 return_value=[],
             ) as mock_do_poll,
         ):
-            await flow_instance.run_hk(
+            await poll_ialirt_hk_flow(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 wait_for_new_data_to_arrive=False,
+                datetime_provider=dp,
             )
 
         mock_do_poll.assert_called_once()
@@ -319,7 +293,6 @@ class TestPollIALiRTHKFlowUnit:
 
         end_date = datetime(2025, 1, 1, 1, 0, 0)
         dp = DatetimeProvider()
-        flow_instance = PollIALiRTFlow(datetime_provider=dp)
 
         with (
             patch(
@@ -333,15 +306,16 @@ class TestPollIALiRTHKFlowUnit:
             ),
             patch.object(dp, "now", side_effect=fake_now),
             patch(
-                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt",
+                "prefect_server.pollIALiRT._do_poll",
                 return_value=[],
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await flow_instance.run(
+            await poll_ialirt_flow(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
                 plot_last_3_days=False,
+                datetime_provider=dp,
             )
 
         mock_do_poll.assert_called_once()
@@ -361,7 +335,6 @@ class TestPollIALiRTHKFlowUnitExtended:
 
         end_date = datetime(2025, 1, 1, 1, 0, 0)
         dp = DatetimeProvider()
-        flow_instance = PollIALiRTFlow(datetime_provider=dp)
 
         with (
             patch(
@@ -375,14 +348,15 @@ class TestPollIALiRTHKFlowUnitExtended:
             ),
             patch.object(dp, "now", side_effect=fake_now),
             patch(
-                "prefect_server.pollIALiRT.PollIALiRTFlow._do_poll_ialirt_hk",
+                "prefect_server.pollIALiRT._do_poll",
                 return_value=[],
             ) as mock_do_poll,
             patch("prefect_server.pollIALiRT.asyncio.sleep"),
         ):
-            await flow_instance.run_hk(
+            await poll_ialirt_hk_flow(
                 end_date=end_date,
                 wait_for_new_data_to_arrive=True,
+                datetime_provider=dp,
             )
 
         mock_do_poll.assert_called_once()
@@ -393,7 +367,7 @@ class TestPollIALiRTGenerateName:
         mock_params = {"start_date": None, "end_date": None}
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = PollIALiRTFlow.generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "last-update" in name
 
@@ -404,7 +378,7 @@ class TestPollIALiRTGenerateName:
         }
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = PollIALiRTFlow.generate_flow_run_name()
+            name = generate_flow_run_name()
 
         assert "01-06-2025" in name
 
@@ -412,41 +386,6 @@ class TestPollIALiRTGenerateName:
         mock_params = {"start_date": None, "end_date": None}
         with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
-            name = PollIALiRTFlow.generate_hk_flow_run_name()
+            name = generate_hk_flow_run_name()
 
         assert "HK" in name
-
-
-class TestDoPollIALiRT:
-    def test_do_poll_ialirt_returns_downloaded_files(self, tmp_path):
-        downloaded_file = tmp_path / "ialirt.csv"
-        downloaded_file.touch()
-        mock_handler = MagicMock()
-        mock_handler.content_date = datetime(2025, 1, 15)
-
-        with (
-            patch("prefect_server.pollIALiRT.DownloadDateManager") as mock_dm,
-            patch(
-                "prefect_server.pollIALiRT.fetch_ialirt",
-                return_value={downloaded_file: mock_handler},
-            ),
-            patch("prefect_server.pollIALiRT.update_database_with_progress"),
-        ):
-            mock_dm_instance = MagicMock()
-            mock_dm_instance.get_dates_for_download.return_value = (
-                datetime(2025, 1, 1),
-                datetime(2025, 1, 31),
-            )
-            mock_dm.return_value = mock_dm_instance
-
-            result = PollIALiRTFlow._do_poll_ialirt(
-                database=MagicMock(),
-                auth_code="auth",
-                start_date=datetime(2025, 1, 1),
-                end_date=datetime(2025, 1, 31),
-                force_download=False,
-                logger=MagicMock(),
-                datetime_provider=DatetimeProvider(fixed_now=datetime(2025, 1, 1)),
-            )
-
-        assert downloaded_file in result

@@ -8,7 +8,8 @@ import pytest
 from prefect_server.workflow import adeploy_flows, get_matlab_license_server
 
 _ALL_FLOW_NAMES = [
-    "PollIALiRTFlow",
+    "poll_ialirt_hk_flow",
+    "poll_ialirt_flow",
     "PollHKFlow",
     "PollSpiceFlow",
     "PollSpinTableFlow",
@@ -18,7 +19,7 @@ _ALL_FLOW_NAMES = [
     "poll_hi45_esa_step_flow",
     "poll_hi90_esa_step_flow",
     "publish_flow",
-    "CheckIALiRTFlow",
+    "check_ialirt_flow",
     "QuicklookIALiRTFlow",
     "upload_shared_docs_flow",
     "upload_new_files_to_postgres",

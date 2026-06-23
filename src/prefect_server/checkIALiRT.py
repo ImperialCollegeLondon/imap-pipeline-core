@@ -54,84 +54,87 @@ async def send_monthly_test_message(
     database.save(workflow_progress)
 
 
-class CheckIALiRTFlow:
-    def __init__(self, datetime_provider: DatetimeProvider = DatetimeProvider()):
-        self._datetime_provider = datetime_provider
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.CHECK_IALIRT,
+    log_prints=True,
+)
+async def check_ialirt_flow(
+    files: Annotated[
+        list[Path] | None,
+        Field(
+            json_schema_extra={
+                "title": "Files to check",
+                "description": "List of I-ALiRT files to check.",
+            }
+        ),
+    ] = None,
+    imap_notification_webhook_name: Annotated[
+        str,
+        Field(
+            default=None,
+            json_schema_extra={
+                "title": "IMAP Webhook Name",
+                "description": "Name of the notification webhook to use for IMAP alerts.",
+            },
+        ),
+    ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
+) -> State:
+    """
+    Check I-ALiRT data store data for anomalies.
+    """
 
-    @flow(
-        name=PREFECT_CONSTANTS.FLOW_NAMES.CHECK_IALIRT,
-        log_prints=True,
+    logger = try_get_prefect_logger(__name__)
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
     )
-    async def run(
-        self,
-        files: Annotated[
-            list[Path] | None,
-            Field(
-                json_schema_extra={
-                    "title": "Files to check",
-                    "description": "List of I-ALiRT files to check.",
-                }
-            ),
-        ] = None,
-        imap_notification_webhook_name: Annotated[
-            str,
-            Field(
-                default=None,
-                json_schema_extra={
-                    "title": "IMAP Webhook Name",
-                    "description": "Name of the notification webhook to use for IMAP alerts.",
-                },
-            ),
-        ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
-    ) -> State:
-        """
-        Check I-ALiRT data store data for anomalies.
-        """
 
-        logger = try_get_prefect_logger(__name__)
+    # If no files are provided, check data from yesterday to today
+    start_date = datetime_provider.yesterday() if not files else None
+    end_date = datetime_provider.today() if not files else None
 
-        # If no files are provided, check data from yesterday to today
-        start_date = self._datetime_provider.yesterday() if not files else None
-        end_date = self._datetime_provider.today() if not files else None
+    anomalies: list[IALiRTAnomaly] = check_ialirt(
+        start_date=start_date,
+        end_date=end_date,
+        files=files,
+        error_on_anomaly=False,
+    )
 
-        anomalies: list[IALiRTAnomaly] = check_ialirt(
-            start_date=start_date,
-            end_date=end_date,
-            files=files,
-            error_on_anomaly=False,
+    if not anomalies:
+        await send_monthly_test_message(
+            logger, imap_notification_webhook_name, datetime_provider
+        )
+        return Completed(message="No anomalies detected in I-ALiRT data.")
+    else:
+        # Report anomalies via Microsoft Teams
+        imap_webhook_block = await MicrosoftTeamsWebhook.aload(
+            imap_notification_webhook_name
         )
 
-        if not anomalies:
-            await send_monthly_test_message(
-                logger, imap_notification_webhook_name, self._datetime_provider
-            )
-            return Completed(message="No anomalies detected in I-ALiRT data.")
-        else:
-            # Report anomalies via Microsoft Teams
-            imap_webhook_block = await MicrosoftTeamsWebhook.aload(
-                imap_notification_webhook_name
-            )
+        for anomaly in anomalies:
+            message_body: str = anomaly.get_anomaly_description()
 
-            for anomaly in anomalies:
-                message_body: str = anomaly.get_anomaly_description()
-
-                if files:
-                    message_body += f"\n\nAffected files: {', '.join([f.as_posix() for f in files])}"
-                else:
-                    message_body += (
-                        f"\n\nAffected date range: {start_date} to {end_date}"
-                    )
-
-                message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
-                message_subject = f"I-ALiRT {anomaly.severity.name} Anomaly Detected"
-
-                imap_webhook_block.notify_type = (  # type: ignore
-                    "failure" if anomaly.severity == SeverityLevel.Danger else "warning"
+            if files:
+                message_body += (
+                    f"\n\nAffected files: {', '.join([f.as_posix() for f in files])}"
                 )
+            else:
+                message_body += f"\n\nAffected date range: {start_date} to {end_date}"
 
-                await imap_webhook_block.notify(  # type: ignore
-                    body=message_body,
-                    subject=message_subject,
-                )
+            message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
+            message_subject = f"I-ALiRT {anomaly.severity.name} Anomaly Detected"
 
-            return Failed(message="Anomalies detected in I-ALiRT data.")
+            imap_webhook_block.notify_type = (  # type: ignore
+                "failure" if anomaly.severity == SeverityLevel.Danger else "warning"
+            )
+
+            await imap_webhook_block.notify(  # type: ignore
+                body=message_body,
+                subject=message_subject,
+            )
+
+        return Failed(message="Anomalies detected in I-ALiRT data.")

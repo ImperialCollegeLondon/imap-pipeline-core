@@ -9,7 +9,7 @@ import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import PollIALiRTFlow
+from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import (
     END_OF_HOUR,
@@ -160,13 +160,14 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     define_available_ialirt_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run(
-            wait_for_new_data_to_arrive=False, plot_last_3_days=False
+        await poll_ialirt_flow(
+            wait_for_new_data_to_arrive=False,
+            plot_last_3_days=False,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -202,13 +203,14 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
     )
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run(
-            wait_for_new_data_to_arrive=False, plot_last_3_days=False
+        await poll_ialirt_flow(
+            wait_for_new_data_to_arrive=False,
+            plot_last_3_days=False,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -239,16 +241,16 @@ async def test_poll_ialirt_autoflow_specify_start_end_dates(
     define_available_ialirt_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run(
+        await poll_ialirt_flow(
             wait_for_new_data_to_arrive=False,
             plot_last_3_days=False,
             start_date=start_date,
             end_date=end_date,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -331,15 +333,15 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
     define_available_ialirt_mappings(wiremock_manager, yesterday, end_of_hour)
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=datetime_provider)
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run(
+        await poll_ialirt_flow(
             wait_for_new_data_to_arrive=True,
             timeout=5,
             plot_last_3_days=True,
+            datetime_provider=datetime_provider,
         )
 
     # Verify.
@@ -363,13 +365,13 @@ async def test_poll_ialirt_hk_autoflow_first_ever_run(
     define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run_hk(
+        await poll_ialirt_hk_flow(
             wait_for_new_data_to_arrive=False,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
@@ -400,15 +402,15 @@ async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
     define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
 
     # Exercise.
-    flow_instance = PollIALiRTFlow(datetime_provider=DatetimeProvider(fixed_now=NOW))
     with Environment(
         IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
         IALIRT_API_KEY="12345",
     ):
-        await flow_instance.run_hk(
+        await poll_ialirt_hk_flow(
             wait_for_new_data_to_arrive=False,
             start_date=start_date,
             end_date=end_date,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.

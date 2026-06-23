@@ -9,7 +9,7 @@ import pytest
 from imap_mag.check import IALiRTAnomaly, SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt as check_ialirt_cli
 from imap_mag.util.DatetimeProvider import DatetimeProvider
-from prefect_server.checkIALiRT import CheckIALiRTFlow, send_monthly_test_message
+from prefect_server.checkIALiRT import check_ialirt_flow, send_monthly_test_message
 
 
 class TestSendMonthlyTestMessage:
@@ -138,8 +138,7 @@ class TestCheckIALiRTFlowUnit:
             patch("prefect_server.checkIALiRT.flow_run") as mock_flow_run,
         ):
             mock_flow_run.id = "test-run-id"
-            result = await CheckIALiRTFlow.run.fn(
-                CheckIALiRTFlow(),
+            result = await check_ialirt_flow.fn(
                 files=[Path("/some/file.csv")],
                 imap_notification_webhook_name="test-webhook",
             )
@@ -167,8 +166,7 @@ class TestCheckIALiRTFlowUnit:
             patch("prefect_server.checkIALiRT.flow_run") as mock_flow_run,
         ):
             mock_flow_run.id = "test-run-id"
-            await CheckIALiRTFlow.run.fn(
-                CheckIALiRTFlow(),
+            await check_ialirt_flow.fn(
                 files=[Path("/some/file.csv")],
                 imap_notification_webhook_name="test-webhook",
             )

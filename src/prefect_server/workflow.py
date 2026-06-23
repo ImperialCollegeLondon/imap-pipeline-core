@@ -12,7 +12,7 @@ from prefect.schedules import Cron
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
-from prefect_server.checkIALiRT import CheckIALiRTFlow
+from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
@@ -27,7 +27,7 @@ from prefect_server.pollHiEsaStep import (
     poll_hi90_esa_step_flow,
 )
 from prefect_server.pollHK import PollHKFlow
-from prefect_server.pollIALiRT import PollIALiRTFlow
+from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollScience import PollScienceFlow
 from prefect_server.pollSmallForces import PollSmallForcesFlow
@@ -121,7 +121,7 @@ async def adeploy_flows(local_debug: bool = False):
             f"Deploying IMAP Pipeline to Prefect with docker {docker_image}:{docker_tag}\n Networks: {docker_networks}\n Volumes: {docker_volumes}"
         )
 
-    poll_ialirt_deployable = PollIALiRTFlow().run.to_deployment(
+    poll_ialirt_deployable = poll_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_CRON),
         job_variables=shared_job_variables,
@@ -131,7 +131,7 @@ async def adeploy_flows(local_debug: bool = False):
         ),
     )
 
-    poll_ialirt_hk_deployable = PollIALiRTFlow().run_hk.to_deployment(
+    poll_ialirt_hk_deployable = poll_ialirt_hk_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT_HK,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_HK_CRON),
         job_variables=shared_job_variables,
@@ -268,7 +268,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    check_ialirt_deployable = CheckIALiRTFlow().run.to_deployment(
+    check_ialirt_deployable = check_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CHECK_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.CHECK_IALIRT_CRON),
         job_variables=shared_job_variables,
