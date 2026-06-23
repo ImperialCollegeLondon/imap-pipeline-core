@@ -5,29 +5,21 @@ from shutil import which
 
 logger = logging.getLogger(__name__)
 
+_MATLAB_DEFAULT_PATH = "/app/matlab"
+_MATLAB_LOCAL_PATH = "src/matlab"
 
-def setup_matlab_path(paths: list[str], matlab_command):
-    add_path_commands = ""
-    for path in paths if isinstance(paths, list) else [paths]:
-        add_path_commands += f'addpath(genpath("{path}")); '
-    cmd = [matlab_command, "-nodesktop", "-batch", f"'{add_path_commands} savepath;'"]
+# Tracks whether the MATLAB path has already been set up in this process.
+# ``savepath`` persists the path to disk, so setup only needs to run once.
+_matlab_path_initialized = False
 
-    logger.info(f"MATLAB setup command: \n  {' '.join(cmd)}")
 
-    p = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+def _build_path_setup_prefix() -> str:
+    """Return MATLAB commands that add project paths and persist them."""
+    return (
+        f'addpath(genpath("{_MATLAB_DEFAULT_PATH}")); '
+        f'addpath(genpath("{_MATLAB_LOCAL_PATH}")); '
+        f"savepath; "
     )
-
-    while (line := p.stdout.readline()) != "":  # type: ignore
-        line = line.rstrip()
-        logger.info(line)
-
-    p.wait(timeout=60)
-    if p.returncode != 0:
-        logger.error(f"MATLAB setup command failed with return code {p.returncode}")
-        raise RuntimeError(
-            f"MATLAB setup command failed with return code {p.returncode}"
-        )
 
 
 def get_matlab_command():
@@ -42,17 +34,27 @@ def get_matlab_command():
 
 
 def call_matlab(command, first_call=True, timeout=60 * 5):
-    MATLAB_COMMAND = get_matlab_command()
-    if first_call:
-        default_matlab_path = "/app/matlab"
-        local_matlab_path = "src/matlab"
-        setup_matlab_path([default_matlab_path, local_matlab_path], MATLAB_COMMAND)
-        logger.info(
-            f"Added {local_matlab_path} and {default_matlab_path} files to path"
-        )
+    """Run a MATLAB batch command, folding path setup into the first invocation.
 
-    cmd = [MATLAB_COMMAND, "-nodesktop", "-batch"]
-    cmd.append(command)
+    On the first call in a process (``first_call=True`` and path not yet
+    initialised) the ``addpath``/``savepath`` preamble is prepended to
+    ``command`` so that both path setup and the actual work happen in a
+    single MATLAB cold-start instead of two.
+    """
+    global _matlab_path_initialized
+
+    MATLAB_COMMAND = get_matlab_command()
+
+    if first_call and not _matlab_path_initialized:
+        batch_command = _build_path_setup_prefix() + command
+        _matlab_path_initialized = True
+        logger.info(
+            f"Prepending MATLAB path setup for {_MATLAB_LOCAL_PATH} and {_MATLAB_DEFAULT_PATH}"
+        )
+    else:
+        batch_command = command
+
+    cmd = [MATLAB_COMMAND, "-nodesktop", "-batch", batch_command]
 
     logger.info(f"Calling MATLAB with command: \n  {' '.join(cmd)}")
     p = subprocess.Popen(

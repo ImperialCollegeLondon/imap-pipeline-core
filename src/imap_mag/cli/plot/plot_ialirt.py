@@ -18,6 +18,8 @@ from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
+skipped_option = typer.Option(parser=lambda _: _, hidden=True, expose_value=False)
+
 
 # E.g.,
 # imap-mag plot ialirt --start-date 2025-01-02 --end-date 2025-01-03
@@ -51,6 +53,14 @@ def plot_ialirt(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    force_latest_update: Annotated[
+        bool,
+        typer.Option(
+            "--force-latest-update",
+            help="Whether to force the update of the latest image in the database, even if it already exists. This can be useful if you want to ensure that the latest data is always up to date.",
+        ),
+    ] = False,
+    datetime_provider: Annotated[DatetimeProvider, skipped_option] = DatetimeProvider(),
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Plot I-ALiRT data."""
 
@@ -67,6 +77,7 @@ def plot_ialirt(
         start_date=start_date,
         end_date=end_date,
         files=files,
+        datetime_provider=datetime_provider,
     )
 
     hk_files = fetch_ialirt_hk_files_for_work(
@@ -75,6 +86,7 @@ def plot_ialirt(
         start_date=start_date,
         end_date=end_date,
         files=None,  # HK files are auto-fetched by date range
+        datetime_provider=datetime_provider,
     )
 
     if len(science_files) == 0 and len(hk_files) == 0:
@@ -87,7 +99,11 @@ def plot_ialirt(
 
     # Generate plots
     generated_figure: dict[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
-        science_files, hk_files, save_folder=work_folder, combine_plots=combined_plot
+        science_files,
+        hk_files,
+        save_folder=work_folder,
+        combine_plots=combined_plot,
+        datetime_provider=datetime_provider,
     )
 
     ialirt_file_and_handler: dict[Path, IALiRTQuicklookPathHandler] = {}
@@ -109,7 +125,8 @@ def plot_ialirt(
                 path_handler.content_date.replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
-                == DatetimeProvider.today()
+                == datetime_provider.today()
+                or force_latest_update
             ):
                 latest_handler = LatestFilePathHandler(
                     root=(
@@ -118,7 +135,7 @@ def plot_ialirt(
                         / output_handler.get_plot_type()
                     ),
                     extension="png",
-                    latest_date=DatetimeProvider.today(),
+                    latest_date=datetime_provider.today(),
                 )
                 datastore_manager.add_file(output_file, latest_handler)
     else:

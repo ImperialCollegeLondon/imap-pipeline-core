@@ -9,17 +9,18 @@ from imap_mag.util import Environment
 
 
 @pytest.fixture(
-    scope="session",
+    scope="module",
 )
-def test_database_container():
+def test_database_container(worker_id):
+    """One PostgreSQL container per xdist worker (worker_id is 'master' without xdist)."""
     with PostgresContainer(driver="psycopg") as postgres:
         yield postgres
 
 
 @pytest.fixture(
-    scope="session",
+    scope="module",
 )
-def test_database_server_engine(test_database_container):
+def test_database_server_engine(test_database_container, worker_id):
     engine = create_engine(test_database_container.get_connection_url())
     Base.metadata.create_all(engine)
 

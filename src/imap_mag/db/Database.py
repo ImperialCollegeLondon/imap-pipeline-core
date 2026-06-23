@@ -1,9 +1,12 @@
 import functools
 import logging
 import os
+import threading
 from datetime import datetime
+from typing import ClassVar
 
 from sqlalchemy import create_engine, or_, select
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, WorkflowProgress
@@ -14,6 +17,8 @@ logger = logging.getLogger(__name__)
 class Database:
     """Database manager."""
 
+    _engine_cache: ClassVar[dict[str, Engine]] = {}
+    _engine_lock: ClassVar[threading.Lock] = threading.Lock()
     __active_session: Session | None
 
     def __init__(self, db_url=None):
@@ -26,7 +31,14 @@ class Database:
                 "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
             )
 
-        self.engine = create_engine(db_url, pool_pre_ping=True)
+        url = make_url(db_url)
+        url_key = url.render_as_string(hide_password=False)
+
+        with Database._engine_lock:
+            if url_key not in Database._engine_cache:
+                Database._engine_cache[url_key] = create_engine(url, pool_pre_ping=True)
+
+        self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
 
     @classmethod
@@ -34,9 +46,7 @@ class Database:
         return os.getenv("SQLALCHEMY_URL")
 
     @staticmethod
-    def __session_manager(
-        **session_kwargs,
-    ):
+    def __session_manager(readonly=False, **session_kwargs):
         """Manage session scope for database operations."""
 
         def outer_wrapper(func):
@@ -47,13 +57,15 @@ class Database:
                     self.__active_session = session
                     value = func(self, *args, **kwargs)
 
-                    session.commit()
-                    logger.debug("Database session committed.")
+                    if not readonly:
+                        session.commit()
+                        logger.debug("Database session committed.")
 
                     return value
                 except Exception as e:
-                    session.rollback()
-                    logger.error(f"Database session rolled back due to error: {e}")
+                    if not readonly:
+                        session.rollback()
+                        logger.error(f"Database session rolled back due to error: {e}")
                     raise e
                 finally:
                     session.close()
@@ -71,38 +83,38 @@ class Database:
 
         return self.__active_session
 
-    def insert_file(self, file: File) -> None:
+    def upsert_file(self, file: File) -> None:
         """Insert a file into the database."""
-        self.insert_files([file])
+        self.upsert_files([file])
 
     @__session_manager()
-    def insert_files(self, files: list[File]) -> None:
+    def upsert_files(self, files: list[File]) -> None:
         session = self.__get_active_session()
         for file in files:
-            # check file does not already exist
-            existing_file = (
-                session.query(File).filter_by(name=file.name, path=file.path).first()
-            )
-            if existing_file is not None:
-                if existing_file.hash == file.hash:
-                    logger.warning(
-                        f"File {file.path} already exists in database. Skipping."
-                    )
-                else:
-                    logger.info(
-                        f"File {file.path} already exists in database with different hash. Replacing."
-                    )
-                    existing_file.hash = file.hash
-                continue
+            # check file does not already exist if this is a new file record (id is none)
+            if file.id is None:
+                existing_file = (
+                    session.query(File)
+                    .filter_by(name=file.name, path=file.path)
+                    .first()
+                )
+                if existing_file is not None:
+                    if not existing_file.merge_record(file):
+                        continue
 
-            session.add(file)
+                    # otherwise we update the existing database record instead of adding a new one
+                    file = existing_file
+
+                session.add(file)
+            else:
+                session.merge(file)
 
     @__session_manager(expire_on_commit=False)
     def get_files(self, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
         return session.query(File).filter(*args).filter_by(**kwargs).all()
 
-    @__session_manager(expire_on_commit=False)
+    @__session_manager(readonly=True, expire_on_commit=False)
     def get_files_by_path(self, path: str, *args, **kwargs) -> list[File]:
         session = self.__get_active_session()
         return (
@@ -131,7 +143,8 @@ class Database:
 
         logger.debug(f"Executing SQL statement: {statement}")
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_files_deleted_since(
         self, last_modified_date: datetime, how_many: int | None = None
@@ -150,7 +163,8 @@ class Database:
 
         logger.debug(f"Executing SQL statement: {statement}")
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @__session_manager(expire_on_commit=False)
     def get_workflow_progress(self, item_name: str) -> WorkflowProgress:
@@ -169,7 +183,8 @@ class Database:
             WorkflowProgress.progress_timestamp.desc()
         )
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @__session_manager()
     def save(self, model: Base) -> None:
@@ -179,7 +194,8 @@ class Database:
     def get_all_active_files(self) -> list[File]:
         """Get all files that have not been deleted."""
         statement = select(File).where(File.deletion_date.is_(None))
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
@@ -187,7 +203,8 @@ class Database:
             File.deletion_date.is_(None),
             File.path.like(pattern),
         )
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
         """Get all active files matching any of the given fnmatch patterns.
@@ -215,7 +232,8 @@ class Database:
             or_(*pattern_conditions),
         )
 
-        return list(self.session().execute(statement).scalars().all())
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
 
     @staticmethod
     def _fnmatch_to_like(pattern: str) -> str:

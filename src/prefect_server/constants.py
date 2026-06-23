@@ -6,7 +6,8 @@ class PREFECT_CONSTANTS:
 
     SKIPPED_STATE_NAME = "Skipped"
 
-    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-sharepoint"
+    DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME = "imap-box"
+    DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY = "box-upload"
 
     IMAP_DATASTORE_BLOCK_NAME = "imap-datastore"
     IMAP_WEBHOOK_BLOCK_NAME = "imap-teams-notification-webhook"
@@ -21,7 +22,9 @@ class PREFECT_CONSTANTS:
     class POLL_IALIRT:
         DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
         IALIRT_AUTH_CODE_SECRET_NAME = "ialirt-auth-code"
-        IALIRT_QUICKLOOK_SHAREPOINT_URL = "https://imperiallondon.sharepoint.com/:i:/r/sites/IMAPFlightdata-PH/Shared%20Documents/Flight%20Data/quicklook/ialirt/latest.png"
+        IALIRT_QUICKLOOK_SHAREPOINT_URL = (
+            "https://imperialcollegelondon.box.com/s/jwwydh31hpb6a96t2agqht88vmmc5iah"
+        )
 
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
@@ -29,10 +32,13 @@ class PREFECT_CONSTANTS:
     class POLL_SCIENCE:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
-    class POLL_LO_PIVOT_PLATFORM:
-        WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
+    class POLL_WEBTCAD:
+        WEBTCAD_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
     class POLL_SPIN_TABLE:
+        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
+
+    class POLL_SMALL_FORCES:
         SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
 
     class ENV_VAR_NAMES:
@@ -48,10 +54,14 @@ class PREFECT_CONSTANTS:
         POLL_L1D_CRON = "IMAP_CRON_POLL_L1D"
         POLL_SPICE_CRON = "IMAP_CRON_POLL_SPICE"
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
+        POLL_HI45_ESA_STEP_CRON = "IMAP_CRON_POLL_HI45_ESA_STEP"
+        POLL_HI90_ESA_STEP_CRON = "IMAP_CRON_POLL_HI90_ESA_STEP"
         POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
+        POLL_SMALL_FORCES_CRON = "IMAP_CRON_POLL_SMALL_FORCES"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
+        IMAP_CRON_DATASTORE_INDEXER = "IMAP_CRON_DATASTORE_INDEXER"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -66,12 +76,16 @@ class PREFECT_CONSTANTS:
 
     class FLOW_NAMES:
         POLL_IALIRT = "poll-ialirt"
+        POLL_IALIRT_HK = "poll-ialirt-hk"
         IALIRT_POSTGRES_SYNC = "ialirt-postgres-sync"
         POLL_HK = "poll-hk"
         POLL_SCIENCE = "poll-science"
         POLL_SPICE = "poll-spice"
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
+        POLL_HI45_ESA_STEP = "poll-hi45-esa-step"
+        POLL_HI90_ESA_STEP = "poll-hi90-esa-step"
         POLL_SPIN_TABLE = "poll-spin-table"
+        POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -82,6 +96,7 @@ class PREFECT_CONSTANTS:
         SHAREPOINT_UPLOAD = "sharepoint-upload"
         POSTGRES_UPLOAD = "postgres-upload"
         DATASTORE_CLEANUP = "datastore-cleanup"
+        DATASTORE_INDEXER = "datastore-indexer"
 
     class DEPLOYMENT_NAMES:
         POLL_IALIRT = "poll_ialirt"
@@ -95,10 +110,14 @@ class PREFECT_CONSTANTS:
         POLL_L1D = "poll_l1d_science"
         POLL_SPICE = "poll_spice"
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
+        POLL_HI45_ESA_STEP = "poll_hi45_esa_step"
+        POLL_HI90_ESA_STEP = "poll_hi90_esa_step"
         POLL_SPIN_TABLE = "poll_spin_table"
+        POLL_SMALL_FORCES = "poll_small_forces"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"
         SHAREPOINT_UPLOAD = "sharepoint_upload"
         POSTGRES_UPLOAD = "postgres_upload"
         DATASTORE_CLEANUP = "datastore_cleanup"
+        DATASTORE_INDEXER = "datastore_indexer"

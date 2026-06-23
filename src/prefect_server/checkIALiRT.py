@@ -17,6 +17,43 @@ from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import try_get_prefect_logger
 
 
+async def send_monthly_test_message(
+    logger,
+    imap_notification_webhook_name: str,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
+) -> None:
+    # Send a monthly test notification on the first Monday of the month
+    database = Database()
+    workflow_progress = database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
+    )
+
+    now = datetime_provider.now()
+    progress_timestamp: datetime | None = workflow_progress.get_progress_timestamp()
+
+    if (
+        (now.weekday() == 0)
+        and (1 <= now.day <= 7)
+        and (not progress_timestamp or progress_timestamp.date() != now.date())
+    ):
+        imap_webhook_block = await MicrosoftTeamsWebhook.aload(
+            imap_notification_webhook_name
+        )
+        imap_webhook_block.notify_type = "info"  # type: ignore
+
+        await imap_webhook_block.notify(  # type: ignore
+            body="No anomalies detected in I-ALiRT data.",
+            subject="I-ALiRT Monthly Test - No Anomalies Detected",
+        )
+
+        workflow_progress.update_progress_timestamp(now)
+    else:
+        logger.debug("Not the first Monday of the month. Skipping test notification.")
+
+    workflow_progress.update_last_checked_timestamp(now)
+    database.save(workflow_progress)
+
+
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.CHECK_IALIRT,
     log_prints=True,
@@ -41,23 +78,36 @@ async def check_ialirt_flow(
             },
         ),
     ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
 ) -> State:
     """
     Check I-ALiRT data store data for anomalies.
     """
 
     logger = try_get_prefect_logger(__name__)
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
+    )
 
     # If no files are provided, check data from yesterday to today
-    start_date = DatetimeProvider.yesterday() if not files else None
-    end_date = DatetimeProvider.today() if not files else None
+    start_date = datetime_provider.yesterday() if not files else None
+    end_date = datetime_provider.today() if not files else None
 
     anomalies: list[IALiRTAnomaly] = check_ialirt(
-        start_date=start_date, end_date=end_date, files=files, error_on_anomaly=False
+        start_date=start_date,
+        end_date=end_date,
+        files=files,
+        error_on_anomaly=False,
     )
 
     if not anomalies:
-        await send_monthly_test_message(logger, imap_notification_webhook_name)
+        await send_monthly_test_message(
+            logger, imap_notification_webhook_name, datetime_provider
+        )
         return Completed(message="No anomalies detected in I-ALiRT data.")
     else:
         # Report anomalies via Microsoft Teams
@@ -88,38 +138,3 @@ async def check_ialirt_flow(
             )
 
         return Failed(message="Anomalies detected in I-ALiRT data.")
-
-
-async def send_monthly_test_message(
-    logger, imap_notification_webhook_name: str
-) -> None:
-    # Send a monthly test notification on the first Monday of the month
-    database = Database()
-    workflow_progress = database.get_workflow_progress(
-        CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
-    )
-
-    now = DatetimeProvider.now()
-    progress_timestamp: datetime | None = workflow_progress.get_progress_timestamp()
-
-    if (
-        (now.weekday() == 0)
-        and (1 <= now.day <= 7)
-        and (not progress_timestamp or progress_timestamp.date() != now.date())
-    ):
-        imap_webhook_block = await MicrosoftTeamsWebhook.aload(
-            imap_notification_webhook_name
-        )
-        imap_webhook_block.notify_type = "info"  # type: ignore
-
-        await imap_webhook_block.notify(  # type: ignore
-            body="No anomalies detected in I-ALiRT data.",
-            subject="I-ALiRT Monthly Test - No Anomalies Detected",
-        )
-
-        workflow_progress.update_progress_timestamp(now)
-    else:
-        logger.debug("Not the first Monday of the month. Skipping test notification.")
-
-    workflow_progress.update_last_checked_timestamp(now)
-    database.save(workflow_progress)
