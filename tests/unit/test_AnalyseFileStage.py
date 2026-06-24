@@ -616,3 +616,204 @@ async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
     fi = collected[0].file_analysis
     assert fi.file_id == 99
     # record_count may be None or an integer - the key guarantee is no exception was raised
+
+
+# ---------------------------------------------------------------------------
+# _find_pattern_config direct tests
+# ---------------------------------------------------------------------------
+
+
+def test_find_pattern_config_returns_none_when_no_match():
+    pattern = FileAnalysisPatternConfig(pattern="science/**/*.cdf")
+    stage = _make_stage(extra_patterns=[pattern])
+    result = stage._find_pattern_config("hk/mag/l1/hsk-pw/2025/11/file.csv")
+    assert result is None
+
+
+def test_find_pattern_config_returns_first_matching_pattern():
+    first = FileAnalysisPatternConfig(
+        pattern="science/**/*.cdf", datetime_column="Epoch"
+    )
+    second = FileAnalysisPatternConfig(
+        pattern="science/**/*.cdf", datetime_column="Time"
+    )
+    stage = _make_stage(extra_patterns=[first, second])
+    result = stage._find_pattern_config("science/mag/l1c/2025/04/file.cdf")
+    assert result is first
+
+
+def test_find_pattern_config_matches_glob_wildcard():
+    pattern = FileAnalysisPatternConfig(pattern="hk/**/*.csv")
+    stage = _make_stage(extra_patterns=[pattern])
+    result = stage._find_pattern_config(
+        "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
+    )
+    assert result is pattern
+
+
+def test_find_pattern_config_no_match_returns_none_not_error():
+    stage = _make_stage()
+    result = stage._find_pattern_config("completely/unknown/path/file.xyz")
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _index_file: existing FileAnalysis id preservation
+# ---------------------------------------------------------------------------
+
+
+def test_index_file_preserves_existing_file_analysis_id():
+    from imap_db.model import FileAnalysis
+
+    stage = _make_stage()
+    path = DATASTORE / "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
+    existing = FileAnalysis(file_id=1)
+    existing.id = 42
+    result = stage._index_file(
+        1,
+        path,
+        "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv",
+        existing,
+    )
+    assert result.id == 42
+
+
+def test_index_file_without_existing_leaves_id_as_none():
+    stage = _make_stage()
+    path = DATASTORE / "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv"
+    result = stage._index_file(
+        1,
+        path,
+        "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v001.csv",
+        None,
+    )
+    assert result.id is None
+
+
+# ---------------------------------------------------------------------------
+# _find_datetime_column_cdf direct tests
+# ---------------------------------------------------------------------------
+
+
+def test_find_datetime_column_cdf_uses_config_column():
+    pattern = FileAnalysisPatternConfig(pattern="*", datetime_column="TIME_UTC")
+    stage = _make_stage(extra_patterns=[pattern])
+    result = stage._find_datetime_column_cdf(["TIME_UTC", "Magnitude"], pattern)
+    assert result == "TIME_UTC"
+
+
+def test_find_datetime_column_cdf_config_column_is_case_insensitive():
+    pattern = FileAnalysisPatternConfig(pattern="*", datetime_column="time_utc")
+    stage = _make_stage(extra_patterns=[pattern])
+    result = stage._find_datetime_column_cdf(["TIME_UTC", "Magnitude"], pattern)
+    assert result == "TIME_UTC"
+
+
+def test_find_datetime_column_cdf_auto_detects_epoch_keyword():
+    stage = _make_stage()
+    result = stage._find_datetime_column_cdf(["Magnitude", "Epoch", "Quality"], None)
+    assert result == "Epoch"
+
+
+def test_find_datetime_column_cdf_auto_detects_time_keyword():
+    stage = _make_stage()
+    result = stage._find_datetime_column_cdf(["Magnitude", "Time_TAG", "Quality"], None)
+    assert result == "Time_TAG"
+
+
+def test_find_datetime_column_cdf_returns_none_when_no_match():
+    stage = _make_stage()
+    result = stage._find_datetime_column_cdf(["Magnitude", "Quality", "Flags"], None)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _find_datetime_column_csv direct tests
+# ---------------------------------------------------------------------------
+
+
+def test_find_datetime_column_csv_uses_config_column():
+    pattern = FileAnalysisPatternConfig(pattern="*", datetime_column="timestamp")
+    stage = _make_stage(extra_patterns=[pattern])
+    result = stage._find_datetime_column_csv(["timestamp", "value"], pattern)
+    assert result == "timestamp"
+
+
+def test_find_datetime_column_csv_auto_detects_epoch_keyword():
+    stage = _make_stage()
+    result = stage._find_datetime_column_csv(["epoch", "value", "quality"], None)
+    assert result == "epoch"
+
+
+def test_find_datetime_column_csv_auto_detects_time_keyword():
+    stage = _make_stage()
+    result = stage._find_datetime_column_csv(["value", "time_tag", "quality"], None)
+    assert result == "time_tag"
+
+
+def test_find_datetime_column_csv_returns_none_when_no_match():
+    stage = _make_stage()
+    result = stage._find_datetime_column_csv(["value", "quality", "flags"], None)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# CSV: string sentinel bad data (match_as_bad_data)
+# ---------------------------------------------------------------------------
+
+
+def test_csv_string_sentinel_bad_data_detected(tmp_path):
+    """match_as_bad_data string sentinels are detected and flagged as bad data.
+
+    Uses sentinel strings that pandas does NOT auto-parse as NaN (unlike 'NA')
+    so the string-match path in _index_csv_file is exercised.
+    """
+    pattern = FileAnalysisPatternConfig(
+        pattern="*.csv",
+        columns_to_check=[
+            ColumnCheckConfig(
+                column_name="x",
+                check_for_bad_data=True,
+                match_as_bad_data=["FILL", "BAD"],
+            )
+        ],
+    )
+    stage = _make_stage(extra_patterns=[pattern])
+
+    csv_path = tmp_path / "test.csv"
+    csv_path.write_text("epoch,x\n100,1.0\n200,FILL\n300,BAD\n400,2.0\n")
+
+    result = stage._index_file(1, csv_path, "test.csv")
+
+    assert result.has_bad_data is True
+    assert result.column_stats is not None
+    assert result.column_stats["x"]["bad_data_count"] >= 2
+
+
+# ---------------------------------------------------------------------------
+# CSV: missing data (NaN) detection
+# ---------------------------------------------------------------------------
+
+
+def test_csv_null_column_values_detected_as_missing_data(tmp_path):
+    """Empty cells in a checked CSV column are flagged as missing data."""
+    pattern = FileAnalysisPatternConfig(
+        pattern="*.csv",
+        columns_to_check=[
+            ColumnCheckConfig(
+                column_name="x",
+                check_for_empty=True,
+                check_for_bad_data=False,
+            )
+        ],
+    )
+    stage = _make_stage(extra_patterns=[pattern])
+
+    csv_path = tmp_path / "test.csv"
+    csv_path.write_text("epoch,x\n100,1.0\n200,\n300,3.0\n")
+
+    result = stage._index_file(1, csv_path, "test.csv")
+
+    assert result.has_missing_data is True
+    assert result.column_stats is not None
+    assert result.column_stats["x"]["null_count"] >= 1
