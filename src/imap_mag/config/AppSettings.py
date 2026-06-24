@@ -26,7 +26,7 @@ from imap_mag.config.FetchConfig import (
     FetchSpiceConfig,
     FetchWebTCADLaTiSConfig,
 )
-from imap_mag.config.FileIndexConfig import FileIndexConfig
+from imap_mag.config.FileAnalysisConfig import FileAnalysisConfig
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
 from imap_mag.config.PublishConfig import PublishConfig
@@ -81,7 +81,7 @@ class AppSettings(BaseSettings):
     postgres_upload: PostgresUploadConfig
     datastore_cleanup: DatastoreCleanupConfig
     database_delete_rows: DeleteDatabaseRowsConfig
-    file_index: FileIndexConfig = Field(default_factory=FileIndexConfig)
+    file_analysis: FileAnalysisConfig = Field(default_factory=FileAnalysisConfig)
 
     # functions
     def setup_work_folder_for_command(

@@ -13,7 +13,7 @@ from imap_mag.data_pipelines import (
     PipelineRunParameters,
     ProgressUpdateMode,
 )
-from imap_mag.data_pipelines.FileIndexPipeline import FileIndexPipeline
+from imap_mag.data_pipelines.FileAnalysisPipeline import FileAnalysisPipeline
 from imap_mag.db import Database
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import try_get_prefect_logger
@@ -51,19 +51,19 @@ def _build_run_parameters(
     return AutomaticRunParameters()
 
 
-@flow(name=PREFECT_CONSTANTS.FLOW_NAMES.FILE_INDEX, log_prints=True)
-async def file_index_flow(
+@flow(name=PREFECT_CONSTANTS.FLOW_NAMES.FILE_ANALYSER, log_prints=True)
+async def file_analyser_flow(
     files: list[int] | None = None,
     file_paths: list[str] | None = None,
     modified_after: datetime | None = None,
     modified_before: datetime | None = None,
 ):
-    """Index metadata about data files (CSV and CDF) into the file_index database table.
+    """Index metadata about data files (CSV and CDF) into the file_analysis database table.
 
     This flow:
     1. Gets files to index from the database
     2. For each file, extracts metadata (record count, timestamps, gaps, bad data, missing data)
-    3. Saves metadata to the file_index table (FK to existing files table)
+    3. Saves metadata to the file_analysis table (FK to existing files table)
 
     Args:
         files: Optional list of specific file IDs to reindex.
@@ -86,7 +86,7 @@ async def file_index_flow(
         f"Starting file index flow with {type(run_params).__name__}: {run_params}"
     )
 
-    pipeline = FileIndexPipeline(database=db, settings=app_settings)
+    pipeline = FileAnalysisPipeline(database=db, settings=app_settings)
     pipeline.build(run_parameters=run_params)
     await pipeline.run()
 

@@ -5,15 +5,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from imap_db.model import FileIndex
+from imap_db.model import FileAnalysis
 from imap_mag.config.AppSettings import AppSettings
-from imap_mag.config.FileIndexConfig import FileIndexPatternConfig
+from imap_mag.config.FileAnalysisConfig import FileAnalysisPatternConfig
 from imap_mag.data_pipelines import Stage
 from imap_mag.data_pipelines.Record import Record
 
 
-class IndexFileStage(Stage):
-    """Stage that processes each file and builds a FileIndex object.
+class AnalyseFilesStage(Stage):
+    """Stage that processes each file and builds a FileAnalysis object.
 
     Handles both CDF and CSV files, extracting:
     - Record counts
@@ -32,28 +32,33 @@ class IndexFileStage(Stage):
         file_id = item.file_id
         file_path: Path = item.file_path
         file_path_relative: str = item.file_path_relative
-        existing_file_index: FileIndex | None = getattr(item, "file_index", None)
+        existing_file_analysis: FileAnalysis | None = getattr(
+            item, "file_analysis", None
+        )
 
         self.logger.info(f"Indexing file: {file_path_relative}")
 
         try:
-            file_index = self._index_file(
-                file_id, file_path, file_path_relative, existing_file_index
+            file_analysis = self._index_file(
+                file_id, file_path, file_path_relative, existing_file_analysis
             )
         except Exception as e:
             self.logger.error(
                 f"Failed to index file {file_path_relative}: {e}", exc_info=e
             )
             # Best-effort: create minimal file index on failure
-            file_index = FileIndex(
+            file_analysis = FileAnalysis(
                 file_id=file_id,
                 indexed_date=datetime.now(tz=UTC),
             )
-            if existing_file_index is not None and existing_file_index.id is not None:
-                file_index.id = existing_file_index.id
+            if (
+                existing_file_analysis is not None
+                and existing_file_analysis.id is not None
+            ):
+                file_analysis.id = existing_file_analysis.id
 
         await self.publish_next(
-            Record(file_id=file_id, file_index=file_index),
+            Record(file_id=file_id, file_analysis=file_analysis),
             context=context,
         )
 
@@ -62,11 +67,11 @@ class IndexFileStage(Stage):
         file_id: int,
         file_path: Path,
         file_path_relative: str,
-        existing_file_index: FileIndex | None = None,
-    ) -> FileIndex:
-        """Index a file and return a FileIndex object.
+        existing_file_analysis: FileAnalysis | None = None,
+    ) -> FileAnalysis:
+        """Index a file and return a FileAnalysis object.
 
-        If ``existing_file_index`` is supplied the returned record carries the
+        If ``existing_file_analysis`` is supplied the returned record carries the
         same primary key so that ``database.save()`` updates the existing row
         rather than inserting a new one.
         """
@@ -87,22 +92,22 @@ class IndexFileStage(Stage):
             self.logger.warning(
                 f"Unsupported file type: {suffix} for {file_path_relative}"
             )
-            result = FileIndex(
+            result = FileAnalysis(
                 file_id=file_id,
                 indexed_date=datetime.now(tz=UTC),
             )
 
         # Preserve the existing primary key so the database save is an update
-        if existing_file_index is not None and existing_file_index.id is not None:
-            result.id = existing_file_index.id
+        if existing_file_analysis is not None and existing_file_analysis.id is not None:
+            result.id = existing_file_analysis.id
 
         return result
 
     def _find_pattern_config(
         self, file_path_relative: str
-    ) -> FileIndexPatternConfig | None:
-        """Find the matching FileIndexPatternConfig for a file path."""
-        for pattern_config in self.settings.file_index.file_patterns:
+    ) -> FileAnalysisPatternConfig | None:
+        """Find the matching FileAnalysisPatternConfig for a file path."""
+        for pattern_config in self.settings.file_analysis.file_patterns:
             if fnmatch.fnmatch(file_path_relative, pattern_config.pattern):
                 return pattern_config
         return None
@@ -112,8 +117,8 @@ class IndexFileStage(Stage):
         file_id: int,
         file_path: Path,
         file_path_relative: str,
-        pattern_config: FileIndexPatternConfig | None,
-    ) -> FileIndex:
+        pattern_config: FileAnalysisPatternConfig | None,
+    ) -> FileAnalysis:
         """Index a CDF file."""
         import cdflib
 
@@ -274,7 +279,7 @@ class IndexFileStage(Stage):
                         f"Failed to read CDF attributes from {file_path_relative}: {e}"
                     )
 
-            return FileIndex(
+            return FileAnalysis(
                 file_id=file_id,
                 indexed_date=datetime.now(tz=UTC),
                 record_count=record_count,
@@ -303,8 +308,8 @@ class IndexFileStage(Stage):
         file_id: int,
         file_path: Path,
         file_path_relative: str,
-        pattern_config: FileIndexPatternConfig | None,
-    ) -> FileIndex:
+        pattern_config: FileAnalysisPatternConfig | None,
+    ) -> FileAnalysis:
         """Index a CSV file."""
         df = pd.read_csv(file_path)
         record_count = len(df)
@@ -463,7 +468,7 @@ class IndexFileStage(Stage):
         if timestamps is not None:
             del timestamps
 
-        return FileIndex(
+        return FileAnalysis(
             file_id=file_id,
             indexed_date=datetime.now(tz=UTC),
             record_count=record_count,
@@ -488,7 +493,7 @@ class IndexFileStage(Stage):
         )
 
     def _find_datetime_column_cdf(
-        self, variables: list[str], pattern_config: FileIndexPatternConfig | None
+        self, variables: list[str], pattern_config: FileAnalysisPatternConfig | None
     ) -> str | None:
         """Find the datetime column in CDF variables."""
         if pattern_config and pattern_config.datetime_column:
@@ -507,7 +512,7 @@ class IndexFileStage(Stage):
         return None
 
     def _find_datetime_column_csv(
-        self, columns: list[str], pattern_config: FileIndexPatternConfig | None
+        self, columns: list[str], pattern_config: FileAnalysisPatternConfig | None
     ) -> str | None:
         """Find the datetime column in CSV columns."""
         if pattern_config and pattern_config.datetime_column:
@@ -527,7 +532,7 @@ class IndexFileStage(Stage):
     def _calculate_gaps(
         self,
         timestamps: pd.Series,
-        pattern_config: FileIndexPatternConfig | None,
+        pattern_config: FileAnalysisPatternConfig | None,
     ) -> tuple[list[dict], bool, timedelta | None, timedelta | None]:
         """Calculate time gaps between timestamps.
 
@@ -535,7 +540,7 @@ class IndexFileStage(Stage):
             Tuple of (gaps list, has_gaps bool, total_time_without_gaps, total_gap_duration)
         """
         gap_threshold_seconds: float = float(
-            self.settings.file_index.default_gap_threshold_seconds
+            self.settings.file_analysis.default_gap_threshold_seconds
         )
 
         if pattern_config and pattern_config.expected_time_between_records:
@@ -621,7 +626,7 @@ class IndexFileStage(Stage):
 
     def _compute_column_stats(self, data: np.ndarray, col_check) -> dict:
         """Compute statistics for a column array."""
-        nan_sentinel = self.settings.file_index.nan_sentinel
+        nan_sentinel = self.settings.file_analysis.nan_sentinel
         stats: dict[str, int | float] = {}
 
         # Count nulls (actual NaN in the array)
@@ -667,7 +672,7 @@ class IndexFileStage(Stage):
         self, timestamps: pd.Series, data: np.ndarray, col_name: str
     ) -> list[dict]:
         """Find contiguous runs of NaN/bad data values."""
-        nan_sentinel = self.settings.file_index.nan_sentinel
+        nan_sentinel = self.settings.file_analysis.nan_sentinel
         with np.errstate(invalid="ignore"):
             is_bad = (
                 np.isnan(data)

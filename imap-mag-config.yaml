@@ -195,7 +195,7 @@ postgres_upload:
         - "ialirt/**/imap_ialirt_swapi_*.csv"
         - "noaa/**/*.csv"
 
-file_index:
+file_analysis:
   paths_to_match:
     - "science/mag/**/*.cdf"
     - "hk/mag/**/*.csv"
