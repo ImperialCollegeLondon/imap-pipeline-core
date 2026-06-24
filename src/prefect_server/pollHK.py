@@ -34,7 +34,7 @@ def generate_flow_run_name() -> str:
         if parameters["start_date"] is not None
         else "last-update"
     )
-    end_date = parameters["end_date"] or DatetimeProvider.end_of_today()
+    end_date = parameters["end_date"] or DatetimeProvider().end_of_today()
 
     packet_names: list[str] = [hk.name for hk in hk_packets]
 
@@ -51,7 +51,7 @@ def generate_flow_run_name() -> str:
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK,
     log_prints=True,
-    flow_run_name=generate_flow_run_name,
+    flow_run_name=lambda: generate_flow_run_name(),
 )
 async def poll_hk_flow(
     hk_packets: Annotated[
@@ -99,12 +99,20 @@ async def poll_hk_flow(
             }
         ),
     ] = False,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
 ):
     """
     Poll housekeeping data from WebPODA.
     """
 
     logger = try_get_prefect_logger(__name__)
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
+    )
     database = Database()
 
     auth_code = await get_secret_or_env_var(
@@ -125,11 +133,13 @@ async def poll_hk_flow(
 
     for packet in hk_packets:
         progress_item_id = packet.packet_name
-        packet_start_timestamp = DatetimeProvider.now()
+        packet_start_timestamp = datetime_provider.now()
 
         logger.info(f"---------- Downloading Packet {progress_item_id} ----------")
 
-        date_manager = DownloadDateManager(progress_item_id, database)
+        date_manager = DownloadDateManager(
+            progress_item_id, database, datetime_provider=datetime_provider
+        )
 
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,

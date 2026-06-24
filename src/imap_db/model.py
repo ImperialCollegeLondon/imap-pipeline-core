@@ -35,6 +35,7 @@ class File(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
     path: Mapped[str] = mapped_column(String(256), unique=True)
+
     descriptor: Mapped[str] = mapped_column(String(128))
     version: Mapped[int] = mapped_column(Integer())
     hash: Mapped[str] = mapped_column(String(64))
@@ -55,10 +56,62 @@ class File(Base):
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
 
-    def set_deleted(self) -> None:
-        now = DatetimeProvider.now()
+    def set_deleted(
+        self, datetime_provider: DatetimeProvider = DatetimeProvider()
+    ) -> None:
+        now = datetime_provider.now()
         self.deletion_date = now
         self.last_modified_date = now
+        self.software_version = __version__
+
+    def get_full_path(self, settings: AppSettings) -> Path:
+        full_path = Path(self.path)
+        if not full_path.is_absolute():
+            return settings.data_store / full_path
+
+        return full_path
+
+    def merge_record(self, new_file: Self) -> bool:
+        """Merge this file record with a new copy of the file. Returns true if an update was made, false if the existing record is unchanged."""
+        if self.path != new_file.path or self.name != new_file.name:
+            raise ValueError(
+                f"Attempting to merge file {self.path} with a different file {new_file.path}"
+            )
+
+        if (
+            self.hash == new_file.hash
+            and self.size == new_file.size
+            and self.file_meta == new_file.file_meta
+            and self.deletion_date == new_file.deletion_date
+            and self.descriptor == new_file.descriptor
+            and self.content_date == new_file.content_date
+            and self.version == new_file.version
+        ):
+            logger.info(f"File record is identical - no updates needed for {self.path}")
+            return False
+
+        action = "Updating db record"
+        if self.deletion_date is None and new_file.deletion_date is not None:
+            action = "Set db record deleted"
+        if self.deletion_date is not None and new_file.deletion_date is None:
+            action = "Undeleting db record"
+
+        logger.info(
+            f"File {new_file.path} record being merged with existing record {self.id}. {action}."
+        )
+
+        self.hash = new_file.hash
+        self.size = new_file.size
+        self.file_meta = new_file.file_meta
+        self.deletion_date = new_file.deletion_date
+        self.descriptor = new_file.descriptor
+        self.content_date = new_file.content_date
+        self.version = new_file.version
+
+        now = DatetimeProvider().now()
+        self.last_modified_date = now
+        self.software_version = __version__
+        return True
 
     def archive_to_new_file_path(self, new_path: Path) -> Self:
         """Create a new File object for the archived file and mark this file as deleted.
@@ -78,20 +131,11 @@ class File(Base):
             content_date=self.content_date,
             creation_date=self.creation_date,
             software_version=self.software_version,
+            file_meta=self.file_meta,
         )
 
         self.set_deleted()
         return archived_file
-
-    def get_datastore_relative_path(self, app_settings: AppSettings) -> Path:
-        """Get the file path relative to the data store root."""
-        path_inside_datastore = Path(self.path)
-        if app_settings.data_store in path_inside_datastore.parents:
-            return path_inside_datastore.absolute().relative_to(
-                app_settings.data_store.absolute()
-            )
-        else:
-            return path_inside_datastore
 
     @classmethod
     def get_descriptor_from_filename(cls, name: str) -> str:
@@ -135,23 +179,13 @@ class File(Base):
 
         size = file.stat().st_size
 
-        try:
-            file_with_app_relative_path = file.absolute().relative_to(
-                settings.data_store.absolute()
-            )
-        # match exception by message text "not a subpath"
-        except ValueError as e:
-            if "is not in the subpath of" in str(e):
-                logger.warning(
-                    f"File {file} is not within the data store path {settings.data_store}"
-                )
-                file_with_app_relative_path = file
-            else:
-                raise
+        file_with_datastore_relative_path = cls.get_datastore_relative_path(
+            file, settings
+        )
 
         return cls(
             name=file.name,
-            path=file_with_app_relative_path.as_posix(),
+            path=file_with_datastore_relative_path,
             descriptor=cls.get_descriptor_from_filename(file.name),
             version=version,
             hash=hash,
@@ -160,6 +194,23 @@ class File(Base):
             creation_date=datetime.fromtimestamp(file.stat().st_ctime),
             software_version=__version__,
         )
+
+    @classmethod
+    def get_datastore_relative_path(cls, file: Path, settings: AppSettings) -> str:
+        try:
+            file_with_datastore_relative_path = file.absolute().relative_to(
+                settings.data_store.absolute()
+            )
+        # match exception by message text "not a subpath"
+        except ValueError as e:
+            if "is not in the subpath of" in str(e):
+                logger.warning(
+                    f"File {file} is not within the data store path {settings.data_store}"
+                )
+                file_with_datastore_relative_path = file
+            else:
+                raise
+        return file_with_datastore_relative_path.as_posix()
 
     @classmethod
     def filter_to_latest_versions_only(cls, files: list[Self]) -> list[Self]:

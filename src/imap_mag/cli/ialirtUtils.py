@@ -19,6 +19,7 @@ def fetch_ialirt_files_for_work(
     start_date: datetime | None,
     end_date: datetime | None,
     files: list[Path] | None,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> list[Path]:
     """Fetch I-ALiRT MAG science files from the datastore."""
 
@@ -30,6 +31,7 @@ def fetch_ialirt_files_for_work(
         files=files,
         path_handler_factory=lambda date: IALiRTPathHandler(content_date=date),
         label="I-ALiRT",
+        datetime_provider=datetime_provider,
     )
 
 
@@ -39,6 +41,7 @@ def fetch_ialirt_hk_files_for_work(
     start_date: datetime | None,
     end_date: datetime | None,
     files: list[Path] | None,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> list[Path]:
     """Fetch I-ALiRT MAG HK files from the datastore."""
 
@@ -50,6 +53,7 @@ def fetch_ialirt_hk_files_for_work(
         files=files,
         path_handler_factory=lambda date: IALiRTHKPathHandler(content_date=date),
         label="I-ALiRT HK",
+        datetime_provider=datetime_provider,
     )
 
 
@@ -61,6 +65,7 @@ def _fetch_files_for_work(
     files: list[Path] | None,
     path_handler_factory,
     label: str,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> list[Path]:
     datastore_finder = FileFinder(data_store)
 
@@ -72,8 +77,8 @@ def _fetch_files_for_work(
         logger.info(
             "No start/end date or files provided, loading yesterday's and today's data."
         )
-        start_date = DatetimeProvider.yesterday()
-        end_date = DatetimeProvider.today()
+        start_date = datetime_provider.yesterday()
+        end_date = datetime_provider.today()
 
     if (start_date is not None) and (end_date is not None):
         logger.info(f"Loading {label} data from {start_date} to {end_date}.")

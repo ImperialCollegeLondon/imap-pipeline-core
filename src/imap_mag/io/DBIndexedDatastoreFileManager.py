@@ -1,6 +1,7 @@
 import logging
 import re
 import shutil
+from enum import StrEnum
 from pathlib import Path
 
 from sqlalchemy.sql import text
@@ -17,6 +18,14 @@ from imap_mag.io.file import (
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 
 logger = logging.getLogger(__name__)
+
+
+class IndexResult(StrEnum):
+    """Result of indexing an existing file into the database."""
+
+    INDEXED = "indexed"
+    SKIPPED = "skipped"
+    RESTORED = "restored"
 
 
 class DBIndexedDatastoreFileManager(IDatastoreFileManager):
@@ -70,39 +79,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Add file to database
         if skip_database_insertion:
             logger.info(
-                f"File {destination_file} already exists in database and is the same. Skipping insertion."
+                f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
         else:
-            logger.info(f"Inserting {destination_file} into database.")
-
-            version: int = (
-                path_handler.get_sequence()
-                if path_handler.supports_sequencing()
-                and isinstance(
-                    path_handler,
-                    SequenceablePathHandler,
-                )
-                else (
-                    path_handler.version
-                    if isinstance(path_handler, VersionedPathHandler)
-                    else 0
-                )
-            )
+            logger.info(f"Upserting {destination_file} into database.")
 
             try:
-                new_file = File.from_file(
-                    file=destination_file,
-                    version=version,
-                    hash=path_handler.get_content_identity(destination_file),
-                    content_date=path_handler.get_content_date_for_indexing(),
-                    settings=self.__settings,
-                )
-
-                base_meta = path_handler.get_metadata()
-                if base_meta:
-                    new_file.file_meta = {**(base_meta or {})}
-
-                self.__database.insert_file(new_file)
+                new_file = self.__create_file_record(destination_file, path_handler)
+                self.__database.upsert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 destination_file.unlink()
@@ -145,11 +129,65 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             new_db_path = dest_path.relative_to(self.__settings.data_store)
 
         archived_file = file.archive_to_new_file_path(new_db_path)
-        self.__database.insert_file(archived_file)
-        self.__database.save(file)
+        self.__database.upsert_files([archived_file, file])
 
-        # Delete original from filesystem
-        source_path.unlink()
+        # Delete from filesystem if it exists
+        if source_path.exists():
+            logger.info(f"Deleting file {source_path} from filesystem.")
+            source_path.unlink()
+        else:
+            logger.warning(
+                f"File {source_path} does not exist on filesystem. It may have already been deleted."
+            )
+
+    def index_existing_file(
+        self, file: Path, path_handler: IFilePathHandler
+    ) -> IndexResult:
+        """Index an already-present datastore file into the database.
+
+        Handles three cases:
+        - File is active in the database (skip, return IndexResult.SKIPPED).
+        - File is not in the database at all (create record, return IndexResult.INDEXED).
+        - File is in the database but marked as deleted (restore record, return IndexResult.RESTORED).
+
+        Args:
+            file: Absolute path to the file in the datastore.
+            path_handler: Path handler for the file.
+
+        Returns:
+            IndexResult.SKIPPED, IndexResult.INDEXED, or IndexResult.RESTORED.
+        """
+        relative_path = File.get_datastore_relative_path(file, self.__settings)
+        existing_files: list[File] = self.__database.get_files_by_path(relative_path)
+
+        if len(existing_files) > 1:
+            logger.warning(
+                f"Multiple database records found for {relative_path}. Ignoring deleted records"
+            )
+            existing_files = [f for f in existing_files if f.deletion_date is None]
+
+        if len(existing_files) > 1:
+            raise Exception(
+                f"Multiple database records found for {relative_path}. This should not happen. Check database integrity."
+            )
+
+        if existing_files:
+            file_record = existing_files[0]
+            if file_record.deletion_date is not None:
+                logger.info(f"Restoring deleted database record for {relative_path}.")
+                file_record.deletion_date = None
+                self.__database.save(file_record)
+                return IndexResult.RESTORED
+            else:
+                logger.debug(
+                    f"File {relative_path} already indexed in database. Skipping."
+                )
+                return IndexResult.SKIPPED
+
+        new_file = self.__create_file_record(file, path_handler)
+        logger.info(f"Indexing {relative_path} into database.")
+        self.__database.upsert_file(new_file)
+        return IndexResult.INDEXED
 
     def delete_file(self, file: File) -> None:
         """
@@ -161,19 +199,49 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             db: Database instance
             deletion_date: Timestamp to record as deletion date
         """
-        file_path = (
-            self.__settings.data_store / file.path
-            if not Path(file.path).is_absolute()
-            else Path(file.path)
-        )
-
-        # Mark as deleted in database first
-        file.set_deleted()
-        self.__database.save(file)
+        file_path = file.get_full_path(self.__settings)
 
         # Delete from filesystem if it exists
         if file_path.exists():
+            logger.debug(f"Deleting file {file_path} from filesystem.")
             file_path.unlink()
+        else:
+            logger.warning(
+                f"File {file_path} does not exist on filesystem. It may have already been deleted."
+            )
+
+        if file_path.exists():
+            logger.error(f"Failed to delete file {file_path} from filesystem.")
+            raise FileExistsError(f"Failed to delete file {file_path} from filesystem.")
+        else:
+            file.set_deleted()
+            self.__database.save(file)
+            logger.debug(f"Deleted file {file_path} from filesystem and DB")
+
+    def __create_file_record(self, file: Path, path_handler: IFilePathHandler) -> File:
+        """Create a File database record from a file and its path handler."""
+        if path_handler.supports_sequencing() and isinstance(
+            path_handler, SequenceablePathHandler
+        ):
+            version: int = path_handler.get_sequence()
+        elif isinstance(path_handler, VersionedPathHandler):
+            version = path_handler.version
+        else:
+            version = 0
+
+        new_file = File.from_file(
+            file=file,
+            version=version,
+            hash=path_handler.get_content_identity(file),
+            content_date=path_handler.get_content_date_for_indexing(),
+            settings=self.__settings,
+        )
+
+        base_meta = path_handler.get_metadata()
+        if base_meta:
+            new_file.file_meta = {**(base_meta or {})}
+
+        return new_file
 
     def __get_matching_database_files(
         self, path_handler: SequenceablePathHandler
@@ -229,10 +297,11 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         )
 
         if matching_files:
-            logger.info(
-                f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
-            )
-            path_handler.set_sequence(matching_files[0].version)
+            if path_handler.get_sequence() != matching_files[0].version:
+                logger.info(
+                    f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                )
+                path_handler.set_sequence(matching_files[0].version)
             return True
 
         # Find the next available version slot

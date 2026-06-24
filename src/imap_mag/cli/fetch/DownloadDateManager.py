@@ -16,11 +16,13 @@ class DownloadDateManager:
         *,
         earliest_date: datetime | None = None,
         progress_time_buffer: timedelta = timedelta(),
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
         self.__packet_name = packet_name
         self.__database = database
         self.__earliest_date = earliest_date
         self.__progress_time_buffer = progress_time_buffer
+        self.__datetime_provider = datetime_provider
 
         self.__last_checked_date: datetime | None = None
         self.__progress_timestamp: datetime | None = None
@@ -42,7 +44,7 @@ class DownloadDateManager:
             # If the packet has been checked at least once, even though no data was downloaded last time, use yesterday or the last checked date,
             # whichever comes first, as the start date.
             inferred = min(
-                DatetimeProvider.yesterday(),
+                self.__datetime_provider.yesterday(),
                 self.__last_checked_date - timedelta(hours=1),
             )
             logger.info(
@@ -52,7 +54,9 @@ class DownloadDateManager:
 
         else:
             # If this is the first time the packet is downloaded, use the beginning of IMAP as the start date.
-            earliest_date = self.__earliest_date or DatetimeProvider.beginning_of_imap()
+            earliest_date = (
+                self.__earliest_date or self.__datetime_provider.beginning_of_imap()
+            )
 
             logger.info(
                 f"Start date not provided. Using {earliest_date} as default download date for {self.__packet_name}, as this is the first time it is downloaded."
@@ -64,7 +68,7 @@ class DownloadDateManager:
             logger.info(
                 f"End date not provided. Using end of today as default download date for {self.__packet_name}."
             )
-            return DatetimeProvider.end_of_today()
+            return self.__datetime_provider.end_of_today()
         else:
             logger.info(
                 f"Using provided end date {force_utc_timezone(original_end_date)} for {self.__packet_name}."

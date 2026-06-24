@@ -25,7 +25,7 @@ def generate_flow_run_name() -> str:
     end_date = (
         parameters.end_date
         if hasattr(parameters, "end_date") and parameters.end_date is not None
-        else DatetimeProvider.end_of_today()
+        else DatetimeProvider().end_of_today()
     )
 
     return f"Download-SpinTable-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
@@ -34,7 +34,7 @@ def generate_flow_run_name() -> str:
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_SPIN_TABLE,
     log_prints=True,
-    flow_run_name=generate_flow_run_name,
+    flow_run_name=lambda: generate_flow_run_name(),
 )
 async def poll_spin_table_flow(
     run_parameters: Annotated[
@@ -45,7 +45,7 @@ async def poll_spin_table_flow(
                 "description": "Parameters for the pipeline run. If 'start_date' and 'end_date' are not provided, the pipeline will automatically determine the date range based on the last workflow progress.",
             }
         ),
-    ],
+    ] = AutomaticRunParameters(),
     use_database: bool = True,
 ):
     """Poll spin table files from SDC API."""

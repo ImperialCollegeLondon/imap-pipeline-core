@@ -30,15 +30,16 @@ fi
 
 #slow on GH Actions
 export PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS="100"
+export PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW=ignore
 
 if [ "$1" != "--skip-tests" ]; then
     args=(
         run pytest
         # distribute tests across 4 processes aggressively
         # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
-        -n auto --dist worksteal --maxprocesses=4
+        -n auto --dist loadscope --maxprocesses=3
         # coverage parameters
-        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html
+        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --cov-fail-under=80
         --junitxml=test-results.xml # CI readable report
         --durations 10  # print top 10 slow tests
         tests # folder name of tests

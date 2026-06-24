@@ -20,6 +20,7 @@ def plot_ialirt_files(
     hk_files: list[Path],
     save_folder: Path,
     combine_plots: bool = False,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
     """Generate I-ALiRT plots for the specified files."""
 
@@ -39,7 +40,9 @@ def plot_ialirt_files(
         return generated_files
 
     if combine_plots:
-        (output_file, output_handler) = create_figure(ialirt_data, save_folder)
+        (output_file, output_handler) = create_figure(
+            ialirt_data, save_folder, datetime_provider
+        )
         generated_files[output_file] = output_handler
     else:
         # Generate individual plots per date
@@ -47,7 +50,9 @@ def plot_ialirt_files(
             if daily_data.empty:
                 continue
 
-            (output_file, output_handler) = create_figure(daily_data, save_folder)
+            (output_file, output_handler) = create_figure(
+                daily_data, save_folder, datetime_provider
+            )
             generated_files[output_file] = output_handler
 
     return generated_files
@@ -83,7 +88,9 @@ def _merge_science_and_hk(
 
 
 def create_figure(
-    ialirt_data: pd.DataFrame, save_folder: Path
+    ialirt_data: pd.DataFrame,
+    save_folder: Path,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> tuple[Path, IALiRTQuicklookPathHandler]:
     fig = plt.figure()
     gs = fig.add_gridspec(3, 4)
@@ -326,7 +333,7 @@ def create_figure(
     output_file = save_folder / f"ialirt_quicklook_{max_date.strftime('%Y%m%d')}.png"
 
     set_time_format(fig)
-    set_figure_title(fig)
+    set_figure_title(fig, datetime_provider)
 
     fig.set_size_inches(22, 12)
     fig.tight_layout()
@@ -371,7 +378,10 @@ def set_time_format(fig: plt.Figure) -> None:
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
 
 
-def set_figure_title(fig: plt.Figure) -> None:
+def set_figure_title(
+    fig: plt.Figure,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
+) -> None:
     database = Database()
     time_format = "%Y-%m-%d %H:%M:%S"
 
@@ -384,7 +394,7 @@ def set_figure_title(fig: plt.Figure) -> None:
 
     fig.suptitle(
         "I-ALiRT Quicklook\n"
-        f"Generated at: {DatetimeProvider.now().strftime(time_format)} (UTC)\n"
+        f"Generated at: {datetime_provider.now().strftime(time_format)} (UTC)\n"
         f"Last downloaded timestamp: {latest_data_timestamp.strftime(time_format) if latest_data_timestamp else 'N/A'} (UTC)\n"
         f"Last check run at: {latest_check_timestamp.strftime(time_format) if latest_check_timestamp else 'N/A'} (UTC)",
         fontsize=14,

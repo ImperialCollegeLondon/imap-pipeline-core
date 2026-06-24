@@ -419,7 +419,9 @@ def generate_spice_metakernel(
     # get all SPICE files from the database except MK files
     mk_folder = SPICEPathHandler.get_root_folder() + os.path.sep + METAKERNEL_FOLDER
     files = database.get_files_by_path(
-        SPICEPathHandler.get_root_folder(), ~File.path.startswith(mk_folder)
+        SPICEPathHandler.get_root_folder(),
+        ~File.path.startswith(mk_folder),
+        File.deletion_date.is_(None),
     )  # type: ignore
 
     if not files:
@@ -434,6 +436,7 @@ def generate_spice_metakernel(
         files,
         spice_folder=app_settings.data_store,
         file_types=set(file_types) if file_types else None,
+        datetime_provider=DatetimeProvider(),
     )
 
     start_time = TimeConversion.j2000_to_datetime(int(metakernel.start_time_j2000))
@@ -563,6 +566,7 @@ def _metakernel_builder(
     files: list[File],
     spice_folder: Path,
     file_types: set[str] | None = None,
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
 
@@ -654,7 +658,7 @@ def _metakernel_builder(
         if end_times:
             end_time = max([t for t in end_times if t is not None])
         else:
-            end_time = DatetimeProvider.today()
+            end_time = datetime_provider.today()
 
     # Create the Metakernel class
     allowed_types = KernelCollection().category_types

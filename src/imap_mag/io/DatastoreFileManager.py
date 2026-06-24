@@ -46,7 +46,7 @@ class DatastoreFileManager(IDatastoreFileManager):
 
         elif skip_file_copy:
             logger.info(
-                f"File {destination_file} already exists and is the same. Skipping update."
+                f"File {destination_file} already exists and is the same - skip copy into datastore."
             )
             return (destination_file, path_handler)
 

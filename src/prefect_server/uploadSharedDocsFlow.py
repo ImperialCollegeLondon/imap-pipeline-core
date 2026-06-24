@@ -47,7 +47,7 @@ async def upload_shared_docs_flow(
     how_many: int | None = None,
     do_uploads: bool = True,
     do_deletes: bool = True,
-    workflow_progress_key: str = "sharepoint-upload",
+    workflow_progress_key: str = PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY,
 ):
     """
     Publish new files to sharepoint/box/whatever configured cloud storage
@@ -141,7 +141,9 @@ async def upload_new_files(
     )
 
     for file in files:
-        path_inside_datastore = file.get_datastore_relative_path(app_settings)
+        path_inside_datastore = File.get_datastore_relative_path(
+            Path(file.path), app_settings
+        )
         path_inc_datastore = app_settings.data_store / path_inside_datastore
         destination_path = Path(app_settings.upload.root_path) / path_inside_datastore
 
@@ -226,7 +228,7 @@ async def remove_deleted_files(
     for file in files:
         remote_path = Path(
             app_settings.upload.root_path
-        ) / file.get_datastore_relative_path(app_settings)
+        ) / File.get_datastore_relative_path(Path(file.path), app_settings)
 
         await prefect_managedfiletransfer.delete_files_flow(
             source_block_or_blockname=destination_block_or_blockname,
