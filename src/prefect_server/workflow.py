@@ -17,7 +17,7 @@ from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
-from prefect_server.fileIndexFlow import file_index_flow
+from prefect_server.fileAnalyserFlow import file_analyser_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -429,9 +429,9 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
-    file_index_deployable = file_index_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_INDEX,
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_INDEX),
+    file_analysis_deployable = file_analyser_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
         job_variables=shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
@@ -493,7 +493,7 @@ async def adeploy_flows(local_debug: bool = False):
         datastore_indexer_deployable,
         poll_noaa_deployable,
         database_cleanup_deployable,
-        file_index_deployable,
+        file_analysis_deployable,
     )
 
     if local_debug:

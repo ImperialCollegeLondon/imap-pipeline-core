@@ -1,7 +1,7 @@
-"""Add file_index table
+"""Add file_analysis table
 
 Revision ID: a1b2c3d4e5f7
-Revises: 4fdab0d788f0
+Revises: 52c7b098641d
 Create Date: 2026-03-16 00:00:00.000000
 
 """
@@ -10,14 +10,14 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "a1b2c3d4e5f7"
-down_revision = "4fdab0d788f0"
+down_revision = "52c7b098641d"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
     op.create_table(
-        "file_index",
+        "file_analysis",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("file_id", sa.Integer(), nullable=False),
         sa.Column(
@@ -46,4 +46,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("file_index")
+    op.drop_table("file_analysis")
