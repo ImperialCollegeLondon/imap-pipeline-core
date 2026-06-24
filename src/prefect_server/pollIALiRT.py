@@ -1,192 +1,116 @@
 import asyncio
-import datetime as dt
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Annotated
 
 import pytz
-from prefect import flow
+from prefect import flow, task
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.events import Event, emit_event
 from prefect.runtime import flow_run
-from pydantic import Field
+from prefect.states import Completed, Failed
+from pydantic import Field, SecretStr
 
-from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
-from imap_mag.cli.fetch.ialirt import fetch_ialirt, fetch_ialirt_hk
-from imap_mag.config.FetchMode import FetchMode
-from imap_mag.db import Database, update_database_with_progress
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
-from imap_mag.util import CONSTANTS, DatetimeProvider, Environment
+from imap_mag.config.AppSettings import AppSettings
+from imap_mag.data_pipelines import AutomaticRunParameters, FetchByDatesRunParameters
+from imap_mag.data_pipelines.IALiRTInstrumentPipeline import IALiRTPipeline
+from imap_mag.db import Database
+from imap_mag.util import DatetimeProvider
+from imap_mag.util.constants import (
+    CONSTANTS,
+    VALID_IALIRT_HK_INSTRUMENTS,
+    VALID_IALIRT_INSTRUMENTS,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.prefectUtils import get_secret_or_env_var, try_get_prefect_logger
+from prefect_server.prefectUtils import (
+    get_secret_or_env_var,
+    try_get_prefect_logger,
+)
 from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 
 
-def _do_poll(
-    database: Database,
-    auth_code: str,
-    start_date: datetime | None,
-    end_date: datetime | None,
-    force_download: bool,
-    logger,
-    progress_item_id: str,
-    fetch_fn,
-    event_type: str | None,
+def generate_flow_run_name(
     datetime_provider: DatetimeProvider = DatetimeProvider(),
-) -> list[Path]:
-    start_timestamp = datetime_provider.now()
-
-    date_manager = DownloadDateManager(
-        progress_item_id,
-        database,
-        earliest_date=datetime_provider.yesterday(),
-        progress_time_buffer=timedelta(
-            seconds=1  # do not download the last packet again
-        ),
-        datetime_provider=datetime_provider,
-    )
-
-    packet_dates = date_manager.get_dates_for_download(
-        original_start_date=start_date,
-        original_end_date=end_date,
-        validate_with_database=(not force_download),
-    )
-
-    if packet_dates is None:
-        logger.info("No dates to download - skipping")
-        return []
-    else:
-        (packet_start_date, packet_end_date) = packet_dates
-
-    # Download files from SDC
-    with Environment(CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE, auth_code):
-        downloaded: dict[Path, IFilePathHandler] = fetch_fn(
-            start_date=packet_start_date,
-            end_date=packet_end_date,
-            fetch_mode=FetchMode.DownloadAndUpdateProgress,
-        )
-
-    if not downloaded:
-        logger.info(
-            f"No I-ALiRT data downloaded from {packet_start_date} to {packet_end_date}."
-        )
-        return []
-
-    # Update database with latest downloaded date as progress
-    content_dates: list[datetime] = [
-        metadata.content_date
-        for metadata in downloaded.values()
-        if metadata.content_date
-    ]
-    latest_date: datetime | None = max(content_dates) if content_dates else None
-
-    update_database_with_progress(
-        progress_item_id=progress_item_id,
-        database=database,
-        checked_timestamp=start_timestamp,
-        latest_timestamp=latest_date,
-    )
-
-    # Trigger event to notify updated I-ALiRT data
-    if event_type is not None:
-        logger.debug(f"Emitting {event_type} event")
-
-        event: Event | None = emit_event(
-            event=event_type,
-            resource={
-                "prefect.resource.id": f"prefect.flow-run.{flow_run.id}",
-                "prefect.resource.name": flow_run.name,
-                "prefect.resource.role": "flow-run",
-            },
-            payload={"files": list(downloaded.keys())},
-        )
-        if event is None:
-            logger.error(f"Failed to emit {event_type} event")
-    else:
-        event = None
-
-    return list(downloaded.keys())
-
-
-def generate_flow_run_name() -> str:
+) -> str:
     parameters = flow_run.parameters
 
     start_date: str = (
         parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters["start_date"]
+        if parameters.get("start_date")
         else "last-update"
     )
     end_date: datetime = (
         parameters["end_date"]
-        if parameters["end_date"]
-        else DatetimeProvider().end_of_hour()
+        if parameters.get("end_date")
+        else datetime_provider.end_of_hour()
     )
 
     return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
 
 
-def generate_hk_flow_run_name() -> str:
-    parameters = flow_run.parameters
+@task(name="Execute I-ALiRT Pipeline", retries=2, retry_delay_seconds=30)
+async def run_ialirt_polling_pipeline_task(
+    instrument: str,
+    run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
+    database: Database | None,
+    settings: AppSettings,
+):
+    """Wrap IALiRTPipeline in a Prefect task."""
+    logger = try_get_prefect_logger(__name__)
 
-    start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters["start_date"]
-        else "last-update"
-    )
-    end_date: datetime = (
-        parameters["end_date"]
-        if parameters["end_date"]
-        else DatetimeProvider().end_of_hour()
+    pipeline = IALiRTPipeline(
+        instrument=instrument, database=database, settings=settings
     )
 
-    return (
-        f"Poll-IALiRT-HK-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+    logger.info(f"Building and running pipeline for {instrument.upper()}...")
+    pipeline.build(run_parameters)
+    await pipeline.run()
+
+    result = pipeline.get_results()
+
+    if not result.success:
+        raise RuntimeError(f"I-ALiRT Pipeline failed for {instrument}: {result}")
+
+    logger = try_get_prefect_logger(__name__)
+
+    if instrument.endswith("_hk"):
+        event_type = PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED
+    else:
+        event_type = PREFECT_CONSTANTS.EVENT.IALIRT_UPDATED
+
+    logger.debug(f"Emitting {event_type} event for {instrument}")
+
+    event: Event | None = emit_event(
+        event=event_type,
+        resource={
+            "prefect.resource.id": f"prefect.flow-run.{flow_run.id}",
+            "prefect.resource.name": flow_run.name,
+            "prefect.resource.role": "flow-run",
+        },
+        payload={"instrument": instrument, "status": "completed"},
     )
+    if event is None:
+        logger.error(f"Failed to emit {event_type} event")
+
+    return result
 
 
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
+    flow_run_name=generate_flow_run_name,
     log_prints=True,
-    flow_run_name=lambda: generate_flow_run_name(),
-    retries=1,
+    validate_parameters=False,  # Avoid Prefect trying to validate the complex types
 )
 async def poll_ialirt_flow(
-    start_date: Annotated[
-        datetime | None,
+    run_parameters: Annotated[
+        AutomaticRunParameters | FetchByDatesRunParameters,
         Field(
+            default_factory=AutomaticRunParameters,
             json_schema_extra={
-                "title": "Start date",
-                "description": "Start date for the download. Default is the last update.",
-            }
+                "title": "Run parameters",
+                "description": "Select 'Automatic' to use database trackers, or 'Fetch By Dates' to backfill specific time windows.",
+            },
         ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "End date for the download. Default is the end of the hour.",
-            }
-        ),
-    ] = None,
-    force_download: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force download",
-                "description": "If true, the flow will download data even if it has already been downloaded before.",
-            }
-        ),
-    ] = False,
-    force_notification: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force notification",
-                "description": "If true, the flow will send a notification even if no new data was downloaded.",
-            }
-        ),
-    ] = False,
+    ] = AutomaticRunParameters(),
     wait_for_new_data_to_arrive: Annotated[
         bool,
         Field(
@@ -196,7 +120,7 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
-    timeout: Annotated[
+    timeout_seconds: Annotated[
         int,
         Field(
             json_schema_extra={
@@ -204,7 +128,7 @@ async def poll_ialirt_flow(
                 "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
             }
         ),
-    ] = 5 * 60,  # 5 minutes
+    ] = 300,
     plot_last_3_days: Annotated[
         bool,
         Field(
@@ -224,99 +148,114 @@ async def poll_ialirt_flow(
             },
         ),
     ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
-    notification_time: Annotated[
-        str,
+    use_database: Annotated[
+        bool,
         Field(
             json_schema_extra={
-                "title": "Notification hour",
-                "description": "UK local time (HH:MM) for the hour in which to send the Teams notification. Default is 06:00 so any time between 6:00-6:59.",
+                "title": "Use Database",
+                "description": "If true, the flow will use the database to track progress.",
             }
         ),
-    ] = "06:00",
-    # Used for automated testing only, to override the default datetime provider with a test one
-    datetime_provider: Annotated[
-        None | DatetimeProvider,
-        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
-    ] = None,
-) -> None:
+    ] = True,
+    datetime_provider: Annotated[None | DatetimeProvider, Field(default=None)] = None,
+):
     """
-    Poll I-ALiRT MAG data from SDC.
+    Runs continuously for one hour, sequentially polling the SDC API
+    for all 8 instruments every 5 minutes.
     """
-
     logger = try_get_prefect_logger(__name__)
-    datetime_provider = (
-        DatetimeProvider() if datetime_provider is None else datetime_provider
-    )
-    database = Database()
-    notification_time_parsed = dt.time.fromisoformat(notification_time)
+
+    database = Database() if use_database else None
+    settings = AppSettings()  # type: ignore
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
-    end_date = end_date or datetime_provider.end_of_hour()
-    updated_files: list[Path] = []
+    settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
 
-    logger.info("---------- Start I-ALiRT MAG Poll ----------")
+    end_date = getattr(run_parameters, "end_date", None)
+    start_date = getattr(run_parameters, "start_date", None)
 
-    if wait_for_new_data_to_arrive:
-        while (end_date - datetime_provider.now()).total_seconds() > timeout:
-            files = _do_poll(
-                database=database,
-                auth_code=auth_code,
-                start_date=start_date,
-                end_date=end_date,
-                force_download=force_download,
-                logger=logger,
-                progress_item_id=CONSTANTS.DATABASE.IALIRT_PROGRESS_ID,
-                fetch_fn=fetch_ialirt,
-                event_type=None,
-                datetime_provider=datetime_provider,
+    if not end_date:
+        end_date = datetime_provider.now().replace(minute=55, second=0, microsecond=0)
+    if not start_date:
+        start_date = datetime_provider.now().replace(minute=0, second=10, microsecond=0)
+    logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
+
+    combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
+    logger.info(f"All instruments: {combined_instruments}")
+
+    iteration = 1
+    while True:
+        current_time = datetime_provider.now()
+
+        if not wait_for_new_data_to_arrive or current_time >= end_date:
+            break
+
+        logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")
+
+        # launch tasks concurrently
+        tasks = []
+        for inst in combined_instruments:
+            tasks.append(
+                run_ialirt_polling_pipeline_task(
+                    instrument=inst,
+                    run_parameters=run_parameters,
+                    database=database,
+                    settings=settings,
+                )
             )
-            updated_files.extend(files)
 
-            logger.info(
-                f"--- Waiting {timeout} seconds before polling for new data ---"
-            )
-            await asyncio.sleep(timeout)
-    else:
-        files = _do_poll(
-            database=database,
-            auth_code=auth_code,
-            start_date=start_date,
-            end_date=end_date,
-            force_download=force_download,
-            logger=logger,
-            progress_item_id=CONSTANTS.DATABASE.IALIRT_PROGRESS_ID,
-            fetch_fn=fetch_ialirt,
-            event_type=None,
-            datetime_provider=datetime_provider,
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        exception_count = sum(1 for result in results if isinstance(result, Exception))
+
+        for inst, result in zip(combined_instruments, results):
+            if isinstance(result, Exception):
+                logger.error(f"Download failed for {inst.upper()}: {result}")
+
+        if exception_count == len(combined_instruments):
+            error_message = "All instrument pipelines failed in a single batch."
+            logger.error(error_message)
+            return Failed(message=error_message)
+
+        # Calculate how long the downloads took
+        batch_duration = (datetime_provider.now() - current_time).total_seconds()
+
+        # Sleep only for the remainder of the 5 minutes
+        time_to_sleep = max(0, timeout_seconds - batch_duration)
+
+        # Make sure the sleep doesn't go beyond the end_date
+        time_left_in_flow = (end_date - datetime_provider.now()).total_seconds()
+        if time_to_sleep > time_left_in_flow:
+            time_to_sleep = max(0, time_left_in_flow)
+
+        logger.info(
+            f"Batch #{iteration} complete in {batch_duration:.1f}s. Sleeping for {time_to_sleep:.1f}s"
         )
-        updated_files.extend(files)
 
-    logger.info("---------- End I-ALiRT MAG Poll ----------")
+        await asyncio.sleep(time_to_sleep)
+        iteration += 1
 
     if plot_last_3_days:
         await quicklook_ialirt_flow(
             start_date=datetime_provider.today() - timedelta(days=2),
             end_date=datetime_provider.now(),
             combined_plot=True,
-            force_latest_update=True,
         )
 
-        # Send the Teams notification at the configured UK local time
+        # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
         uk_end_time = end_date.replace(tzinfo=UTC).astimezone(
             pytz.timezone("Europe/London")
         )
 
-        if wait_for_new_data_to_arrive and (
-            uk_end_time.hour == notification_time_parsed.hour or force_notification
-        ):
+        if wait_for_new_data_to_arrive and (uk_end_time.hour == 6):
             imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                 imap_notification_webhook_name
             )
 
-            latest_ialirt_date = database.get_workflow_progress(
+            latest_ialirt_date = database.get_workflow_progress(  # type: ignore
                 CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
             )
             message_body: str = (
@@ -330,117 +269,4 @@ async def poll_ialirt_flow(
                 subject="I-ALiRT Latest Quicklook",
             )  # type: ignore
 
-
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT_HK,
-    log_prints=True,
-    flow_run_name=lambda: generate_hk_flow_run_name(),
-    retries=1,
-)
-async def poll_ialirt_hk_flow(
-    start_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "Start date",
-                "description": "Start date for the download. Default is the last update.",
-            }
-        ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "End date for the download. Default is the end of the hour.",
-            }
-        ),
-    ] = None,
-    force_download: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force download",
-                "description": "If true, the flow will download data even if it has already been downloaded before.",
-            }
-        ),
-    ] = False,
-    wait_for_new_data_to_arrive: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Wait for new data to arrive",
-                "description": "If true, the flow will poll for new data until the end date is reached.",
-            }
-        ),
-    ] = True,
-    timeout: Annotated[
-        int,
-        Field(
-            json_schema_extra={
-                "title": "Timeout",
-                "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
-            }
-        ),
-    ] = 5 * 60,  # 5 minutes
-    # Used for automated testing only, to override the default datetime provider with a test one
-    datetime_provider: Annotated[
-        None | DatetimeProvider,
-        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
-    ] = None,
-) -> None:
-    """
-    Poll I-ALiRT MAG HK data from SDC.
-    """
-
-    logger = try_get_prefect_logger(__name__)
-    datetime_provider = (
-        DatetimeProvider() if datetime_provider is None else datetime_provider
-    )
-    database = Database()
-
-    auth_code = await get_secret_or_env_var(
-        PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
-        CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
-    )
-    end_date = end_date or datetime_provider.end_of_hour()
-    updated_files: list[Path] = []
-
-    logger.info("---------- Start I-ALiRT MAG HK Poll ----------")
-
-    if wait_for_new_data_to_arrive:
-        while (end_date - datetime_provider.now()).total_seconds() > timeout:
-            files = _do_poll(
-                database=database,
-                auth_code=auth_code,
-                start_date=start_date,
-                end_date=end_date,
-                force_download=force_download,
-                logger=logger,
-                progress_item_id=CONSTANTS.DATABASE.IALIRT_HK_PROGRESS_ID,
-                fetch_fn=fetch_ialirt_hk,
-                event_type=PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED,
-                datetime_provider=datetime_provider,
-            )
-            updated_files.extend(files)
-
-            logger.info(
-                f"--- Waiting {timeout} seconds before polling for new data ---"
-            )
-            await asyncio.sleep(timeout)
-    else:
-        files = _do_poll(
-            database=database,
-            auth_code=auth_code,
-            start_date=start_date,
-            end_date=end_date,
-            force_download=force_download,
-            logger=logger,
-            progress_item_id=CONSTANTS.DATABASE.IALIRT_HK_PROGRESS_ID,
-            fetch_fn=fetch_ialirt_hk,
-            event_type=PREFECT_CONSTANTS.EVENT.IALIRT_HK_UPDATED,
-            datetime_provider=datetime_provider,
-        )
-        updated_files.extend(files)
-
-    logger.info("---------- End I-ALiRT MAG HK Poll ----------")
+    return Completed(message="Hourly I-ALiRT Polling completed successfully.")

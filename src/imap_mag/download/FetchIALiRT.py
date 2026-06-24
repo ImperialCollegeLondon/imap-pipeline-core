@@ -9,8 +9,7 @@ import yaml
 
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import FileFinder
-from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.process import get_packet_definition_folder
 from imap_mag.util.constants import CONSTANTS
 
@@ -42,11 +41,23 @@ class FetchIALiRT:
         instrument: str,
         start_date: datetime,
         end_date: datetime,
-    ) -> dict[Path, IFilePathHandler]:
+        housekeeping: bool = False,
+    ) -> dict[Path, IALiRTPathHandler]:
         """Retrieve I-ALiRT science data for a specific instrument."""
 
-        processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
-        process_fn = processing_map.get(instrument.lower(), lambda df: df)
+        if housekeeping:
+            process_fn = (
+                lambda df: process_ialirt_hk_data(
+                    df,
+                    self.__packetDefinitionFolder
+                    / self.__IALIRT_PACKET_DEFINITION_FILE,
+                ),
+            )
+            max_hours_per_chunk = 2
+        else:
+            processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
+            process_fn = processing_map.get(instrument.lower(), lambda df: df)
+            max_hours_per_chunk = 4
 
         return self.__download_to_csv(
             instrument=instrument,
@@ -56,29 +67,7 @@ class FetchIALiRT:
                 content_date=content_date, instrument=instrument
             ),
             process_fn=process_fn,
-            max_hours_per_chunk=4,  # Limit to 4 hours per chunk to avoid 400 error
-        )
-
-    def download_instrument_hk_data(
-        self,
-        instrument: str,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> dict[Path, IFilePathHandler]:
-        """Retrieve I-ALiRT MAG HK data."""
-
-        return self.__download_to_csv(
-            instrument=instrument,
-            start_date=start_date,
-            end_date=end_date,
-            path_handler_factory=lambda content_date: IALiRTHKPathHandler(
-                content_date=content_date
-            ),
-            process_fn=lambda df: process_ialirt_hk_data(
-                df,
-                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
-            ),
-            max_hours_per_chunk=2,  # Limit to 3 hours per chunk to avoid 400 error
+            max_hours_per_chunk=max_hours_per_chunk,  # to avoid 400 error for large data requests, limit to 4 hours per chunk for science data and 2 hours per chunk for housekeeping data
         )
 
     def __download_to_csv(
@@ -89,10 +78,10 @@ class FetchIALiRT:
         path_handler_factory,
         process_fn,
         max_hours_per_chunk: int | None = None,
-    ) -> dict[Path, IFilePathHandler]:
+    ) -> dict[Path, IALiRTPathHandler]:
         """Retrieve I-ALiRT data for a specific instrument."""
 
-        downloaded_files: dict[Path, IFilePathHandler] = dict()
+        downloaded_files: dict[Path, IALiRTPathHandler] = dict()
 
         downloaded: list[dict] = self.__data_access.get_all_by_dates(
             instrument=instrument,
@@ -107,7 +96,9 @@ class FetchIALiRT:
             )
 
             downloaded_data = pd.DataFrame(downloaded)
-            downloaded_data = process_fn(downloaded_data)
+
+            if process_fn is not None:
+                downloaded_data = process_fn(downloaded_data)
 
             # Aggregate data by multiple instruments per timestamp
             rules: dict = dict.fromkeys(downloaded_data, "first")

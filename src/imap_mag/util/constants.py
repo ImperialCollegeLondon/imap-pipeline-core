@@ -27,11 +27,11 @@ class CONSTANTS:
         SDC_URL = "IMAP_DATA_ACCESS_URL"
 
     class DATABASE:
-        IALIRT_PROGRESS_ID = "IALIRT_SCIENCE"
-        IALIRT_HK_PROGRESS_ID = "IALIRT_HK"
+        IALIRT_PROGRESS_ID = "MAG_IALIRT"
+        IALIRT_HK_PROGRESS_ID = "MAG_IALIRT_HK"
         IALIRT_VALIDATION_ID = "IALIRT_VALIDATION"
 
-    class INSTRUMENTS:
+    class IALIRT_INSTRUMENTS:
         IALIRT_MAG = "mag"
         IALIRT_MAG_HK = "mag_hk"
         IALIRT_HIT = "hit"
@@ -43,12 +43,12 @@ class CONSTANTS:
 
 VALID_IALIRT_INSTRUMENTS = [
     v
-    for k, v in CONSTANTS.INSTRUMENTS.__dict__.items()
+    for k, v in CONSTANTS.IALIRT_INSTRUMENTS.__dict__.items()
     if k.isupper() and isinstance(v, str) and not v.endswith("_hk")
 ]
 
 VALID_IALIRT_HK_INSTRUMENTS = [
     v
-    for k, v in CONSTANTS.INSTRUMENTS.__dict__.items()
+    for k, v in CONSTANTS.IALIRT_INSTRUMENTS.__dict__.items()
     if k.isupper() and isinstance(v, str) and v.endswith("_hk")
 ]

@@ -39,50 +39,42 @@ class IALiRTApiClient:
         """Download data from I-ALiRT via ialirt-data-access for a specific instrument."""
 
         whole_data: list[dict] = []
-        latest_date: datetime = start_date
+        window_start: datetime = start_date
 
-        while (end_date - latest_date) > timedelta(seconds=4):
-            end_date_this_chunk = (
-                min(end_date, latest_date + timedelta(hours=max_hours_per_chunk))
+        while (end_date - window_start) > timedelta(seconds=4):
+            window_end = (
+                min(end_date, window_start + timedelta(hours=max_hours_per_chunk))
                 if max_hours_per_chunk is not None
                 else end_date
             )
 
-            logger.info(
-                f"GET {instrument} from {latest_date} to {end_date_this_chunk}."
-            )
+            logger.info(f"GET {instrument} from {window_start} to {window_end}.")
 
             data_chunk: list[dict] = self.__do_download(
-                instrument, latest_date, end_date_this_chunk
+                instrument, window_start, window_end
             )
             whole_data.extend(data_chunk)
 
             if data_chunk:
-                max_chunk_date = max(
+                newest_data_timestamp = max(
                     datetime.strptime(d[self.__DATE_INDEX], self.__DATE_FORMAT)
                     for d in data_chunk
                 )
 
                 logger.debug(
-                    f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
+                    f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {newest_data_timestamp}."
                 )
 
-                next_date = max_chunk_date + timedelta(seconds=1)
+                window_start = newest_data_timestamp + timedelta(seconds=1)
 
-                # avoid getting stuck if I-ALiRT keeps returning same data without advancing in time
-                if next_date <= latest_date:
-                    latest_date = end_date_this_chunk
-                else:
-                    latest_date = next_date
-
-            elif end_date_this_chunk < end_date:
+            elif window_end < end_date:
                 logger.debug(
-                    f"No data downloaded between {latest_date} and {end_date_this_chunk}, but end date not reached. Advancing latest_date to {end_date_this_chunk} to continue downloading."
+                    f"No data downloaded between {window_start} and {window_end}, but end date not reached. Advancing window_start to {window_end} to continue downloading."
                 )
-                latest_date = end_date_this_chunk
+                window_start = window_end
             else:
                 logger.debug(
-                    f"No more data to download between {latest_date} and {end_date}."
+                    f"No more data to download between {window_start} and {end_date}."
                 )
                 break
 

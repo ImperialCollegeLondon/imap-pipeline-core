@@ -2,7 +2,7 @@ from pathlib import Path
 
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, FileRecord, Record, Stage
 from imap_mag.download.FetchIALiRT import FetchIALiRT
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 
 
 class DownloadIALiRTStage(Stage):
@@ -23,29 +23,28 @@ class DownloadIALiRTStage(Stage):
                 "DownloadIALiRTStage requires a Record with start_date and end_date"
             )
 
-        start_date = start_date
-        end_date = end_date
         self.logger.info(
             f"Downloading I-ALiRT {self.instrument} data from {start_date} to {end_date}."
         )
 
         if self.instrument.endswith("_hk"):
             base_instrument = self.instrument.replace("_hk", "")
-            downloaded: dict[Path, IFilePathHandler] = (
-                self.fetcher.download_instrument_hk_data(
+            downloaded: dict[Path, IALiRTPathHandler] = (
+                self.fetcher.download_instrument_data(
                     instrument=base_instrument,
                     start_date=start_date,
                     end_date=end_date,
+                    housekeeping=True,
                 )
-            )
+            )  # type: ignore
         else:
-            downloaded: dict[Path, IFilePathHandler] = (
+            downloaded: dict[Path, IALiRTPathHandler] = (
                 self.fetcher.download_instrument_data(
                     instrument=self.instrument,
                     start_date=start_date,
                     end_date=end_date,
                 )
-            )
+            )  # type: ignore
 
         if not downloaded:
             self.logger.info(
