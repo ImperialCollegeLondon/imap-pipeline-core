@@ -1,4 +1,4 @@
-"""Integration tests for FileIndexPipeline and GetFilesToIndexStage."""
+"""Integration tests for FileAnalysisPipeline and GetFilesToIndexStage."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -9,7 +9,7 @@ from imap_mag.data_pipelines import (
     IndexByFileNamesRunParameters,
     IndexByIdsRunParameters,
 )
-from imap_mag.data_pipelines.FileIndexPipeline import FileIndexPipeline
+from imap_mag.data_pipelines.FileAnalysisPipeline import FileAnalysisPipeline
 from imap_mag.util.Environment import Environment
 from tests.util.miscellaneous import DATASTORE
 
@@ -37,7 +37,7 @@ def _insert_file(
 def _build_and_run_pipeline(db, settings, run_params):
     import asyncio
 
-    pipeline = FileIndexPipeline(database=db, settings=settings)
+    pipeline = FileAnalysisPipeline(database=db, settings=settings)
     pipeline.build(run_parameters=run_params)
     asyncio.run(pipeline.run())
     return pipeline
@@ -63,7 +63,7 @@ def test_index_by_ids_indexes_specified_file(test_database, test_database_contai
             test_database, settings, IndexByIdsRunParameters(file_ids=[file.id])
         )
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.record_count == 100
 
@@ -85,7 +85,7 @@ def test_index_by_ids_skips_deleted_file(test_database, test_database_container)
             test_database, settings, IndexByIdsRunParameters(file_ids=[file.id])
         )
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is None
 
 
@@ -104,7 +104,7 @@ def test_index_by_ids_upserts_on_second_run(test_database, test_database_contain
         _build_and_run_pipeline(test_database, settings, params)
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.record_count == 100
 
@@ -139,8 +139,8 @@ def test_index_by_date_range_finds_files_in_range(
         params = IndexByDateRangeRunParameters(modified_after=after)
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx1 = test_database.get_file_index_by_file_id(f1.id)
-        idx2 = test_database.get_file_index_by_file_id(f2.id)
+        idx1 = test_database.get_file_analysis_by_file_id(f1.id)
+        idx2 = test_database.get_file_analysis_by_file_id(f2.id)
         assert idx1 is not None
         assert idx2 is not None
 
@@ -164,7 +164,7 @@ def test_index_by_date_range_excludes_files_before_range(
         params = IndexByDateRangeRunParameters(modified_after=after)
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is None
 
 
@@ -184,7 +184,7 @@ def test_index_by_file_names_matches_exact_path(test_database, test_database_con
         params = IndexByFileNamesRunParameters(file_paths=[rel_path])
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.record_count == 100
 
@@ -200,7 +200,7 @@ def test_index_by_file_names_glob_pattern(test_database, test_database_container
         params = IndexByFileNamesRunParameters(file_paths=["science/mag/l1c/**/*.cdf"])
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
 
 
@@ -225,7 +225,7 @@ def test_automatic_mode_indexes_newly_modified_files(
         params = AutomaticRunParameters()
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
 
 
@@ -245,7 +245,7 @@ def test_pipeline_indexes_cdf_bad_data(test_database, test_database_container):
         params = IndexByIdsRunParameters(file_ids=[file.id])
         _build_and_run_pipeline(test_database, settings, params)
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.has_bad_data is True
         assert idx.record_count == 172800
@@ -274,7 +274,7 @@ def test_automatic_mode_updates_workflow_progress_after_run(
         _build_and_run_pipeline(test_database, settings, AutomaticRunParameters())
 
         progress = test_database.get_workflow_progress(
-            FileIndexPipeline.PROGRESS_ITEM_ID
+            FileAnalysisPipeline.PROGRESS_ITEM_ID
         )
         assert progress.progress_timestamp is not None
         assert progress.progress_timestamp >= file.last_modified_date
@@ -283,7 +283,7 @@ def test_automatic_mode_updates_workflow_progress_after_run(
         _build_and_run_pipeline(test_database, settings, AutomaticRunParameters())
 
         # File should still have exactly one index entry (no duplicate)
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
 
 
@@ -300,7 +300,7 @@ def test_manual_run_does_not_update_workflow_progress(
         file = _insert_file(test_database, rel_path, settings)
 
         progress_before = test_database.get_workflow_progress(
-            FileIndexPipeline.PROGRESS_ITEM_ID
+            FileAnalysisPipeline.PROGRESS_ITEM_ID
         )
         ts_before = progress_before.progress_timestamp
 
@@ -309,6 +309,6 @@ def test_manual_run_does_not_update_workflow_progress(
         )
 
         progress_after = test_database.get_workflow_progress(
-            FileIndexPipeline.PROGRESS_ITEM_ID
+            FileAnalysisPipeline.PROGRESS_ITEM_ID
         )
         assert progress_after.progress_timestamp == ts_before

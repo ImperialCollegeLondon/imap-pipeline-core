@@ -1,4 +1,4 @@
-"""Unit tests for IndexFileStage."""
+"""Unit tests for AnalyseFilesStage."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -6,17 +6,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from imap_mag.config.FileIndexConfig import (
+from imap_mag.config.FileAnalysisConfig import (
     ColumnCheckConfig,
-    FileIndexConfig,
-    FileIndexPatternConfig,
+    FileAnalysisConfig,
+    FileAnalysisPatternConfig,
 )
-from imap_mag.data_pipelines.IndexFileStage import IndexFileStage
+from imap_mag.data_pipelines.AnalyseFilesStage import AnalyseFilesStage
 from imap_mag.util.Environment import Environment
 from tests.util.miscellaneous import DATASTORE
 
 
-def _make_settings(extra_patterns: list[FileIndexPatternConfig] | None = None):
+def _make_settings(extra_patterns: list[FileAnalysisPatternConfig] | None = None):
     """Build AppSettings pointing at the test datastore with optional extra patterns."""
     with Environment(MAG_DATA_STORE=str(DATASTORE.absolute())):
         from imap_mag.config.AppSettings import AppSettings
@@ -24,19 +24,19 @@ def _make_settings(extra_patterns: list[FileIndexPatternConfig] | None = None):
         settings = AppSettings()  # type: ignore
 
     if extra_patterns:
-        settings.file_index = FileIndexConfig(
-            paths_to_match=settings.file_index.paths_to_match,
+        settings.file_analysis = FileAnalysisConfig(
+            paths_to_match=settings.file_analysis.paths_to_match,
             file_patterns=extra_patterns,
-            default_gap_threshold_seconds=settings.file_index.default_gap_threshold_seconds,
-            nan_sentinel=settings.file_index.nan_sentinel,
+            default_gap_threshold_seconds=settings.file_analysis.default_gap_threshold_seconds,
+            nan_sentinel=settings.file_analysis.nan_sentinel,
         )
     return settings
 
 
 def _make_stage(
-    extra_patterns: list[FileIndexPatternConfig] | None = None,
-) -> IndexFileStage:
-    return IndexFileStage(settings=_make_settings(extra_patterns))
+    extra_patterns: list[FileAnalysisPatternConfig] | None = None,
+) -> AnalyseFilesStage:
+    return AnalyseFilesStage(settings=_make_settings(extra_patterns))
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ def test_cdf_l1d_record_count():
 
 def test_cdf_attributes_indexed_from_config():
     """Attributes listed in config are extracted from the CDF file."""
-    pattern = FileIndexPatternConfig(
+    pattern = FileAnalysisPatternConfig(
         pattern="science/mag/l1c/**/**/imap_mag_l1c_*.cdf",
         cdf_attributes_to_index=["Parents", "ground_software_version"],
     )
@@ -162,7 +162,7 @@ def test_cdf_attributes_indexed_from_config():
 
 def test_cdf_attributes_missing_attr_skipped():
     """An attribute that does not exist in the file is silently ignored."""
-    pattern = FileIndexPatternConfig(
+    pattern = FileAnalysisPatternConfig(
         pattern="science/mag/l1c/**/**/imap_mag_l1c_*.cdf",
         cdf_attributes_to_index=["NonExistentAttribute"],
     )
@@ -246,7 +246,7 @@ def test_compute_column_stats_counts_nulls():
 def test_compute_column_stats_counts_bad_data_sentinel():
     stage = _make_stage()
     col_check = ColumnCheckConfig(column_name="x", check_for_bad_data=True)
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     data = np.array([1.0, sentinel, 3.0, sentinel])
     stats = stage._compute_column_stats(data, col_check)
     assert stats["bad_data_count"] == 2
@@ -284,7 +284,7 @@ def test_compute_column_stats_basic_stats():
 def test_compute_column_stats_all_bad_no_basic_stats():
     """When all values are bad, min/max/mean should not be present."""
     stage = _make_stage()
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     col_check = ColumnCheckConfig(column_name="x", check_for_bad_data=True)
     data = np.full(5, sentinel)
     stats = stage._compute_column_stats(data, col_check)
@@ -305,7 +305,7 @@ def _make_timestamps(n: int, start: datetime, step_seconds: float) -> pd.Series:
 
 def test_find_nan_gaps_single_run():
     stage = _make_stage()
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     timestamps = _make_timestamps(10, datetime(2026, 1, 1, tzinfo=UTC), 1.0)
     data = np.array([1.0, 1.0, sentinel, sentinel, sentinel, 1.0, 1.0, 1.0, 1.0, 1.0])
     gaps = stage._find_nan_gaps(timestamps, data, "col")
@@ -316,7 +316,7 @@ def test_find_nan_gaps_single_run():
 
 def test_find_nan_gaps_two_separate_runs():
     stage = _make_stage()
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     timestamps = _make_timestamps(10, datetime(2026, 1, 1, tzinfo=UTC), 1.0)
     data = np.array([sentinel, sentinel, 1.0, 1.0, 1.0, sentinel, 1.0, 1.0, 1.0, 1.0])
     gaps = stage._find_nan_gaps(timestamps, data, "col")
@@ -328,7 +328,7 @@ def test_find_nan_gaps_two_separate_runs():
 def test_find_nan_gaps_trailing_run():
     """A NaN run that extends to the end of the series is captured."""
     stage = _make_stage()
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     timestamps = _make_timestamps(6, datetime(2026, 1, 1, tzinfo=UTC), 1.0)
     data = np.array([1.0, 1.0, 1.0, sentinel, sentinel, sentinel])
     gaps = stage._find_nan_gaps(timestamps, data, "col")
@@ -347,7 +347,7 @@ def test_find_nan_gaps_no_bad_data():
 def test_find_nan_gaps_duration_seconds():
     """Duration of a NaN run should equal (end_time - start_time) in seconds."""
     stage = _make_stage()
-    sentinel = stage.settings.file_index.nan_sentinel
+    sentinel = stage.settings.file_analysis.nan_sentinel
     timestamps = _make_timestamps(5, datetime(2026, 1, 1, tzinfo=UTC), 2.0)
     data = np.array([1.0, sentinel, sentinel, sentinel, 1.0])
     gaps = stage._find_nan_gaps(timestamps, data, "col")
@@ -419,7 +419,7 @@ def test_calculate_gaps_detects_gap_above_threshold():
 def test_calculate_gaps_custom_threshold_from_pattern_config():
     stage = _make_stage()
     # expected_time_between_records="00:00:04" → threshold = 8s
-    pattern = FileIndexPatternConfig(
+    pattern = FileAnalysisPatternConfig(
         pattern="*", expected_time_between_records="00:00:04"
     )
     base = datetime(2026, 1, 1, tzinfo=UTC)
@@ -435,7 +435,7 @@ def test_calculate_gaps_custom_threshold_from_pattern_config():
 def test_calculate_gaps_subsecond_threshold():
     """0.5-second threshold from expected_time_between_records "00:00:00.5"."""
     stage = _make_stage()
-    pattern = FileIndexPatternConfig(
+    pattern = FileAnalysisPatternConfig(
         pattern="*", expected_time_between_records="00:00:00.5"
     )
     base = datetime(2026, 1, 1, tzinfo=UTC)
@@ -510,7 +510,7 @@ def test_calculate_timestamp_deltas_single_record():
     assert result == (None, None, None, None)
 
 
-def test_calculate_timestamp_deltas_returned_in_file_index():
+def test_calculate_timestamp_deltas_returned_in_file_analysis():
     """CDF file indexing populates min/max/avg/median delta fields."""
     stage = _make_stage()
     path = (
@@ -588,7 +588,7 @@ def test_unsupported_file_type_returns_minimal_index(tmp_path):
 @pytest.mark.asyncio
 async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
     """process() must not raise even when the file cannot be parsed.
-    The outer try/except in process() catches the error and produces a minimal FileIndex."""
+    The outer try/except in process() catches the error and produces a minimal FileAnalysis."""
 
     stage = _make_stage()
     # Wire a minimal next-stage to collect what process() publishes
@@ -613,6 +613,6 @@ async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
     await stage.process(record, context={})
 
     assert len(collected) == 1
-    fi = collected[0].file_index
+    fi = collected[0].file_analysis
     assert fi.file_id == 99
     # record_count may be None or an integer - the key guarantee is no exception was raised

@@ -107,7 +107,7 @@ postgres_upload:
         - "ialirt_hk/**/imap_ialirt_hk*.csv"
         - "ialirt/**/imap_ialirt_*.csv"
 
-file_index:
+file_analysis:
   paths_to_match:
     - "science/mag/**/*.cdf"
     - "hk/mag/**/*.csv"

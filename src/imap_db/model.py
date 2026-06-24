@@ -258,10 +258,10 @@ class File(Base):
         return latest_files
 
 
-class FileIndex(Base):
+class FileAnalysis(Base):
     """Stores indexed metadata about data files (CSV and CDF)."""
 
-    __tablename__ = "file_index"
+    __tablename__ = "file_analysis"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     file_id: Mapped[int] = mapped_column(
@@ -305,11 +305,11 @@ class FileIndex(Base):
     column_stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     file: Mapped["File"] = relationship(
-        "File", backref=backref("file_index", uselist=False)
+        "File", backref=backref("file_analysis", uselist=False)
     )
 
     def __repr__(self) -> str:
-        return f"<FileIndex {self.id} (file_id={self.file_id}, record_count={self.record_count})>"
+        return f"<FileAnalysis {self.id} (file_id={self.file_id}, record_count={self.record_count})>"
 
 
 class WorkflowProgress(Base):

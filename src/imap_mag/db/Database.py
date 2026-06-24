@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, or_, select
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from imap_db.model import Base, File, FileIndex, WorkflowProgress
+from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 
 logger = logging.getLogger(__name__)
 
@@ -203,9 +203,9 @@ class Database:
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
-    def get_file_index_by_file_id(self, file_id: int) -> FileIndex | None:
+    def get_file_analysis_by_file_id(self, file_id: int) -> FileAnalysis | None:
         """Get the file index entry for a given file ID."""
-        statement = select(FileIndex).where(FileIndex.file_id == file_id)
+        statement = select(FileAnalysis).where(FileAnalysis.file_id == file_id)
         with self.session() as session:
             return session.execute(statement).scalars().first()
 

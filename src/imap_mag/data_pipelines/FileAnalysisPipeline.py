@@ -1,16 +1,16 @@
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import Pipeline, PipelineRunParameters
+from imap_mag.data_pipelines.AnalyseFilesStage import AnalyseFilesStage
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
-from imap_mag.data_pipelines.IndexFileStage import IndexFileStage
 from imap_mag.data_pipelines.SaveDatabaseItemsStage import SaveDatabaseItemsStage
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
 
 
-class FileIndexPipeline(Pipeline):
-    """Pipeline that indexes metadata about data files into the file_index database table."""
+class FileAnalysisPipeline(Pipeline):
+    """Pipeline that indexes metadata about data files into the file_analysis database table."""
 
-    PROGRESS_ITEM_ID = "FILE_INDEX"
+    PROGRESS_ITEM_ID = "FILE_ANALYSER"
 
     def __init__(self, database: Database | None, settings: AppSettings):
         super().__init__(settings=settings)
@@ -25,7 +25,7 @@ class FileIndexPipeline(Pipeline):
                     database=self._database,
                     settings=self._settings,
                 ),
-                IndexFileStage(settings=self._settings),
+                AnalyseFilesStage(settings=self._settings),
                 SaveDatabaseItemsStage(database=self._database),
                 SaveProcessingDatesStage(database=self._database),
             ],

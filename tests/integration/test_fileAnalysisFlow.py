@@ -1,4 +1,4 @@
-"""E2E tests for file_index_flow (minimal - prefer unit/pipeline tests for logic coverage)."""
+"""E2E tests for file_analyser_flow (minimal - prefer unit/pipeline tests for logic coverage)."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -6,7 +6,7 @@ import pytest
 
 from imap_db.model import File
 from imap_mag.util.Environment import Environment
-from prefect_server.fileIndexFlow import file_index_flow
+from prefect_server.fileAnalyserFlow import file_analyser_flow
 from tests.util.miscellaneous import DATASTORE
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -26,7 +26,7 @@ def _insert_file(test_database, rel_path: str, app_settings) -> File:
 
 
 @pytest.mark.asyncio
-async def test_flow_indexes_file_by_id(
+async def test_flow_analyses_file_by_id(
     test_database,
     test_database_container,
     prefect_test_fixture,  # noqa: F811
@@ -40,15 +40,15 @@ async def test_flow_indexes_file_by_id(
         settings = AppSettings()  # type: ignore
         file = _insert_file(test_database, rel_path, settings)
 
-        await file_index_flow(files=[file.id])
+        await file_analyser_flow(files=[file.id])
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.record_count == 100
 
 
 @pytest.mark.asyncio
-async def test_flow_indexes_by_file_path(
+async def test_flow_analyses_by_file_path(
     test_database,
     test_database_container,
     prefect_test_fixture,  # noqa: F811
@@ -62,8 +62,8 @@ async def test_flow_indexes_by_file_path(
         settings = AppSettings()  # type: ignore
         file = _insert_file(test_database, rel_path, settings)
 
-        await file_index_flow(file_paths=[rel_path])
+        await file_analyser_flow(file_paths=[rel_path])
 
-        idx = test_database.get_file_index_by_file_id(file.id)
+        idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
         assert idx.record_count == 5
