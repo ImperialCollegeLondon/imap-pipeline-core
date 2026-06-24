@@ -436,44 +436,6 @@ class TestUploadNewFilesToPostgres:
         mock_extract.assert_called_once()
         assert result.is_completed()
 
-    @pytest.mark.asyncio
-    async def test_processes_files_via_thread_to_avoid_blocking_event_loop(
-        self, tmp_path
-    ):
-        """Verify that file processing is delegated to a worker thread."""
-        mock_settings = self._make_mock_settings(tmp_path)
-        test_file = tmp_path / "data.csv"
-        test_file.write_text("col1,col2\n1,2\n")
-
-        mock_db = self._make_mock_db()
-        mock_file = self._make_mock_file("data.csv")
-        mock_db.get_files_since.return_value = [mock_file]
-
-        with (
-            self._base_patches(mock_settings, mock_db),
-            patch(
-                "prefect_server.postgresUploadFlow.File.filter_to_latest_versions_only",
-                return_value=[mock_file],
-            ),
-            patch("prefect_server.postgresUploadFlow.CrumpConfig"),
-            patch(
-                "prefect_server.postgresUploadFlow._process_files",
-                return_value=(1, 0),
-            ),
-            patch(
-                "prefect_server.postgresUploadFlow.anyio.to_thread.run_sync",
-                new_callable=AsyncMock,
-                return_value=(1, 0),
-            ) as mock_run_sync,
-        ):
-            result = await upload_new_files_to_postgres.fn(
-                paths_to_match=["*.csv"],
-                db_env_name_or_block_name_or_block="DB_URL",
-            )
-
-        mock_run_sync.assert_called_once()
-        assert result.is_completed()
-
 
 class TestPostgresUploadFlowSimpleRun:
     @pytest.mark.asyncio

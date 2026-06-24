@@ -87,9 +87,9 @@ async def _get_database_connectionstring(
 
 
 def _process_files(
-    files,
-    app_settings,
-    crump_config,
+    files: list[File],
+    app_settings: AppSettings,
+    crump_config: CrumpConfig,
     db_url: str,
     job_name: str | None,
     logger: logging.Logger,
@@ -312,7 +312,7 @@ async def upload_new_files_to_postgres(
         )
     crump_config = CrumpConfig.from_yaml(crump_config_path)
 
-    # Process each file on a worker thread to avoid blocking the event loop and
+    # Process all files on a worker thread to avoid blocking the event loop and
     # triggering Prefect concurrency-lease renewal failures on long runs.
     uploaded_count, failed_count = await anyio.to_thread.run_sync(
         lambda: _process_files(
