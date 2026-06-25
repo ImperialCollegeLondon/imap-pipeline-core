@@ -56,8 +56,10 @@ class File(Base):
     def __repr__(self) -> str:
         return f"<File {self.id} (name={self.name}, path={self.path})>"
 
-    def set_deleted(self) -> None:
-        now = DatetimeProvider.now()
+    def set_deleted(
+        self, datetime_provider: DatetimeProvider = DatetimeProvider()
+    ) -> None:
+        now = datetime_provider.now()
         self.deletion_date = now
         self.last_modified_date = now
         self.software_version = __version__
@@ -106,7 +108,7 @@ class File(Base):
         self.content_date = new_file.content_date
         self.version = new_file.version
 
-        now = DatetimeProvider.now()
+        now = DatetimeProvider().now()
         self.last_modified_date = now
         self.software_version = __version__
         return True

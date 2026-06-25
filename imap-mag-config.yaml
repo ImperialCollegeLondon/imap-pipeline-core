@@ -4,9 +4,10 @@
 # and by dictionaries passed into the constructor of the AppSettings class
 
 # General application conifguration:
-work_folder: ".work"
-data_store: "tests/datastore"
-packet_definition: "packet_def/"
+work_folder: '.work'
+data_store:  'tests/datastore'
+packet_definition: 'packet_def/'
+disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
 sdc: &sdc_creds
     url_base: "https://api.dev.imap-mission.com"

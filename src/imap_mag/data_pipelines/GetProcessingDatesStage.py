@@ -23,10 +23,12 @@ class GetProcessingDatesStage(SourceStage):
         self,
         database: Database | None,
         date_resolution_mode: DateResolutionMode = DateResolutionMode.EXACT_DATETIME,
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
         super().__init__()
         self.database = database
         self.mode = date_resolution_mode
+        self._datetime_provider = datetime_provider
 
     async def start(self, context: dict, **kwargs):
         requested_start_date = None
@@ -53,7 +55,9 @@ class GetProcessingDatesStage(SourceStage):
         )
         context["workflow_progress"] = workflow_progress
 
-        date_manager = DownloadDateManager(progress_item_name, self.database)
+        date_manager = DownloadDateManager(
+            progress_item_name, self.database, datetime_provider=self._datetime_provider
+        )
 
         download_dates = date_manager.get_dates_for_download(
             original_start_date=requested_start_date,
@@ -71,7 +75,7 @@ class GetProcessingDatesStage(SourceStage):
         download_end = requested_end_date if force_redownload else download_end
 
         if download_end is None and download_start is not None:
-            download_end = DatetimeProvider.end_of_today()
+            download_end = self._datetime_provider.end_of_today()
 
         # nothing to do? record we check it and exit
         if download_start is None and download_end is None:
@@ -80,7 +84,7 @@ class GetProcessingDatesStage(SourceStage):
                 != ProgressUpdateMode.NEVER_UPDATE_PROGRESS
             ):
                 workflow_progress.update_last_checked_timestamp(
-                    context.get("started", DatetimeProvider.now())
+                    context.get("started", self._datetime_provider.now())
                 )
             return
 

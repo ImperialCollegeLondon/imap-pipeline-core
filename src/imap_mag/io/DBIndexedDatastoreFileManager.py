@@ -45,9 +45,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         self.__settings = settings if settings else AppSettings()  # type: ignore
         self.__file_manager = (
-            file_manager
-            if file_manager
-            else DatastoreFileManager(self.__settings.data_store)
+            file_manager if file_manager else DatastoreFileManager(self.__settings)
         )
 
         if database is None:

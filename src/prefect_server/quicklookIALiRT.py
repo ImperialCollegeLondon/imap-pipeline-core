@@ -23,7 +23,7 @@ def generate_flow_run_name() -> str:
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.QUICKLOOK_IALIRT,
     log_prints=True,
-    flow_run_name=generate_flow_run_name,
+    flow_run_name=lambda: generate_flow_run_name(),
 )
 async def quicklook_ialirt_flow(
     start_date: Annotated[
@@ -34,7 +34,7 @@ async def quicklook_ialirt_flow(
                 "description": "Start date for the download. Default is the last update.",
             }
         ),
-    ] = DatetimeProvider.today() - timedelta(days=2),
+    ] = None,
     end_date: Annotated[
         datetime | None,
         Field(
@@ -43,7 +43,7 @@ async def quicklook_ialirt_flow(
                 "description": "End date for the download. Default is the end of the hour.",
             }
         ),
-    ] = DatetimeProvider.end_of_today(),
+    ] = None,
     combined_plot: Annotated[
         bool,
         Field(
@@ -62,10 +62,24 @@ async def quicklook_ialirt_flow(
             }
         ),
     ] = False,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
 ) -> None:
     """
     Plot I-ALiRT data from data store.
     """
+
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
+    )
+
+    if start_date is None:
+        start_date = datetime_provider.today() - timedelta(days=2)
+    if end_date is None:
+        end_date = datetime_provider.end_of_today()
 
     plot_ialirt(
         start_date=start_date,
@@ -73,4 +87,5 @@ async def quicklook_ialirt_flow(
         combined_plot=combined_plot,
         save_mode=SaveMode.LocalAndDatabase,
         force_latest_update=force_latest_update,
+        datetime_provider=datetime_provider,
     )
