@@ -61,21 +61,12 @@ class NOAAApiClient:
         mag_file = "rtsw_mag_1m.json"
         plasma_file = "rtsw_plasma_1m.json"
 
-        try:
-            mag_data: list[dict[str, Any]] = self._download_json_file(
-                self._solar1_ace_url, mag_file
-            )
-        except Exception as e:
-            logger.error(f"Error downloading SOLAR-1 and ACE magnetic data: {e}")
-            raise
-
-        try:
-            plasma_data: list[dict[str, Any]] = self._download_json_file(
-                self._solar1_ace_url, plasma_file
-            )
-        except Exception as e:
-            logger.error(f"Error downloading SOLAR-1 and ACE plasma data: {e}")
-            raise
+        mag_data: list[dict[str, Any]] = self._download_json_file(
+            self._solar1_ace_url, mag_file
+        )
+        plasma_data: list[dict[str, Any]] = self._download_json_file(
+            self._solar1_ace_url, plasma_file
+        )
 
         return mag_data + plasma_data
 
@@ -111,32 +102,19 @@ class NOAAApiClient:
             _plasma_file = "plasma-7-day.json"
 
         # Download the data from the DSCOVR API
-        try:
-            mag_data: list[list[Any]] = self._download_json_file(
-                self._dscovr_url, _mag_file
-            )
-        except Exception as e:
-            logger.error(f"Error downloading DSCOVR magnetic data: {e}")
-            raise
-
-        try:
-            plasma_data: list[list[Any]] = self._download_json_file(
-                self._dscovr_url, _plasma_file
-            )
-        except Exception as e:
-            logger.error(f"Error downloading DSCOVR plasma data: {e}")
-            raise
+        mag_data: list[list[Any]] = self._download_json_file(
+            self._dscovr_url, _mag_file
+        )
+        plasma_data: list[list[Any]] = self._download_json_file(
+            self._dscovr_url, _plasma_file
+        )
 
         # Convert the list of lists to a list of dictionaries using the first row as
         # keys
-        try:
-            mag_cols = mag_data[0]
-            plasma_cols = plasma_data[0]
-            mag_data_dicts = [dict(zip(mag_cols, row)) for row in mag_data[1:]]
-            plasma_data_dicts = [dict(zip(plasma_cols, row)) for row in plasma_data[1:]]
-        except Exception as e:
-            logger.error(f"Error converting DSCOVR data to dictionaries: {e}")
-            raise
+        mag_cols = mag_data[0]
+        plasma_cols = plasma_data[0]
+        mag_data_dicts = [dict(zip(mag_cols, row)) for row in mag_data[1:]]
+        plasma_data_dicts = [dict(zip(plasma_cols, row)) for row in plasma_data[1:]]
 
         return mag_data_dicts + plasma_data_dicts
 
