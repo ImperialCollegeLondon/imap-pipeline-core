@@ -7,22 +7,20 @@ from typing import Any
 
 import requests
 
-from imap_mag.config import AppSettings
-
 logger = logging.getLogger(__name__)
 
 
-class OtherL1ApiClient:
-    """Interacts with SOLAR-1, ACE and DSCOVR APIs.
+class NOAAApiClient:
+    """Interacts with SOLAR-1, ACE and DSCOVR APIs provided by NOAA.
 
     Which specific JSON file to use depends on the spacecraft as well as the
     time range to retrieve, using the file that covers as much as possible
     within the requested time range.
     """
 
-    def __init__(self, app_settings: AppSettings):
-        self._solar1_ace_url: str = app_settings.fetch_solar1_ace.api.url_base
-        self._dscovr_url: str = app_settings.fetch_dscovr.api.url_base
+    def __init__(self, solar1_ace_url: str, dscovr_url: str):
+        self._solar1_ace_url = solar1_ace_url
+        self._dscovr_url = dscovr_url
 
         if not self._solar1_ace_url:
             raise ValueError("SOLAR-1 and ACE URL cannot be empty.")
@@ -147,7 +145,7 @@ class OtherL1ApiClient:
         *,
         start_date: datetime,
     ) -> dict[str, list[dict[str, Any]]]:
-        """Download data from all other L1 spacecrafts.
+        """Download data from all other NOAA spacecrafts.
 
         Args:
             start_date: The start date of the requested time range.
