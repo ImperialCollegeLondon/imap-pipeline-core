@@ -36,9 +36,9 @@ class FetchWebTCADLaTiSConfig(CommandConfig):
 
 class FetchSOLAR1andACEConfig(CommandConfig):
     api: SOLAR1andACEApiSource
-    publish_to_data_store: bool = False
+    publish_to_data_store: bool = True
 
 
 class FetchDSCOVRConfig(CommandConfig):
     api: DSCOVRApiSource
-    publish_to_data_store: bool = False
+    publish_to_data_store: bool = True

@@ -1,11 +1,13 @@
 """Interct with the other L1 API."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from time import time
 from typing import Any
 
 import requests
+
+from imap_mag.config import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +20,17 @@ class OtherL1ApiClient:
     within the requested time range.
     """
 
-    def __init__(self, solar1_ace_url: str, dscovr_url: str):
-        self._solar1_ace_url: str = solar1_ace_url
-        self._dscovr_url: str = dscovr_url
+    def __init__(self, app_settings: AppSettings):
+        self._solar1_ace_url: str = app_settings.fetch_solar1_ace.api.url_base
+        self._dscovr_url: str = app_settings.fetch_dscovr.api.url_base
+
+        if not self._solar1_ace_url:
+            raise ValueError("SOLAR-1 and ACE URL cannot be empty.")
+        if not self._dscovr_url:
+            raise ValueError("DSCOVR URL cannot be empty.")
 
     @staticmethod
-    def _download_json_file(base_url: str, file_name: str) -> list[dict[str, Any]]:
+    def _download_json_file(base_url: str, file_name: str) -> list[Any]:
         """Download a JSON file return its content as a list of dictionaries.
 
         Args:
@@ -34,17 +41,13 @@ class OtherL1ApiClient:
             A list of dictionaries containing the JSON data.
         """
 
-        url = f"{base_url}/{file_name}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  # Raise an error for bad responses
-            return response.json()  # Assuming the response is a JSON array
-        except requests.RequestException as e:
-            logger.error(f"Failed to download {url}: {e}")
-            raise
+        url = f"{base_url.rstrip('/')}/{file_name.lstrip('/')}"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()  # Raise an error for bad responses
+        return response.json()  # Assuming the response is a JSON array
 
     def _get_solar1_ace_data(self) -> list[dict[str, Any]]:
-        """Download SOLAR-1 and ACE data.
+        """Download SOLAR-1 and ACE data from real-time space weather API.
 
         As there is one file for magnetic field and another for plasma, both containing
         the last 24h, we can just download both files and return the data. No date range
@@ -64,27 +67,29 @@ class OtherL1ApiClient:
             mag_data: list[dict[str, Any]] = self._download_json_file(
                 self._solar1_ace_url, mag_file
             )
+        except Exception as e:
+            logger.error(f"Error downloading SOLAR-1 and ACE magnetic data: {e}")
+            raise
+
+        try:
             plasma_data: list[dict[str, Any]] = self._download_json_file(
                 self._solar1_ace_url, plasma_file
             )
         except Exception as e:
-            logger.error(f"Error downloading SOLAR-1 and ACE data: {e}")
-            return []
+            logger.error(f"Error downloading SOLAR-1 and ACE plasma data: {e}")
+            raise
 
         return mag_data + plasma_data
 
-    def _get_dscovr_data(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[dict[str, Any]]:
-        """Download DSCOVR data.
+    def _get_dscovr_data(self, start_date: datetime) -> list[dict[str, Any]]:
+        """Download DSCOVR data from solar wind API.
 
         The DSCOVR API privides several files, each containing data for a specific time
-        range for 2h, 6h, 1 day, 3 day and 7 day. We will download the file that covers
-        as much as possible of the requested time range.
+        range for the last 2h, 6h, 1 day, 3 day and 7 day. We will download the file
+        that covers as much as possible of the requested time range.
 
         Args:
             start_date: The start date of the requested time range.
-            end_date: The end date of the requested time range.
 
         Returns:
             A list of dictionaries containing the DSCOVR data.
@@ -97,7 +102,7 @@ class OtherL1ApiClient:
             "3-day": 72,
             "7-day": 168,
         }
-        dt = end_date - start_date
+        dt = datetime.now(tz=UTC) - start_date
         for file_name, hours in time_ranges.items():
             if dt.total_seconds() <= hours * 3600:
                 _mag_file = f"mag-{file_name}.json"
@@ -109,15 +114,20 @@ class OtherL1ApiClient:
 
         # Download the data from the DSCOVR API
         try:
-            mag_data: list[dict[str, Any]] = self._download_json_file(
+            mag_data: list[list[Any]] = self._download_json_file(
                 self._dscovr_url, _mag_file
             )
-            plasma_data: list[dict[str, Any]] = self._download_json_file(
+        except Exception as e:
+            logger.error(f"Error downloading DSCOVR magnetic data: {e}")
+            raise
+
+        try:
+            plasma_data: list[list[Any]] = self._download_json_file(
                 self._dscovr_url, _plasma_file
             )
         except Exception as e:
-            logger.error(f"Error downloading DSCOVR data: {e}")
-            return []
+            logger.error(f"Error downloading DSCOVR plasma data: {e}")
+            raise
 
         # Convert the list of lists to a list of dictionaries using the first row as
         # keys
@@ -128,32 +138,31 @@ class OtherL1ApiClient:
             plasma_data_dicts = [dict(zip(plasma_cols, row)) for row in plasma_data[1:]]
         except Exception as e:
             logger.error(f"Error converting DSCOVR data to dictionaries: {e}")
-            return []
+            raise
+
         return mag_data_dicts + plasma_data_dicts
 
     def get_all_data(
         self,
         *,
         start_date: datetime,
-        end_date: datetime,
     ) -> dict[str, list[dict[str, Any]]]:
         """Download data from all other L1 spacecrafts.
 
         Args:
             start_date: The start date of the requested time range.
-            end_date: The end date of the requested time range.
 
         Returns:
             A list of dictionaries containing the DSCOVR data.
         """
         start_time = time()
         logger.info(
-            f"Downloading data from other L1 spacecrafts between {start_date} "
-            + f"and {end_date}."
+            f"Downloading data from other L1 spacecrafts from {start_date} "
+            + f"until {datetime.now(tz=UTC)}."
         )
 
         solar1_ace_data = self._get_solar1_ace_data()
-        dscovr_data = self._get_dscovr_data(start_date, end_date)
+        dscovr_data = self._get_dscovr_data(start_date)
 
         logger.debug(
             f"Downloaded {len(solar1_ace_data) + len(dscovr_data)} records from other "
