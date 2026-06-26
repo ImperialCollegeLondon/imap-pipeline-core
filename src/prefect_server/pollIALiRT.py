@@ -190,7 +190,7 @@ async def poll_ialirt_flow(
     while True:
         current_time = datetime_provider.now()
 
-        if not wait_for_new_data_to_arrive or current_time >= end_date:
+        if current_time >= end_date:
             break
 
         logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")
@@ -219,6 +219,9 @@ async def poll_ialirt_flow(
             error_message = "All instrument pipelines failed in a single batch."
             logger.error(error_message)
             return Failed(message=error_message)
+
+        if not wait_for_new_data_to_arrive:
+            break
 
         # Calculate how long the downloads took
         batch_duration = (datetime_provider.now() - current_time).total_seconds()
