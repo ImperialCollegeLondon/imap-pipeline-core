@@ -25,7 +25,7 @@ async def poll_hi45_esa_step_flow(
     run_parameters: Annotated[
         AutomaticRunParameters | FetchByDatesRunParameters,
         _RUN_PARAMETERS_FIELD,
-    ],
+    ] = AutomaticRunParameters(),
     use_database: bool = True,
 ):
     """Poll IMAP-Hi 45 instrument ESA STEP housekeeping data from WebTCAD LaTiS API."""
@@ -46,7 +46,7 @@ async def poll_hi90_esa_step_flow(
     run_parameters: Annotated[
         AutomaticRunParameters | FetchByDatesRunParameters,
         _RUN_PARAMETERS_FIELD,
-    ],
+    ] = AutomaticRunParameters(),
     use_database: bool = True,
 ):
     """Poll IMAP-Hi 90 instrument ESA STEP housekeeping data from WebTCAD LaTiS API."""
