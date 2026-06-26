@@ -4,8 +4,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import prefect_managedfiletransfer
-from prefect import State, flow
+from prefect import State, flow, task
 from prefect.filesystems import LocalFileSystem
+from prefect.flows import ThreadPoolTaskRunner
 from prefect.states import Completed
 from prefect_managedfiletransfer import (
     FileMatcher,
@@ -34,6 +35,7 @@ DestinationBlockType = (
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.SHAREPOINT_UPLOAD,
     log_prints=True,
+    task_runner=ThreadPoolTaskRunner(max_workers=1),
 )
 async def upload_shared_docs_flow(
     destination_block_or_blockname: (
@@ -58,7 +60,7 @@ async def upload_shared_docs_flow(
     started = datetime.now(tz=UTC)
 
     uploaded_files = (
-        await upload_new_files(
+        upload_new_files.submit(
             destination_block_or_blockname,
             how_many,
             app_settings,
@@ -66,13 +68,13 @@ async def upload_shared_docs_flow(
             started,
             find_files_after,
             workflow_progress_key,
-        )
+        ).result()
         if do_uploads
         else 0
     )
 
     deleted_files = (
-        await remove_deleted_files(
+        remove_deleted_files.submit(
             destination_block_or_blockname,
             how_many,
             app_settings,
@@ -80,7 +82,7 @@ async def upload_shared_docs_flow(
             started,
             find_files_after,
             workflow_progress_key,
-        )
+        ).result()
         if do_deletes
         else 0
     )
@@ -115,6 +117,7 @@ def _filter_files_by_patterns(
     return filtered_files
 
 
+@task
 async def upload_new_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
@@ -201,6 +204,7 @@ def _get_workflow_progress(
     return workflow_progress, last_modified_date
 
 
+@task
 async def remove_deleted_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
