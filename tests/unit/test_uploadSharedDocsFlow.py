@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -111,8 +111,7 @@ class TestGetWorkflowProgress:
 
 
 class TestUploadNewFiles:
-    @pytest.mark.asyncio
-    async def test_returns_zero_when_no_files_to_upload(self, tmp_path):
+    def test_returns_zero_when_no_files_to_upload(self, tmp_path):
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
         mock_settings.upload.paths_to_match = ["*.csv"]
@@ -123,7 +122,7 @@ class TestUploadNewFiles:
         )
         mock_db.get_files_since.return_value = []
 
-        result = await upload_new_files(
+        result = upload_new_files(
             destination_block_or_blockname="test-block",
             how_many=None,
             app_settings=mock_settings,
@@ -135,8 +134,7 @@ class TestUploadNewFiles:
 
         assert result == 0
 
-    @pytest.mark.asyncio
-    async def test_skips_upload_when_file_does_not_exist_on_disk(self, tmp_path):
+    def test_skips_upload_when_file_does_not_exist_on_disk(self, tmp_path):
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
         mock_settings.upload.paths_to_match = ["*"]
@@ -156,9 +154,8 @@ class TestUploadNewFiles:
 
         with patch(
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.upload_file_flow",
-            new_callable=AsyncMock,
         ) as mock_upload:
-            await upload_new_files(
+            upload_new_files(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,
@@ -170,8 +167,7 @@ class TestUploadNewFiles:
 
         mock_upload.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_uploads_file_and_returns_count(self, tmp_path):
+    def test_uploads_file_and_returns_count(self, tmp_path):
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path
         mock_settings.upload.paths_to_match = ["*.csv"]
@@ -193,9 +189,8 @@ class TestUploadNewFiles:
 
         with patch(
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.upload_file_flow",
-            new_callable=AsyncMock,
         ):
-            result = await upload_new_files(
+            result = upload_new_files(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,
@@ -209,8 +204,7 @@ class TestUploadNewFiles:
 
 
 class TestRemoveDeletedFiles:
-    @pytest.mark.asyncio
-    async def test_returns_zero_when_no_deleted_files(self, tmp_path):
+    def test_returns_zero_when_no_deleted_files(self, tmp_path):
         mock_settings = MagicMock()
         mock_settings.upload.paths_to_match = ["*.csv"]
 
@@ -220,7 +214,7 @@ class TestRemoveDeletedFiles:
         )
         mock_db.get_files_deleted_since.return_value = []
 
-        result = await remove_deleted_files(
+        result = remove_deleted_files(
             destination_block_or_blockname="test-block",
             how_many=None,
             app_settings=mock_settings,
@@ -232,8 +226,7 @@ class TestRemoveDeletedFiles:
 
         assert result == 0
 
-    @pytest.mark.asyncio
-    async def test_deletes_remote_file_and_returns_count(self, tmp_path):
+    def test_deletes_remote_file_and_returns_count(self, tmp_path):
         mock_settings = MagicMock()
         mock_settings.upload.paths_to_match = ["*.csv"]
         mock_settings.upload.root_path = "/remote/root"
@@ -251,9 +244,8 @@ class TestRemoveDeletedFiles:
 
         with patch(
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.delete_files_flow",
-            new_callable=AsyncMock,
         ):
-            result = await remove_deleted_files(
+            result = remove_deleted_files(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,
@@ -280,12 +272,10 @@ class TestUploadSharedDocsFlow:
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.upload_new_files",
-                new_callable=AsyncMock,
                 return_value=0,
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.remove_deleted_files",
-                new_callable=AsyncMock,
                 return_value=0,
             ),
         ):
@@ -308,12 +298,10 @@ class TestUploadSharedDocsFlow:
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.upload_new_files",
-                new_callable=AsyncMock,
                 return_value=3,
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.remove_deleted_files",
-                new_callable=AsyncMock,
                 return_value=1,
             ),
         ):
@@ -327,8 +315,8 @@ class TestUploadSharedDocsFlow:
 
     @pytest.mark.asyncio
     async def test_skips_uploads_when_do_uploads_false(self):
-        mock_upload = AsyncMock(return_value=0)
-        mock_delete = AsyncMock(return_value=0)
+        mock_upload = MagicMock(return_value=0)
+        mock_delete = MagicMock(return_value=0)
 
         with (
             patch(
