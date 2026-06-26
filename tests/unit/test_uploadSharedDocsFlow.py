@@ -269,6 +269,11 @@ class TestRemoveDeletedFiles:
 class TestUploadSharedDocsFlow:
     @pytest.mark.asyncio
     async def test_returns_no_work_completed_when_no_files(self):
+        mock_upload_task = MagicMock()
+        mock_upload_task.submit.return_value.result.return_value = 0
+        mock_delete_task = MagicMock()
+        mock_delete_task.submit.return_value.result.return_value = 0
+
         with (
             patch(
                 "prefect_server.uploadSharedDocsFlow.AppSettings",
@@ -280,13 +285,11 @@ class TestUploadSharedDocsFlow:
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.upload_new_files",
-                new_callable=AsyncMock,
-                return_value=0,
+                new=mock_upload_task,
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.remove_deleted_files",
-                new_callable=AsyncMock,
-                return_value=0,
+                new=mock_delete_task,
             ),
         ):
             result = await upload_shared_docs_flow.fn(
@@ -297,6 +300,13 @@ class TestUploadSharedDocsFlow:
 
     @pytest.mark.asyncio
     async def test_returns_completed_with_counts_when_files_uploaded(self):
+
+        # create a mock for task.submit(...).result() that returns 3 for uploads and 1 for deletes
+        mock_upload = MagicMock()
+        mock_upload.submit.return_value.result.return_value = 3
+        mock_delete = MagicMock()
+        mock_delete.submit.return_value.result.return_value = 1
+
         with (
             patch(
                 "prefect_server.uploadSharedDocsFlow.AppSettings",
@@ -308,13 +318,11 @@ class TestUploadSharedDocsFlow:
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.upload_new_files",
-                new_callable=AsyncMock,
-                return_value=3,
+                new=mock_upload,
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.remove_deleted_files",
-                new_callable=AsyncMock,
-                return_value=1,
+                new=mock_delete,
             ),
         ):
             result = await upload_shared_docs_flow.fn(
@@ -327,8 +335,10 @@ class TestUploadSharedDocsFlow:
 
     @pytest.mark.asyncio
     async def test_skips_uploads_when_do_uploads_false(self):
-        mock_upload = AsyncMock(return_value=0)
-        mock_delete = AsyncMock(return_value=0)
+        mock_upload_task = MagicMock()
+        mock_upload_task.submit.return_value.result.return_value = 0
+        mock_delete_task = MagicMock()
+        mock_delete_task.submit.return_value.result.return_value = 0
 
         with (
             patch(
@@ -341,11 +351,11 @@ class TestUploadSharedDocsFlow:
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.upload_new_files",
-                mock_upload,
+                new=mock_upload_task,
             ),
             patch(
                 "prefect_server.uploadSharedDocsFlow.remove_deleted_files",
-                mock_delete,
+                new=mock_delete_task,
             ),
         ):
             await upload_shared_docs_flow.fn(
@@ -353,5 +363,5 @@ class TestUploadSharedDocsFlow:
                 do_uploads=False,
             )
 
-        mock_upload.assert_not_called()
-        mock_delete.assert_called_once()
+        mock_upload_task.submit.assert_not_called()
+        mock_delete_task.submit.assert_called_once()
