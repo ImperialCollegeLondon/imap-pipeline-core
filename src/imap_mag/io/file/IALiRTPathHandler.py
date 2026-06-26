@@ -65,18 +65,3 @@ class IALiRTPathHandler(IFilePathHandler):
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 extension=match["ext"],
             )
-
-        # Legacy name - mag
-        filename_str = Path(filename).name
-        mag_match = re.match(
-            r"imap_ialirt_(?P<date>\d{8})\.(?P<ext>\w+)",
-            filename_str,
-        )
-
-        if mag_match:
-            return cls(
-                instrument="mag",
-                content_date=datetime.strptime(mag_match["date"], "%Y%m%d"),
-                extension=mag_match["ext"],
-            )
-        return None
