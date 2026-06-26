@@ -11018,13 +11018,13 @@ jobs:
         type: boolean
         nullable: false
     filename_to_column:
-      template: imap_ialirt_hk_[date].csv
+      template: imap_ialirt_mag_hk_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    filename_match: imap_ialirt_hk_*.csv
+    filename_match: imap_ialirt_mag_hk_*.csv
   imap_ialirt:
     target_table: ialirt_mag
     id_mapping:
@@ -11102,13 +11102,13 @@ jobs:
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_ialirt_[date].csv
+      template: imap_ialirt_mag_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    filename_match: imap_ialirt_*.csv
+    filename_match: imap_ialirt_mag_*.csv
   ialirt_swe:
     target_table: ialirt_swe
     id_mapping:
@@ -11117,14 +11117,6 @@ jobs:
         type: datetime
         nullable: false
     columns:
-      instrument:
-        db_column: instrument
-        type: varchar(3)
-        nullable: false
-      kernel_set_key:
-        db_column: kernel_set_key
-        type: datetime
-        nullable: false
       swe_counterstreaming_electrons:
         db_column: swe_counterstreaming_electrons
         type: integer
@@ -11142,17 +11134,12 @@ jobs:
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_swe_ialirt_[date].csv
+      template: imap_ialirt_swe_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    indexes:
-    - name: idx_kernel_set_key
-      columns:
-      - column: kernel_set_key
-        order: DESC
   ialirt_hit:
     target_table: ialirt_hit
     id_mapping:
@@ -11189,30 +11176,17 @@ jobs:
         db_column: hit_he_omni_low_en
         type: integer
         nullable: false
-      instrument:
-        db_column: instrument
-        type: varchar(3)
-        nullable: false
-      kernel_set_key:
-        db_column: kernel_set_key
-        type: datetime
-        nullable: false
       ttj2000ns:
         db_column: ttj2000ns
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_hit_ialirt_[date].csv
+      template: imap_ialirt_hit_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    indexes:
-    - name: idx_kernel_set_key
-      columns:
-      - column: kernel_set_key
-        order: DESC
   ialirt_swapi:
     target_table: ialirt_swapi
     id_mapping:
@@ -11221,14 +11195,6 @@ jobs:
         type: datetime
         nullable: false
     columns:
-      instrument:
-        db_column: instrument
-        type: varchar(5)
-        nullable: false
-      kernel_set_key:
-        db_column: kernel_set_key
-        type: datetime
-        nullable: false
       swapi_epoch:
         db_column: swapi_epoch
         type: bigint
@@ -11250,17 +11216,12 @@ jobs:
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_swapi_ialirt_[date].csv
+      template: imap_ialirt_swapi_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    indexes:
-    - name: idx_kernel_set_key
-      columns:
-      - column: kernel_set_key
-        order: DESC
   ialirt_codice_lo:
     target_table: ialirt_codice_lo
     id_mapping:
@@ -11297,30 +11258,17 @@ jobs:
         db_column: codice_lo_o_plus_7_over_o_plus_6
         type: float
         nullable: true
-      instrument:
-        db_column: instrument
-        type: varchar(9)
-        nullable: false
-      kernel_set_key:
-        db_column: kernel_set_key
-        type: datetime
-        nullable: false
       ttj2000ns:
         db_column: ttj2000ns
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_codice_lo_ialirt_[date].csv
+      template: imap_ialirt_codice_lo_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    indexes:
-    - name: idx_kernel_set_key
-      columns:
-      - column: kernel_set_key
-        order: DESC
   ialirt_codice_hi:
     target_table: ialirt_codice_hi
     id_mapping:
@@ -11337,27 +11285,15 @@ jobs:
         db_column: codice_hi_h
         type: text
         nullable: false
-      instrument:
-        db_column: instrument
-        type: varchar(9)
-        nullable: false
-      kernel_set_key:
-        db_column: kernel_set_key
-        type: datetime
-        nullable: false
       ttj2000ns:
         db_column: ttj2000ns
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_codice_hi_ialirt_[date].csv
+      template: imap_ialirt_codice_hi_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
-    indexes:
-    - name: idx_kernel_set_key
-      columns:
-      - column: kernel_set_key
-        order: DESC
+

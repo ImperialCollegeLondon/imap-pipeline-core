@@ -46,7 +46,7 @@ def _publish_files(
     app_settings: AppSettings,
     downloaded_files: dict[Path, IALiRTPathHandler],
     fetch_mode: FetchMode,
-    instrument: str = CONSTANTS.INSTRUMENTS.IALIRT_MAG,
+    instrument: str = "CONSTANTS.IALIRT_INSTRUMENTS.IALIRT_MAG",
 ) -> dict[Path, IALiRTPathHandler]:
     """Publish downloaded files to data store."""
 
@@ -82,7 +82,7 @@ def fetch_ialirt(
     instrument: Annotated[
         str,
         typer.Option(help="Instrument to download data for (e.g., 'mag')"),
-    ] = CONSTANTS.INSTRUMENTS.IALIRT_MAG,
+    ] = CONSTANTS.IALIRT_INSTRUMENTS.IALIRT_MAG,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(
@@ -128,7 +128,7 @@ def fetch_ialirt_hk(
     instrument: Annotated[
         str,
         typer.Option(help="Instrument to download HK data for (e.g., 'mag')"),
-    ] = CONSTANTS.INSTRUMENTS.IALIRT_MAG_HK,
+    ] = CONSTANTS.IALIRT_INSTRUMENTS.IALIRT_MAG_HK,
     fetch_mode: Annotated[
         FetchMode,
         typer.Option(

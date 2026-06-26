@@ -7,6 +7,7 @@
 work_folder: '.work'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
+disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
 sdc: &sdc_creds
     url_base: 'https://api.dev.imap-mission.com'
@@ -103,8 +104,13 @@ postgres_upload:
         - "*hk/mag/l1/tcc-succ/*"
         - "*hk/sc/l1/x285/*"
         - "*hk/sc/l1/x286/*"
-        - "ialirt_hk/**/imap_ialirt_hk*.csv"
-        - "ialirt/**/imap_ialirt_*.csv"
+        - "ialirt_hk/**/imap_ialirt_mag_hk*.csv"
+        - "ialirt/**/imap_ialirt_mag*.csv"
+        - "ialirt/**/imap_ialirt_hit_*.csv"
+        - "ialirt/**/imap_ialirt_swe_*.csv"
+        - "ialirt/**/imap_ialirt_swapi_*.csv"
+        - "ialirt/**/imap_ialirt_codice_lo_*.csv"
+        - "ialirt/**/imap_ialirt_codice_hi_*.csv"
 
 datastore_cleanup:
     dry_run: false
