@@ -5,6 +5,7 @@ from pathlib import Path
 
 import prefect_managedfiletransfer
 from prefect import State, flow, task
+from prefect.cache_policies import NO_CACHE
 from prefect.filesystems import LocalFileSystem
 from prefect.flows import ThreadPoolTaskRunner
 from prefect.states import Completed
@@ -117,7 +118,7 @@ def _filter_files_by_patterns(
     return filtered_files
 
 
-@task
+@task(cache_policy=NO_CACHE)
 async def upload_new_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
@@ -204,7 +205,7 @@ def _get_workflow_progress(
     return workflow_progress, last_modified_date
 
 
-@task
+@task(cache_policy=NO_CACHE)
 async def remove_deleted_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
