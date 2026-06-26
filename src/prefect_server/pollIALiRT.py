@@ -184,13 +184,15 @@ async def poll_ialirt_flow(
     logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
 
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
+
+    combined_instruments = [combined_instruments[0]]
     logger.info(f"All instruments: {combined_instruments}")
 
     iteration = 1
     while True:
         current_time = datetime_provider.now()
 
-        if current_time >= end_date:
+        if wait_for_new_data_to_arrive and current_time >= end_date:
             break
 
         logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")

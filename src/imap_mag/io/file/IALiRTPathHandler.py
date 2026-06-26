@@ -40,7 +40,7 @@ class IALiRTPathHandler(IFilePathHandler):
 
         date_str = self.content_date.strftime("%Y%m%d")
 
-        return f"{self.mission}_{self.instrument.lower()}_ialirt_{date_str}.{self.extension}"
+        return f"{self.mission}_ialirt_{self.instrument.lower()}_{date_str}.{self.extension}"
 
     def add_metadata(self, metadata: dict) -> None:
         raise NotImplementedError()
