@@ -9,6 +9,7 @@ import pytest
 
 from prefect_server.postgresUploadFlow import (
     _get_database_connectionstring,
+    _process_files,
     upload_new_files_to_postgres,
 )
 
@@ -97,6 +98,125 @@ class TestGetDatabaseConnectionstring:
         ):
             with pytest.raises(ValueError, match="Invalid database connection input"):
                 await _get_database_connectionstring(mock_settings, None)
+
+
+class TestProcessFiles:
+    def _make_mock_settings(self, tmp_path):
+        mock_settings = MagicMock()
+        mock_settings.data_store = tmp_path
+        mock_settings.postgres_upload.enable_history = False
+        return mock_settings
+
+    def _make_mock_file(self, path="data.csv"):
+        mock_file = MagicMock()
+        mock_file.path = path
+        mock_file.last_modified_date = datetime(2025, 1, 2, tzinfo=UTC)
+        return mock_file
+
+    def test_returns_zero_counts_for_empty_file_list(self, tmp_path):
+        mock_settings = self._make_mock_settings(tmp_path)
+        mock_crump_config = MagicMock()
+        mock_logger = MagicMock()
+
+        uploaded, failed = _process_files(
+            [], mock_settings, mock_crump_config, "postgresql://test", None, mock_logger
+        )
+
+        assert uploaded == 0
+        assert failed == 0
+
+    def test_increments_failed_count_when_file_does_not_exist(self, tmp_path):
+        mock_settings = self._make_mock_settings(tmp_path)
+        mock_file = self._make_mock_file("nonexistent/data.csv")
+        mock_crump_config = MagicMock()
+        mock_logger = MagicMock()
+
+        uploaded, failed = _process_files(
+            [mock_file],
+            mock_settings,
+            mock_crump_config,
+            "postgresql://test",
+            None,
+            mock_logger,
+        )
+
+        assert uploaded == 0
+        assert failed == 1
+
+    def test_increments_failed_count_when_no_crump_job_found(self, tmp_path):
+        mock_settings = self._make_mock_settings(tmp_path)
+        test_file = tmp_path / "data.csv"
+        test_file.write_text("col1,col2\n1,2\n")
+        mock_file = self._make_mock_file("data.csv")
+
+        mock_crump_config = MagicMock()
+        mock_crump_config.get_job_or_auto_detect.return_value = None
+        mock_logger = MagicMock()
+
+        uploaded, failed = _process_files(
+            [mock_file],
+            mock_settings,
+            mock_crump_config,
+            "postgresql://test",
+            None,
+            mock_logger,
+        )
+
+        assert uploaded == 0
+        assert failed == 1
+
+    def test_syncs_csv_file_and_returns_uploaded_count(self, tmp_path):
+        mock_settings = self._make_mock_settings(tmp_path)
+        test_file = tmp_path / "data.csv"
+        test_file.write_text("col1,col2\n1,2\n")
+        mock_file = self._make_mock_file("data.csv")
+
+        mock_job = MagicMock()
+        mock_job.filename_to_column = None
+        mock_crump_config = MagicMock()
+        mock_crump_config.get_job_or_auto_detect.return_value = (mock_job, "test_job")
+        mock_logger = MagicMock()
+
+        with patch("prefect_server.postgresUploadFlow.sync_file_to_db", return_value=5):
+            uploaded, failed = _process_files(
+                [mock_file],
+                mock_settings,
+                mock_crump_config,
+                "postgresql://test",
+                None,
+                mock_logger,
+            )
+
+        assert uploaded == 1
+        assert failed == 0
+
+    def test_increments_failed_count_when_sync_raises(self, tmp_path):
+        mock_settings = self._make_mock_settings(tmp_path)
+        test_file = tmp_path / "data.csv"
+        test_file.write_text("col1,col2\n1,2\n")
+        mock_file = self._make_mock_file("data.csv")
+
+        mock_job = MagicMock()
+        mock_job.filename_to_column = None
+        mock_crump_config = MagicMock()
+        mock_crump_config.get_job_or_auto_detect.return_value = (mock_job, "test_job")
+        mock_logger = MagicMock()
+
+        with patch(
+            "prefect_server.postgresUploadFlow.sync_file_to_db",
+            side_effect=RuntimeError("db error"),
+        ):
+            uploaded, failed = _process_files(
+                [mock_file],
+                mock_settings,
+                mock_crump_config,
+                "postgresql://test",
+                None,
+                mock_logger,
+            )
+
+        assert uploaded == 0
+        assert failed == 1
 
 
 class TestUploadNewFilesToPostgres:

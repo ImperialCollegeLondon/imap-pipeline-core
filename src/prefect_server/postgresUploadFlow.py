@@ -5,6 +5,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+import anyio
 from crump import CrumpConfig, sync_file_to_db
 from crump.cdf_extractor import extract_cdf_to_tabular_file
 from prefect import flow
@@ -85,102 +86,32 @@ async def _get_database_connectionstring(
     return db_url
 
 
-@flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.POSTGRES_UPLOAD,
-    log_prints=True,
-)
-async def upload_new_files_to_postgres(
-    find_files_after: datetime | None = None,
-    paths_to_match: list[str] | None = None,
-    how_many: int | None = None,
-    job_name: str | None = None,
-    db_env_name_or_block_name_or_block: str
-    | SqlAlchemyConnector
-    | None = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
-    progress_key="postgres-upload",
-):
+def _process_files(
+    files: list[File],
+    app_settings: AppSettings,
+    crump_config: CrumpConfig,
+    db_url: str,
+    job_name: str | None,
+    logger: logging.Logger,
+) -> tuple[int, int]:
     """
-    Upload new CSV and CDF files to PostgreSQL database using crump.
+    Process a list of files and sync them to the PostgreSQL database.
 
-    This flow:
-    1. Finds new/modified files since last run (or since find_files_after)
-    2. Filters files based on configured patterns
-    3. Selects only the latest version per day
-    4. Uses crump to sync files to PostgreSQL database based on config
+    This function is intended to be run in a worker thread (via ``anyio.to_thread.run_sync``)
+    so that the long-running I/O work does not block the event loop and cause
+    Prefect concurrency lease renewal failures.
 
     Args:
-        find_files_after: Optional datetime to find files modified after this time.
-                         If None, uses the last progress timestamp.
-        paths_to_match: Optional list of path patterns to filter files.
-                        If None, uses patterns from app settings.
-        how_many: Optional limit on number of files to process
-        job_name: Optional specific job name from crump config to use.
-                 If None, will auto-detect from file names patterns configured in the crump config file.
+        files: List of File objects to process.
+        app_settings: Application settings instance.
+        crump_config: Loaded CrumpConfig instance.
+        db_url: Database connection string.
+        job_name: Optional specific crump job name to use.
+        logger: Logger instance.
+
+    Returns:
+        A tuple of (uploaded_count, failed_count).
     """
-
-    logger = try_get_prefect_logger(__name__)
-
-    app_settings = AppSettings()  # type: ignore
-    db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
-    started = datetime.now(tz=UTC)
-
-    db_url = await _get_database_connectionstring(
-        app_settings, db_env_name_or_block_name_or_block
-    )
-
-    # Get workflow progress
-    workflow_progress = db.get_workflow_progress(progress_key)
-    if workflow_progress.progress_timestamp is None:
-        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=UTC)
-
-    last_modified_date = (
-        workflow_progress.progress_timestamp
-        if find_files_after is None
-        else find_files_after
-    )
-
-    paths_to_match = (
-        paths_to_match
-        if paths_to_match is not None
-        else app_settings.postgres_upload.paths_to_match
-    )
-
-    logger.info(
-        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date} matching patterns: {paths_to_match}"
-    )
-
-    # Get new files from database
-    new_files_db = db.get_files_since(last_modified_date, how_many)
-
-    workflow_progress.update_last_checked_timestamp(started)
-
-    # Filter files by patterns
-    files = [
-        f
-        for f in new_files_db
-        if any(fnmatch.fnmatch(f.path, p) for p in paths_to_match)
-    ]
-    logger.info(
-        f"Found {len(new_files_db)} new files. Checked against {len(paths_to_match)} patterns from settings and {len(files)} files match"
-    )
-
-    if files:
-        # Select only latest version per day
-        files = File.filter_to_latest_versions_only(files)
-        logger.info(
-            f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
-        )
-
-    # Load crump configuration
-    crump_config_path = app_settings.postgres_upload.crump_config_path
-    logger.info(f"Loading crump config path: {crump_config_path.absolute()}")
-    if not crump_config_path.exists():
-        raise ValueError(
-            f"Crump configuration file not found at {crump_config_path}. Skipping upload."
-        )
-    crump_config = CrumpConfig.from_yaml(crump_config_path)
-
-    # Process each file
     uploaded_count = 0
     failed_count = 0
 
@@ -282,6 +213,112 @@ async def upload_new_files_to_postgres(
             logger.error(f"Failed to sync {path_inside_datastore}", exc_info=e)
             failed_count += 1
             continue
+
+    return uploaded_count, failed_count
+
+
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.POSTGRES_UPLOAD,
+    log_prints=True,
+)
+async def upload_new_files_to_postgres(
+    find_files_after: datetime | None = None,
+    paths_to_match: list[str] | None = None,
+    how_many: int | None = None,
+    job_name: str | None = None,
+    db_env_name_or_block_name_or_block: str
+    | SqlAlchemyConnector
+    | None = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
+    progress_key="postgres-upload",
+):
+    """
+    Upload new CSV and CDF files to PostgreSQL database using crump.
+
+    This flow:
+    1. Finds new/modified files since last run (or since find_files_after)
+    2. Filters files based on configured patterns
+    3. Selects only the latest version per day
+    4. Uses crump to sync files to PostgreSQL database based on config
+
+    Args:
+        find_files_after: Optional datetime to find files modified after this time.
+                         If None, uses the last progress timestamp.
+        paths_to_match: Optional list of path patterns to filter files.
+                        If None, uses patterns from app settings.
+        how_many: Optional limit on number of files to process
+        job_name: Optional specific job name from crump config to use.
+                 If None, will auto-detect from file names patterns configured in the crump config file.
+    """
+
+    logger = try_get_prefect_logger(__name__)
+
+    app_settings = AppSettings()  # type: ignore
+    db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
+    started = datetime.now(tz=UTC)
+
+    db_url = await _get_database_connectionstring(
+        app_settings, db_env_name_or_block_name_or_block
+    )
+
+    # Get workflow progress
+    workflow_progress = db.get_workflow_progress(progress_key)
+    if workflow_progress.progress_timestamp is None:
+        workflow_progress.progress_timestamp = datetime(2010, 1, 1, tzinfo=UTC)
+
+    last_modified_date = (
+        workflow_progress.progress_timestamp
+        if find_files_after is None
+        else find_files_after
+    )
+
+    paths_to_match = (
+        paths_to_match
+        if paths_to_match is not None
+        else app_settings.postgres_upload.paths_to_match
+    )
+
+    logger.info(
+        f"Looking for {how_many if how_many else 'all'} files modified after {last_modified_date} matching patterns: {paths_to_match}"
+    )
+
+    # Get new files from database
+    new_files_db = db.get_files_since(last_modified_date, how_many)
+
+    workflow_progress.update_last_checked_timestamp(started)
+
+    # Filter files by patterns
+    files = [
+        f
+        for f in new_files_db
+        if any(fnmatch.fnmatch(f.path, p) for p in paths_to_match)
+    ]
+    logger.info(
+        f"Found {len(new_files_db)} new files. Checked against {len(paths_to_match)} patterns from settings and {len(files)} files match"
+    )
+
+    if files:
+        # Select only latest version per day
+        files = File.filter_to_latest_versions_only(files)
+        logger.info(
+            f"After selecting latest version per day: {len(files)} files to process.\nProcessing: {', '.join(str(f.path) for f in files)}"
+        )
+
+    # Load crump configuration
+    crump_config_path = app_settings.postgres_upload.crump_config_path
+    logger.info(f"Loading crump config path: {crump_config_path.absolute()}")
+    if not crump_config_path.exists():
+        raise ValueError(
+            f"Crump configuration file not found at {crump_config_path}. Skipping upload."
+        )
+    crump_config = CrumpConfig.from_yaml(crump_config_path)
+
+    # Process all files on a worker thread to avoid blocking the event loop and
+    # triggering Prefect concurrency-lease renewal failures on long runs.
+    uploaded_count, failed_count = await anyio.to_thread.run_sync(
+        lambda: _process_files(
+            files, app_settings, crump_config, db_url, job_name, logger
+        )
+    )
 
     # Update progress
     result = None
