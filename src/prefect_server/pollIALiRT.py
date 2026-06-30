@@ -5,6 +5,7 @@ from typing import Annotated
 import pytz
 from prefect import flow, task
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
+from prefect.cache_policies import NO_CACHE
 from prefect.events import Event, emit_event
 from prefect.runtime import flow_run
 from prefect.states import Completed, Failed
@@ -47,7 +48,12 @@ def generate_flow_run_name(
     return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
 
 
-@task(name="Execute I-ALiRT Pipeline", retries=2, retry_delay_seconds=30)
+@task(
+    name="Execute I-ALiRT Pipeline",
+    retries=2,
+    retry_delay_seconds=30,
+    cache_policy=NO_CACHE,
+)
 async def run_ialirt_polling_pipeline_task(
     instrument: str,
     run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
@@ -184,9 +190,6 @@ async def poll_ialirt_flow(
     logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
 
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
-
-    combined_instruments = [combined_instruments[0]]
-    logger.info(f"All instruments: {combined_instruments}")
 
     iteration = 1
     while True:

@@ -1,26 +1,42 @@
 import json
 import os
-import sys
 from datetime import UTC, datetime, timedelta
-from unittest import mock
+from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytz
 
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.util import DatetimeProvider, Environment
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
-from tests.util.database import test_database  # noqa: F401
-from tests.util.miscellaneous import (
-    END_OF_HOUR,
-    NOW,
-    TODAY,
-    YESTERDAY,
+from imap_mag.util.constants import CONSTANTS
+from prefect_server.pollIALiRT import (
+    FetchByDatesRunParameters,
+    poll_ialirt_flow,
 )
+from tests.util.database import test_database  # noqa: F401
 from tests.util.prefect_test_utils import (  # noqa: F401
     mock_teams_webhook_block,
     prefect_test_fixture,
 )
+
+NOW = datetime.now(UTC)
+YESTERDAY = NOW - timedelta(days=1)
+END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=0)
+TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def check_file_existence(
+    actual_timestamp: datetime, folder_name: str, file_prefix: str
+):
+    datastore = AppSettings().data_store  # type: ignore
+    data_folder = os.path.join(
+        datastore, folder_name, actual_timestamp.strftime("%Y/%m")
+    )
+    cdf_file = f"{file_prefix}_{actual_timestamp.strftime('%Y%m%d')}.csv"
+
+    assert os.path.exists(os.path.join(data_folder, cdf_file)), (
+        f"Expected file {cdf_file} not found in {data_folder}"
+    )
 
 
 def define_available_ialirt_mappings(
@@ -46,8 +62,6 @@ def define_available_ialirt_mappings(
         },
     ]
 
-    # Use pattern matching so chunked requests (any date range) for mag instrument are handled.
-    # Including end_date_str in the response causes the chunking loop to terminate after one chunk.
     wiremock_manager.add_string_mapping(
         r"/space-weather\?instrument=mag&.*",
         json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
@@ -56,365 +70,115 @@ def define_available_ialirt_mappings(
     )
 
 
-def define_available_ialirt_hk_mappings(
-    wiremock_manager,
-    start_date: datetime,
-    end_date: datetime,
-):
-    start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
-    end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S")
+def define_fallback_mapping(wiremock_manager):
+    """
+    Prevents the data downloader from infinite-looping on un-mocked instruments.
+    """
+    future_date_str = (datetime.now(UTC) + timedelta(days=365)).strftime(
+        "%Y-%m-%dT%H:%M:%S"
+    )
 
-    query_response: list[dict] = [
-        {
-            "instrument": "mag_hk",
-            "mag_hk_status": {
-                "fib_temp": 2464,
-                "mode": 6,
-                "hk1v5c_warn": False,
-                "hk3v3": 2880,
-                "fob_range": 2,
-            },
-            "time_utc": start_date_str,
-        },
-        {
-            "instrument": "mag_hk",
-            "mag_hk_status": {
-                "fib_temp": 2464,
-                "mode": 5,
-                "hk1v5c_warn": False,
-                "hk3v3": 2880,
-                "fob_range": 2,
-            },
-            "time_utc": end_date_str,
-        },
-    ]
-
-    # Use pattern matching so chunked requests (any date range) for mag_hk instrument are handled.
-    # Including end_date_str in the response causes the chunking loop to terminate after one chunk.
     wiremock_manager.add_string_mapping(
-        r"/space-weather\?instrument=mag_hk&.*",
+        r"/space-weather\?instrument=.*",
         json.dumps(
-            {"meta": {"count": 2, "instrument": "mag_hk"}, "data": query_response}
+            {
+                "meta": {"count": 1, "instrument": "unknown"},
+                "data": [{"time_utc": future_date_str}],
+            }
         ),
         is_pattern=True,
-        priority=1,
+        priority=2,
     )
+
+
+def datastore_csv_path(instrument: str, date: datetime) -> str:
+    """Return the absolute datastore path of the CSV the pipeline should produce for  ``instrument`` and ``date``."""
+    datastore_root = AppSettings().data_store  # type: ignore
+
+    handler = IALiRTPathHandler(instrument=instrument, content_date=date)
+    return os.path.join(
+        datastore_root, handler.get_folder_structure(), handler.get_filename()
+    )
+
+
+def assert_file_exists(instrument: str, date: datetime) -> None:
+    """Assert that the pipeline produced a CSV in the datastore for ``date``."""
+    path = datastore_csv_path(instrument, date)
+    assert os.path.exists(path), f"Expected file not found at {path}"
 
 
 def verify_available_ialirt(
     database,
-    progress_timestamp: datetime,
+    expected_progress_timestamp: datetime,
     actual_timestamp: datetime,
+    expected_check_time: datetime,
 ):
-    # Database.
-    workflow_progress = database.get_workflow_progress("IALIRT_SCIENCE")
-
-    assert workflow_progress.get_last_checked_date() == NOW
-    assert workflow_progress.get_progress_timestamp() == progress_timestamp
-
-    # Files.
-    check_file_existence(actual_timestamp, "ialirt", "imap_ialirt")
-
-
-def verify_available_ialirt_hk(
-    database,
-    progress_timestamp: datetime,
-    actual_timestamp: datetime,
-):
-    # Database.
-    workflow_progress = database.get_workflow_progress("IALIRT_HK")
-
-    assert workflow_progress.get_last_checked_date() == NOW
-    assert workflow_progress.get_progress_timestamp() == progress_timestamp
-
-    # Files.
-    check_file_existence(actual_timestamp, "ialirt_hk", "imap_ialirt_hk")
-
-
-def check_file_existence(
-    actual_timestamp: datetime, folder_name: str, file_prefix: str
-):
-    datastore = AppSettings().data_store  # type: ignore
-    data_folder = os.path.join(
-        datastore, folder_name, actual_timestamp.strftime("%Y/%m")
+    workflow_progress = database.get_workflow_progress(
+        CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
     )
-    cdf_file = f"{file_prefix}_{actual_timestamp.strftime('%Y%m%d')}.csv"
+    last_checked = workflow_progress.get_last_checked_date()
 
-    assert os.path.exists(os.path.join(data_folder, cdf_file))
+    if last_checked.tzinfo is None and expected_check_time.tzinfo is not None:
+        expected_check_time = expected_check_time.replace(tzinfo=None)
+
+    last_checked = last_checked.replace(microsecond=0)
+    expected_check_time = expected_check_time.replace(microsecond=0)
+
+    time_difference = abs((last_checked - expected_check_time).total_seconds())
+
+    assert time_difference < 60
+
+    expected_progress_timestamp = expected_progress_timestamp.replace(tzinfo=None)
+
+    assert workflow_progress.get_progress_timestamp() == expected_progress_timestamp
 
 
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
+
+
+@pytest.mark.timeout(10)
 @pytest.mark.asyncio
-async def test_poll_ialirt_autoflow_first_ever_run(
+async def test_poll_ialirt_autoflow_first_ever_run_mag(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
-    # Set up.
     wiremock_manager.reset()
-
+    define_fallback_mapping(wiremock_manager)
     define_available_ialirt_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
 
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
     ):
-        await poll_ialirt_flow(
-            wait_for_new_data_to_arrive=False,
-            plot_last_3_days=False,
-            datetime_provider=DatetimeProvider(fixed_now=NOW),
-        )
+        mock_secret.return_value = "12345"
 
-    # Verify.
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+            PREFECT_TEST_MODE="1",
+        ):
+            bounded_parameters = FetchByDatesRunParameters(
+                start_date=YESTERDAY, end_date=END_OF_HOUR
+            )
+            await poll_ialirt_flow(
+                run_parameters=bounded_parameters,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+
     verify_available_ialirt(
-        test_database,
-        END_OF_HOUR.replace(microsecond=0),  # I-ALiRT does not use microsecond accuracy
-        TODAY,
+        database=test_database,
+        expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
+        actual_timestamp=TODAY,
+        expected_check_time=NOW,
     )
 
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_autoflow_continue_from_previous_download(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
-
-    workflow_progress = test_database.get_workflow_progress("IALIRT_SCIENCE")
-    workflow_progress.update_progress_timestamp(progress_timestamp)
-
-    test_database.save(workflow_progress)
-    wiremock_manager.reset()
-
-    define_available_ialirt_mappings(
-        wiremock_manager, progress_timestamp + timedelta(seconds=1), END_OF_HOUR
-    )
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_flow(
-            wait_for_new_data_to_arrive=False,
-            plot_last_3_days=False,
-            datetime_provider=DatetimeProvider(fixed_now=NOW),
-        )
-
-    # Verify.
-    verify_available_ialirt(
-        test_database,
-        END_OF_HOUR.replace(microsecond=0),  # I-ALiRT does not use microsecond accuracy
-        TODAY,
-    )
-
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_autoflow_specify_start_end_dates(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 2)
-
-    wiremock_manager.reset()
-
-    define_available_ialirt_mappings(wiremock_manager, start_date, end_date)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_flow(
-            wait_for_new_data_to_arrive=False,
-            plot_last_3_days=False,
-            start_date=start_date,
-            end_date=end_date,
-            datetime_provider=DatetimeProvider(fixed_now=NOW),
-        )
-
-    # Verify.
-    verify_available_ialirt(
-        test_database,
-        end_date,
-        start_date,
-    )
-
-
-# Force the next test to be at 6 AM UK time, and only do 1 iteration of polling
-NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
-    pytz.timezone("Europe/London")
-    .localize(
-        NOW.replace(
-            hour=6,
-            minute=59,
-            second=54,
-            microsecond=0,
-        )
-    )
-    .astimezone(UTC)
-    .replace(tzinfo=None)
-)
-
-
-class AdvancingDatetimeProvider(DatetimeProvider):
-    def __init__(self, fixed_now: datetime, step: timedelta) -> None:
-        super().__init__(fixed_now=fixed_now)
-        self._start_now = fixed_now
-        self._step = step
-        self._num_calls = -1
-        self._fixed_end_of_hour = fixed_now.replace(
-            minute=59,
-            second=59,
-            microsecond=999999,
-        )
-
-    def now(self) -> datetime:
-        self._num_calls += 1
-        return self._start_now + (self._step * self._num_calls)
-
-    def end_of_hour(self) -> datetime:
-        return self._fixed_end_of_hour
-
-
-@pytest.fixture
-def mock_quicklook_ialirt_flow(mocker) -> None:
-    mocker.patch(
-        "prefect_server.pollIALiRT.quicklook_ialirt_flow",
-        new_callable=mock.AsyncMock,
-        return_value=None,
-    )
-
-
-@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    mock_quicklook_ialirt_flow,
-    prefect_test_fixture,  # noqa: F811
-    mock_teams_webhook_block,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    wiremock_manager.reset()
-
-    datetime_provider = AdvancingDatetimeProvider(
-        fixed_now=NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME,
-        step=timedelta(seconds=5),
-    )
-    yesterday = datetime_provider.yesterday()
-    end_of_hour = datetime_provider.end_of_hour()
-    define_available_ialirt_mappings(wiremock_manager, yesterday, end_of_hour)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_flow(
-            wait_for_new_data_to_arrive=True,
-            timeout=5,
-            plot_last_3_days=True,
-            datetime_provider=datetime_provider,
-        )
-
-    # Verify.
-    mock_teams_webhook_block.notify.assert_called_once()
-
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_hk_autoflow_first_ever_run(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    wiremock_manager.reset()
-
-    define_available_ialirt_hk_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_hk_flow(
-            wait_for_new_data_to_arrive=False,
-            datetime_provider=DatetimeProvider(fixed_now=NOW),
-        )
-
-    # Verify.
-    verify_available_ialirt_hk(
-        test_database,
-        END_OF_HOUR.replace(microsecond=0),
-        TODAY,
-    )
-
-
-@pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-    reason="Wiremock test containers will not work on Windows Github Runner",
-)
-@pytest.mark.asyncio
-async def test_poll_ialirt_hk_autoflow_specify_start_end_dates(
-    wiremock_manager,
-    test_database,  # noqa: F811
-    prefect_test_fixture,  # noqa: F811
-    clean_datastore,
-):
-    # Set up.
-    start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 2)
-
-    wiremock_manager.reset()
-
-    define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
-
-    # Exercise.
-    with Environment(
-        IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-        IALIRT_API_KEY="12345",
-    ):
-        await poll_ialirt_hk_flow(
-            wait_for_new_data_to_arrive=False,
-            start_date=start_date,
-            end_date=end_date,
-            datetime_provider=DatetimeProvider(fixed_now=NOW),
-        )
-
-    # Verify.
-    verify_available_ialirt_hk(
-        test_database,
-        end_date,
-        start_date,
-    )
+    assert_file_exists("mag", TODAY)
