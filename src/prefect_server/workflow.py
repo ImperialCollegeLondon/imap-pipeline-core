@@ -429,13 +429,19 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
+    file_analysis_job_variables = shared_job_variables | {
+        "mem_limit": "4G",
+        "memswap_limit": "4G",
+    }
+
     file_analysis_deployable = file_analyser_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
-        job_variables=shared_job_variables,
+        job_variables=file_analysis_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
