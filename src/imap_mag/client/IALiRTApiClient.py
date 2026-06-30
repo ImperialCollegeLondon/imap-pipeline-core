@@ -64,8 +64,15 @@ class IALiRTApiClient:
                 logger.debug(
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {newest_data_timestamp}."
                 )
+                next_date = newest_data_timestamp + timedelta(seconds=1)
 
-                window_start = newest_data_timestamp + timedelta(seconds=1)
+                if next_date <= window_start:
+                    logger.warning(
+                        f"Data timestamps did not advance past {window_start}. Forcing window forward to {window_end}"
+                    )
+                    window_start = window_end
+                else:
+                    window_start = next_date
 
             elif window_end < end_date:
                 logger.debug(
