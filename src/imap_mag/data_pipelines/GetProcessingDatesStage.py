@@ -48,11 +48,21 @@ class GetProcessingDatesStage(SourceStage):
         else:
             assert isinstance(self._run_parameters, AutomaticRunParameters)
 
-        workflow_progress = (
-            self.database.get_workflow_progress(progress_item_name)
-            if self.database
-            else WorkflowProgress(item_name=progress_item_name)
-        )
+        workflow_progress = None
+
+        if self.database:
+            workflow_progress = self.database.get_workflow_progress(progress_item_name)
+
+        # If it's a first run, initialise it with start date
+        if workflow_progress is None:
+            fallback_date = requested_start_date or self._datetime_provider.now()
+
+            workflow_progress = WorkflowProgress(
+                item_name=progress_item_name,
+                progress_timestamp=fallback_date,
+                last_checked_date=self._datetime_provider.now(),
+            )
+
         context["workflow_progress"] = workflow_progress
 
         date_manager = DownloadDateManager(

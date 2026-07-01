@@ -46,12 +46,9 @@ class FetchIALiRT:
         """Retrieve I-ALiRT science data for a specific instrument."""
 
         if housekeeping:
-            process_fn = (
-                lambda df: process_ialirt_hk_data(
-                    df,
-                    self.__packetDefinitionFolder
-                    / self.__IALIRT_PACKET_DEFINITION_FILE,
-                ),
+            process_fn = lambda df: process_ialirt_hk_data(  # noqa: E731
+                df,
+                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
             )
             max_hours_per_chunk = 2
         else:
@@ -101,17 +98,28 @@ class FetchIALiRT:
                 downloaded_data = process_fn(downloaded_data)
 
             # Aggregate data by multiple instruments per timestamp
-            rules: dict = dict.fromkeys(downloaded_data, "first")
-            del rules[self.__DATE_INDEX]
+            valid_columns = [
+                col for col in downloaded_data.columns if col != self.__DATE_INDEX
+            ]
+            if not valid_columns:
+                logger.warning(
+                    f"Received data for {instrument} containing only timestamps and no actual data columns. Skipping aggregation."
+                )
+                # Ensure the data still has the time_utc index for downstream processing
+                downloaded_data.drop_duplicates(
+                    subset=[self.__DATE_INDEX], inplace=True
+                )
+            else:
+                rules: dict = {col: "first" for col in valid_columns}
 
-            if "instrument" in rules:
-                rules["instrument"] = lambda x: ",".join(x.dropna().unique())
+                if "instrument" in rules:
+                    rules["instrument"] = lambda x: ",".join(x.dropna().unique())
 
-            downloaded_data = (
-                downloaded_data.groupby(self.__DATE_INDEX)
-                .aggregate(rules)
-                .reset_index()
-            )
+                downloaded_data = (
+                    downloaded_data.groupby(self.__DATE_INDEX)
+                    .aggregate(rules)
+                    .reset_index()
+                )
 
             downloaded_dates = pd.to_datetime(
                 downloaded_data[self.__DATE_INDEX]

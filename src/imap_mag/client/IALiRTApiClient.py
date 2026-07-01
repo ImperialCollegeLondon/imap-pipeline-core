@@ -48,11 +48,16 @@ class IALiRTApiClient:
                 else end_date
             )
 
-            logger.info(f"GET {instrument} from {window_start} to {window_end}.")
-
             data_chunk: list[dict] = self.__do_download(
                 instrument, window_start, window_end
             )
+
+            if data_chunk is None:
+                logger.warning(
+                    f"API returned None for {instrument}. Treating as empty."
+                )
+                data_chunk = []
+
             whole_data.extend(data_chunk)
 
             if data_chunk:
@@ -64,6 +69,7 @@ class IALiRTApiClient:
                 logger.debug(
                     f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {newest_data_timestamp}."
                 )
+
                 next_date = newest_data_timestamp + timedelta(seconds=1)
 
                 if next_date <= window_start:

@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -12,6 +11,7 @@ from imap_mag.util import DatetimeProvider, Environment
 from imap_mag.util.constants import CONSTANTS
 from prefect_server.pollIALiRT import (
     AutomaticRunParameters,
+    FetchByDatesRunParameters,
     poll_ialirt_flow,
 )
 from tests.util.database import test_database  # noqa: F401
@@ -20,12 +20,13 @@ from tests.util.prefect_test_utils import (  # noqa: F401
     prefect_test_fixture,
 )
 
-NOW = datetime.now(UTC)
-YESTERDAY = NOW - timedelta(days=1)
-END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=0)
-TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
-
 NOW = datetime.now(UTC).replace(tzinfo=None)
+TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+TOMORROW = TODAY + timedelta(days=1)
+YESTERDAY = TODAY - timedelta(days=1)
+START_OF_HOUR = NOW.replace(minute=0, second=0, microsecond=0)
+END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=999999)
+END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
 def check_file_existence(
@@ -42,7 +43,7 @@ def check_file_existence(
     )
 
 
-def define_bulk_ialirt_mappings(
+def define_available_ialirt_mappings(
     wiremock_manager,
     instruments: list[str],
     start_date: datetime,
@@ -64,8 +65,9 @@ def define_bulk_ialirt_mappings(
             },
         ]
 
+        regex_pattern = rf"/space-weather\?instrument={inst}&.*"
         wiremock_manager.add_string_mapping(
-            r"/space-weather\?instrument=" + re.escape(inst) + r"&.*",
+            regex_pattern,
             json.dumps(
                 {"meta": {"count": 2, "instrument": inst}, "data": query_response}
             ),
@@ -74,7 +76,7 @@ def define_bulk_ialirt_mappings(
         )
 
 
-def define_available_ialirt_mappings(
+def define_available_ialirt_hk_mappings(
     wiremock_manager,
     start_date: datetime,
     end_date: datetime,
@@ -84,22 +86,36 @@ def define_available_ialirt_mappings(
 
     query_response: list[dict] = [
         {
-            "mag_B_GSE": [-1.53, -3.033, 0.539],
-            "mag_theta_B_GSM": 25.017,
+            "instrument": "mag_hk",
+            "mag_hk_status": {
+                "fib_temp": 2464,
+                "mode": 6,
+                "hk1v5c_warn": False,
+                "hk3v3": 2880,
+                "fob_range": 2,
+            },
             "time_utc": start_date_str,
-            "extra_field1": "extra_value1",
         },
         {
-            "mag_B_GSE": [4.187, 0.687, 0.757],
-            "mag_theta_B_GSM": 6.732,
+            "instrument": "mag_hk",
+            "mag_hk_status": {
+                "fib_temp": 2464,
+                "mode": 5,
+                "hk1v5c_warn": False,
+                "hk3v3": 2880,
+                "fob_range": 2,
+            },
             "time_utc": end_date_str,
-            "extra_field2": "extra_value2",
         },
     ]
 
+    # Use pattern matching so chunked requests (any date range) for mag_hk instrument are handled.
+    # Including end_date_str in the response causes the chunking loop to terminate after one chunk.
     wiremock_manager.add_string_mapping(
-        r"/space-weather\?instrument=mag&.*",
-        json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
+        r"/space-weather\?instrument=mag_hk&.*",
+        json.dumps(
+            {"meta": {"count": 2, "instrument": "mag_hk"}, "data": query_response}
+        ),
         is_pattern=True,
         priority=1,
     )
@@ -118,7 +134,7 @@ def define_fallback_mapping(wiremock_manager):
         json.dumps(
             {
                 "meta": {"count": 1, "instrument": "unknown"},
-                "data": [{"time_utc": future_date_str}],
+                "data": [future_date_str],
             }
         ),
         is_pattern=True,
@@ -145,150 +161,148 @@ def assert_file_exists(instrument: str, date: datetime) -> None:
 def verify_available_ialirt(
     database,
     expected_progress_timestamp: datetime,
-    expected_check_time: datetime,
+    actual_timestamp: datetime = NOW,
+    hk: bool = False,
 ):
-    workflow_progress = database.get_workflow_progress(
-        CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+    if hk:
+        workflow_progress = database.get_workflow_progress(
+            CONSTANTS.DATABASE.IALIRT_HK_PROGRESS_ID
+        )
+    else:
+        workflow_progress = database.get_workflow_progress(
+            CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+        )
+
+    assert (
+        workflow_progress.get_progress_timestamp()
+        == expected_progress_timestamp.replace(microsecond=0)
     )
-    last_checked = workflow_progress.get_last_checked_date()
-
-    if last_checked.tzinfo is None and expected_check_time.tzinfo is not None:
-        expected_check_time = expected_check_time.replace(tzinfo=None)
-
-    last_checked = last_checked.replace(microsecond=0)
-    expected_check_time = expected_check_time.replace(microsecond=0)
-
-    time_difference = abs((last_checked - expected_check_time).total_seconds())
-
-    assert time_difference < 60
-
-    expected_progress_timestamp = expected_progress_timestamp.replace(tzinfo=None)
-
-    assert workflow_progress.get_progress_timestamp() == expected_progress_timestamp
+    diff = abs(workflow_progress.get_last_checked_date() - actual_timestamp)
+    assert diff < timedelta(seconds=60), f"Time drift too large: {diff}"
 
 
-# pytest.mark.skipif(
-#     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
-#     reason="Wiremock test containers will not work on Windows Github Runner",
-# )
+pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
 
 
-# @pytest.mark.timeout(10)
-# @pytest.mark.asyncio
-# async def test_poll_ialirt_autoflow_first_ever_run_mag(
-#     wiremock_manager,
-#     test_database,
-#     prefect_test_fixture,
-#     clean_datastore,
-# ):
-#     wiremock_manager.reset()
-#     define_fallback_mapping(wiremock_manager)
-#     define_available_ialirt_mappings(wiremock_manager, YESTERDAY, END_OF_HOUR)
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_poll_ialirt_first_ever_run_mag(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    wiremock_manager.reset()
+    define_fallback_mapping(wiremock_manager)
+    define_available_ialirt_mappings(wiremock_manager, ["mag"], YESTERDAY, END_OF_HOUR)
 
-#     with (
-#         patch(
-#             "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
-#         ) as mock_secret,
-#         patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
-#         patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
-#     ):
-#         mock_secret.return_value = "12345"
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
+    ):
+        mock_secret.return_value = "12345"
 
-#         with Environment(
-#             IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-#             PREFECT_TEST_MODE="1",
-#         ):
-#             bounded_parameters = FetchByDatesRunParameters(
-#                 start_date=YESTERDAY, end_date=END_OF_HOUR
-#             )
-#             await poll_ialirt_flow(
-#                 run_parameters=bounded_parameters,
-#                 wait_for_new_data_to_arrive=False,
-#                 plot_last_3_days=False,
-#                 datetime_provider=DatetimeProvider(fixed_now=NOW),
-#             )
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+            PREFECT_TEST_MODE="1",
+        ):
+            bounded_parameters = FetchByDatesRunParameters(
+                start_date=YESTERDAY, end_date=END_OF_HOUR
+            )
+            await poll_ialirt_flow(
+                run_parameters=bounded_parameters,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
 
-#     verify_available_ialirt(
-#         database=test_database,
-#         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-#         expected_check_time=NOW,
-#     )
+    verify_available_ialirt(
+        database=test_database,
+        expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
+        actual_timestamp=NOW,
+    )
 
-#     assert_file_exists("mag", TODAY)
-
-
-# @pytest.mark.skipif(
-#     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
-#     reason="Wiremock test containers will not work on Windows Github Runner",
-# )
-# @pytest.mark.timeout(15)
-# @pytest.mark.asyncio
-# async def test_poll_ialirt_autoflow_concurrent_multi_instrument(
-#     wiremock_manager,
-#     test_database,
-#     prefect_test_fixture,
-#     clean_datastore,
-# ):
-#     wiremock_manager.reset()
-#     define_fallback_mapping(wiremock_manager)
-
-#     test_science_batch = ["mag", "swe", "codice_lo"]
-#     test_hk_batch = []
-#     all_test_instruments = test_science_batch + test_hk_batch
-
-#     # Define separate mock API routing endpoints inside wiremock
-#     define_bulk_ialirt_mappings(
-#         wiremock_manager, all_test_instruments, YESTERDAY, END_OF_HOUR
-#     )
-
-#     with (
-#         patch(
-#             "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
-#         ) as mock_secret,
-#         patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", test_science_batch),
-#         patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", test_hk_batch),
-#     ):
-#         mock_secret.return_value = "12345"
-
-#         with Environment(
-#             IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
-#             PREFECT_TEST_MODE="1",
-#         ):
-#             bounded_parameters = FetchByDatesRunParameters(
-#                 start_date=YESTERDAY, end_date=END_OF_HOUR
-#             )
-
-#             await poll_ialirt_flow(
-#                 run_parameters=bounded_parameters,
-#                 wait_for_new_data_to_arrive=False,
-#                 plot_last_3_days=False,
-#                 datetime_provider=DatetimeProvider(fixed_now=NOW),
-#             )
-
-#     verify_available_ialirt(
-#         database=test_database,
-#         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-#         expected_check_time=NOW,
-#     )
-
-#     for inst in all_test_instruments:
-#         assert_file_exists(inst, TODAY)
+    assert_file_exists("mag", TODAY)
 
 
 @pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.timeout(15)
+@pytest.mark.asyncio
+async def test_poll_ialirt_concurrent_multi_instrument(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    wiremock_manager.reset()
+    define_fallback_mapping(wiremock_manager)
+
+    test_science_batch = ["mag", "swe", "codice_lo"]
+    test_hk_batch = []
+    all_test_instruments = test_science_batch + test_hk_batch
+
+    # Define separate mock API routing endpoints inside wiremock
+    define_available_ialirt_mappings(
+        wiremock_manager, all_test_instruments, YESTERDAY, END_OF_HOUR
+    )
+
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", test_science_batch),
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", test_hk_batch),
+    ):
+        mock_secret.return_value = "12345"
+
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+            PREFECT_TEST_MODE="1",
+        ):
+            bounded_parameters = FetchByDatesRunParameters(
+                start_date=YESTERDAY, end_date=END_OF_HOUR
+            )
+
+            await poll_ialirt_flow(
+                run_parameters=bounded_parameters,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+
+    verify_available_ialirt(
+        database=test_database,
+        expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
+        actual_timestamp=NOW,
+    )
+
+    for inst in all_test_instruments:
+        assert_file_exists(inst, TODAY)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.timeout(10)
 @pytest.mark.asyncio
-async def test_poll_ialirt_autoflow_continue_from_previous_download(
+async def test_poll_ialirt_continue_from_previous_download(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
 
-    progress_timestamp = END_OF_HOUR - timedelta(hours=5)
+    progress_timestamp = TODAY + timedelta(hours=5, minutes=30)
 
     workflow_progress = test_database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
@@ -301,11 +315,11 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
 
     test_instruments = ["mag", "swe", "codice_lo"]
 
-    define_bulk_ialirt_mappings(
+    define_available_ialirt_mappings(
         wiremock_manager,
         test_instruments,
-        progress_timestamp,
-        progress_timestamp + timedelta(hours=4),
+        progress_timestamp + timedelta(seconds=1),
+        END_OF_HOUR,
     )
 
     with (
@@ -327,13 +341,183 @@ async def test_poll_ialirt_autoflow_continue_from_previous_download(
                 wait_for_new_data_to_arrive=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
-            )
+            )  # type: ignore
 
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-        expected_check_time=NOW,
+        actual_timestamp=NOW,
     )
 
     for inst in test_instruments:
         assert_file_exists(inst, TODAY)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_concurrent_specify_start_end_dates(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    start_date = datetime(2025, 4, 1, tzinfo=UTC)
+    end_date = datetime(2025, 4, 2, tzinfo=UTC)
+    test_instruments = ["mag", "swe"]
+
+    wiremock_manager.reset()
+    define_fallback_mapping(wiremock_manager)
+
+    define_available_ialirt_mappings(
+        wiremock_manager, test_instruments, start_date, end_date
+    )
+
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", test_instruments),
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
+    ):
+        mock_secret.return_value = "12345"
+
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+            IALIRT_API_KEY="12345",
+        ):
+            bounded_params = FetchByDatesRunParameters(
+                start_date=start_date, end_date=end_date
+            )
+
+            await poll_ialirt_flow(
+                run_parameters=bounded_params,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+
+    verify_available_ialirt(
+        database=test_database,
+        expected_progress_timestamp=end_date.replace(tzinfo=None),
+        actual_timestamp=NOW,
+    )
+
+    for inst in test_instruments:
+        assert_file_exists(inst, start_date)
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_hk_first_ever_run(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    start_date = YESTERDAY
+    end_date = END_OF_HOUR
+    test_instruments = ["mag_hk"]
+
+    wiremock_manager.reset()
+    define_available_ialirt_hk_mappings(
+        wiremock_manager,
+        start_date,
+        end_date,
+    )
+
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", []),
+        patch(
+            "prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS",
+            test_instruments,
+        ),
+    ):
+        mock_secret.return_value = "12345"
+
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/") + "/api-key",
+            IALIRT_API_KEY="12345",
+        ):
+            bounded_params = FetchByDatesRunParameters(
+                start_date=start_date, end_date=end_date
+            )
+
+            await poll_ialirt_flow(
+                run_parameters=bounded_params,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+    verify_available_ialirt(
+        database=test_database,
+        expected_progress_timestamp=end_date.replace(microsecond=0),
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+        hk=True,
+    )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_specify_start_end_dates_hk(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    start_date = YESTERDAY
+    end_date = END_OF_HOUR
+    test_instruments = ["mag_hk"]
+
+    wiremock_manager.reset()
+
+    define_available_ialirt_hk_mappings(wiremock_manager, start_date, end_date)
+    define_fallback_mapping(wiremock_manager)
+
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", []),
+        patch(
+            "prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS",
+            test_instruments,
+        ),
+    ):
+        mock_secret.return_value = "12345"
+
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/") + "/api-key",
+            IALIRT_API_KEY="12345",
+        ):
+            bounded_params = FetchByDatesRunParameters(
+                start_date=start_date, end_date=end_date
+            )
+
+            await poll_ialirt_flow(
+                run_parameters=bounded_params,
+                wait_for_new_data_to_arrive=False,
+                plot_last_3_days=False,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+
+    verify_available_ialirt(
+        database=test_database,
+        expected_progress_timestamp=end_date.replace(tzinfo=None),
+        actual_timestamp=NOW,
+        hk=True,
+    )
+
+    for inst in test_instruments:
+        assert_file_exists(inst, start_date)

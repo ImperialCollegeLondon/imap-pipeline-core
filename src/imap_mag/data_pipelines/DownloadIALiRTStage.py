@@ -28,10 +28,9 @@ class DownloadIALiRTStage(Stage):
         )
 
         if self.instrument.endswith("_hk"):
-            base_instrument = self.instrument.replace("_hk", "")
             downloaded: dict[Path, IALiRTPathHandler] = (
                 self.fetcher.download_instrument_data(
-                    instrument=base_instrument,
+                    instrument=self.instrument,
                     start_date=start_date,
                     end_date=end_date,
                     housekeeping=True,
