@@ -225,7 +225,7 @@ async def test_poll_ialirt_first_ever_run_mag(
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-        actual_timestamp=NOW,
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
     )
 
     assert_file_exists("mag", TODAY)
@@ -282,7 +282,7 @@ async def test_poll_ialirt_concurrent_multi_instrument(
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-        actual_timestamp=NOW,
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
     )
 
     for inst in all_test_instruments:
@@ -346,7 +346,7 @@ async def test_poll_ialirt_continue_from_previous_download(
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-        actual_timestamp=NOW,
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
     )
 
     for inst in test_instruments:
@@ -402,7 +402,7 @@ async def test_poll_ialirt_concurrent_specify_start_end_dates(
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=end_date.replace(tzinfo=None),
-        actual_timestamp=NOW,
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
     )
 
     for inst in test_instruments:
@@ -515,7 +515,7 @@ async def test_poll_ialirt_specify_start_end_dates_hk(
     verify_available_ialirt(
         database=test_database,
         expected_progress_timestamp=end_date.replace(tzinfo=None),
-        actual_timestamp=NOW,
+        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
         hk=True,
     )
 
