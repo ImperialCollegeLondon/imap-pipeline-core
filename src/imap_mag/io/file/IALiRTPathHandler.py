@@ -21,6 +21,7 @@ class IALiRTPathHandler(IFilePathHandler):
     instrument: str = "mag"
     content_date: datetime | None = None  # date data belongs to
     extension: str = "csv"
+    is_hk: bool = False
 
     def supports_sequencing(self) -> bool:
         return False
@@ -40,7 +41,9 @@ class IALiRTPathHandler(IFilePathHandler):
 
         date_str = self.content_date.strftime("%Y%m%d")
 
-        return f"{self.mission}_ialirt_{self.instrument.lower()}_{date_str}.{self.extension}"
+        hk_suffix = "_hk" if self.is_hk else ""
+
+        return f"{self.mission}_ialirt_{self.instrument.lower()}{hk_suffix}_{date_str}.{self.extension}"
 
     def add_metadata(self, metadata: dict) -> None:
         raise NotImplementedError()
@@ -52,7 +55,7 @@ class IALiRTPathHandler(IFilePathHandler):
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
 
         match = re.match(
-            r"imap_ialirt_(?P<instrument>\w+)_(?P<date>\d{8})\.(?P<ext>\w+)",
+            r"imap_ialirt_(?P<instrument>\w+?)(?P<hk>_hk)?_(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -64,4 +67,5 @@ class IALiRTPathHandler(IFilePathHandler):
                 instrument=match["instrument"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 extension=match["ext"],
+                is_hk=bool(match["hk"]),  # If "_hk" was found in the regex
             )

@@ -4,7 +4,6 @@ from imap_mag.io.file.CalibrationLayerPathHandler import (
 )
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
-from imap_mag.io.file.IALiRTHKPathHandler import IALiRTHKPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
@@ -25,7 +24,6 @@ __all__ = [
     "CalibrationLayerPathHandler",
     "HKBinaryPathHandler",
     "HKDecodedPathHandler",
-    "IALiRTHKPathHandler",
     "IALiRTPathHandler",
     "IALiRTQuicklookPathHandler",
     "IFilePathHandler",
