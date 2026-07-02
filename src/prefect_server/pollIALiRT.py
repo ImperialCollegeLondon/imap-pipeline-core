@@ -163,7 +163,11 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
-    datetime_provider: Annotated[None | DatetimeProvider, Field(default=None)] = None,
+    # Used for automated testing only, to override the default datetime provider with a test one
+    datetime_provider: Annotated[
+        None | DatetimeProvider,
+        Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
+    ] = None,
 ):
     """
     Runs continuously for one hour, sequentially polling the SDC API
@@ -173,6 +177,9 @@ async def poll_ialirt_flow(
 
     database = Database() if use_database else None
     settings = AppSettings()  # type: ignore
+    datetime_provider = (
+        DatetimeProvider() if datetime_provider is None else datetime_provider
+    )
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
