@@ -196,7 +196,9 @@ class File(Base):
         )
 
     @classmethod
-    def get_datastore_relative_path(cls, file: Path, settings: AppSettings) -> str:
+    def get_datastore_relative_path(
+        cls, file: Path, settings: AppSettings, warn: bool = True
+    ) -> str:
         try:
             file_with_datastore_relative_path = file.absolute().relative_to(
                 settings.data_store.absolute()
@@ -204,9 +206,10 @@ class File(Base):
         # match exception by message text "not a subpath"
         except ValueError as e:
             if "is not in the subpath of" in str(e):
-                logger.warning(
-                    f"File {file} is not within the data store path {settings.data_store}"
-                )
+                if warn:
+                    logger.warning(
+                        f"File {file} is not within the data store path {settings.data_store}"
+                    )
                 file_with_datastore_relative_path = file
             else:
                 raise

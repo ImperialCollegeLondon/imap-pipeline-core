@@ -971,7 +971,10 @@ def test_DBIndexedDatastoreFileManager_add_file_with_deleted_file_to_real_postgr
     temp_datastore,
 ) -> None:
     # Set up.
-    real_datastore_manager = DatastoreFileManager(temp_datastore)
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    real_datastore_manager = DatastoreFileManager(mock_settings)
     database_manager = DBIndexedDatastoreFileManager(
         real_datastore_manager, test_database
     )
@@ -1025,7 +1028,10 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     temp_datastore,
 ) -> None:
     # Set up.
-    real_datastore_manager = DatastoreFileManager(temp_datastore)
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    real_datastore_manager = DatastoreFileManager(mock_settings)
     database_manager = DBIndexedDatastoreFileManager(
         real_datastore_manager, test_database
     )

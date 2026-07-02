@@ -13,6 +13,7 @@ class TestCommandConfig:
     def test_setup_work_folder_creates_directory_when_not_exists(self, tmp_path):
         app_settings = MagicMock()
         app_settings.work_folder = tmp_path / "work"
+        app_settings.disk_usage_threshold = 1.0
 
         config = CommandConfig(work_sub_folder="mycommand")
         result = config.setup_work_folder(app_settings)
@@ -23,6 +24,7 @@ class TestCommandConfig:
     def test_setup_work_folder_uses_sub_folder_when_provided(self, tmp_path):
         app_settings = MagicMock()
         app_settings.work_folder = tmp_path
+        app_settings.disk_usage_threshold = 1.0
 
         config = CommandConfig(work_sub_folder="subdir")
         result = config.setup_work_folder(app_settings)
@@ -32,6 +34,7 @@ class TestCommandConfig:
     def test_setup_work_folder_returns_same_folder_on_second_call(self, tmp_path):
         app_settings = MagicMock()
         app_settings.work_folder = tmp_path
+        app_settings.disk_usage_threshold = 1.0
 
         config = CommandConfig()
         first = config.setup_work_folder(app_settings)
@@ -42,6 +45,7 @@ class TestCommandConfig:
     def test_setup_work_folder_without_sub_folder_uses_app_work_folder(self, tmp_path):
         app_settings = MagicMock()
         app_settings.work_folder = tmp_path
+        app_settings.disk_usage_threshold = 1.0
 
         config = CommandConfig()
         result = config.setup_work_folder(app_settings)

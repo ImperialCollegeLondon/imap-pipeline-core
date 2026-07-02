@@ -101,6 +101,32 @@ class TestFileGetDatastoreRelativePath:
 
         assert result == "/other/location/test.cdf"
 
+    def test_no_warning_when_warn_false_and_outside_datastore(self, caplog):
+        import logging
+
+        mock_settings = MagicMock()
+        mock_settings.data_store = Path("/data/store")
+
+        f = _make_file(path="/other/location/test.cdf")
+        with caplog.at_level(logging.WARNING):
+            File.get_datastore_relative_path(Path(f.path), mock_settings, warn=False)
+
+        assert not any(
+            "is not within the data store path" in m for m in caplog.messages
+        )
+
+    def test_warning_when_warn_true_and_outside_datastore(self, caplog):
+        import logging
+
+        mock_settings = MagicMock()
+        mock_settings.data_store = Path("/data/store")
+
+        f = _make_file(path="/other/location/test.cdf")
+        with caplog.at_level(logging.WARNING):
+            File.get_datastore_relative_path(Path(f.path), mock_settings, warn=True)
+
+        assert any("is not within the data store path" in m for m in caplog.messages)
+
 
 class TestFileFromFile:
     def test_creates_file_from_existing_path(self, tmp_path):

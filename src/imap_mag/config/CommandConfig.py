@@ -5,6 +5,8 @@ from typing import cast
 
 from pydantic import BaseModel
 
+from imap_mag.util.diskSpace import check_disk_space
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,8 @@ class CommandConfig(BaseModel):
             self._commmand_work_folder = (
                 self._commmand_work_folder / self.work_sub_folder
             )
+
+        check_disk_space(self._commmand_work_folder, app_settings.disk_usage_threshold)
 
         if not os.path.exists(self._commmand_work_folder):
             logger.debug(f"Creating work folder {self._commmand_work_folder}")

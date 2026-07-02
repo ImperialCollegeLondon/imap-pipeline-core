@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import prefect_managedfiletransfer
-from prefect import State, flow
+from prefect import State, flow, task
+from prefect.cache_policies import NO_CACHE
 from prefect.filesystems import LocalFileSystem
+from prefect.flows import ThreadPoolTaskRunner
 from prefect.states import Completed
 from prefect_managedfiletransfer import (
     FileMatcher,
@@ -34,6 +36,7 @@ DestinationBlockType = (
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.SHAREPOINT_UPLOAD,
     log_prints=True,
+    task_runner=ThreadPoolTaskRunner(max_workers=1),
 )
 async def upload_shared_docs_flow(
     destination_block_or_blockname: (
@@ -58,7 +61,7 @@ async def upload_shared_docs_flow(
     started = datetime.now(tz=UTC)
 
     uploaded_files = (
-        await upload_new_files(
+        upload_new_files.submit(
             destination_block_or_blockname,
             how_many,
             app_settings,
@@ -66,13 +69,13 @@ async def upload_shared_docs_flow(
             started,
             find_files_after,
             workflow_progress_key,
-        )
+        ).result()
         if do_uploads
         else 0
     )
 
     deleted_files = (
-        await remove_deleted_files(
+        remove_deleted_files.submit(
             destination_block_or_blockname,
             how_many,
             app_settings,
@@ -80,7 +83,7 @@ async def upload_shared_docs_flow(
             started,
             find_files_after,
             workflow_progress_key,
-        )
+        ).result()
         if do_deletes
         else 0
     )
@@ -115,6 +118,7 @@ def _filter_files_by_patterns(
     return filtered_files
 
 
+@task(cache_policy=NO_CACHE)
 async def upload_new_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
@@ -142,7 +146,7 @@ async def upload_new_files(
 
     for file in files:
         path_inside_datastore = File.get_datastore_relative_path(
-            Path(file.path), app_settings
+            Path(file.path), app_settings, warn=False
         )
         path_inc_datastore = app_settings.data_store / path_inside_datastore
         destination_path = Path(app_settings.upload.root_path) / path_inside_datastore
@@ -201,6 +205,7 @@ def _get_workflow_progress(
     return workflow_progress, last_modified_date
 
 
+@task(cache_policy=NO_CACHE)
 async def remove_deleted_files(
     destination_block_or_blockname: DestinationBlockType,
     how_many: int | None,
@@ -228,7 +233,7 @@ async def remove_deleted_files(
     for file in files:
         remote_path = Path(
             app_settings.upload.root_path
-        ) / File.get_datastore_relative_path(Path(file.path), app_settings)
+        ) / File.get_datastore_relative_path(Path(file.path), app_settings, warn=False)
 
         await prefect_managedfiletransfer.delete_files_flow(
             source_block_or_blockname=destination_block_or_blockname,
