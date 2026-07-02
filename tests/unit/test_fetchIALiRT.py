@@ -205,7 +205,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
     ]
 
     datastore_file = (
-        temp_datastore / "ialirt" / "2025" / "05" / "imap_ialirt_20250502.csv"
+        temp_datastore / "ialirt" / "2025" / "05" / "imap_ialirt_mag_20250502.csv"
     )
     datastore_file.parent.mkdir(parents=True, exist_ok=True)
 

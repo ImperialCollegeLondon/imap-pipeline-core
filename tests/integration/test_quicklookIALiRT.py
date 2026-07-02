@@ -59,7 +59,7 @@ async def test_poll_ialirt_autoflow_first_ever_run(
     (temp_datastore / "ialirt" / "2025" / "10").mkdir(parents=True, exist_ok=True)
     shutil.copy(
         science_data,
-        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_20251021.csv",
+        temp_datastore / "ialirt" / "2025" / "10" / "imap_ialirt_mag_20251021.csv",
     )
 
     (temp_datastore / "ialirt_hk" / "2025" / "10").mkdir(parents=True, exist_ok=True)
