@@ -75,7 +75,7 @@ def _publish_files(
 
 
 # E.g.,
-# imap-mag fetch ialirt --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch ialirt --instrument mag --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_ialirt(
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],
@@ -121,7 +121,7 @@ def fetch_ialirt(
 
 
 # E.g.,
-# imap-mag fetch ialirt-hk --start-date 2025-01-02 --end-date 2025-01-03
+# imap-mag fetch ialirt --instrument mag_hk --start-date 2025-01-02 --end-date 2025-01-03
 def fetch_ialirt_hk(
     start_date: Annotated[datetime, typer.Option(help="Start date for the download")],
     end_date: Annotated[datetime, typer.Option(help="End date for the download")],

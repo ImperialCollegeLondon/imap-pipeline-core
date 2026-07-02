@@ -267,14 +267,14 @@ def test_fetch_ialirt_downloads_data_from_sdc(
         },
     ]
     wiremock_manager.add_string_mapping(
-        "/space-weather?instrument=mag&time_utc_start=2025-10-14T03%3A00%3A00&time_utc_end=2025-10-14T03%3A01%3A00",
+        "/space-weather?instrument=mag&time_utc_start=2025-10-14T01%3A00%3A00&time_utc_end=2025-10-14T02%3A01%3A00",
         json.dumps({"meta": {"count": 2, "instrument": "mag"}, "data": query_response}),
         priority=1,
     )
 
-    expected_data_file = TEST_DATA / "imap_ialirt_20251014.csv"
+    expected_data_file = TEST_DATA / "imap_ialirt_mag_20251014.csv"
     expected_output_file: Path = (
-        temp_datastore / "ialirt/2025/10/imap_ialirt_20251014.csv"
+        temp_datastore / "ialirt/2025/10/imap_ialirt_mag_20251014.csv"
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
@@ -290,8 +290,10 @@ def test_fetch_ialirt_downloads_data_from_sdc(
             "--verbose",
             "fetch",
             "ialirt",
+            "--instrument",
+            "mag",
             "--start-date",
-            "2025-10-14 03:00:00",
+            "2025-10-14 02:00:00",
             "--end-date",
             "2025-10-14 03:01:00",
         ],
