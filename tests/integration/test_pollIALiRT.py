@@ -1,9 +1,11 @@
 import json
 import os
+import sys
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import pytz
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
@@ -521,3 +523,91 @@ async def test_poll_ialirt_specify_start_end_dates_hk(
 
     for inst in test_instruments:
         assert_file_exists(inst, start_date)
+
+
+class AdvancingDatetimeProvider(DatetimeProvider):
+    def __init__(self, fixed_now: datetime, step: timedelta) -> None:
+        super().__init__(fixed_now=fixed_now)
+        self._start_now = fixed_now
+        self._step = step
+        self._num_calls = -1
+        self._fixed_end_of_hour = fixed_now.replace(
+            minute=59,
+            second=59,
+            microsecond=999999,
+        )
+
+    def now(self) -> datetime:
+        self._num_calls += 1
+        return self._start_now + (self._step * self._num_calls)
+
+    def end_of_hour(self) -> datetime:
+        return self._fixed_end_of_hour
+
+
+# Force the next test to be at 6 AM UK time, and only do 1 iteration of polling
+NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
+    pytz.timezone("Europe/London")
+    .localize(
+        NOW.replace(
+            hour=6,
+            minute=59,
+            second=54,
+            microsecond=0,
+        )
+    )
+    .astimezone(UTC)
+    .replace(tzinfo=None)
+)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    mock_quicklook_ialirt_flow,  # <--- Make sure this is passed in!
+    prefect_test_fixture,  # noqa: F811
+    mock_teams_webhook_block,  # noqa: F811
+    clean_datastore,
+):
+    # Set up.
+    wiremock_manager.reset()
+
+    datetime_provider = AdvancingDatetimeProvider(
+        fixed_now=NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME,
+        step=timedelta(seconds=5),
+    )
+    yesterday = datetime_provider.yesterday()
+    end_of_hour = datetime_provider.end_of_hour()
+
+    define_available_ialirt_mappings(wiremock_manager, ["mag"], yesterday, end_of_hour)
+
+    # Exercise.
+    with (
+        patch(
+            "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
+        ) as mock_secret,
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
+        patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
+    ):
+        mock_secret.return_value = "12345"
+
+        with Environment(
+            IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
+            IALIRT_API_KEY="12345",
+        ):
+            await poll_ialirt_flow(
+                run_parameters=AutomaticRunParameters(),
+                wait_for_new_data_to_arrive=True,
+                timeout=5,
+                plot_last_3_days=True,
+                datetime_provider=datetime_provider,
+            )  # type: ignore
+
+        # Verify.
+        mock_quicklook_ialirt_flow.assert_called_once()
