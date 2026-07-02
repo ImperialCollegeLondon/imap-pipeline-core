@@ -13,7 +13,7 @@ def test_get_descriptor_from_filename():
         ("complex_name_with_underscores_v001.docx", "complex_name_with_underscores"),
         ("imap_mag_l1_hsk-status_20251201_v001.csv", "imap_mag_l1_hsk-status"),
         ("imap_mag_l1_hsk-status_20251201_001.csv", "imap_mag_l1_hsk-status"),
-        ("imap_ialirt_mag_20251201.csv", "imap_ialirt"),
+        ("imap_ialirt_mag_20251201.csv", "imap_ialirt_mag"),
         (
             "imap_mag_l2-burst-offsets_20250421_20250421_v000.cdf",
             "imap_mag_l2-burst-offsets",
