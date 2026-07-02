@@ -1,5 +1,6 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -110,6 +111,12 @@ class IALiRTApiClient:
             time_utc_start=self._ensure_utc_string(start_date),
             time_utc_end=self._ensure_utc_string(end_date),
         )
+
+        if isinstance(result, (str, bytes)):
+            try:
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to decode JSON from API response: {result}")
 
         if isinstance(result, dict):
             return result.get("data", [])
