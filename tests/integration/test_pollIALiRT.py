@@ -613,7 +613,6 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
             await poll_ialirt_flow(
                 run_parameters=AutomaticRunParameters(),
                 wait_for_new_data_to_arrive=True,
-                timeout=5,
                 plot_last_3_days=True,
                 datetime_provider=datetime_provider,
             )  # type: ignore
