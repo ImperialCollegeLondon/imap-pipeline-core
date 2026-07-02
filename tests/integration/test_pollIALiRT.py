@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -560,7 +561,7 @@ NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
 )
 
 
-# @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.skipif(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
     reason="Wiremock test containers will not work on Windows Github Runner",
