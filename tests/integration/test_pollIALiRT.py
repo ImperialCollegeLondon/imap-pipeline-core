@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -561,16 +560,7 @@ NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
 )
 
 
-@pytest.fixture
-def mock_quicklook_ialirt_flow(mocker) -> None:
-    mocker.patch(
-        "prefect_server.pollIALiRT.quicklook_ialirt_flow",
-        new_callable=AsyncMock,
-        return_value=None,
-    )
-
-
-@pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
+# @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.skipif(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
     reason="Wiremock test containers will not work on Windows Github Runner",
@@ -579,7 +569,6 @@ def mock_quicklook_ialirt_flow(mocker) -> None:
 async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
     wiremock_manager,
     test_database,  # noqa: F811
-    mock_quicklook_ialirt_flow,  # <--- Make sure this is passed in!
     prefect_test_fixture,  # noqa: F811
     mock_teams_webhook_block,  # noqa: F811
     clean_datastore,
@@ -601,6 +590,9 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
         patch(
             "prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock
         ) as mock_secret,
+        patch(
+            "prefect_server.pollIALiRT.quicklook_ialirt_flow", new_callable=AsyncMock
+        ) as mock_quicklook_ialirt_flow,
         patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
         patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", []),
     ):
