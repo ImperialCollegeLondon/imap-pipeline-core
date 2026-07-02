@@ -561,6 +561,15 @@ NOW_ALMOST_END_OF_HOUR_6AM_UK_TIME = (
 )
 
 
+@pytest.fixture
+def mock_quicklook_ialirt_flow(mocker) -> None:
+    mocker.patch(
+        "prefect_server.pollIALiRT.quicklook_ialirt_flow",
+        new_callable=AsyncMock,
+        return_value=None,
+    )
+
+
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="Requires python3.13 or higher")
 @pytest.mark.skipif(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",  # type: ignore
