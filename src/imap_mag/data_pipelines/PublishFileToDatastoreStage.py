@@ -26,7 +26,6 @@ class PublishFileToDatastoreStage(Stage):
         )
 
     async def process(self, item: Record, context: dict, **kwargs):
-
         if not self.enabled:
             await self.publish_next(item, context, **kwargs)
             return
