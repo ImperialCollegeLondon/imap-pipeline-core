@@ -27,7 +27,7 @@ from prefect_server.pollHiEsaStep import (
     poll_hi90_esa_step_flow,
 )
 from prefect_server.pollHK import poll_hk_flow
-from prefect_server.pollIALiRT import poll_ialirt_flow, poll_ialirt_hk_flow
+from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.pollSmallForces import poll_small_forces_flow
@@ -129,13 +129,6 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
-    )
-
-    poll_ialirt_hk_deployable = poll_ialirt_hk_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT_HK,
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_HK_CRON),
-        job_variables=shared_job_variables,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     poll_hk_deployable = poll_hk_flow.to_deployment(
@@ -314,39 +307,25 @@ async def adeploy_flows(local_debug: bool = False):
         ),
         triggers=[
             DeploymentEventTrigger(
-                name="Trigger upload after HK poll",
-                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
-                match_related={
-                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_HK
-                },
-            ),
-            DeploymentEventTrigger(
                 name="Trigger upload after I-ALiRT poll",
                 expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT
-                },
-            ),
-            DeploymentEventTrigger(
-                name="Trigger upload after I-ALiRT HK poll",
-                expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
-                match_related={
-                    "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT_HK
-                },
+                },  # type: ignore
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after science poll",
                 expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.POLL_SCIENCE
-                },
+                },  # type: ignore
             ),
             DeploymentEventTrigger(
                 name="Trigger upload after APPLY_CALIBRATION",
                 expect={PREFECT_CONSTANTS.EVENT.FLOW_RUN_COMPLETED},
                 match_related={
                     "prefect.resource.name": PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION
-                },
+                },  # type: ignore
             ),
         ],
     )
@@ -449,7 +428,6 @@ async def adeploy_flows(local_debug: bool = False):
 
     deployables = await asyncio.gather(
         poll_ialirt_deployable,
-        poll_ialirt_hk_deployable,
         poll_hk_deployable,
         poll_spice_deployable,
         poll_science_deployable,

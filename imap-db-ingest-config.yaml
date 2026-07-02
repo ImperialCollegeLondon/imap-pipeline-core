@@ -1,7 +1,6 @@
 jobs:
   imap_mag_l1_hsk-procstat_v:
     target_table: hsk_procstat
-    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -288,9 +287,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
   imap_mag_l1_hsk-pw_v:
     target_table: hsk_pw
-    filename_match: imap_mag_l1_hsk-pw_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -425,9 +424,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-pw_*_v*.csv
   imap_mag_l1_hsk-sci_v:
     target_table: hsk_sci
-    filename_match: imap_mag_l1_hsk-sci_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -678,9 +677,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-sci_*_v*.csv
   imap_mag_l1_hsk-sid15_v:
     target_table: hsk_sid15
-    filename_match: imap_mag_l1_hsk-sid15_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -2915,9 +2914,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-sid15_*_v*.csv
   imap_mag_l1_hsk-status_v:
     target_table: hsk_status
-    filename_match: imap_mag_l1_hsk-status_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -3000,9 +2999,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-status_*_v*.csv
   imap_sc_l1_x285_v:
     target_table: sc_x285
-    filename_match: imap_sc_l1_x285_*_v*.csv
     id_mapping:
       epoch:
         db_column: epoch
@@ -5861,9 +5860,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_sc_l1_x285_*_v*.csv
   imap_sc_l1_x286_v:
     target_table: sc_x286
-    filename_match: imap_sc_l1_x286_*_v*.csv
     id_mapping:
       epoch:
         db_column: id
@@ -10386,9 +10385,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_sc_l1_x286_*_v*.csv
   imap_mag_l1_ehs-hkadc_v:
     target_table: ehs-hkadc
-    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10486,9 +10485,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
   imap_mag_l1_els-confld_v:
     target_table: els-confld
-    filename_match: imap_mag_l1_els-confld_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10546,9 +10545,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_els-confld_*_v*.csv
   imap_mag_l1_els-itf_v:
     target_table: els-itf
-    filename_match: imap_mag_l1_els-itf_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10634,9 +10633,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_els-itf_*_v*.csv
   imap_mag_l1_mem-chckrep_v:
     target_table: mem-chckrep
-    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10686,9 +10685,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
   imap_mag_l1_prog-btsucc_v:
     target_table: prog-btsucc
-    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10763,9 +10762,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
   imap_mag_l1_prog-mtran_v:
     target_table: prog-mtran
-    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10820,9 +10819,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
   imap_mag_l1_tcc-succ_v:
     target_table: tcc-succ
-    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10881,9 +10880,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
   imap_ialirt_hk:
     target_table: ialirt_mag_hk
-    filename_match: imap_ialirt_hk_*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
@@ -11019,15 +11018,15 @@ jobs:
         type: boolean
         nullable: false
     filename_to_column:
-      template: imap_ialirt_hk_[date].csv
+      template: imap_ialirt_mag_hk_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_mag_hk_*.csv
   imap_ialirt:
     target_table: ialirt_mag
-    filename_match: imap_ialirt_*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
@@ -11103,9 +11102,198 @@ jobs:
         type: bigint
         nullable: false
     filename_to_column:
-      template: imap_ialirt_[date].csv
+      template: imap_ialirt_mag_[date].csv
       columns:
         date:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_mag_*.csv
+  ialirt_swe:
+    target_table: ialirt_swe
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      swe_counterstreaming_electrons:
+        db_column: swe_counterstreaming_electrons
+        type: integer
+        nullable: false
+      swe_epoch:
+        db_column: swe_epoch
+        type: bigint
+        nullable: false
+      swe_normalized_counts:
+        db_column: swe_normalized_counts
+        type: varchar(81)
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_swe_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ialirt_hit:
+    target_table: ialirt_hit
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      hit_e_a_side_med_en:
+        db_column: hit_e_a_side_med_en
+        type: integer
+        nullable: false
+      hit_e_b_side_med_en:
+        db_column: hit_e_b_side_med_en
+        type: integer
+        nullable: false
+      hit_epoch:
+        db_column: hit_epoch
+        type: bigint
+        nullable: false
+      hit_h_omni_low_en:
+        db_column: hit_h_omni_low_en
+        type: integer
+        nullable: false
+      hit_h_omni_med_en:
+        db_column: hit_h_omni_med_en
+        type: integer
+        nullable: false
+      hit_he_omni_high_en:
+        db_column: hit_he_omni_high_en
+        type: integer
+        nullable: false
+      hit_he_omni_low_en:
+        db_column: hit_he_omni_low_en
+        type: integer
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_hit_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ialirt_swapi:
+    target_table: ialirt_swapi
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      swapi_epoch:
+        db_column: swapi_epoch
+        type: bigint
+        nullable: false
+      swapi_pseudo_proton_density:
+        db_column: swapi_pseudo_proton_density
+        type: float
+        nullable: false
+      swapi_pseudo_proton_speed:
+        db_column: swapi_pseudo_proton_speed
+        type: float
+        nullable: false
+      swapi_pseudo_proton_temperature:
+        db_column: swapi_pseudo_proton_temperature
+        type: float
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_swapi_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ialirt_codice_lo:
+    target_table: ialirt_codice_lo
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      codice_lo_c_over_o_abundance:
+        db_column: codice_lo_c_over_o_abundance
+        type: float
+        nullable: true
+      codice_lo_c_plus_6_over_c_plus_5:
+        db_column: codice_lo_c_plus_6_over_c_plus_5
+        type: float
+        nullable: true
+      codice_lo_epoch:
+        db_column: codice_lo_epoch
+        type: bigint
+        nullable: false
+      codice_lo_fe_low_over_fe_high:
+        db_column: codice_lo_fe_low_over_fe_high
+        type: float
+        nullable: true
+      codice_lo_fe_over_o_abundance:
+        db_column: codice_lo_fe_over_o_abundance
+        type: float
+        nullable: true
+      codice_lo_mg_over_o_abundance:
+        db_column: codice_lo_mg_over_o_abundance
+        type: float
+        nullable: true
+      codice_lo_o_plus_7_over_o_plus_6:
+        db_column: codice_lo_o_plus_7_over_o_plus_6
+        type: float
+        nullable: true
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_codice_lo_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ialirt_codice_hi:
+    target_table: ialirt_codice_hi
+    id_mapping:
+      time_utc:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      codice_hi_epoch:
+        db_column: codice_hi_epoch
+        type: varchar(80)
+        nullable: false
+      codice_hi_h:
+        db_column: codice_hi_h
+        type: text
+        nullable: false
+      ttj2000ns:
+        db_column: ttj2000ns
+        type: bigint
+        nullable: false
+    filename_to_column:
+      template: imap_ialirt_codice_hi_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+

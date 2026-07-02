@@ -8,7 +8,6 @@ import pytest
 from prefect_server.workflow import adeploy_flows, get_matlab_license_server
 
 _ALL_FLOW_NAMES = [
-    "poll_ialirt_hk_flow",
     "poll_ialirt_flow",
     "poll_hk_flow",
     "poll_spice_flow",
