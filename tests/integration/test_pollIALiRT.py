@@ -31,20 +31,6 @@ END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=999999)
 END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
-def check_file_existence(
-    actual_timestamp: datetime, folder_name: str, file_prefix: str
-):
-    datastore = AppSettings().data_store  # type: ignore
-    data_folder = os.path.join(
-        datastore, folder_name, actual_timestamp.strftime("%Y/%m")
-    )
-    cdf_file = f"{file_prefix}_{actual_timestamp.strftime('%Y%m%d')}.csv"
-
-    assert os.path.exists(os.path.join(data_folder, cdf_file)), (
-        f"Expected file {cdf_file} not found in {data_folder}"
-    )
-
-
 def define_available_ialirt_mappings(
     wiremock_manager,
     instruments: list[str],
@@ -148,7 +134,9 @@ def datastore_csv_path(instrument: str, date: datetime) -> str:
     """Return the absolute datastore path of the CSV the pipeline should produce for  ``instrument`` and ``date``."""
     datastore_root = AppSettings().data_store  # type: ignore
 
-    handler = IALiRTPathHandler(instrument=instrument, content_date=date)
+    handler = IALiRTPathHandler(
+        instrument=instrument, content_date=date, is_hk=instrument.endswith("_hk")
+    )
     return os.path.join(
         datastore_root, handler.get_folder_structure(), handler.get_filename()
     )

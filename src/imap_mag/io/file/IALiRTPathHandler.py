@@ -22,7 +22,7 @@ class IALiRTPathHandler(IFilePathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str = "csv"
     is_hk: bool = False
-    is_legacy: bool = False  # True if the file is from the legacy naming convention (no instrument in filename)
+    is_legacy: bool = False  # if legacy naming
 
     def supports_sequencing(self) -> bool:
         return False
@@ -56,10 +56,24 @@ class IALiRTPathHandler(IFilePathHandler):
         return None
 
     @classmethod
+    def is_legacy_name(cls, filename: str | Path):
+        match = re.match(
+            r"imap_ialirt_(?:(?P<instrument>\w+?)(?P<hk>_hk)?_)?(?P<date>\d{8})\.(?P<ext>\w+)",
+            Path(filename).name,
+        )
+
+        is_legacy = False
+        if match:
+            groups = match.groupdict()
+            is_legacy = groups["instrument"] is None
+
+        return is_legacy
+
+    @classmethod
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
 
         match = re.match(
-            r"imap_ialirt_(?:(?P<instrument>\w+?)(?P<hk>_hk)?_)?(?P<date>\d{8})\.(?P<ext>\w+)",
+            r"imap_ialirt_(?P<instrument>\w+?)(?P<hk>_hk)?_(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -67,13 +81,11 @@ class IALiRTPathHandler(IFilePathHandler):
         )
 
         if match:
-            groups = match.groupdict()
-            is_legacy = groups["instrument"] is None
-
             return cls(
-                instrument=groups["instrument"] if not is_legacy else "mag",
-                content_date=datetime.strptime(groups["date"], "%Y%m%d"),
-                extension=groups["ext"],
-                is_hk=bool(groups["hk"]),  # If "_hk" was found in the regex
-                is_legacy=is_legacy,
+                instrument=f"{match['instrument']}_hk"
+                if match["hk"]
+                else match["instrument"],
+                content_date=datetime.strptime(match["date"], "%Y%m%d"),
+                extension=match["ext"],
+                is_hk=bool(match["hk"]),  # If "_hk" was found in the regex
             )

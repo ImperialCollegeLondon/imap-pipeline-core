@@ -66,8 +66,10 @@ def _run_migration(
             )
             continue
 
+        is_legacy_name = IALiRTPathHandler.is_legacy_name(name)
+
         # new name
-        if handler.content_date is not None and handler.is_legacy:
+        if handler.content_date is not None and is_legacy_name:
             date_str = handler.content_date.strftime("%Y%m%d")
             new_name = f"imap_ialirt_mag_{date_str}.{handler.extension}"
 
