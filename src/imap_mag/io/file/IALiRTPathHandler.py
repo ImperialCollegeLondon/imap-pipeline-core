@@ -72,8 +72,6 @@ class IALiRTPathHandler(IFilePathHandler):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
 
-        # Notice the (?: ... )? wrapping the instrument and _hk parts.
-        # This makes the entire instrument block AND its trailing underscore optional!
         match = re.match(
             r"imap_ialirt_(?:(?P<instrument>\w+?)(?P<hk>_hk)?_)?(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
