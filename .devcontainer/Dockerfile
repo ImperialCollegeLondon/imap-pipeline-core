@@ -19,7 +19,7 @@ RUN sudo apt-get update && sudo apt-get install --no-install-recommends --no-ins
 RUN python3 -m pip install --user pipx && \
     python3 -m pipx ensurepath
 RUN pipx ensurepath && \
-    pipx install poetry
+    pipx install poetry pre-commit
 
 ENV PATH="/home/vscode/.local/bin:${PATH}"
 
