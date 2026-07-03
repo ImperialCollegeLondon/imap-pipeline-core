@@ -39,10 +39,10 @@ def _setup_ialirt_datastore(
         temp_datastore / "ialirt" / date_fmt / f"imap_ialirt_mag_{date_str}.csv",
     )
 
-    (temp_datastore / "ialirt" / date_fmt).mkdir(parents=True, exist_ok=True)
+    (temp_datastore / "ialirt_hk" / date_fmt).mkdir(parents=True, exist_ok=True)
     shutil.copy(
         hk_data,
-        temp_datastore / "ialirt" / date_fmt / f"imap_ialirt_mag_hk_{date_str}.csv",
+        temp_datastore / "ialirt_hk" / date_fmt / f"imap_ialirt_mag_hk_{date_str}.csv",
     )
 
 

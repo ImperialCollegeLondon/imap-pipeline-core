@@ -33,6 +33,9 @@ class IALiRTPathHandler(IFilePathHandler):
         super()._check_property_values("folder structure", ["content_date"])
         assert self.content_date
 
+        # Update root if it's housekeeping data
+        self.root_folder = "ialirt_hk" if self.is_hk else self.root_folder
+
         return (Path(self.root_folder) / self.content_date.strftime("%Y/%m")).as_posix()
 
     def get_filename(self) -> str:
