@@ -67,7 +67,7 @@ def _run_migration(
             continue
 
         # new name
-        if handler.content_date is not None:
+        if handler.content_date is not None and handler.is_legacy:
             date_str = handler.content_date.strftime("%Y%m%d")
             new_name = f"imap_ialirt_mag_{date_str}.{handler.extension}"
 
