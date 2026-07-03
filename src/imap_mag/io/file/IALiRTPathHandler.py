@@ -72,20 +72,32 @@ class IALiRTPathHandler(IFilePathHandler):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "IALiRTPathHandler | None":
 
+        # Notice the (?: ... )? wrapping the instrument and _hk parts.
+        # This makes the entire instrument block AND its trailing underscore optional!
         match = re.match(
-            r"imap_ialirt_(?P<instrument>\w+?)(?P<hk>_hk)?_(?P<date>\d{8})\.(?P<ext>\w+)",
+            r"imap_ialirt_(?:(?P<instrument>\w+?)(?P<hk>_hk)?_)?(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
         )
+
+        if not match:
+            logger.debug(
+                f"Could not parse filename {filename} with IALiRTPathHandler. Skipping."
+            )
+            return None
+
+        groups = match.groupdict()
+
+        base_instrument = groups["instrument"] or "mag"
+
+        final_instrument = f"{base_instrument}_hk" if groups["hk"] else base_instrument
+
         logger.debug(
-            f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with HK regex."
+            f"Filename {filename} parsed successfully: instrument={final_instrument}, date={groups['date']}"
         )
 
-        if match:
-            return cls(
-                instrument=f"{match['instrument']}_hk"
-                if match["hk"]
-                else match["instrument"],
-                content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                extension=match["ext"],
-                is_hk=bool(match["hk"]),  # If "_hk" was found in the regex
-            )
+        return cls(
+            instrument=final_instrument,
+            content_date=datetime.strptime(groups["date"], "%Y%m%d"),
+            extension=groups["ext"],
+            is_hk=bool(groups["hk"]),  # If "_hk" was found in the regex
+        )
