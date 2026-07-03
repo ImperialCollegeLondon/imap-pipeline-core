@@ -36,7 +36,7 @@ class IALiRTPipeline(Pipeline):
         if self.is_hk:
             progress_id = f"{CONSTANTS.DATABASE.IALIRT_HK_PROGRESS_ID}"
         else:
-            progress_id = f"{CONSTANTS.DATABASE.IALIRT_PROGRESS_ID}"
+            progress_id = f"{self.base_instrument.upper()}_{CONSTANTS.DATABASE.IALIRT_PROGRESS_ID}"
         self.initial_context = {
             "progress_item_name": progress_id,
         }
