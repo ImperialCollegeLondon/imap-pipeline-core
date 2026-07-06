@@ -104,17 +104,16 @@ async def run_ialirt_polling_pipeline_task(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     flow_run_name=generate_flow_run_name,
     log_prints=True,
-    validate_parameters=False,  # Avoid Prefect trying to validate the complex types
+    # validate_parameters=False,  # Avoid Prefect trying to validate the complex types
 )
 async def poll_ialirt_flow(
     run_parameters: Annotated[
         AutomaticRunParameters | FetchByDatesRunParameters,
         Field(
-            default_factory=AutomaticRunParameters,
             json_schema_extra={
                 "title": "Run parameters",
-                "description": "Select 'Automatic' to use database trackers, or 'Fetch By Dates' to backfill specific time windows.",
-            },
+                "description": "Parameters for the pipeline run. If 'start_date' and 'end_date' are not provided, the pipeline will automatically determine the date range based on the last workflow progress.",
+            }
         ),
     ] = AutomaticRunParameters(),
     wait_for_new_data_to_arrive: Annotated[
@@ -191,19 +190,24 @@ async def poll_ialirt_flow(
     end_date = getattr(run_parameters, "end_date", None)
     start_date = getattr(run_parameters, "start_date", None)
 
+    current_time = datetime_provider.now()
+
     if not end_date:
-        end_date = datetime_provider.now().replace(minute=55, second=0, microsecond=0)
+        end_date = current_time.replace(minute=0, second=0, microsecond=0)
+
     if not start_date:
-        start_date = datetime_provider.now().replace(minute=0, second=10, microsecond=0)
+        start_date = end_date - timedelta(hours=1)
+
+    # Make dates naive for comparison with datetime_provider.now()
+    end_date = end_date.replace(tzinfo=None)
+    start_date = start_date.replace(tzinfo=None)
     logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
 
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
 
     iteration = 1
     while True:
-        current_time = datetime_provider.now()
-
-        if wait_for_new_data_to_arrive and current_time >= end_date:
+        if wait_for_new_data_to_arrive and current_time <= end_date:
             break
 
         logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")

@@ -18,6 +18,7 @@ from imap_mag.db import Database
 from imap_mag.download.FetchIALiRT import FetchIALiRT
 from imap_mag.io import FileFinder
 from imap_mag.util.constants import CONSTANTS
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 
 
 class IALiRTPipeline(Pipeline):
@@ -26,8 +27,9 @@ class IALiRTPipeline(Pipeline):
         instrument: str,
         database: Database | None,
         settings: AppSettings,
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
-        super().__init__(settings=settings)
+        super().__init__(settings=settings, datetime_provider=datetime_provider)
         self.instrument = instrument
 
         self.is_hk = instrument.endswith("_hk")
@@ -65,7 +67,8 @@ class IALiRTPipeline(Pipeline):
             stages=[
                 GetProcessingDatesStage(
                     database=self._database,
-                    date_resolution_mode=DateResolutionMode.EXACT_DATETIME,
+                    date_resolution_mode=DateResolutionMode.DATE_ONLY,
+                    datetime_provider=self._datetime_provider,
                 ),
                 DownloadIALiRTStage(
                     instrument=self.instrument,
