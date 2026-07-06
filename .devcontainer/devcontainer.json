@@ -1,28 +1,18 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/debian
 {
-    "build": {
-        "dockerfile": "./Dockerfile",
-        "context": "."
+    "image": "ghcr.io/imperialcollegelondon/mag-lab-matlab-devcontainers:r2025b",
+    "containerEnv": {
+        "MWI_APP_PORT": "8888"
+    },
+    "portsAttributes": {
+        "8888": { "label": "MATLAB (matlab-proxy)", "onAutoForward": "openPreview" }
     },
     "features": {
-        // allow access to the HOST docker socker for docker desktop
-        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-
-        // yuk-  this adds 250secs to build time
-        "ghcr.io/mathworks/devcontainer-features/matlab:0": {
-            "release": "r2024a",
-            "products": "MATLAB Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox"
-        },
-        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
-        "ghcr.io/devcontainers/features/github-cli:1": {},
         // uncommment act if you want to be able to run github actions locally. This needs "docker in docker" setup for devcontainer
         //"ghcr.io/dhoeric/features/act:1": {}
     },
     "remoteEnv": {
-        // add the poetry to the PATH for the dev user vscode
-        "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
-
         // pass through local IMAP keys and config environment variables to the devcontainer
         "IMAP_WEBPODA_TOKEN": "${localEnv:IMAP_WEBPODA_TOKEN}",
         "IMAP_API_KEY": "${localEnv:IMAP_API_KEY}",
@@ -43,7 +33,7 @@
     },
 
     // may need to update nvm for pre-commit to work: nvm install 24 && pre-commit clean && pre-commit install-hooks && pre-commit autoupdate
-    "postCreateCommand": "sudo chown -R vscode:vscode $HOME/.claude && pre-commit install-hooks && pre-commit autoupdate",
+    "postCreateCommand": "pre-commit install-hooks && pre-commit autoupdate",
     // install poetry in first startup in vscode
     "postStartCommand": "poetry install --all-groups --all-extras -q",
     // Configure tool-specific properties.
@@ -71,9 +61,7 @@
             "extensions": [
                 "EditorConfig.EditorConfig",
                 "ms-python.python",
-                "ms-python.black-formatter",
                 "ms-python.mypy-type-checker",
-                "ms-azuretools.vscode-docker",
                 "github.vscode-github-actions",
                 "charliermarsh.ruff",
                 "ms-ossdata.vscode-postgresql",

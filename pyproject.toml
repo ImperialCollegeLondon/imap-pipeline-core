@@ -1,7 +1,7 @@
 [project]
 requires-python = ">=3.11,<3.15"
 name = "imap-mag"
-version = "5.3.1"
+version = "5.4.0"
 description = "Process IMAP data"
 authors = [
   {name = "alastairtree"},
@@ -46,6 +46,7 @@ packages = [
     { include = "imap_mag", from = "src" },
     { include = "imap_db", from = "src" },
     { include = "mag_toolkit", from = "src" },
+    { include = "prefect_server", from = "src" },
 ]
 
 [dependency-groups]
