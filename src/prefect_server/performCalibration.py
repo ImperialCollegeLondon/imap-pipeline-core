@@ -1,16 +1,103 @@
+import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
 from prefect import flow
+from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
+from prefect_github import GitHubRepository
 
 from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
 from imap_mag.config import SaveMode
-from imap_mag.config.CalibrationConfig import CalibrationConfig
+from imap_mag.config.AppSettings import AppSettings
+from imap_mag.config.CalibrationConfig import (
+    CalibrationConfig,
+    ScriptedL2CalibrationConfig,
+)
 from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
 from prefect_server.constants import PREFECT_CONSTANTS
+
+logger = logging.getLogger(__name__)
+
+
+def _github_repo_name(repository_url: str) -> str:
+    """Extract the repository name from a git/https clone URL.
+
+    e.g. ``git@github.com:ImperialCollegeLondon/IMAP_MAG_Calibration.git`` ->
+    ``IMAP_MAG_Calibration``.
+    """
+    name = re.split(r"[/:]", repository_url.rstrip("/"))[-1]
+    if name.endswith(".git"):
+        name = name[: -len(".git")]
+    return name
+
+
+def _load_matlab_repo_block(
+    block_name: str,
+) -> GitHubRepository | LocalFileSystem | None:
+    """Load a MATLAB repo block by name, trying each supported block type."""
+    for block_type in (GitHubRepository, LocalFileSystem):
+        try:
+            return block_type.load(block_name)
+        except Exception:
+            logger.debug(
+                f"Block '{block_name}' is not a {block_type.__name__}, trying next type."
+            )
+    return None
+
+
+def _resolve_matlab_repo_path(
+    matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
+    work_folder: Path,
+) -> Path | None:
+    """Resolve the ``matlab_repo`` argument to a local path to the MATLAB code.
+
+    ``matlab_repo`` may be a block name (str), a LocalFileSystem block (local path),
+    a GitHubRepository block (pulled into a subfolder of the work folder named after
+    the repo), or None. Raises if a provided repo cannot be found or pulled.
+    """
+    if matlab_repo is None:
+        return None
+
+    block: LocalFileSystem | GitHubRepository | None = None
+    if isinstance(matlab_repo, str):
+        block = _load_matlab_repo_block(matlab_repo)
+        if block is None:
+            raise ValueError(
+                f"Could not load a MATLAB repository block named '{matlab_repo}'."
+            )
+    else:
+        block = matlab_repo
+
+    if isinstance(block, LocalFileSystem):
+        repo_path = Path(block.basepath)
+        if not repo_path.is_dir():
+            raise FileNotFoundError(
+                f"LocalFileSystem MATLAB repository path does not exist: {repo_path}"
+            )
+        logger.info(f"Using local MATLAB calibration repository at {repo_path}")
+        return repo_path
+
+    if isinstance(block, GitHubRepository):
+        repo_name = _github_repo_name(block.repository_url)
+        target = work_folder / repo_name
+        logger.info(
+            f"Pulling MATLAB calibration repository {block.repository_url} into {target}"
+        )
+        block.get_directory(local_path=str(target))
+        if not target.is_dir():
+            raise FileNotFoundError(
+                f"Failed to pull MATLAB repository to {target} from {block.repository_url}."
+            )
+        return target
+
+    raise TypeError(
+        f"Unsupported matlab_repo type: {type(block).__name__}. Expected a "
+        "LocalFileSystem block, GitHubRepository block, block name or None."
+    )
 
 
 def generate_calibration_flow_run_name() -> str:
@@ -106,11 +193,36 @@ def calibrate_flow(
     end_date: datetime | None = None,
     method: CalibrationMethod = CalibrationMethod.KEPKO,
     mode: ScienceMode = ScienceMode.Normal,
-    configuration: CalibrationConfig | None = None,
+    configuration: ScriptedL2CalibrationConfig | CalibrationConfig | None = None,
     sensor: Sensor = Sensor.MAGO,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
+    metakernel: Path | None = None,
+    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None,
 ) -> list[Path]:
-    """Calibrate for a date or date range. Returns a list of calibration layer paths."""
+    """Calibrate for a date or date range. Returns a list of calibration layer paths.
+
+    Args:
+        metakernel: Filename of the SPICE metakernel to use for the scripted-l2
+            method. Treated like ``spice_metakernel`` in ``apply_flow``: if provided
+            it must exist (in the datastore's spice/mk folder); if None and the
+            method is scripted-l2 one is generated.
+        matlab_repo: Where to acquire the MATLAB calibration code from for the
+            scripted-l2 method. A LocalFileSystem block (local path), a
+            GitHubRepository block (pulled into the work folder), the name of such
+            a block, or None for the other methods.
+    """
+    matlab_repo_path: Path | None = None
+    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+        app_settings = AppSettings()  # type: ignore
+        work_folder = app_settings.setup_work_folder_for_command(
+            app_settings.fetch_science
+        )
+        matlab_repo_path = _resolve_matlab_repo_path(matlab_repo, work_folder)
+        if matlab_repo_path is None:
+            raise ValueError(
+                "matlab_repo is required for the scripted-l2 calibration method."
+            )
+
     return calibrate(
         start_date=start_date,
         end_date=end_date,
@@ -119,6 +231,8 @@ def calibrate_flow(
         sensor=sensor,
         configuration=configuration.model_dump_json() if configuration else None,
         save_mode=save_mode,
+        metakernel=metakernel,
+        matlab_repo_path=matlab_repo_path,
     )
 
 

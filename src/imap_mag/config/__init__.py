@@ -1,6 +1,10 @@
 from imap_mag.config.ApiSource import ApiSource, SdcApiSource, WebPodaApiSource
 from imap_mag.config.AppSettings import AppSettings
-from imap_mag.config.CalibrationConfig import CalibrationConfig, GradiometryConfig
+from imap_mag.config.CalibrationConfig import (
+    CalibrationConfig,
+    GradiometryConfig,
+    ScriptedL2CalibrationConfig,
+)
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
 from imap_mag.config.FetchMode import FetchMode
@@ -20,6 +24,7 @@ __all__ = [
     "NestedAliasEnvSettingsSource",
     "PublishConfig",
     "SaveMode",
+    "ScriptedL2CalibrationConfig",
     "SdcApiSource",
     "WebPodaApiSource",
 ]

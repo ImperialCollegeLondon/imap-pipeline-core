@@ -38,6 +38,7 @@ dependencies = [
     "spiceypy>=8.1.2",
     "prefect-sqlalchemy>=0.6.1",
     "imap-processing>=1.0.28",
+    "prefect-github (>=0.4.3,<0.4.4)",
 ]
 
 

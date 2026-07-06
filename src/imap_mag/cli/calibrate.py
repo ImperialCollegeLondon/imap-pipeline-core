@@ -7,7 +7,13 @@ import typer
 
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.config import AppSettings, CalibrationConfig, GradiometryConfig, SaveMode
+from imap_mag.config import (
+    AppSettings,
+    CalibrationConfig,
+    GradiometryConfig,
+    SaveMode,
+    ScriptedL2CalibrationConfig,
+)
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
@@ -18,6 +24,7 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
+    ScriptedL2CalibrationJob,
     Sensor,
     SetQualityAndNaNCalibrationJob,
 )
@@ -97,6 +104,21 @@ def calibrate(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    metakernel: Annotated[
+        Path | None,
+        typer.Option(
+            help="Filename of the SPICE metakernel to use (scripted-l2 method). "
+            "Must exist in the spice/mk folder of the datastore. If omitted for "
+            "scripted-l2, one is generated.",
+        ),
+    ] = None,
+    matlab_repo_path: Annotated[
+        Path | None,
+        typer.Option(
+            help="Local path to the acquired MATLAB calibration repository "
+            "(required for the scripted-l2 method).",
+        ),
+    ] = None,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -120,10 +142,32 @@ def calibrate(
             sensor=sensor,
             configuration=configuration,
             save_mode=save_mode,
+            metakernel=metakernel,
+            matlab_repo_path=matlab_repo_path,
         )
         results.append(result)
         current += timedelta(days=1)
     return results
+
+
+def _next_layer_version(
+    datastore_finder: FileFinder, mode: ScienceMode, date: datetime
+) -> int:
+    """Return the next available version for the manual-{mode} layer on ``date``.
+
+    The scripted-l2 MATLAB script stamps the layer filename with the version we
+    give it, so we compute it up-front from what already exists in the datastore.
+    """
+    handler = CalibrationLayerPathHandler(
+        descriptor=f"manual-{mode.value}", content_date=date
+    )
+    latest = datastore_finder.find_latest_version_by_handler(
+        handler, throw_if_not_found=False
+    )
+    if latest is None:
+        return 1
+    parsed = CalibrationLayerPathHandler.from_filename(Path(latest).name)
+    return (parsed.version + 1) if parsed else 1
 
 
 def _calibrate_for_date(
@@ -133,6 +177,8 @@ def _calibrate_for_date(
     sensor: Sensor,
     configuration: str | None,
     save_mode: SaveMode,
+    metakernel: Path | None = None,
+    matlab_repo_path: Path | None = None,
 ) -> Path:
     """Run calibration for a single date."""
     app_settings = AppSettings()  # type: ignore
@@ -146,13 +192,20 @@ def _calibrate_for_date(
         database=Database() if Database.get_environment_url() else None,
     )
 
+    # The scripted-l2 method uses an extended configuration with extra required
+    # fields, so parse against the correct model for the chosen method.
+    config_cls: type[CalibrationConfig] = (
+        ScriptedL2CalibrationConfig
+        if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION
+        else CalibrationConfig
+    )
     if configuration is None:
-        calibration_configuration = CalibrationConfig()
+        calibration_configuration = config_cls()
     elif Path(configuration).is_file():
         logger.info(f"Loading calibration configuration from {configuration}")
-        calibration_configuration = CalibrationConfig.from_file(Path(configuration))
+        calibration_configuration = config_cls.from_file(Path(configuration))
     else:
-        calibration_configuration = CalibrationConfig.model_validate_json(configuration)
+        calibration_configuration = config_cls.model_validate_json(configuration)
 
     calibration_job_parameters = CalibrationJobParameters(
         date=start_date, mode=mode, sensor=sensor
@@ -169,6 +222,13 @@ def _calibrate_for_date(
             calibrator = SetQualityAndNaNCalibrationJob(
                 calibration_job_parameters, work_folder, datastore_finder
             )
+        case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+            calibrator = ScriptedL2CalibrationJob(
+                calibration_job_parameters,
+                work_folder,
+                matlab_repo_path=matlab_repo_path,
+                metakernel=metakernel,
+            )
         case _:
             raise ValueError("Calibration method is not implemented")
 
@@ -178,9 +238,20 @@ def _calibrate_for_date(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
 
-    calibration_handler = CalibrationLayerPathHandler(
-        descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
-    )
+    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+        # The MATLAB script fixes its own output filename as
+        # ``imap_mag_manual-{mode}-layer_{date}_v{VVV}.json`` and stamps it with
+        # the version we pass in, so mirror that descriptor and pick the next
+        # available version for that layer.
+        calibration_handler = CalibrationLayerPathHandler(
+            descriptor=f"manual-{mode.value}",
+            content_date=start_date,
+            version=_next_layer_version(datastore_finder, mode, start_date),
+        )
+    else:
+        calibration_handler = CalibrationLayerPathHandler(
+            descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
+        )
 
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration

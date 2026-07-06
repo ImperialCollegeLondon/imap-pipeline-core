@@ -13,6 +13,7 @@ from .calibrators import (
     CalibrationJob,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
+    ScriptedL2CalibrationJob,
     SetQualityAndNaNCalibrationJob,
 )
 from .ScienceLayer import ScienceLayer
@@ -30,6 +31,7 @@ __all__ = [
     "Mission",
     "ScienceLayer",
     "ScienceValue",
+    "ScriptedL2CalibrationJob",
     "Sensor",
     "SetQualityAndNaNCalibrationJob",
 ]
