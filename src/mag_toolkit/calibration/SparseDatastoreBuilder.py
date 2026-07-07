@@ -20,14 +20,11 @@ class SparseDatastoreBuilder:
     (and SPICE) resolve them from the sparse root. This keeps calibration off the
     (potentially huge, network-mounted) shared datastore for the actual run.
 
-    What is copied:
-      * per-day science + housekeeping for ``[d - days_before, d + days_after]``
-        (config ``per_day_patterns``),
-      * small day-independent inputs — calibration matrices, profiles, pre-computed
-        offsets, spin table, thruster activities (config ``shared_patterns``),
-      * the SPICE metakernel and exactly the kernels it references, rewriting the
-        metakernel's ``PATH_VALUES`` to the sparse ``spice`` folder so it furnishes
-        from the sparse root.
+    Which files are copied is driven entirely by the configured glob patterns
+    (:class:`SparseDatastoreConfig`), each with its own optional day window. The
+    SPICE metakernel and exactly the kernels it references are always copied
+    separately, with the metakernel's ``PATH_VALUES`` normalised to the relative
+    ``spice`` folder so it furnishes from the sparse root.
     """
 
     def __init__(
@@ -50,65 +47,44 @@ class SparseDatastoreBuilder:
     ) -> Path:
         """Populate ``target_root`` with a sparse datastore and return it."""
         level = "l1b" if mode == ScienceMode.Burst else "l1c"
-        days = self._expanded_days(dates)
 
         # Ensure there is room in the work folder before copying anything in.
         check_disk_space(target_root.parent, self.disk_usage_threshold)
         target_root.mkdir(parents=True, exist_ok=True)
 
         copied = 0
-        for day in days:
-            context = {
-                "level": level,
-                "mode": mode.value,
-                "Y": f"{day.year:04d}",
-                "m": f"{day.month:02d}",
-                "Ymd": day.strftime("%Y%m%d"),
-            }
-            for pattern in self.config.per_day_patterns:
-                copied += self._copy_glob(pattern.format(**context), target_root)
-
-        shared_context = {"matrix_version": matrix_version}
-        for pattern in self.config.shared_patterns:
-            copied += self._copy_glob(pattern.format(**shared_context), target_root)
+        for pattern in self.config.patterns:
+            # {level}/{mode}/{matrix_version} are filled first; strftime fills the
+            # date codes per day in the pattern's window.
+            named = pattern.pattern.format(
+                level=level, mode=mode.value, matrix_version=matrix_version
+            )
+            for day in self._pattern_days(
+                dates, pattern.days_before, pattern.days_after
+            ):
+                copied += self._copy_glob(day.strftime(named), target_root)
 
         copied += self._copy_metakernel_and_kernels(metakernel_filename, target_root)
 
-        self._add_case_insensitive_aliases(target_root)
-
         logger.info(
-            f"Built sparse datastore at {target_root} with {copied} files for "
-            f"{days[0].date()}..{days[-1].date()} ({mode.value})."
+            f"Built sparse datastore at {target_root} with {copied} files "
+            f"for {[d.date() for d in dates]} ({mode.value})."
         )
         return target_root
 
-    def _expanded_days(self, dates: list[datetime]) -> list[datetime]:
+    @staticmethod
+    def _pattern_days(
+        dates: list[datetime], days_before: int, days_after: int
+    ) -> list[datetime]:
         all_days: set[datetime] = set()
         for date in dates:
-            for offset in range(-self.config.days_before, self.config.days_after + 1):
-                day = (date + timedelta(days=offset)).replace(
-                    hour=0, minute=0, second=0, microsecond=0, tzinfo=None
+            for offset in range(-days_before, days_after + 1):
+                all_days.add(
+                    (date + timedelta(days=offset)).replace(
+                        hour=0, minute=0, second=0, microsecond=0, tzinfo=None
+                    )
                 )
-                all_days.add(day)
         return sorted(all_days)
-
-    def _add_case_insensitive_aliases(self, target_root: Path) -> None:
-        """Add lowercase symlink aliases for folders MATLAB reads case-insensitively.
-
-        The shared datastore is case-insensitive so a single ``Profiles`` folder
-        serves both ``Profiles`` and ``profiles`` reads; on the case-sensitive
-        sparse copy we add the missing lowercase alias.
-        """
-        for relative in self.config.case_insensitive_dir_aliases:
-            real = target_root / relative
-            if not real.exists():
-                continue
-            lower_name = real.name.lower()
-            if lower_name == real.name:
-                continue
-            alias = real.parent / lower_name
-            if not alias.exists():
-                alias.symlink_to(real.name)
 
     def _copy_glob(self, relative_pattern: str, target_root: Path) -> int:
         count = 0
@@ -138,8 +114,7 @@ class SparseDatastoreBuilder:
             )
 
         count = 0
-        spice_relative_paths = self._parse_metakernel_kernels(source_mk)
-        for kernel_relative in spice_relative_paths:
+        for kernel_relative in self._parse_metakernel_kernels(source_mk):
             source_kernel = self.source_datastore / "spice" / kernel_relative
             if source_kernel.exists():
                 count += self._copy_file(
@@ -151,22 +126,25 @@ class SparseDatastoreBuilder:
                     f"not found at {source_kernel}; skipping."
                 )
 
-        # Write the metakernel into the sparse spice/mk folder with PATH_VALUES
-        # pointing at the sparse spice folder so it furnishes from the sparse root.
+        # Write the metakernel into the sparse spice/mk folder with a relative
+        # PATH_VALUES so it furnishes from the sparse root (MATLAB cd's there via
+        # spice_metakernal_root before furnishing). A relative value also avoids
+        # SPICE's limit on the length of a metakernel path token.
         dest_mk = SPICEPathHandler.get_metakernel_path(target_root, metakernel_filename)
         dest_mk.parent.mkdir(parents=True, exist_ok=True)
-        dest_mk.write_text(
-            self._rewrite_metakernel_path_values(
-                source_mk.read_text(), (target_root / "spice").resolve()
-            )
-        )
+        dest_mk.write_text(self._rewrite_metakernel_path_values(source_mk.read_text()))
         count += 1
         return count
 
     @staticmethod
     def _parse_metakernel_kernels(metakernel_path: Path) -> list[str]:
         """Return the kernel paths (relative to the datastore ``spice`` folder)
-        referenced by a metakernel's ``KERNELS_TO_LOAD`` block."""
+        referenced by a metakernel's ``KERNELS_TO_LOAD`` block.
+
+        Assumes the metakernel's kernel entries are relative to the datastore's
+        ``spice`` folder (i.e. ``PATH_VALUES`` is ``spice``), which is how the
+        production metakernels are written.
+        """
         text = metakernel_path.read_text()
         block_match = re.search(
             r"KERNELS_TO_LOAD\s*=\s*\((?P<body>.*?)\)", text, re.DOTALL
@@ -179,11 +157,10 @@ class SparseDatastoreBuilder:
         return [re.sub(r"^\$\w+/", "", entry).lstrip("/") for entry in entries]
 
     @staticmethod
-    def _rewrite_metakernel_path_values(text: str, spice_folder: Path) -> str:
-        """Point the metakernel's PATH_VALUES at ``spice_folder`` (absolute) so its
-        ``$SYMBOL/...`` kernel entries resolve within the sparse datastore."""
+    def _rewrite_metakernel_path_values(text: str) -> str:
+        """Normalise the metakernel's PATH_VALUES to the relative ``spice`` folder."""
         return re.sub(
             r"PATH_VALUES\s*=\s*\([^)]*\)",
-            f"PATH_VALUES     = ( '{spice_folder}' )",
+            "PATH_VALUES     = ( 'spice' )",
             text,
         )

@@ -3,6 +3,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.CalibrationCommandConfig import (
     CalibrationCommandConfig,
     SparseDatastoreConfig,
+    SparseDatastorePattern,
 )
 from imap_mag.config.CalibrationConfig import (
     CalibrationConfig,
@@ -32,5 +33,6 @@ __all__ = [
     "ScriptedL2CalibrationConfig",
     "SdcApiSource",
     "SparseDatastoreConfig",
+    "SparseDatastorePattern",
     "WebPodaApiSource",
 ]
