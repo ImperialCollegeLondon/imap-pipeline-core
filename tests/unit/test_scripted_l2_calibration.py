@@ -158,6 +158,37 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
     assert captured_config["output_layers_folder"] == str(work_folder.resolve())
 
 
+def test_generates_metakernel_when_none(tmp_path, monkeypatch):
+    job = _make_job(tmp_path, metakernel=None)
+    datastore = job.data_store
+    work_folder = job.work_folder
+    generated_name = "imap_generated_metakernel_v001.tm"
+    (datastore / "spice" / "mk" / generated_name).write_text("KERNELS_TO_LOAD = ()")
+
+    def fake_generate(**kwargs):
+        return datastore / "spice" / "mk" / generated_name
+
+    # Patched where it is defined, since the job imports it lazily at call time.
+    monkeypatch.setattr(
+        "imap_mag.cli.fetch.spice.generate_spice_metakernel", fake_generate
+    )
+
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8, input_json_file="input.json"
+    )
+
+    captured = {}
+
+    def mock_call_matlab(command, **kwargs):
+        captured["command"] = command
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+    job.run_calibration(_handler(1), config)
+
+    assert f'"{generated_name}"' in captured["command"]
+
+
 def test_missing_metakernel_raises(tmp_path, monkeypatch):
     job = _make_job(tmp_path, metakernel="absent.txt", create_metakernel=False)
     config = ScriptedL2CalibrationConfig(
