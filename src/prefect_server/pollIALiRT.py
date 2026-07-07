@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import pytz
+from anyio import to_thread
 from prefect import flow, task
 from prefect.blocks.notifications import MicrosoftTeamsWebhook
 from prefect.cache_policies import NO_CACHE
@@ -69,7 +70,7 @@ async def run_ialirt_polling_pipeline_task(
 
     logger.info(f"Building and running pipeline for {instrument.upper()}...")
     pipeline.build(run_parameters)
-    await pipeline.run()
+    await to_thread.run_sync(lambda: pipeline.run())
 
     result = pipeline.get_results()
 

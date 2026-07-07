@@ -1,6 +1,5 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
-import json
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -39,6 +38,11 @@ class IALiRTApiClient:
     ) -> list[dict]:
         """Download data from I-ALiRT via ialirt-data-access for a specific instrument."""
 
+        if start_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date.tzinfo is not None:
+            end_date = end_date.replace(tzinfo=None)
+
         whole_data: list[dict] = []
         window_start: datetime = start_date
 
@@ -48,7 +52,6 @@ class IALiRTApiClient:
                 if max_hours_per_chunk is not None
                 else end_date
             )
-
             data_chunk: list[dict] = self.__do_download(
                 instrument, window_start, window_end
             )
@@ -106,17 +109,12 @@ class IALiRTApiClient:
     def __do_download(
         self, instrument: str, start_date: datetime, end_date: datetime
     ) -> list[dict]:
+
         result = ialirt_data_access.data_product_query(
             instrument=instrument,
-            time_utc_start=self._ensure_utc_string(start_date),
-            time_utc_end=self._ensure_utc_string(end_date),
+            time_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+            time_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
         )
-
-        if isinstance(result, (str, bytes)):
-            try:
-                result = json.loads(result)
-            except json.JSONDecodeError:
-                logger.error(f"Failed to decode JSON from API response: {result}")
 
         if isinstance(result, dict):
             return result.get("data", [])
