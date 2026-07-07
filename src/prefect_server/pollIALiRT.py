@@ -183,7 +183,7 @@ async def poll_ialirt_flow(
         PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
-    settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
+    settings.fetch_ialirt.api.auth_code = SecretStr(auth_code)
 
     end_date = getattr(run_parameters, "end_date", None)
     start_date = getattr(run_parameters, "start_date", None)
