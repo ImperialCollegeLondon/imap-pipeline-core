@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.pollIALiRT import (
     generate_flow_run_name,
     poll_ialirt_flow,
@@ -132,6 +131,8 @@ class TestPollIALiRTFlowUnit:
         mock_dp = MagicMock()
         mock_dp.now.side_effect = dynamic_now
         mock_dp.today.return_value = datetime(2025, 1, 1).date()
+        mock_dp.start_of_hour.return_value = datetime(2025, 1, 1, 11, 0, 0)
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 12, 0, 0)
 
         mock_secret.return_value = "auth-code"
         mock_task.return_value = MagicMock()
@@ -190,35 +191,56 @@ class TestPollIALiRTHKFlowUnit:
     async def test_flow_polls_once_when_wait_for_new_data_is_true_and_exits(
         self, mock_sleep, mock_task, mock_secret, mock_settings, mock_db, mock_logger
     ):
-        now_calls = [
-            datetime(2025, 1, 1, 12, 0, 0),
-            datetime(2025, 1, 1, 12, 56, 0),
-        ]
 
-        def fake_now():
-            return now_calls.pop(0) if now_calls else datetime(2025, 1, 1, 13, 0, 0)
+        from types import SimpleNamespace
 
-        mock_dp = DatetimeProvider()
+        class FakeDatetimeProvider:
+            def __init__(self):
+                self.calls = 0
+                self.times = [
+                    datetime(2025, 1, 1, 10, 30, 0),  # T1
+                    datetime(2025, 1, 1, 12, 0, 1),  # T2
+                ]
+
+            def now(self):
+                # Return the time at the current index, or the last one it runs out
+                idx = min(self.calls, len(self.times) - 1)
+                val = self.times[idx]
+                self.calls += 1
+                return val
+
+            def today(self):
+                return datetime(2025, 1, 1).date()
+
+            def start_of_hour(self):
+                return datetime(2025, 1, 1, 10, 0, 0)
+
+            def end_of_hour(self):
+                return datetime(2025, 1, 1, 12, 0, 0)
+
+        mock_dp = FakeDatetimeProvider()
         mock_secret.return_value = "auth-code"
 
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = datetime(2025, 1, 1, 11, 0, 0)
-        mock_run_params.end_date = datetime(2025, 1, 1, 12, 55, 0)
+        mock_run_params = SimpleNamespace(
+            start_date=datetime(2025, 1, 1, 10, 0, 0),
+            end_date=datetime(2025, 1, 1, 12, 0, 0),
+        )
 
-        async def dummy_pipeline_task(*args, **kwargs):
-            return MagicMock(success=True)
+        mock_task.return_value = MagicMock(success=True)
 
-        mock_task.side_effect = dummy_pipeline_task
-
-        with patch.object(mock_dp, "now", side_effect=fake_now):
+        with (
+            patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
+            patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", ["hk"]),
+        ):
             await poll_ialirt_flow.fn(
-                run_parameters=mock_run_params,
+                run_parameters=mock_run_params,  # type: ignore
                 wait_for_new_data_to_arrive=True,
                 plot_last_3_days=False,
-                datetime_provider=mock_dp,
+                datetime_provider=mock_dp,  # type: ignore
             )
 
         assert mock_task.call_count > 0
+        mock_sleep.assert_called_once()
 
 
 class TestPollIALiRTGenerateName:

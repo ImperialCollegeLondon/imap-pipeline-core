@@ -104,7 +104,6 @@ async def run_ialirt_polling_pipeline_task(
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_IALIRT,
     flow_run_name=generate_flow_run_name,
     log_prints=True,
-    # validate_parameters=False,  # Avoid Prefect trying to validate the complex types
 )
 async def poll_ialirt_flow(
     run_parameters: Annotated[
@@ -175,7 +174,6 @@ async def poll_ialirt_flow(
     logger = try_get_prefect_logger(__name__)
 
     database = Database() if use_database else None
-
     settings = AppSettings()  # type: ignore
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
@@ -185,29 +183,32 @@ async def poll_ialirt_flow(
         PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_AUTH_CODE_SECRET_NAME,
         CONSTANTS.ENV_VAR_NAMES.IALIRT_AUTH_CODE,
     )
-    settings.fetch_ialirt.api.auth_code = SecretStr(auth_code)
+    settings.fetch_webtcad.api.auth_code = SecretStr(auth_code)
 
     end_date = getattr(run_parameters, "end_date", None)
     start_date = getattr(run_parameters, "start_date", None)
 
-    current_time = datetime_provider.now()
-
     if not end_date:
-        end_date = current_time.replace(minute=0, second=0, microsecond=0)
-
+        end_date = datetime_provider.end_of_hour()
     if not start_date:
-        start_date = end_date - timedelta(hours=1)
+        start_date = datetime_provider.start_of_hour()
 
     # Make dates naive for comparison with datetime_provider.now()
-    end_date = end_date.replace(tzinfo=None)
-    start_date = start_date.replace(tzinfo=None)
+    if hasattr(end_date, "tzinfo") and end_date.tzinfo is not None:
+        end_date = end_date.replace(tzinfo=None)
+
+    if hasattr(start_date, "tzinfo") and start_date.tzinfo is not None:
+        start_date = start_date.replace(tzinfo=None)
+
     logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
 
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
 
     iteration = 1
     while True:
-        if wait_for_new_data_to_arrive and current_time <= end_date:
+        current_time = datetime_provider.now()
+
+        if wait_for_new_data_to_arrive and current_time >= end_date:
             break
 
         logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")
