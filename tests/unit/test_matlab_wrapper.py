@@ -167,3 +167,69 @@ class TestCallMatlab:
         ):
             with pytest.raises(RuntimeError, match="MATLAB command failed"):
                 call_matlab("disp('hello')")
+
+
+class TestCallMatlabExternalRepo:
+    def test_passes_cwd_and_unsets_display(self, tmp_path):
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+            patch.dict(os.environ, {"DISPLAY": ":0"}, clear=False),
+        ):
+            call_matlab(
+                "run()",
+                cwd=tmp_path,
+                unset_display=True,
+                include_project_paths=False,
+            )
+
+        kwargs = mock_popen.call_args.kwargs
+        assert kwargs["cwd"] == str(tmp_path)
+        assert "DISPLAY" not in kwargs["env"]
+
+    def test_include_project_paths_false_skips_prefix_on_first_call(self):
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+        ):
+            call_matlab("run()", first_call=True, include_project_paths=False)
+
+        batch_arg = mock_popen.call_args[0][0][-1]
+        assert "addpath" not in batch_arg
+        assert "run()" in batch_arg
+
+    def test_default_call_has_no_cwd_and_keeps_display(self):
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+            patch.dict(os.environ, {"DISPLAY": ":99"}, clear=False),
+        ):
+            call_matlab("disp('hi')")
+
+        kwargs = mock_popen.call_args.kwargs
+        assert kwargs["cwd"] is None
+        assert kwargs["env"].get("DISPLAY") == ":99"

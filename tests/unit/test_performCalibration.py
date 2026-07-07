@@ -4,9 +4,17 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+from prefect.filesystems import LocalFileSystem
+from prefect_github import GitHubRepository
+
+from imap_mag.config import ScriptedL2CalibrationConfig
 from imap_mag.util import ScienceMode
+from mag_toolkit.calibration import CalibrationMethod
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
+    _github_repo_name,
+    _resolve_matlab_repo_path,
     calibrate_and_apply_flow,
     calibrate_flow,
     generate_apply_calibration_flow_run_name,
@@ -116,3 +124,138 @@ class TestPerformCalibrationFlows:
             )
 
         mock_apply.assert_called_once()
+
+
+class TestGithubRepoName:
+    def test_ssh_url(self):
+        assert (
+            _github_repo_name(
+                "git@github.com:ImperialCollegeLondon/IMAP_MAG_Calibration.git"
+            )
+            == "IMAP_MAG_Calibration"
+        )
+
+    def test_https_url(self):
+        assert _github_repo_name("https://github.com/Org/Repo.git") == "Repo"
+
+    def test_url_without_git_suffix(self):
+        assert _github_repo_name("https://github.com/Org/Repo") == "Repo"
+
+    def test_trailing_slash(self):
+        assert _github_repo_name("https://github.com/Org/Repo/") == "Repo"
+
+
+class TestResolveMatlabRepoPath:
+    def test_none_returns_none(self, tmp_path):
+        assert _resolve_matlab_repo_path(None, tmp_path) is None
+
+    def test_local_filesystem_block(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        block = LocalFileSystem(basepath=str(repo))
+        assert _resolve_matlab_repo_path(block, tmp_path) == repo
+
+    def test_local_filesystem_missing_raises(self, tmp_path):
+        block = LocalFileSystem(basepath=str(tmp_path / "does-not-exist"))
+        with pytest.raises(FileNotFoundError):
+            _resolve_matlab_repo_path(block, tmp_path)
+
+    def test_github_block_clones_into_work_folder(self, tmp_path):
+        work = tmp_path / "work"
+        work.mkdir()
+        block = GitHubRepository(repository_url="git@github.com:Org/MyRepo.git")
+
+        def fake_get_directory(local_path=None, from_path=None):
+            Path(local_path).mkdir(parents=True, exist_ok=True)
+
+        with patch.object(
+            block, "get_directory", side_effect=fake_get_directory
+        ) as mock_gd:
+            result = _resolve_matlab_repo_path(block, work)
+
+        assert result == work / "MyRepo"
+        mock_gd.assert_called_once()
+
+    def test_github_block_failed_clone_raises(self, tmp_path):
+        block = GitHubRepository(repository_url="git@github.com:Org/MyRepo.git")
+
+        with patch.object(block, "get_directory"):  # does not create the dir
+            with pytest.raises(FileNotFoundError):
+                _resolve_matlab_repo_path(block, tmp_path)
+
+    def test_block_name_loads_block(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        block = LocalFileSystem(basepath=str(repo))
+        with patch(
+            "prefect_server.performCalibration._load_matlab_repo_block",
+            return_value=block,
+        ):
+            assert _resolve_matlab_repo_path("my-block", tmp_path) == repo
+
+    def test_unknown_block_name_raises(self, tmp_path):
+        with patch(
+            "prefect_server.performCalibration._load_matlab_repo_block",
+            return_value=None,
+        ):
+            with pytest.raises(ValueError, match="Could not load"):
+                _resolve_matlab_repo_path("missing-block", tmp_path)
+
+
+class TestCalibrateFlowScripted:
+    def test_scripted_requires_matlab_repo(self, tmp_path):
+        mock_settings = MagicMock()
+        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        with patch(
+            "prefect_server.performCalibration.AppSettings",
+            return_value=mock_settings,
+        ):
+            with pytest.raises(ValueError, match="matlab_repo is required"):
+                calibrate_flow.fn(
+                    start_date=datetime(2026, 1, 30),
+                    method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+                    matlab_repo=None,
+                )
+
+    def test_scripted_resolves_repo_and_passes_to_calibrate(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        block = LocalFileSystem(basepath=str(repo))
+        mock_settings = MagicMock()
+        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=8, input_json_file="input.json"
+        )
+
+        with (
+            patch(
+                "prefect_server.performCalibration.AppSettings",
+                return_value=mock_settings,
+            ),
+            patch(
+                "prefect_server.performCalibration.calibrate",
+                return_value=[Path("layer.json")],
+            ) as mock_calibrate,
+        ):
+            calibrate_flow.fn(
+                start_date=datetime(2026, 1, 30),
+                method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+                configuration=config,
+                metakernel=Path("mk.txt"),
+                matlab_repo=block,
+            )
+
+        mock_calibrate.assert_called_once()
+        kwargs = mock_calibrate.call_args.kwargs
+        assert kwargs["matlab_repo_path"] == repo
+        assert kwargs["metakernel"] == Path("mk.txt")
+
+    def test_non_scripted_method_ignores_matlab_repo(self):
+        """Existing methods must not attempt any matlab_repo resolution."""
+        with patch(
+            "prefect_server.performCalibration.calibrate", return_value=[]
+        ) as mock_calibrate:
+            calibrate_flow.fn(start_date=datetime(2025, 1, 1))
+
+        mock_calibrate.assert_called_once()
+        assert mock_calibrate.call_args.kwargs["matlab_repo_path"] is None
