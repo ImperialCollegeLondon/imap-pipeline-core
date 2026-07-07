@@ -1,7 +1,8 @@
 import fnmatch
 import glob
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Literal, overload
 
@@ -253,6 +254,143 @@ class FileFinder:
 
         raise FileNotFoundError(
             f"No science file found for date {date.strftime('%Y-%m-%d')} and mode {mode.value}"
+        )
+
+    _COVERAGE_PLACEHOLDER_RE = re.compile(r"\{from_doy\}|\{to_doy\}|\{sequence\}")
+
+    def find_by_coverage_window(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int = 0,
+        days_after: int = 0,
+        highest_sequence_only: bool = False,
+    ) -> list[Path]:
+        """Find files whose filenames encode a day-of-year coverage window that
+        overlaps the search window.
+
+        ``relative_pattern`` is relative to ``data_store`` and uses ``{from_doy}``/
+        ``{to_doy}`` placeholders for the ``{year}_{doy}`` coverage-window start/end
+        encoded in the filename (e.g. ``imap_{from_doy}_{to_doy}_hist_{sequence}.sff``
+        matches ``imap_2026_165_2026_166_hist_01.sff``), and an optional
+        ``{sequence}`` placeholder for a per-window sequence number.
+
+        ``days_before``/``days_after`` widen the search window around
+        ``start_date``/``end_date``. Files are returned if their coverage window
+        overlaps the (possibly widened) search window at all; overlapping windows
+        with duplicate coverage are all returned unless ``highest_sequence_only``
+        is set, in which case only the highest-sequence file per distinct coverage
+        window is kept.
+        """
+        search_start = start_date - timedelta(days=days_before)
+        search_end = end_date + timedelta(days=days_after)
+
+        pattern = self._coverage_window_regex(Path(relative_pattern).name)
+        glob_pattern = self._COVERAGE_PLACEHOLDER_RE.sub("*", relative_pattern)
+
+        candidates: list[tuple[Path, datetime, datetime, int]] = []
+        for path in sorted(self._data_store.glob(glob_pattern)):
+            if not path.is_file():
+                continue
+
+            match = pattern.match(path.name)
+            if not match:
+                continue
+
+            groups = match.groupdict()
+            window_start = datetime.strptime(
+                f"{groups['from_year']}{groups['from_doy']}", "%Y%j"
+            )
+            window_end = datetime.strptime(
+                f"{groups['to_year']}{groups['to_doy']}", "%Y%j"
+            )
+            sequence = int(groups["sequence"]) if "sequence" in groups else 0
+            candidates.append((path, window_start, window_end, sequence))
+
+        overlapping = [
+            candidate
+            for candidate in candidates
+            if candidate[1] <= search_end and candidate[2] >= search_start
+        ]
+
+        if not highest_sequence_only:
+            return [path for path, _, _, _ in overlapping]
+
+        best: dict[tuple[datetime, datetime], tuple[Path, int]] = {}
+        for path, window_start, window_end, sequence in overlapping:
+            key = (window_start, window_end)
+            if key not in best or sequence > best[key][1]:
+                best[key] = (path, sequence)
+        return sorted(path for path, _ in best.values())
+
+    @staticmethod
+    def _coverage_window_regex(pattern: str) -> re.Pattern:
+        """Build a regex that captures the DOY window (and optional sequence)
+        encoded in filenames matching ``pattern``."""
+        parts = re.split(r"(\{from_doy\}|\{to_doy\}|\{sequence\})", pattern)
+        regex_parts = []
+        for part in parts:
+            if part == "{from_doy}":
+                regex_parts.append(r"(?P<from_year>\d{4})_(?P<from_doy>\d{3})")
+            elif part == "{to_doy}":
+                regex_parts.append(r"(?P<to_year>\d{4})_(?P<to_doy>\d{3})")
+            elif part == "{sequence}":
+                regex_parts.append(r"(?P<sequence>\d+)")
+            else:
+                regex_parts.append(re.escape(part))
+        return re.compile("^" + "".join(regex_parts) + "$")
+
+    def find_dated_files_with_fallback(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int = 0,
+        days_after: int = 0,
+        get_previous_if_empty: bool = False,
+        max_lookback_days: int = 3650,
+    ) -> list[Path]:
+        """Find files for each day in the (widened) search window, using
+        ``strftime`` codes in ``relative_pattern`` (relative to ``data_store``) to
+        fill in the date per day.
+
+        ``days_before``/``days_after`` widen the search window around
+        ``start_date``/``end_date``. If no files are found anywhere in the window
+        and ``get_previous_if_empty`` is set, falls back to the most recent day
+        before the search window that has matching files (useful for point-in-time
+        state files that are only regenerated occasionally, where the state as of
+        the start of the window is still needed).
+        """
+        search_start = (start_date - timedelta(days=days_before)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        search_end = (end_date + timedelta(days=days_after)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        matches: list[Path] = []
+        day = search_start
+        while day <= search_end:
+            matches.extend(self._glob_files(day.strftime(relative_pattern)))
+            day += timedelta(days=1)
+
+        if matches or not get_previous_if_empty:
+            return matches
+
+        day = search_start - timedelta(days=1)
+        earliest = search_start - timedelta(days=max_lookback_days)
+        while day >= earliest:
+            found = self._glob_files(day.strftime(relative_pattern))
+            if found:
+                return found
+            day -= timedelta(days=1)
+
+        return []
+
+    def _glob_files(self, glob_pattern: str) -> list[Path]:
+        return sorted(
+            path for path in self._data_store.glob(glob_pattern) if path.is_file()
         )
 
     def __find_files_and_sequences(

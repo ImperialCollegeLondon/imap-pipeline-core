@@ -26,14 +26,27 @@ class SparseDatastorePattern(BaseModel):
     ``%m`` month, ``%d`` day); ``{level}`` (l1c/l1b), ``{mode}`` (norm/burst) and
     ``{matrix_version}`` are filled from the run.
 
+    Patterns whose filenames encode a day-of-year coverage window (e.g. SPICE spin
+    or thruster activity files) use ``{from_doy}``/``{to_doy}`` placeholders (and
+    optionally ``{sequence}``) instead - see ``FileFinder.find_by_coverage_window``.
+
     ``days_before``/``days_after`` widen the copy to neighbouring days around each
     day being calibrated. They default to 0 (only the day itself) so large per-day
     files such as burst science are not copied for days that are not needed.
+
+    ``highest_sequence_only`` (coverage-window patterns only) keeps only the
+    highest-sequence file per distinct coverage window instead of all of them.
+
+    ``get_previous_if_empty`` (dated patterns only) falls back to the most recent
+    file before the search window when nothing is found within it - useful for
+    point-in-time state files that are only regenerated occasionally.
     """
 
     pattern: str
     days_before: int = 0
     days_after: int = 0
+    highest_sequence_only: bool = False
+    get_previous_if_empty: bool = False
 
 
 class SparseDatastoreConfig(BaseModel):

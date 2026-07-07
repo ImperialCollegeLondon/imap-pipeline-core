@@ -151,6 +151,88 @@ def test_metakernel_path_values_rewritten_to_relative_spice(tmp_path):
     assert "$KERNELS/lsk/naif0012.tls" in rewritten  # entries unchanged
 
 
+def test_coverage_window_pattern_filters_by_doy_and_sequence(tmp_path):
+    source = tmp_path / "datastore"
+    _make_source_datastore(source)
+    target = tmp_path / "work" / "sparse"
+
+    activities_dir = source / "spice" / "activities"
+    activities_dir.mkdir(parents=True)
+    _write(activities_dir / "imap_2026_020_2026_020_hist_01.sff")  # unrelated window
+    _write(activities_dir / "imap_2026_030_2026_030_hist_01.sff")
+    _write(activities_dir / "imap_2026_030_2026_030_hist_02.sff")  # newer sequence
+
+    config = SparseDatastoreConfig(
+        patterns=[
+            SparseDatastorePattern(
+                pattern="spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+                highest_sequence_only=True,
+            ),
+        ]
+    )
+
+    builder = SparseDatastoreBuilder(source, config, 0.99)
+    # DATE = 2026-01-30 is DOY 30.
+    builder.build(
+        target, [DATE], ScienceMode.Normal, "metakernel.txt", matrix_version=8
+    )
+
+    assert not (
+        target / "spice" / "activities" / "imap_2026_020_2026_020_hist_01.sff"
+    ).exists()
+    assert not (
+        target / "spice" / "activities" / "imap_2026_030_2026_030_hist_01.sff"
+    ).exists()
+    assert (
+        target / "spice" / "activities" / "imap_2026_030_2026_030_hist_02.sff"
+    ).exists()
+
+
+def test_get_previous_if_empty_pattern_falls_back(tmp_path):
+    source = tmp_path / "datastore"
+    _make_source_datastore(source)
+    target = tmp_path / "work" / "sparse"
+
+    # Remove the in-window pivot files added by _make_source_datastore so the
+    # +/-1 day window around DATE is genuinely empty and the fallback kicks in.
+    (
+        source
+        / "hk/lo/l1/pivot-platform-angle/2026/01/imap_lo_l1_pivot-platform-angle_20260130_v001.csv"
+    ).unlink()
+    (
+        source
+        / "hk/lo/l1/pivot-platform-angle/2026/01/imap_lo_l1_pivot-platform-angle_20260129_v001.csv"
+    ).unlink()
+
+    _write(
+        source
+        / "hk/lo/l1/pivot-platform-angle/2026/01/imap_lo_l1_pivot-platform-angle_20260101_v001.csv"
+    )
+
+    config = SparseDatastoreConfig(
+        patterns=[
+            SparseDatastorePattern(
+                pattern="hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv",
+                days_before=1,
+                days_after=1,
+                get_previous_if_empty=True,
+            ),
+        ]
+    )
+
+    builder = SparseDatastoreBuilder(source, config, 0.99)
+    builder.build(
+        target, [DATE], ScienceMode.Normal, "metakernel.txt", matrix_version=8
+    )
+
+    # No file within the +/-1 day window around DATE (2026-01-30); falls back to
+    # the most recent file before it.
+    assert (
+        target
+        / "hk/lo/l1/pivot-platform-angle/2026/01/imap_lo_l1_pivot-platform-angle_20260101_v001.csv"
+    ).exists()
+
+
 def test_parse_metakernel_kernels_strips_symbol_prefix(tmp_path):
     mk = tmp_path / "mk.txt"
     mk.write_text(

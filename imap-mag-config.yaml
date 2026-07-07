@@ -108,9 +108,16 @@ calibrate:
             - pattern: 'calibration/inputs/Profiles/**/*'
             # Pre-computed offsets (spin plane / spin axis / leinweber / kepko).
             - pattern: 'calibration/calculated_offsets/**/*'
-            # Spin table + thruster activities (small, span the run).
-            - pattern: 'spice/spin/*'
-            - pattern: 'spice/activities/*'
+            # Spin table + thruster activities (small, span the run). Filenames encode
+            # a day-of-year coverage window ({from_doy}/{to_doy}) rather than a single
+            # date, so these use highest_sequence_only to keep just the newest file per
+            # distinct window.
+            - pattern: 'spice/spin/imap_{from_doy}_{to_doy}_{sequence}.spin'
+              highest_sequence_only: true
+            - pattern: 'spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff'
+              days_before: 1
+              days_after: 1
+              highest_sequence_only: true
 
 publish:
     api:

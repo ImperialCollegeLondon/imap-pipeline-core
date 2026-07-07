@@ -239,3 +239,205 @@ class TestFindScienceFile:
             finder.find_latest_science_by_date(
                 datetime(2026, 1, 16), ScienceMode.Normal, MAGSensor.OBS
             )
+
+
+class TestFindByCoverageWindow:
+    def _make_thruster_files(self, tmp_path):
+        activities_dir = tmp_path / "spice" / "activities"
+        activities_dir.mkdir(parents=True)
+        names = [
+            "imap_2026_165_2026_165_hist_01.sff",
+            "imap_2026_165_2026_166_hist_01.sff",
+            "imap_2026_166_2026_167_hist_01.sff",
+            "imap_2026_167_2026_167_hist_01.sff",
+            "imap_2026_167_2026_168_hist_01.sff",
+            "imap_2026_168_2026_168_hist_01.sff",
+            "imap_2026_168_2026_168_hist_02.sff",
+            "imap_2026_168_2026_169_hist_01.sff",
+        ]
+        for name in names:
+            (activities_dir / name).touch()
+        return activities_dir
+
+    def test_returns_files_overlapping_window(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
+
+        # Day-of-year 167 (2026), no widening.
+        result = finder.find_by_coverage_window(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 6, 16),  # DOY 167
+            end_date=datetime(2026, 6, 16),
+        )
+        names = sorted(p.name for p in result)
+        assert names == [
+            "imap_2026_166_2026_167_hist_01.sff",
+            "imap_2026_167_2026_167_hist_01.sff",
+            "imap_2026_167_2026_168_hist_01.sff",
+        ]
+
+    def test_days_before_and_after_widen_window(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
+
+        result = finder.find_by_coverage_window(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 6, 16),  # DOY 167
+            end_date=datetime(2026, 6, 16),
+            days_before=1,
+            days_after=1,
+        )
+        names = {p.name for p in result}
+        # Window is DOY 166-168; imap_2026_165_2026_165 (DOY 165-165) does not
+        # overlap and is excluded.
+        assert names == {
+            "imap_2026_165_2026_166_hist_01.sff",
+            "imap_2026_166_2026_167_hist_01.sff",
+            "imap_2026_167_2026_167_hist_01.sff",
+            "imap_2026_167_2026_168_hist_01.sff",
+            "imap_2026_168_2026_168_hist_01.sff",
+            "imap_2026_168_2026_168_hist_02.sff",
+            "imap_2026_168_2026_169_hist_01.sff",
+        }
+
+    def test_highest_sequence_only_keeps_one_per_window(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
+
+        result = finder.find_by_coverage_window(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 6, 17),  # DOY 168
+            end_date=datetime(2026, 6, 17),
+            highest_sequence_only=True,
+        )
+        names = sorted(p.name for p in result)
+        # imap_2026_168_2026_168_hist_02 supersedes hist_01 for the same window;
+        # the other two overlapping windows only have one sequence each.
+        assert names == [
+            "imap_2026_167_2026_168_hist_01.sff",
+            "imap_2026_168_2026_168_hist_02.sff",
+            "imap_2026_168_2026_169_hist_01.sff",
+        ]
+
+    def test_pattern_without_sequence(self, tmp_path):
+        activities_dir = tmp_path / "spice" / "activities"
+        activities_dir.mkdir(parents=True)
+        (activities_dir / "imap_2026_165_2026_166.other").touch()
+        (activities_dir / "imap_2026_170_2026_171.other").touch()
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_by_coverage_window(
+            "spice/activities/imap_{from_doy}_{to_doy}.other",
+            start_date=datetime(2026, 6, 15),  # DOY 166
+            end_date=datetime(2026, 6, 15),
+        )
+        assert [p.name for p in result] == ["imap_2026_165_2026_166.other"]
+
+    def test_no_overlap_returns_empty(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
+
+        result = finder.find_by_coverage_window(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 1, 1),
+            end_date=datetime(2026, 1, 1),
+        )
+        assert result == []
+
+
+class TestFindDatedFilesWithFallback:
+    PATTERN = "hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv"
+
+    def _touch(self, tmp_path, date_str):
+        p = (
+            tmp_path
+            / "hk"
+            / "lo"
+            / "l1"
+            / "pivot-platform-angle"
+            / date_str[:4]
+            / date_str[4:6]
+            / f"imap_lo_l1_pivot-platform-angle_{date_str}_v001.csv"
+        )
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.touch()
+        return p
+
+    def test_returns_files_within_window(self, tmp_path):
+        self._touch(tmp_path, "20260129")
+        self._touch(tmp_path, "20260130")
+        self._touch(tmp_path, "20260131")
+        self._touch(tmp_path, "20260201")  # outside the +/-1 day window
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_dated_files_with_fallback(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+        )
+        names = sorted(p.name for p in result)
+        assert names == [
+            "imap_lo_l1_pivot-platform-angle_20260129_v001.csv",
+            "imap_lo_l1_pivot-platform-angle_20260130_v001.csv",
+            "imap_lo_l1_pivot-platform-angle_20260131_v001.csv",
+        ]
+
+    def test_empty_window_without_fallback_returns_empty(self, tmp_path):
+        self._touch(tmp_path, "20260101")
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_dated_files_with_fallback(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+        )
+        assert result == []
+
+    def test_falls_back_to_most_recent_previous_file(self, tmp_path):
+        self._touch(tmp_path, "20260115")
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_dated_files_with_fallback(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+            get_previous_if_empty=True,
+        )
+        assert [p.name for p in result] == [
+            "imap_lo_l1_pivot-platform-angle_20260115_v001.csv"
+        ]
+
+    def test_no_fallback_needed_when_window_has_matches(self, tmp_path):
+        self._touch(tmp_path, "20260115")
+        self._touch(tmp_path, "20260130")
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_dated_files_with_fallback(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+            get_previous_if_empty=True,
+        )
+        assert [p.name for p in result] == [
+            "imap_lo_l1_pivot-platform-angle_20260130_v001.csv"
+        ]
+
+    def test_no_previous_file_returns_empty(self, tmp_path):
+        finder = FileFinder(tmp_path)
+        result = finder.find_dated_files_with_fallback(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+            get_previous_if_empty=True,
+        )
+        assert result == []

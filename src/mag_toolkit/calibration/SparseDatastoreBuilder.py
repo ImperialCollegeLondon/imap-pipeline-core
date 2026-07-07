@@ -1,11 +1,12 @@
 import logging
 import re
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from imap_mag.config.CalibrationCommandConfig import SparseDatastoreConfig
 from imap_mag.io.file import SPICEPathHandler
+from imap_mag.io.FileFinder import FileFinder
 from imap_mag.util import ScienceMode
 from imap_mag.util.diskSpace import check_disk_space
 
@@ -36,6 +37,7 @@ class SparseDatastoreBuilder:
         self.source_datastore = Path(source_datastore)
         self.config = config
         self.disk_usage_threshold = disk_usage_threshold
+        self._finder = FileFinder(self.source_datastore)
 
     def build(
         self,
@@ -52,17 +54,40 @@ class SparseDatastoreBuilder:
         check_disk_space(target_root.parent, self.disk_usage_threshold)
         target_root.mkdir(parents=True, exist_ok=True)
 
+        search_start = min(dates)
+        search_end = max(dates)
+
         copied = 0
         for pattern in self.config.patterns:
-            # {level}/{mode}/{matrix_version} are filled first; strftime fills the
-            # date codes per day in the pattern's window.
-            named = pattern.pattern.format(
-                level=level, mode=mode.value, matrix_version=matrix_version
+            # {level}/{mode}/{matrix_version} are filled first, leaving any
+            # {from_doy}/{to_doy}/{sequence} placeholders for the FileFinder; dated
+            # patterns then have their strftime date codes filled in per day.
+            named = self._substitute_placeholders(
+                pattern.pattern, level, mode, matrix_version
             )
-            for day in self._pattern_days(
-                dates, pattern.days_before, pattern.days_after
-            ):
-                copied += self._copy_glob(day.strftime(named), target_root)
+
+            if "{from_doy}" in named:
+                matches = self._finder.find_by_coverage_window(
+                    named,
+                    start_date=search_start,
+                    end_date=search_end,
+                    days_before=pattern.days_before,
+                    days_after=pattern.days_after,
+                    highest_sequence_only=pattern.highest_sequence_only,
+                )
+            else:
+                matches = self._finder.find_dated_files_with_fallback(
+                    named,
+                    start_date=search_start,
+                    end_date=search_end,
+                    days_before=pattern.days_before,
+                    days_after=pattern.days_after,
+                    get_previous_if_empty=pattern.get_previous_if_empty,
+                )
+
+            for source in matches:
+                relative = source.relative_to(self.source_datastore)
+                copied += self._copy_file(source, target_root / relative)
 
         copied += self._copy_metakernel_and_kernels(metakernel_filename, target_root)
 
@@ -73,26 +98,17 @@ class SparseDatastoreBuilder:
         return target_root
 
     @staticmethod
-    def _pattern_days(
-        dates: list[datetime], days_before: int, days_after: int
-    ) -> list[datetime]:
-        all_days: set[datetime] = set()
-        for date in dates:
-            for offset in range(-days_before, days_after + 1):
-                all_days.add(
-                    (date + timedelta(days=offset)).replace(
-                        hour=0, minute=0, second=0, microsecond=0, tzinfo=None
-                    )
-                )
-        return sorted(all_days)
-
-    def _copy_glob(self, relative_pattern: str, target_root: Path) -> int:
-        count = 0
-        for source in self.source_datastore.glob(relative_pattern):
-            if source.is_file():
-                relative = source.relative_to(self.source_datastore)
-                count += self._copy_file(source, target_root / relative)
-        return count
+    def _substitute_placeholders(
+        pattern: str, level: str, mode: ScienceMode, matrix_version: int | None
+    ) -> str:
+        """Fill in ``{level}``/``{mode}``/``{matrix_version}``, leaving any other
+        placeholders (``{from_doy}``, ``{to_doy}``, ``{sequence}``) untouched for
+        the FileFinder to resolve."""
+        return (
+            pattern.replace("{level}", level)
+            .replace("{mode}", mode.value)
+            .replace("{matrix_version}", str(matrix_version))
+        )
 
     @staticmethod
     def _copy_file(source: Path, destination: Path) -> int:

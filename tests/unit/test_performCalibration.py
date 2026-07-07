@@ -102,6 +102,71 @@ class TestPerformCalibrationFlowNames:
         mock_calibrate.assert_called_once()
         mock_apply.assert_called_once()
 
+    def test_calibrate_and_apply_flow_passes_scripted_l2_options_through(
+        self, tmp_path
+    ):
+        """calibrate_and_apply_flow must accept and forward every option that
+        calibrate_flow supports for the scripted-l2 method."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        block = LocalFileSystem(basepath=str(repo))
+        mock_settings = MagicMock()
+        mock_settings.work_folder = tmp_path
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=8, input_json_file="input.json"
+        )
+
+        mock_layer = MagicMock()
+        mock_layer.metadata.science = ["test_science.cdf"]
+
+        with (
+            patch(
+                "prefect_server.performCalibration.AppSettings",
+                return_value=mock_settings,
+            ),
+            patch(
+                "prefect_server.performCalibration.calibrate",
+                return_value=[Path("layer.json")],
+            ) as mock_calibrate,
+            patch(
+                "prefect_server.performCalibration.CalibrationLayer.from_file",
+                return_value=mock_layer,
+            ),
+            patch("prefect_server.performCalibration.apply") as mock_apply,
+        ):
+            calibrate_and_apply_flow.fn(
+                start_date=datetime(2026, 1, 30),
+                method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+                configuration=config,
+                metakernel=Path("mk.txt"),
+                matlab_repo=block,
+                datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
+            )
+
+        mock_calibrate.assert_called_once()
+        kwargs = mock_calibrate.call_args.kwargs
+        assert kwargs["matlab_repo_path"] == repo
+        assert kwargs["metakernel"] == Path("mk.txt")
+        assert (
+            kwargs["datastore_access_mode"]
+            == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY
+        )
+        mock_apply.assert_called_once()
+
+    def test_calibrate_and_apply_flow_scripted_requires_matlab_repo(self, tmp_path):
+        mock_settings = MagicMock()
+        mock_settings.work_folder = tmp_path
+        with patch(
+            "prefect_server.performCalibration.AppSettings",
+            return_value=mock_settings,
+        ):
+            with pytest.raises(ValueError, match="matlab_repo is required"):
+                calibrate_and_apply_flow.fn(
+                    start_date=datetime(2026, 1, 30),
+                    method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+                    matlab_repo=None,
+                )
+
 
 class TestPerformCalibrationFlows:
     def test_calibrate_flow_calls_calibrate(self):

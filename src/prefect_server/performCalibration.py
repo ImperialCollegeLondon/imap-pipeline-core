@@ -263,16 +263,45 @@ def calibrate_and_apply_flow(
     start_date: datetime,
     end_date: datetime | None = None,
     method: CalibrationMethod = CalibrationMethod.KEPKO,
-    configuration: CalibrationConfig | None = None,
+    configuration: ScriptedL2CalibrationConfig | CalibrationConfig | None = None,
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
     offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
+    metakernel: Path | None = None,
+    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None,
+    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ):
     """
     Calibrate and apply the calibration in one flow, for a date or date range.
+
+    Accepts all the options available to ``calibrate_flow`` (passed through to it
+    unchanged), plus the apply-specific output type options below.
+
+    Args:
+        offset_file_output_type: File type for the apply step's offset file output.
+        L2_output_type: File type for the apply step's L2 output.
+        metakernel: Filename of the SPICE metakernel to use for the scripted-l2
+            method. See ``calibrate_flow``.
+        matlab_repo: Where to acquire the MATLAB calibration code from for the
+            scripted-l2 method. See ``calibrate_flow``.
+        datastore_access_mode: For scripted-l2, whether MATLAB reads the datastore
+            directly or from a sparse copy built in the work folder.
     """
+    matlab_repo_path: Path | None = None
+    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+        app_settings = AppSettings()  # type: ignore
+        # Pull/resolve the MATLAB code into the (stable) base work folder so it is
+        # cloned once and reused across every day in the range.
+        matlab_repo_path = _resolve_matlab_repo_path(
+            matlab_repo, app_settings.work_folder
+        )
+        if matlab_repo_path is None:
+            raise ValueError(
+                "matlab_repo is required for the scripted-l2 calibration method."
+            )
+
     cal_layer_paths: list[Path] = calibrate(
         start_date=start_date,
         end_date=end_date,
@@ -281,6 +310,9 @@ def calibrate_and_apply_flow(
         sensor=sensor,
         configuration=configuration.model_dump_json() if configuration else None,
         save_mode=save_mode,
+        metakernel=metakernel,
+        matlab_repo_path=matlab_repo_path,
+        datastore_access_mode=datastore_access_mode,
     )
 
     layer = CalibrationLayer.from_file(cal_layer_paths[0])
