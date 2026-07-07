@@ -239,7 +239,10 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
     assert captured_config["sharepoint_flight_data"] == str(datastore.resolve())
     assert captured_config["spice_metakernal_root"] == str(datastore.resolve())
     assert captured_config["l2_pre_calibration_outputs"] == str(work_folder.resolve())
-    assert captured_config["report_folder"] == str(work_folder.resolve())
+    assert (
+        captured_config["report_folder"]
+        == str(datastore.resolve()) + "/calibration/reports"
+    )
     assert captured_config["output_layers_folder"] == str(work_folder.resolve())
 
 

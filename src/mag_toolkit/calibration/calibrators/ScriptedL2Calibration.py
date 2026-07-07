@@ -272,14 +272,14 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         while the three output folders map to the work folder so MATLAB writes there
         rather than into the datastore.
         """
-        datastore_path = str(Path(matlab_datastore).resolve())
+        datastore_path = Path(matlab_datastore).resolve()
         work_folder_path = str(self.work_folder.resolve())
 
         config = {
-            "sharepoint_flight_data": datastore_path,
-            "spice_metakernal_root": datastore_path,
+            "sharepoint_flight_data": str(datastore_path),
+            "spice_metakernal_root": str(datastore_path),
             "l2_pre_calibration_outputs": work_folder_path,
-            "report_folder": work_folder_path,
+            "report_folder": str(datastore_path / "calibration" / "reports"),
             "output_layers_folder": work_folder_path,
         }
 
