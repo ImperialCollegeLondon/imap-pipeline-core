@@ -97,7 +97,7 @@ class TestCallMatlab:
                 return_value="matlab",
             ),
         ):
-            call_matlab("disp('hello')", first_call=True)
+            call_matlab("disp('hello')")
 
         mock_popen.assert_called_once()
         batch_arg = mock_popen.call_args[0][0][-1]
@@ -105,7 +105,7 @@ class TestCallMatlab:
         assert "savepath" in batch_arg
         assert "disp('hello')" in batch_arg
 
-    def test_skips_path_setup_on_subsequent_first_calls_in_same_process(self):
+    def test_skips_path_setup_on_subsequent_calls_in_same_process(self):
         """Path setup prefix is only included in the very first call, not subsequent ones."""
         mock_process = _make_mock_process(returncode=0)
         mock_process.stdout.readline.side_effect = None
@@ -121,8 +121,8 @@ class TestCallMatlab:
                 return_value="matlab",
             ),
         ):
-            call_matlab("disp('one')", first_call=True)
-            call_matlab("disp('two')", first_call=True)
+            call_matlab("disp('one')")
+            call_matlab("disp('two')")
 
         assert mock_popen.call_count == 2
         first_batch = mock_popen.call_args_list[0][0][0][-1]
@@ -132,7 +132,7 @@ class TestCallMatlab:
         assert "addpath" not in second_batch
         assert "disp('two')" in second_batch
 
-    def test_skips_path_setup_when_not_first_call(self):
+    def test_skips_path_setup_when_project_paths_excluded(self):
         mock_process = _make_mock_process(returncode=0)
 
         with (
@@ -145,7 +145,7 @@ class TestCallMatlab:
                 return_value="matlab",
             ),
         ):
-            call_matlab("disp('hello')", first_call=False)
+            call_matlab("disp('hello')", include_project_paths=False)
 
         mock_popen.assert_called_once()
         batch_arg = mock_popen.call_args[0][0][-1]
@@ -170,7 +170,26 @@ class TestCallMatlab:
 
 
 class TestCallMatlabExternalRepo:
-    def test_passes_cwd_and_unsets_display(self, tmp_path):
+    def test_passes_cwd_to_popen(self, tmp_path):
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+        ):
+            call_matlab("run()", cwd=tmp_path, include_project_paths=False)
+
+        kwargs = mock_popen.call_args.kwargs
+        assert kwargs["cwd"] == str(tmp_path)
+
+    def test_always_unsets_display(self):
+        """DISPLAY is removed from the MATLAB environment on every call."""
         mock_process = _make_mock_process(returncode=0)
 
         with (
@@ -184,18 +203,12 @@ class TestCallMatlabExternalRepo:
             ),
             patch.dict(os.environ, {"DISPLAY": ":0"}, clear=False),
         ):
-            call_matlab(
-                "run()",
-                cwd=tmp_path,
-                unset_display=True,
-                include_project_paths=False,
-            )
+            call_matlab("run()")
 
         kwargs = mock_popen.call_args.kwargs
-        assert kwargs["cwd"] == str(tmp_path)
         assert "DISPLAY" not in kwargs["env"]
 
-    def test_include_project_paths_false_skips_prefix_on_first_call(self):
+    def test_default_call_has_no_cwd(self):
         mock_process = _make_mock_process(returncode=0)
 
         with (
@@ -207,29 +220,7 @@ class TestCallMatlabExternalRepo:
                 "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
                 return_value="matlab",
             ),
-        ):
-            call_matlab("run()", first_call=True, include_project_paths=False)
-
-        batch_arg = mock_popen.call_args[0][0][-1]
-        assert "addpath" not in batch_arg
-        assert "run()" in batch_arg
-
-    def test_default_call_has_no_cwd_and_keeps_display(self):
-        mock_process = _make_mock_process(returncode=0)
-
-        with (
-            patch(
-                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
-                return_value=mock_process,
-            ) as mock_popen,
-            patch(
-                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
-                return_value="matlab",
-            ),
-            patch.dict(os.environ, {"DISPLAY": ":99"}, clear=False),
         ):
             call_matlab("disp('hi')")
 
-        kwargs = mock_popen.call_args.kwargs
-        assert kwargs["cwd"] is None
-        assert kwargs["env"].get("DISPLAY") == ":99"
+        assert mock_popen.call_args.kwargs["cwd"] is None

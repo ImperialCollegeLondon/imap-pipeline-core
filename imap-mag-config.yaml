@@ -67,6 +67,16 @@ plot_ialirt:
 calibration:
     work_sub_folder:
 
+# Configuration for the calibrate flow. work_sub_folder supports {date}/{mode}/{sensor}
+# placeholders so each calibrate run gets its own uniquely-named work folder.
+calibrate:
+    work_sub_folder: 'calibrate_{date}_{mode}'
+    scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
+    scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
+    sparse_datastore:
+        days_before: 1
+        days_after: 1
+
 publish:
     api:
         <<: *sdc_creds

@@ -94,6 +94,20 @@ class CalibrationMethod(Enum):
         raise ValueError(f"Unknown calibration method: {name}")
 
 
+class DatastoreAccessMode(StrEnum):
+    """How a calibration job that shells out to MATLAB accesses the datastore.
+
+    READ_DIRECTLY: MATLAB reads the datastore in place via the path in the
+        generated file-path config (default).
+    LOCAL_WORK_FOLDER_COPY: a sparse copy of just the files needed for the days
+        being calibrated is built in the work folder, and MATLAB is pointed at
+        that instead.
+    """
+
+    READ_DIRECTLY = "read_directly"
+    LOCAL_WORK_FOLDER_COPY = "local_work_folder_copy"
+
+
 class Sensor(StrEnum):
     MAGO = "MAGo"
     MAGI = "MAGi"

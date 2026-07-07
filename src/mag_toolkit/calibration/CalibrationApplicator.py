@@ -169,17 +169,7 @@ class CalibrationApplicator:
                 + timedelta(
                     days=1, hours=1
                 ),  # ensure we have plenty of spice coverage around it
-                file_types=[
-                    "leapseconds",
-                    "planetary_constants",
-                    "science_frames",
-                    "imap_frames",
-                    "spacecraft_clock",
-                    "attitude_history",
-                    "pointing_attitude",
-                    "planetary_ephemeris",
-                    "ephemeris_reconstructed",
-                ],
+                file_types=self.app_settings.metakernel_file_types,
                 verify=False,
             )  # type: ignore
 

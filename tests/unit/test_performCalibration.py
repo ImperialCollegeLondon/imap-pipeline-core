@@ -10,7 +10,7 @@ from prefect_github import GitHubRepository
 
 from imap_mag.config import ScriptedL2CalibrationConfig
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod
+from mag_toolkit.calibration import CalibrationMethod, DatastoreAccessMode
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     _github_repo_name,
@@ -129,10 +129,8 @@ class TestPerformCalibrationFlows:
 class TestGithubRepoName:
     def test_ssh_url(self):
         assert (
-            _github_repo_name(
-                "git@github.com:ImperialCollegeLondon/IMAP_MAG_Calibration.git"
-            )
-            == "IMAP_MAG_Calibration"
+            _github_repo_name("git@github.com:example-org/example-repo.git")
+            == "example-repo"
         )
 
     def test_https_url(self):
@@ -205,7 +203,7 @@ class TestResolveMatlabRepoPath:
 class TestCalibrateFlowScripted:
     def test_scripted_requires_matlab_repo(self, tmp_path):
         mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        mock_settings.work_folder = tmp_path
         with patch(
             "prefect_server.performCalibration.AppSettings",
             return_value=mock_settings,
@@ -222,7 +220,7 @@ class TestCalibrateFlowScripted:
         repo.mkdir()
         block = LocalFileSystem(basepath=str(repo))
         mock_settings = MagicMock()
-        mock_settings.setup_work_folder_for_command.return_value = tmp_path
+        mock_settings.work_folder = tmp_path
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=8, input_json_file="input.json"
         )
@@ -243,12 +241,17 @@ class TestCalibrateFlowScripted:
                 configuration=config,
                 metakernel=Path("mk.txt"),
                 matlab_repo=block,
+                datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
             )
 
         mock_calibrate.assert_called_once()
         kwargs = mock_calibrate.call_args.kwargs
         assert kwargs["matlab_repo_path"] == repo
         assert kwargs["metakernel"] == Path("mk.txt")
+        assert (
+            kwargs["datastore_access_mode"]
+            == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY
+        )
 
     def test_non_scripted_method_ignores_matlab_repo(self):
         """Existing methods must not attempt any matlab_repo resolution."""

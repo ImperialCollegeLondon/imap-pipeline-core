@@ -80,9 +80,21 @@ class SPICEPathHandler(VersionedPathHandler):
     # SPICE files might span long date ranges so this is just the starting date for the content
     content_date: datetime | None = None
 
+    METAKERNEL_FOLDER: typing.ClassVar[str] = "mk"
+
     @staticmethod
     def get_root_folder() -> str:
         return "spice"
+
+    @classmethod
+    def get_metakernel_folder(cls, datastore: Path) -> Path:
+        """Return the folder holding metakernels within a datastore (spice/mk)."""
+        return datastore / cls.get_root_folder() / cls.METAKERNEL_FOLDER
+
+    @classmethod
+    def get_metakernel_path(cls, datastore: Path, metakernel_filename: str) -> Path:
+        """Return the full path to a metakernel by filename within a datastore."""
+        return cls.get_metakernel_folder(datastore) / metakernel_filename
 
     matching_file_patterns: typing.ClassVar[list[tuple[str, str]]] = [
         (r"^de.*\.bsp$", "spk"),

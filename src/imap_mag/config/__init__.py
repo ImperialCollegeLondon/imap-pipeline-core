@@ -1,5 +1,9 @@
 from imap_mag.config.ApiSource import ApiSource, SdcApiSource, WebPodaApiSource
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.config.CalibrationCommandConfig import (
+    CalibrationCommandConfig,
+    SparseDatastoreConfig,
+)
 from imap_mag.config.CalibrationConfig import (
     CalibrationConfig,
     GradiometryConfig,
@@ -15,6 +19,7 @@ from imap_mag.config.SaveMode import SaveMode
 __all__ = [
     "ApiSource",
     "AppSettings",
+    "CalibrationCommandConfig",
     "CalibrationConfig",
     "CommandConfig",
     "FetchBinaryConfig",
@@ -26,5 +31,6 @@ __all__ = [
     "SaveMode",
     "ScriptedL2CalibrationConfig",
     "SdcApiSource",
+    "SparseDatastoreConfig",
     "WebPodaApiSource",
 ]

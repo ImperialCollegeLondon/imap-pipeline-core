@@ -17,7 +17,11 @@ from imap_mag.config.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
 )
 from imap_mag.util import ReferenceFrame, ScienceMode
-from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod
+from mag_toolkit.calibration import (
+    CalibrationLayer,
+    CalibrationMethod,
+    DatastoreAccessMode,
+)
 from prefect_server.constants import PREFECT_CONSTANTS
 
 logger = logging.getLogger(__name__)
@@ -198,10 +202,20 @@ def calibrate_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     matlab_repo: LocalFileSystem | GitHubRepository | str | None = None,
+    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ) -> list[Path]:
     """Calibrate for a date or date range. Returns a list of calibration layer paths.
 
     Args:
+        start_date: First date to calibrate.
+        end_date: Last date to calibrate (inclusive). If None, only start_date.
+        method: Calibration method to run. Only SCRIPTED_L2_CALIBRATION uses the
+            metakernel/matlab_repo/datastore_access_mode arguments.
+        mode: Science mode (norm/burst) to calibrate.
+        configuration: Calibration configuration. A ScriptedL2CalibrationConfig for
+            the scripted-l2 method, otherwise a CalibrationConfig (or None).
+        sensor: Sensor to calibrate (defaults to MAGo).
+        save_mode: Whether to save locally only or also index to the database.
         metakernel: Filename of the SPICE metakernel to use for the scripted-l2
             method. Treated like ``spice_metakernel`` in ``apply_flow``: if provided
             it must exist (in the datastore's spice/mk folder); if None and the
@@ -210,14 +224,17 @@ def calibrate_flow(
             scripted-l2 method. A LocalFileSystem block (local path), a
             GitHubRepository block (pulled into the work folder), the name of such
             a block, or None for the other methods.
+        datastore_access_mode: For scripted-l2, whether MATLAB reads the datastore
+            directly or from a sparse copy built in the work folder.
     """
     matlab_repo_path: Path | None = None
     if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
         app_settings = AppSettings()  # type: ignore
-        work_folder = app_settings.setup_work_folder_for_command(
-            app_settings.fetch_science
+        # Pull/resolve the MATLAB code into the (stable) base work folder so it is
+        # cloned once and reused across every day in the range.
+        matlab_repo_path = _resolve_matlab_repo_path(
+            matlab_repo, app_settings.work_folder
         )
-        matlab_repo_path = _resolve_matlab_repo_path(matlab_repo, work_folder)
         if matlab_repo_path is None:
             raise ValueError(
                 "matlab_repo is required for the scripted-l2 calibration method."
@@ -233,6 +250,7 @@ def calibrate_flow(
         save_mode=save_mode,
         metakernel=metakernel,
         matlab_repo_path=matlab_repo_path,
+        datastore_access_mode=datastore_access_mode,
     )
 
 

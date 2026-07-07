@@ -22,6 +22,7 @@ from mag_toolkit.calibration import (
     CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
+    DatastoreAccessMode,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
@@ -119,6 +120,13 @@ def calibrate(
             "(required for the scripted-l2 method).",
         ),
     ] = None,
+    datastore_access_mode: Annotated[
+        DatastoreAccessMode,
+        typer.Option(
+            help="How the scripted-l2 MATLAB pipeline accesses the datastore: read "
+            "it directly, or build a sparse local copy in the work folder first.",
+        ),
+    ] = DatastoreAccessMode.READ_DIRECTLY,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -130,6 +138,14 @@ def calibrate(
     """
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
+
+    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION and (
+        matlab_repo_path is None or not Path(matlab_repo_path).is_dir()
+    ):
+        raise typer.BadParameter(
+            "A valid --matlab-repo-path (an existing directory) is required for the "
+            "scripted-l2 calibration method."
+        )
 
     effective_end = end_date or start_date
     current = start_date
@@ -144,6 +160,7 @@ def calibrate(
             save_mode=save_mode,
             metakernel=metakernel,
             matlab_repo_path=matlab_repo_path,
+            datastore_access_mode=datastore_access_mode,
         )
         results.append(result)
         current += timedelta(days=1)
@@ -179,10 +196,20 @@ def _calibrate_for_date(
     save_mode: SaveMode,
     metakernel: Path | None = None,
     matlab_repo_path: Path | None = None,
+    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ) -> Path:
     """Run calibration for a single date."""
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    # Use the dedicated calibrate command config so each run gets its own uniquely
+    # named work folder (based on the date + mode being calibrated).
+    work_folder = app_settings.setup_work_folder_for_command(
+        app_settings.calibrate,
+        name_context={
+            "date": start_date.strftime("%Y%m%d"),
+            "mode": mode.value,
+            "sensor": sensor.value,
+        },
+    )
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -225,9 +252,10 @@ def _calibrate_for_date(
         case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
             calibrator = ScriptedL2CalibrationJob(
                 calibration_job_parameters,
-                work_folder,
+                app_settings,
                 matlab_repo_path=matlab_repo_path,
                 metakernel=metakernel,
+                datastore_access_mode=datastore_access_mode,
             )
         case _:
             raise ValueError("Calibration method is not implemented")
