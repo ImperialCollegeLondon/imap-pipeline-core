@@ -79,25 +79,23 @@ CLI commands are documented in the README.md in the project root.
 
 Recurring review feedback — follow these to avoid the same corrections:
 
-### Configuration belongs in the YAML, not hardcoded in Python
+### Configuration
 
 - Tunable values — timeouts, file-type lists, glob/path-pattern lists, day windows — live in the AppSettings YAML (`imap-mag-config.yaml`) and are read via `AppSettings`. Do **not** hardcode them as Python constants/lists in the code.
 - Do not duplicate the same list/values across modules. Define once as a shared setting on `AppSettings` and have every consumer (e.g. the applicator *and* the calibration jobs) read it from there.
 - Timeouts and similar should be expressed in meaningful units (e.g. per-day, per-mode) and scale with the work, not a single magic number.
-- Prefer Python `strftime` codes (`%Y`, `%m`, `%d`, `%y`) for date substitution in configurable strings, not custom placeholders like `{Y}`.
+- Prefer Python `strftime` codes (`%Y`, `%m`, `%d`, `%y`) for date substitution in configurable strings, not custom placeholders like `{Y}`. Use human readable values like '1d' rather than seconds for timeouts.
+- Each CLI command/flow uses its **own** `CommandConfig` section (don't piggy-back on another command's).
+- Work folders are dynamically named per run and may include the relevant arguments (e.g. `calibrate_{date}_{mode}`) so concurrent/sequential runs don't clobber each other. `CommandConfig.setup_work_folder` supports placeholder substitution via a `name_context`.
+- Pass the `AppSettings` object into jobs so they can reach config-driven params (timeouts, kernel types, patterns).
 
-### Commands get their own config + a unique work folder
+### Flows
 
-- Each CLI command/flow uses its **own** `CommandConfig` section (don't piggy-back on another command's, e.g. don't use `fetch_science`'s work folder for calibrate).
-- Work folders are dynamically named per run and include the relevant arguments (e.g. `calibrate_{date}_{mode}`) so concurrent/sequential runs don't clobber each other. `CommandConfig.setup_work_folder` supports placeholder substitution via a `name_context`.
+- Validate preconditions **early and fail fast** — in the constructor / CLI entry, Check required args are present, that directories/files exist (including the external MATLAB script we intend to call).
 
-### Calibration jobs / MATLAB integration
+### Data files and paths
 
-- Pass the `AppSettings` object into jobs (not just a derived work folder) so they can reach config-driven params (timeouts, kernel types, patterns).
-- Validate preconditions **early and fail fast** — in the constructor / CLI entry, not deep inside `run_calibration`. Check required args are present, that directories/files exist (including the external MATLAB script we intend to call).
 - Build datastore paths via the path handlers (e.g. `SPICEPathHandler.get_metakernel_path`), not hardcoded folder-name strings like `"spice"/"mk"`.
-- Fix root causes in the owning codebase rather than papering over them downstream. E.g. a MATLAB case-sensitivity bug was fixed in the MATLAB project (use the canonical `getProfilesFolder()`), **not** worked around with symlinks / file duplication in Python.
-- `MatlabWrapper.call_matlab` always unsets `DISPLAY`; external self-contained MATLAB projects are invoked with `include_project_paths=False` and `cwd` set to their repo root.
 - **SPICE gotcha**: a metakernel's `PATH_VALUES` is length-limited (long absolute paths get silently truncated → `furnsh` "file could not be located"). Keep `PATH_VALUES` relative (e.g. `spice`) and furnish from the correct working directory.
 - When copying from the (potentially huge, network-mounted) datastore, be day- and version-specific and mind file sizes — never copy the whole tree. Use per-pattern day windows (default: just the day being calibrated).
 
@@ -110,6 +108,9 @@ Recurring review feedback — follow these to avoid the same corrections:
 ## Testing
 
 - Tests in `tests/` directory, one `test_*.py` file per source file
+- Unit tests in `tests/unit/` (pytest, mocking where you have to) Must be fast to run and not have network/docker dependencies
+- Integration end-to-end tests in `tests/integration/` (pytest, may use dockerized services like Postgres, Prefect, WireMock)
+- All API calls to external services (IMAP SDC, I-ALiRT, SharePoint) must be uses WireMock for integration tests to stub external services.
 - Test utilities in `tests/util/` (database fixtures, WireMock, Prefect helpers)
 - Test data in `tests/datastore/`
 - Expect code to be well covered with automated tests and tests should pass before committing
