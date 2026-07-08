@@ -310,8 +310,8 @@ def calibrate_and_apply_flow(
             )
 
     cal_layer_paths: list[Path] = calibrate(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
         method=method,
         mode=mode,
         sensor=sensor,
@@ -326,8 +326,8 @@ def calibrate_and_apply_flow(
     science_input = layer.metadata.science[0]
     apply(
         layers=[cal_layer_path.name for cal_layer_path in cal_layer_paths],
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
         input=science_input,
         offset_file_output_type=offset_file_output_type.value,
         l2_output_type=L2_output_type.value,
@@ -369,8 +369,8 @@ def apply_flow(
     """
     apply(
         layers,
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
         mode=mode,
         input=science_input_file,
         offset_file_output_type=offset_file_output_type.value,
