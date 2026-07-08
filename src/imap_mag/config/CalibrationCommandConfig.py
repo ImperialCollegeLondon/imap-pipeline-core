@@ -28,7 +28,7 @@ class SparseDatastorePattern(BaseModel):
 
     Patterns whose filenames encode a day-of-year coverage window (e.g. SPICE spin
     or thruster activity files) use ``{from_doy}``/``{to_doy}`` placeholders (and
-    optionally ``{sequence}``) instead - see ``FileFinder.find_by_coverage_window``.
+    optionally ``{sequence}``) instead - see ``FileFinder.find_matching_files``.
 
     ``days_before``/``days_after`` widen the copy to neighbouring days around each
     day being calibrated. They default to 0 (only the day itself) so large per-day

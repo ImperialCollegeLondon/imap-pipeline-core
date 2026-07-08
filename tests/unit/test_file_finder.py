@@ -241,7 +241,7 @@ class TestFindScienceFile:
             )
 
 
-class TestFindByCoverageWindow:
+class TestFindMatchingFilesCoverageWindow:
     def _make_thruster_files(self, tmp_path):
         activities_dir = tmp_path / "spice" / "activities"
         activities_dir.mkdir(parents=True)
@@ -264,7 +264,7 @@ class TestFindByCoverageWindow:
         finder = FileFinder(tmp_path)
 
         # Day-of-year 167 (2026), no widening.
-        result = finder.find_by_coverage_window(
+        result = finder.find_matching_files(
             "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
             start_date=datetime(2026, 6, 16),  # DOY 167
             end_date=datetime(2026, 6, 16),
@@ -280,7 +280,7 @@ class TestFindByCoverageWindow:
         self._make_thruster_files(tmp_path)
         finder = FileFinder(tmp_path)
 
-        result = finder.find_by_coverage_window(
+        result = finder.find_matching_files(
             "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
             start_date=datetime(2026, 6, 16),  # DOY 167
             end_date=datetime(2026, 6, 16),
@@ -304,7 +304,7 @@ class TestFindByCoverageWindow:
         self._make_thruster_files(tmp_path)
         finder = FileFinder(tmp_path)
 
-        result = finder.find_by_coverage_window(
+        result = finder.find_matching_files(
             "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
             start_date=datetime(2026, 6, 17),  # DOY 168
             end_date=datetime(2026, 6, 17),
@@ -326,7 +326,7 @@ class TestFindByCoverageWindow:
         (activities_dir / "imap_2026_170_2026_171.other").touch()
 
         finder = FileFinder(tmp_path)
-        result = finder.find_by_coverage_window(
+        result = finder.find_matching_files(
             "spice/activities/imap_{from_doy}_{to_doy}.other",
             start_date=datetime(2026, 6, 15),  # DOY 166
             end_date=datetime(2026, 6, 15),
@@ -337,15 +337,46 @@ class TestFindByCoverageWindow:
         self._make_thruster_files(tmp_path)
         finder = FileFinder(tmp_path)
 
-        result = finder.find_by_coverage_window(
+        result = finder.find_matching_files(
             "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
             start_date=datetime(2026, 1, 1),
             end_date=datetime(2026, 1, 1),
         )
         assert result == []
 
+    def test_get_previous_if_empty_falls_back_to_latest_prior_window(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
 
-class TestFindDatedFilesWithFallback:
+        # No window overlaps DOY 300 (way after the last thruster file); fall back
+        # to the latest window ending before it, which is imap_2026_168_2026_169.
+        result = finder.find_matching_files(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 10, 27),  # DOY 300
+            end_date=datetime(2026, 10, 27),
+            get_previous_if_empty=True,
+            highest_sequence_only=True,
+        )
+        assert [p.name for p in result] == ["imap_2026_168_2026_169_hist_01.sff"]
+
+    def test_get_previous_if_empty_combined_with_highest_sequence(self, tmp_path):
+        self._make_thruster_files(tmp_path)
+        finder = FileFinder(tmp_path)
+
+        # Search window ends before DOY 168's window opens (170), so no overlap;
+        # fallback picks the latest-ending prior window (168-169), and
+        # highest_sequence_only is a no-op since it only has one sequence.
+        result = finder.find_matching_files(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 6, 19),  # DOY 170
+            end_date=datetime(2026, 6, 19),
+            get_previous_if_empty=True,
+            highest_sequence_only=True,
+        )
+        assert [p.name for p in result] == ["imap_2026_168_2026_169_hist_01.sff"]
+
+
+class TestFindMatchingFilesDatedPattern:
     PATTERN = "hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv"
 
     def _touch(self, tmp_path, date_str):
@@ -370,7 +401,7 @@ class TestFindDatedFilesWithFallback:
         self._touch(tmp_path, "20260201")  # outside the +/-1 day window
 
         finder = FileFinder(tmp_path)
-        result = finder.find_dated_files_with_fallback(
+        result = finder.find_matching_files(
             self.PATTERN,
             start_date=datetime(2026, 1, 30),
             end_date=datetime(2026, 1, 30),
@@ -388,7 +419,7 @@ class TestFindDatedFilesWithFallback:
         self._touch(tmp_path, "20260101")
 
         finder = FileFinder(tmp_path)
-        result = finder.find_dated_files_with_fallback(
+        result = finder.find_matching_files(
             self.PATTERN,
             start_date=datetime(2026, 1, 30),
             end_date=datetime(2026, 1, 30),
@@ -401,7 +432,7 @@ class TestFindDatedFilesWithFallback:
         self._touch(tmp_path, "20260115")
 
         finder = FileFinder(tmp_path)
-        result = finder.find_dated_files_with_fallback(
+        result = finder.find_matching_files(
             self.PATTERN,
             start_date=datetime(2026, 1, 30),
             end_date=datetime(2026, 1, 30),
@@ -418,7 +449,7 @@ class TestFindDatedFilesWithFallback:
         self._touch(tmp_path, "20260130")
 
         finder = FileFinder(tmp_path)
-        result = finder.find_dated_files_with_fallback(
+        result = finder.find_matching_files(
             self.PATTERN,
             start_date=datetime(2026, 1, 30),
             end_date=datetime(2026, 1, 30),
@@ -432,12 +463,49 @@ class TestFindDatedFilesWithFallback:
 
     def test_no_previous_file_returns_empty(self, tmp_path):
         finder = FileFinder(tmp_path)
-        result = finder.find_dated_files_with_fallback(
+        result = finder.find_matching_files(
             self.PATTERN,
             start_date=datetime(2026, 1, 30),
             end_date=datetime(2026, 1, 30),
             days_before=1,
             days_after=1,
             get_previous_if_empty=True,
+        )
+        assert result == []
+
+    def test_fallback_does_not_search_before_mission_start(self, tmp_path):
+        # A file dated before the IMAP mission start date must never be returned
+        # by the fallback, however far back it searches.
+        self._touch(tmp_path, "19900101")
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_matching_files(
+            self.PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+            get_previous_if_empty=True,
+        )
+        assert result == []
+
+
+class TestFindMatchingFilesPlaceholderValidation:
+    def test_unsupported_placeholder_raises_helpful_error(self, tmp_path):
+        finder = FileFinder(tmp_path)
+        with pytest.raises(ValueError, match="unsupported placeholder"):
+            finder.find_matching_files(
+                "science/mag/{level}/%Y/%m/imap_mag_{level}_%Y%m%d_v*.cdf",
+                start_date=datetime(2026, 1, 30),
+                end_date=datetime(2026, 1, 30),
+            )
+
+    def test_supported_placeholders_do_not_raise(self, tmp_path):
+        finder = FileFinder(tmp_path)
+        # No files exist, but the pattern itself must be accepted without error.
+        result = finder.find_matching_files(
+            "spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff",
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
         )
         assert result == []

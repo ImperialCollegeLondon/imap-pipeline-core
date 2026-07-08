@@ -17,6 +17,7 @@ from imap_mag.io.file import (
 )
 from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from imap_mag.util import MAGSensor, ScienceMode
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -256,9 +257,11 @@ class FileFinder:
             f"No science file found for date {date.strftime('%Y-%m-%d')} and mode {mode.value}"
         )
 
+    _COVERAGE_PLACEHOLDERS = frozenset({"from_doy", "to_doy", "sequence"})
     _COVERAGE_PLACEHOLDER_RE = re.compile(r"\{from_doy\}|\{to_doy\}|\{sequence\}")
+    _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
-    def find_by_coverage_window(
+    def find_matching_files(
         self,
         relative_pattern: str,
         start_date: datetime,
@@ -266,26 +269,101 @@ class FileFinder:
         days_before: int = 0,
         days_after: int = 0,
         highest_sequence_only: bool = False,
+        get_previous_if_empty: bool = False,
     ) -> list[Path]:
-        """Find files whose filenames encode a day-of-year coverage window that
-        overlaps the search window.
+        """Find files matching ``relative_pattern`` (relative to ``data_store``)
+        that cover the search window ``[start_date - days_before, end_date + days_after]``.
 
-        ``relative_pattern`` is relative to ``data_store`` and uses ``{from_doy}``/
-        ``{to_doy}`` placeholders for the ``{year}_{doy}`` coverage-window start/end
-        encoded in the filename (e.g. ``imap_{from_doy}_{to_doy}_hist_{sequence}.sff``
-        matches ``imap_2026_165_2026_166_hist_01.sff``), and an optional
-        ``{sequence}`` placeholder for a per-window sequence number.
+        ``relative_pattern`` is either:
+        - A day-of-year coverage-window pattern, using ``{from_doy}``/``{to_doy}``
+          placeholders for the ``{year}_{doy}`` coverage-window start/end encoded
+          in the filename (e.g. ``imap_{from_doy}_{to_doy}_hist_{sequence}.sff``
+          matches ``imap_2026_165_2026_166_hist_01.sff``), and an optional
+          ``{sequence}`` placeholder for a per-window sequence number. Files are
+          returned if their coverage window overlaps the search window at all.
+        - A dated pattern, using ``strftime`` codes to fill in the date per day
+          in the search window (e.g. ``imap_..._%Y%m%d_v*.csv``).
 
-        ``days_before``/``days_after`` widen the search window around
-        ``start_date``/``end_date``. Files are returned if their coverage window
-        overlaps the (possibly widened) search window at all; overlapping windows
-        with duplicate coverage are all returned unless ``highest_sequence_only``
-        is set, in which case only the highest-sequence file per distinct coverage
-        window is kept.
+        ``highest_sequence_only`` keeps only the highest-sequence file per
+        distinct coverage window (coverage-window patterns only).
+
+        ``get_previous_if_empty`` falls back to the most recent match before the
+        search window when nothing is found within it - useful for point-in-time
+        state files that are only regenerated occasionally, where the state as of
+        the start of the window is still needed. For coverage-window patterns this
+        is the file(s) with the latest coverage-window end before the search
+        window; for dated patterns it is the most recent day with a match.
         """
+        self._validate_pattern_placeholders(relative_pattern)
+
+        if "{from_doy}" in relative_pattern:
+            return self._find_by_coverage_window(
+                relative_pattern,
+                start_date,
+                end_date,
+                days_before,
+                days_after,
+                highest_sequence_only,
+                get_previous_if_empty,
+            )
+
+        return self._find_dated_files(
+            relative_pattern,
+            start_date,
+            end_date,
+            days_before,
+            days_after,
+            get_previous_if_empty,
+        )
+
+    @classmethod
+    def _validate_pattern_placeholders(cls, pattern: str) -> None:
+        unsupported = (
+            set(cls._PLACEHOLDER_RE.findall(pattern)) - cls._COVERAGE_PLACEHOLDERS
+        )
+        if unsupported:
+            raise ValueError(
+                f"Pattern '{pattern}' contains unsupported placeholder(s): "
+                f"{', '.join(sorted(unsupported))}. Supported placeholders are: "
+                f"{', '.join(sorted(cls._COVERAGE_PLACEHOLDERS))}."
+            )
+
+    def _find_by_coverage_window(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int,
+        days_after: int,
+        highest_sequence_only: bool,
+        get_previous_if_empty: bool,
+    ) -> list[Path]:
         search_start = start_date - timedelta(days=days_before)
         search_end = end_date + timedelta(days=days_after)
 
+        candidates = self._coverage_window_candidates(relative_pattern)
+
+        matching = [
+            candidate
+            for candidate in candidates
+            if candidate[1] <= search_end and candidate[2] >= search_start
+        ]
+
+        if not matching and get_previous_if_empty:
+            previous = [
+                candidate for candidate in candidates if candidate[2] < search_start
+            ]
+            if previous:
+                latest_end = max(candidate[2] for candidate in previous)
+                matching = [
+                    candidate for candidate in previous if candidate[2] == latest_end
+                ]
+
+        return self._select_by_sequence(matching, highest_sequence_only)
+
+    def _coverage_window_candidates(
+        self, relative_pattern: str
+    ) -> list[tuple[Path, datetime, datetime, int]]:
         pattern = self._coverage_window_regex(Path(relative_pattern).name)
         glob_pattern = self._COVERAGE_PLACEHOLDER_RE.sub("*", relative_pattern)
 
@@ -307,18 +385,18 @@ class FileFinder:
             )
             sequence = int(groups["sequence"]) if "sequence" in groups else 0
             candidates.append((path, window_start, window_end, sequence))
+        return candidates
 
-        overlapping = [
-            candidate
-            for candidate in candidates
-            if candidate[1] <= search_end and candidate[2] >= search_start
-        ]
-
+    @staticmethod
+    def _select_by_sequence(
+        candidates: list[tuple[Path, datetime, datetime, int]],
+        highest_sequence_only: bool,
+    ) -> list[Path]:
         if not highest_sequence_only:
-            return [path for path, _, _, _ in overlapping]
+            return [path for path, _, _, _ in candidates]
 
         best: dict[tuple[datetime, datetime], tuple[Path, int]] = {}
-        for path, window_start, window_end, sequence in overlapping:
+        for path, window_start, window_end, sequence in candidates:
             key = (window_start, window_end)
             if key not in best or sequence > best[key][1]:
                 best[key] = (path, sequence)
@@ -341,27 +419,15 @@ class FileFinder:
                 regex_parts.append(re.escape(part))
         return re.compile("^" + "".join(regex_parts) + "$")
 
-    def find_dated_files_with_fallback(
+    def _find_dated_files(
         self,
         relative_pattern: str,
         start_date: datetime,
         end_date: datetime,
-        days_before: int = 0,
-        days_after: int = 0,
-        get_previous_if_empty: bool = False,
-        max_lookback_days: int = 3650,
+        days_before: int,
+        days_after: int,
+        get_previous_if_empty: bool,
     ) -> list[Path]:
-        """Find files for each day in the (widened) search window, using
-        ``strftime`` codes in ``relative_pattern`` (relative to ``data_store``) to
-        fill in the date per day.
-
-        ``days_before``/``days_after`` widen the search window around
-        ``start_date``/``end_date``. If no files are found anywhere in the window
-        and ``get_previous_if_empty`` is set, falls back to the most recent day
-        before the search window that has matching files (useful for point-in-time
-        state files that are only regenerated occasionally, where the state as of
-        the start of the window is still needed).
-        """
         search_start = (start_date - timedelta(days=days_before)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -378,8 +444,8 @@ class FileFinder:
         if matches or not get_previous_if_empty:
             return matches
 
+        earliest = DatetimeProvider().beginning_of_imap()
         day = search_start - timedelta(days=1)
-        earliest = search_start - timedelta(days=max_lookback_days)
         while day >= earliest:
             found = self._glob_files(day.strftime(relative_pattern))
             if found:

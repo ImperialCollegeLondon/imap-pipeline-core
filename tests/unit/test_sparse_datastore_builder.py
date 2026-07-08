@@ -231,13 +231,3 @@ def test_get_previous_if_empty_pattern_falls_back(tmp_path):
         target
         / "hk/lo/l1/pivot-platform-angle/2026/01/imap_lo_l1_pivot-platform-angle_20260101_v001.csv"
     ).exists()
-
-
-def test_parse_metakernel_kernels_strips_symbol_prefix(tmp_path):
-    mk = tmp_path / "mk.txt"
-    mk.write_text(
-        "KERNELS_TO_LOAD = ( '$KERNELS/lsk/naif0012.tls',\n"
-        "                    '$KERNELS/spk/de440.bsp' )\n"
-    )
-    kernels = SparseDatastoreBuilder._parse_metakernel_kernels(mk)
-    assert kernels == ["lsk/naif0012.tls", "spk/de440.bsp"]

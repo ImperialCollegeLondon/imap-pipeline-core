@@ -1,5 +1,4 @@
 import logging
-import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -32,8 +31,15 @@ class SparseDatastoreBuilder:
         self,
         source_datastore: Path,
         config: SparseDatastoreConfig,
-        disk_usage_threshold: float = 0.95,
+        disk_usage_threshold: float,
     ):
+        """Args:
+        source_datastore: Root of the datastore to copy from.
+        config: Patterns (and their day windows) to copy.
+        disk_usage_threshold: Fraction of disk usage above which copying is
+            blocked; must come from ``AppSettings.disk_usage_threshold`` so it is
+            configurable, not a code default.
+        """
         self.source_datastore = Path(source_datastore)
         self.config = config
         self.disk_usage_threshold = disk_usage_threshold
@@ -57,7 +63,8 @@ class SparseDatastoreBuilder:
         search_start = min(dates)
         search_end = max(dates)
 
-        copied = 0
+        copied_files = 0
+        copied_bytes = 0
         for pattern in self.config.patterns:
             # {level}/{mode}/{matrix_version} are filled first, leaving any
             # {from_doy}/{to_doy}/{sequence} placeholders for the FileFinder; dated
@@ -66,34 +73,33 @@ class SparseDatastoreBuilder:
                 pattern.pattern, level, mode, matrix_version
             )
 
-            if "{from_doy}" in named:
-                matches = self._finder.find_by_coverage_window(
-                    named,
-                    start_date=search_start,
-                    end_date=search_end,
-                    days_before=pattern.days_before,
-                    days_after=pattern.days_after,
-                    highest_sequence_only=pattern.highest_sequence_only,
-                )
-            else:
-                matches = self._finder.find_dated_files_with_fallback(
-                    named,
-                    start_date=search_start,
-                    end_date=search_end,
-                    days_before=pattern.days_before,
-                    days_after=pattern.days_after,
-                    get_previous_if_empty=pattern.get_previous_if_empty,
-                )
+            matches = self._finder.find_matching_files(
+                named,
+                start_date=search_start,
+                end_date=search_end,
+                days_before=pattern.days_before,
+                days_after=pattern.days_after,
+                highest_sequence_only=pattern.highest_sequence_only,
+                get_previous_if_empty=pattern.get_previous_if_empty,
+            )
 
             for source in matches:
                 relative = source.relative_to(self.source_datastore)
-                copied += self._copy_file(source, target_root / relative)
+                size = self._copy_file(source, target_root / relative)
+                if size:
+                    copied_files += 1
+                    copied_bytes += size
 
-        copied += self._copy_metakernel_and_kernels(metakernel_filename, target_root)
+        metakernel_files, metakernel_bytes = self._copy_metakernel_and_kernels(
+            metakernel_filename, target_root
+        )
+        copied_files += metakernel_files
+        copied_bytes += metakernel_bytes
 
         logger.info(
-            f"Built sparse datastore at {target_root} with {copied} files "
-            f"for {[d.date() for d in dates]} ({mode.value})."
+            f"Built sparse datastore at {target_root} with {copied_files} files "
+            f"({copied_bytes / (1024**2):.1f} MB) for {[d.date() for d in dates]} "
+            f"({mode.value})."
         )
         return target_root
 
@@ -110,17 +116,23 @@ class SparseDatastoreBuilder:
             .replace("{matrix_version}", str(matrix_version))
         )
 
-    @staticmethod
-    def _copy_file(source: Path, destination: Path) -> int:
+    def _copy_file(self, source: Path, destination: Path) -> int:
+        """Copy ``source`` to ``destination`` if not already there, logging the
+        file and its size. Returns the number of bytes copied (0 if skipped)."""
         if destination.exists():
             return 0
+
+        check_disk_space(destination.parent, self.disk_usage_threshold)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-        return 1
+
+        size = destination.stat().st_size
+        logger.debug(f"Copied {source} ({size:,} bytes) -> {destination}")
+        return size
 
     def _copy_metakernel_and_kernels(
         self, metakernel_filename: str, target_root: Path
-    ) -> int:
+    ) -> tuple[int, int]:
         source_mk = SPICEPathHandler.get_metakernel_path(
             self.source_datastore, metakernel_filename
         )
@@ -129,13 +141,17 @@ class SparseDatastoreBuilder:
                 f"Metakernel {source_mk} not found while building sparse datastore."
             )
 
-        count = 0
-        for kernel_relative in self._parse_metakernel_kernels(source_mk):
+        files = 0
+        total_bytes = 0
+        for kernel_relative in SPICEPathHandler.parse_metakernel_kernels(source_mk):
             source_kernel = self.source_datastore / "spice" / kernel_relative
             if source_kernel.exists():
-                count += self._copy_file(
+                size = self._copy_file(
                     source_kernel, target_root / "spice" / kernel_relative
                 )
+                if size:
+                    files += 1
+                    total_bytes += size
             else:
                 logger.warning(
                     f"Kernel '{kernel_relative}' referenced by {metakernel_filename} "
@@ -148,35 +164,10 @@ class SparseDatastoreBuilder:
         # SPICE's limit on the length of a metakernel path token.
         dest_mk = SPICEPathHandler.get_metakernel_path(target_root, metakernel_filename)
         dest_mk.parent.mkdir(parents=True, exist_ok=True)
-        dest_mk.write_text(self._rewrite_metakernel_path_values(source_mk.read_text()))
-        count += 1
-        return count
-
-    @staticmethod
-    def _parse_metakernel_kernels(metakernel_path: Path) -> list[str]:
-        """Return the kernel paths (relative to the datastore ``spice`` folder)
-        referenced by a metakernel's ``KERNELS_TO_LOAD`` block.
-
-        Assumes the metakernel's kernel entries are relative to the datastore's
-        ``spice`` folder (i.e. ``PATH_VALUES`` is ``spice``), which is how the
-        production metakernels are written.
-        """
-        text = metakernel_path.read_text()
-        block_match = re.search(
-            r"KERNELS_TO_LOAD\s*=\s*\((?P<body>.*?)\)", text, re.DOTALL
+        rewritten = SPICEPathHandler.rewrite_metakernel_path_values(
+            source_mk.read_text()
         )
-        if not block_match:
-            return []
-        entries = re.findall(r"'([^']*)'", block_match.group("body"))
-        # Strip the leading "$SYMBOL/" so each entry is relative to the spice
-        # folder (e.g. "$KERNELS/lsk/naif0012.tls" -> "lsk/naif0012.tls").
-        return [re.sub(r"^\$\w+/", "", entry).lstrip("/") for entry in entries]
-
-    @staticmethod
-    def _rewrite_metakernel_path_values(text: str) -> str:
-        """Normalise the metakernel's PATH_VALUES to the relative ``spice`` folder."""
-        return re.sub(
-            r"PATH_VALUES\s*=\s*\([^)]*\)",
-            "PATH_VALUES     = ( 'spice' )",
-            text,
-        )
+        dest_mk.write_text(rewritten)
+        files += 1
+        total_bytes += len(rewritten.encode())
+        return files, total_bytes
