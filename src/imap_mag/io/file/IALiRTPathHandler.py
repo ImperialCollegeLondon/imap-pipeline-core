@@ -47,7 +47,10 @@ class IALiRTPathHandler(IFilePathHandler):
 
         hk_suffix = "_hk" if self.is_hk else ""
 
-        return f"{self.mission}_ialirt_{self.instrument.lower()}{hk_suffix}_{date_str}.{self.extension}"
+        if hk_suffix:
+            return f"{self.mission}_ialirt_mag_hk_{date_str}.{self.extension}"
+        else:
+            return f"{self.mission}_ialirt_{self.instrument.lower()}{hk_suffix}_{date_str}.{self.extension}"
 
     def add_metadata(self, metadata: dict) -> None:
         raise NotImplementedError()
