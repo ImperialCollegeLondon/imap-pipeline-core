@@ -139,14 +139,6 @@ def calibrate(
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
 
-    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION and (
-        matlab_repo_path is None or not Path(matlab_repo_path).is_dir()
-    ):
-        raise typer.BadParameter(
-            "A valid --matlab-repo-path (an existing directory) is required for the "
-            "scripted-l2 calibration method."
-        )
-
     effective_end = end_date or start_date
     current = start_date
     results: list[Path] = []
@@ -250,6 +242,9 @@ def _calibrate_for_date(
                 calibration_job_parameters, work_folder, datastore_finder
             )
         case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+            assert matlab_repo_path is not None, (
+                "matlab_repo_path must be provided for scripted-l2 calibration"
+            )
             calibrator = ScriptedL2CalibrationJob(
                 calibration_job_parameters,
                 app_settings,
@@ -265,21 +260,9 @@ def _calibrate_for_date(
     outputManager = DatastoreFileManager.CreateByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
-
-    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
-        # The MATLAB script fixes its own output filename as
-        # ``imap_mag_manual-{mode}-layer_{date}_v{VVV}.json`` and stamps it with
-        # the version we pass in, so mirror that descriptor and pick the next
-        # available version for that layer.
-        calibration_handler = CalibrationLayerPathHandler(
-            descriptor=f"manual-{mode.value}",
-            content_date=start_date,
-            version=_next_layer_version(datastore_finder, mode, start_date),
-        )
-    else:
-        calibration_handler = CalibrationLayerPathHandler(
-            descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
-        )
+    calibration_handler = CalibrationLayerPathHandler(
+        descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
+    )
 
     metadata_path, data_path = calibrator.run_calibration(
         calibration_handler, calibration_configuration
@@ -295,6 +278,11 @@ def _calibrate_for_date(
         raise ValueError(
             f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
         )
+
+    # add pipleine metadata, ensures hash is correct
+    layer.save_calibration_layer(
+        metadata_path, createDirectory=False, save_contents=False
+    )
 
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler

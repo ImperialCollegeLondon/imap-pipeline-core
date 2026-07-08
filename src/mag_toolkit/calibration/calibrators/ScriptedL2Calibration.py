@@ -65,6 +65,18 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         metakernel: Path | str | None = None,
         datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
     ):
+        self.matlab_repo_path = Path(matlab_repo_path)
+        if self.matlab_repo_path is None or not self.matlab_repo_path.is_dir():
+            raise ValueError(
+                "A valid matlab-repo-path (an existing directory) is required for the scripted-l2 calibration method."
+            )
+        matlab_script = self.matlab_repo_path / MATLAB_SCRIPT_RELATIVE_PATH
+        if not matlab_script.is_file():
+            raise FileNotFoundError(
+                f"Expected MATLAB script not found at {matlab_script}; the acquired "
+                "repository does not contain calibrate_l2_offsets."
+            )
+
         work_folder = app_settings.setup_work_folder_for_command(
             app_settings.calibrate,
             name_context=self._work_folder_context(calibration_job_parameters),
@@ -74,25 +86,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         self.app_settings = app_settings
         self.metakernel = metakernel
         self.datastore_access_mode = datastore_access_mode
-
-        if matlab_repo_path is None:
-            raise ValueError(
-                "A MATLAB calibration repository path is required for scripted L2 calibration."
-            )
-        self.matlab_repo_path = Path(matlab_repo_path)
-
-        # Fail fast if the repo (or the script we call) is missing, rather than
-        # letting the MATLAB subprocess fail cryptically later.
-        if not self.matlab_repo_path.is_dir():
-            raise FileNotFoundError(
-                f"MATLAB calibration repository not found at {self.matlab_repo_path}."
-            )
-        matlab_script = self.matlab_repo_path / MATLAB_SCRIPT_RELATIVE_PATH
-        if not matlab_script.is_file():
-            raise FileNotFoundError(
-                f"Expected MATLAB script not found at {matlab_script}; the acquired "
-                "repository does not contain calibrate_l2_offsets."
-            )
 
     @staticmethod
     def _work_folder_context(
@@ -315,5 +308,5 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
-            "publish_to_sharepoint=false, display_plots=false)"
+            "publish_to_sharepoint=false, display_plots=false,spice_transform_and_write=false)"
         )

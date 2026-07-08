@@ -1,5 +1,6 @@
 import logging
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -91,6 +92,12 @@ def _resolve_matlab_repo_path(
         logger.info(
             f"Pulling MATLAB calibration repository {block.repository_url} into {target}"
         )
+
+        # need to clear the target folder if it already exists, otherwise the pull will fail
+        if target.exists():
+            logger.info(f"Target folder {target} already exists, clearing it first")
+            shutil.rmtree(target, ignore_errors=True)
+
         block.get_directory(local_path=str(target))
         if not target.is_dir():
             raise FileNotFoundError(

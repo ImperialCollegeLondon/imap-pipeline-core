@@ -213,7 +213,7 @@ It is possible to mount the data store folder from a local folder such as on box
 
 ```bash
 # in WSL on your HOST
-$ mkdir -p /mnt/imap-data
+$ mkdir -p /mnt/box
 $ sudo mount -t drvfs 'C:\Users\username\box' /mnt/box -o uid=1000,gid=1000
 ```
 

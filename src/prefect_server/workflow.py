@@ -403,18 +403,14 @@ async def adeploy_flows(local_debug: bool = False):
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
         job_variables=matlab_shared_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     gradiometer_deployable = gradiometry_flow.to_deployment(
         name="gradiometer",
         job_variables=matlab_shared_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
@@ -425,18 +421,14 @@ async def adeploy_flows(local_debug: bool = False):
     apply_deployable = apply_flow.to_deployment(
         name="apply",
         job_variables=apply_shared_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name="calibrate_and_apply",
         job_variables=apply_shared_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 

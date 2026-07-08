@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  'tests/datastore'
+data_store:  '/mnt/box/IMAP Flight Data/Flight Data'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
@@ -101,6 +101,9 @@ calibrate:
             - pattern: 'hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv'
               days_before: 1
               days_after: 1
+              get_previous_if_empty: true
+              highest_sequence_only: true
+
             # Only the calibration matrices version in use (each version is large).
             - pattern: 'calibration/inputs/Matrices/CalibrationMatricesV{matrix_version}.mat'
             - pattern: 'calibration/inputs/Matrices/CalibrationMatricesV{matrix_version}.json'
@@ -115,8 +118,6 @@ calibrate:
             - pattern: 'spice/spin/imap_{from_doy}_{to_doy}_{sequence}.spin'
               highest_sequence_only: true
             - pattern: 'spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff'
-              days_before: 1
-              days_after: 1
               highest_sequence_only: true
 
 publish:

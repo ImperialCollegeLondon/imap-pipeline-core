@@ -81,9 +81,11 @@ class CalibrationMethod(Enum):
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
-    MANUAL = "manual", "Manual offsets"
     SET_QUALITY_AND_NAN = "quality", "Set Quality and NaN"
-    SCRIPTED_L2_CALIBRATION = "scripted-l2", "Scripted L2 Calibration"
+    SCRIPTED_L2_CALIBRATION = (
+        "manual",
+        "Scripted L2 Calibration (MATLAB calibrate L2 script)",
+    )
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":
@@ -133,7 +135,7 @@ def serialize_dt(dt: np.datetime64, _info):
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     data_filename: Path | None = None
     data_hash: str | None = None
-    dependencies: list[str]
+    dependencies: list[str] = []
     science: list[str]
     content_date: Annotated[
         np.datetime64 | None,
