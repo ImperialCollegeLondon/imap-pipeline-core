@@ -4,11 +4,21 @@ import os
 from datetime import date
 from pathlib import Path
 
-import ccsdspy
-from ccsdspy.utils import iter_packet_bytes
-from rich.progress import Progress
+# ccsdspy logs an INFO message to its own console handler on import (before
+# our application logging is configured), and its init code resets the
+# logger's level unconditionally, so suppressing it via setLevel beforehand
+# doesn't work. Disable the logger just for the duration of the import.
+_ccsdspy_logger = logging.getLogger("ccsdspy")
+_ccsdspy_logger.disabled = True
+import ccsdspy  # noqa: E402
+from ccsdspy.utils import iter_packet_bytes  # noqa: E402
 
-from imap_mag.util.TimeConversion import TimeConversion
+_ccsdspy_logger.disabled = False
+_ccsdspy_logger.setLevel(logging.WARNING)
+
+from rich.progress import Progress  # noqa: E402
+
+from imap_mag.util.TimeConversion import TimeConversion  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
