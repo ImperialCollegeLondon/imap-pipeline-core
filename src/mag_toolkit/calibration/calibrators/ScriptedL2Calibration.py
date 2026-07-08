@@ -204,6 +204,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             disk_usage_threshold=self.app_settings.disk_usage_threshold,
         )
         target_root = self.work_folder / SPARSE_DATASTORE_FOLDER_NAME
+        logger.info(f"Building sparse local copy of datastore in {target_root}")
         if target_root.exists():
             shutil.rmtree(target_root, ignore_errors=True)
         return builder.build(

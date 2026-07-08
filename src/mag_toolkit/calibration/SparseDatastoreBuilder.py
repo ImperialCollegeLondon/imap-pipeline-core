@@ -57,7 +57,7 @@ class SparseDatastoreBuilder:
         level = "l1b" if mode == ScienceMode.Burst else "l1c"
 
         # Ensure there is room in the work folder before copying anything in.
-        check_disk_space(target_root.parent, self.disk_usage_threshold)
+
         target_root.mkdir(parents=True, exist_ok=True)
 
         search_start = min(dates)
@@ -85,6 +85,7 @@ class SparseDatastoreBuilder:
 
             for source in matches:
                 relative = source.relative_to(self.source_datastore)
+                check_disk_space(target_root.parent, self.disk_usage_threshold)
                 size = self._copy_file(source, target_root / relative)
                 if size:
                     copied_files += 1
@@ -98,7 +99,7 @@ class SparseDatastoreBuilder:
 
         logger.info(
             f"Built sparse datastore at {target_root} with {copied_files} files "
-            f"({copied_bytes / (1024**2):.1f} MB) for {[d.date() for d in dates]} "
+            f"({copied_bytes / (1024**2):.1f} MB) for {[str(d.date()) for d in dates]} "
             f"({mode.value})."
         )
         return target_root
