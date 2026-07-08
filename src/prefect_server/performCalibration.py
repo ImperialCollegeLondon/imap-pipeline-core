@@ -248,8 +248,8 @@ def calibrate_flow(
             )
 
     return calibrate(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
         method=method,
         mode=mode,
         sensor=sensor,
