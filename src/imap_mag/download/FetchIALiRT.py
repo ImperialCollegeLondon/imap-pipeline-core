@@ -50,7 +50,8 @@ class FetchIALiRT:
                 df,
                 self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
             )
-            max_hours_per_chunk = 2
+
+            max_hours_per_chunk = 1.5
         else:
             processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
             process_fn = processing_map.get(instrument.lower(), lambda df: df)

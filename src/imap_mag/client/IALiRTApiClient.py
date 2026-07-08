@@ -1,7 +1,8 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
+import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import ialirt_data_access
 from pydantic import SecretStr
@@ -97,24 +98,21 @@ class IALiRTApiClient:
 
         return whole_data
 
-    def _ensure_utc_string(self, dt: datetime) -> str:
-        """Datetime to a UTC string."""
-        if dt.tzinfo is None:
-            dt_utc = dt.replace(tzinfo=UTC)
-        else:
-            dt_utc = dt.astimezone(UTC)
-
-        return dt_utc.strftime(self.__DATE_FORMAT)
-
     def __do_download(
         self, instrument: str, start_date: datetime, end_date: datetime
     ) -> list[dict]:
 
         result = ialirt_data_access.data_product_query(
             instrument=instrument,
-            time_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
-            time_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+            time_utc_start=start_date.strftime(self.__DATE_FORMAT),
+            time_utc_end=end_date.strftime(self.__DATE_FORMAT),
         )
+
+        if isinstance(result, (str, bytes)):
+            try:
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to decode JSON from API response: {result}")
 
         if isinstance(result, dict):
             return result.get("data", [])
