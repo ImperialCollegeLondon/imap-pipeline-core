@@ -10,7 +10,7 @@ packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
 sdc: &sdc_creds
-    url_base: 'https://api.dev.imap-mission.com'
+    url_base: "https://api.dev.imap-mission.com"
     auth_code:
 
 # Command specific configuration:
@@ -19,14 +19,14 @@ check_ialirt:
 
 fetch_binary:
     api:
-        url_base: 'https://lasp.colorado.edu/ops/imap/poda/dap2/packets/SID2/'
+        url_base: "https://lasp.colorado.edu/ops/imap/poda/dap2/packets/SID2/"
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
 
 fetch_ialirt:
     api:
-        url_base: 'https://ialirt.dev.imap-mission.com'
+        url_base: "https://ialirt.dev.imap-mission.com"
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
@@ -43,12 +43,20 @@ fetch_spice:
     work_sub_folder: spice
     publish_to_data_store: true
 
+fetch_solar1_ace:
+    api:
+        url_base: "https://services.swpc.noaa.gov/json/rtsw"
+
+fetch_dscovr:
+    api:
+        url_base: "https://services.swpc.noaa.gov/products/solar-wind"
+
 fetch_webtcad:
     api:
         # Example URL: https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/AnalogTelemetryItem_SID1.csv?TMID=58350&time,value&time%3E=2026-02-11T13:43:32.000Z&time%3C=2026-02-12T13:43:32.000Z&format_time(yyyy-MM-dd%27T%27HH:mm:ss.SSS)&limit(10)
-        url_base: 'https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/'
+        url_base: "https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/"
         auth_code:
-        system_id: 'SID1' # SID1 is flight, SID2 is preflight
+        system_id: "SID1" # SID1 is flight, SID2 is preflight
     work_sub_folder:
     publish_to_data_store: true
 
@@ -87,7 +95,7 @@ upload:
 
 postgres_upload:
     crump_config_path: imap-db-ingest-config.yaml
-    database_url_env_var_or_block_name: 'imap-database'
+    database_url_env_var_or_block_name: "imap-database"
     enable_history: true
     paths_to_match:
         - "*hk/mag/l1/hsk-pw/*"
