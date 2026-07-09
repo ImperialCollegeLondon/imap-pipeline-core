@@ -54,6 +54,7 @@ class AppSettings(BaseSettings):
     data_store: Path
     packet_definition: Path
     disk_usage_threshold: float = 0.95
+    version_major: int = 1
 
     # SPICE kernel types to include when generating a metakernel. Shared by the
     # calibration applicator and the scripted L2 calibration.

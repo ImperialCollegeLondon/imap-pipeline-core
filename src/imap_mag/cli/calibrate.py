@@ -215,7 +215,9 @@ def _calibrate_for_date(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
     calibration_handler = CalibrationLayerPathHandler(
-        descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
+        descriptor=f"{method.short_name}-{mode.value}",
+        content_date=start_date,
+        version_major=app_settings.version_major,
     )
 
     metadata_path, data_path = calibrator.run_calibration(

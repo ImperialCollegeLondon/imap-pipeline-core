@@ -77,6 +77,7 @@ class CalibrationApplicator:
             science,
             outputCalibrationFile.name,
             method=CalibrationMethod.SUM,
+            version_major=self.app_settings.version_major,
         )
 
         cal_filepath = offsets.writeToFile(outputCalibrationFile)
@@ -256,6 +257,8 @@ class CalibrationApplicator:
                 content_date=day_to_process,
                 version=1,
                 extension="cdf",
+                version_major=self.app_settings.version_major,
+                legacy=False,
             )
             filepath = outputScienceFolder / filename
 

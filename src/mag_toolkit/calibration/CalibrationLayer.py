@@ -183,7 +183,11 @@ class CalibrationLayer(Layer):
         offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GENERATION_DATE] = str(
             np.datetime64("now")
         )
-        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = self.version
+        if self.version_major > 0:
+            data_version = f"v{self.version_major:03d}.{self.version:04d}"
+        else:
+            data_version = f"v{self.version:03d}"
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = data_version
 
         offsets_dataset.attrs["Parents"] = deepcopy(self.metadata.dependencies)
 
@@ -197,6 +201,7 @@ class CalibrationLayer(Layer):
         original_science: ScienceLayer,
         calibration_id: str,
         method: CalibrationMethod = CalibrationMethod.SUM,
+        version_major: int = 0,
     ):
         """Set the metadata for the offsets layer based on the original science layer."""
         if self._contents is None:
@@ -215,6 +220,7 @@ class CalibrationLayer(Layer):
         )
         self.id = calibration_id
         self.version = 1
+        self.version_major = version_major
         self.method = method
         self.value_type = ValueType.VECTOR
         self.sensor = original_science.sensor
