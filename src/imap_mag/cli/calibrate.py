@@ -172,7 +172,11 @@ def _calibrate_for_date(
     # The scripted-l2 method uses an extended configuration with extra required
     # fields, so parse against the correct model for the chosen method.
     config_cls = CalibrationConfig.get_class(method)
-    if configuration is None:
+    if configuration is None or len(configuration.strip()) == 0:
+        if method != CalibrationMethod.NOOP:
+            raise ValueError(
+                f"Calibration method {method.short_name} requires a configuration to be provided"
+            )
         calibration_configuration = config_cls()
     elif Path(configuration).is_file():
         logger.info(f"Loading calibration configuration from {configuration}")
