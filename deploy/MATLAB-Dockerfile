@@ -76,6 +76,7 @@ FROM python:${PYTHON_VERSION}-slim AS runtime-image
 
 ARG IMAP_USERNAME="imap_pipeline"
 ARG IMAP_USERID=5679
+ARG MATLAB_VERSION
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
 
@@ -101,7 +102,7 @@ ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 #include the prefect workflows
 COPY src/ /app/
 
-ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/$(ls -1 /opt/matlab | grep -E 'r[0-9]{4}[a-z]' | head -1)/bin"
+ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/${MATLAB_VERSION}/bin"
 
 # Now the imap-mag CLI is available on the path and
 # the 3.x python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
