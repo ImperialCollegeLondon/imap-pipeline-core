@@ -139,26 +139,6 @@ def calibrate(
     return results
 
 
-def _next_layer_version(
-    datastore_finder: FileFinder, mode: ScienceMode, date: datetime
-) -> int:
-    """Return the next available version for the manual-{mode} layer on ``date``.
-
-    The scripted-l2 MATLAB script stamps the layer filename with the version we
-    give it, so we compute it up-front from what already exists in the datastore.
-    """
-    handler = CalibrationLayerPathHandler(
-        descriptor=f"manual-{mode.value}", content_date=date
-    )
-    latest = datastore_finder.find_latest_version_by_handler(
-        handler, throw_if_not_found=False
-    )
-    if latest is None:
-        return 1
-    parsed = CalibrationLayerPathHandler.from_filename(Path(latest).name)
-    return (parsed.version + 1) if parsed else 1
-
-
 def _calibrate_for_date(
     start_date: datetime,
     method: CalibrationMethod,
