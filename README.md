@@ -207,9 +207,9 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --list-files
 ```
 
-## Running the pipeline locally with access to real data (such as in box) and other code
+## Running the pipeline locally + mounting data like
 
-It is possible to mount the data store folder from a local folder such as on box and run the pipeline locally with access to real data. This is useful for testing and debugging.
+It is possible to mount the data store folder from a local folder such as on box.com and run the pipeline locally with access to real data. This is useful for testing and debugging.
 
 ```bash
 # in WSL on your HOST
@@ -226,8 +226,6 @@ Then mount your box folder to /mnt/box in WSL into the imap devcontainer using s
         "source=/mnt/box,target=/mnt/box,type=bind,consistency=cached"
     ],
 ```
-
-Mounting
 
 ## Using crump to import data
 
