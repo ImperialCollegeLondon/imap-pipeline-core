@@ -11140,6 +11140,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_swe_*.csv
   ialirt_hit:
     target_table: ialirt_hit
     id_mapping:
@@ -11187,6 +11188,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_hit_*.csv
   ialirt_swapi:
     target_table: ialirt_swapi
     id_mapping:
@@ -11222,6 +11224,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_swapi_*.csv
   ialirt_codice_lo:
     target_table: ialirt_codice_lo
     id_mapping:
@@ -11269,6 +11272,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_codice_lo_*.csv
   ialirt_codice_hi:
     target_table: ialirt_codice_hi
     id_mapping:
@@ -11296,4 +11300,5 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_codice_hi_*.csv
 
