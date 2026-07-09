@@ -10,7 +10,6 @@ import pytest
 from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import SaveMode
-from imap_mag.config.CalibrationConfig import CalibrationConfig, SetQualityAndNaNConfig
 from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -18,6 +17,9 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     Sensor,
     SetQualityAndNaNCalibrationJob,
+)
+from mag_toolkit.calibration.CalibrationConfig import (
+    SetQualityAndNaNConfig,
 )
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
@@ -48,9 +50,7 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     work_folder = tmp_path / "work"
     work_folder.mkdir()
 
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(quality_csv))
 
     cal_handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
@@ -238,22 +238,6 @@ def test_run_calibration_creates_two_change_points_if_window_contained_within_on
     assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
 
-def test_run_calibration_raises_without_config(tmp_path):
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-    handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
-        content_date=datetime(2026, 1, 16),
-    )
-    config = CalibrationConfig()  # no set_quality_and_nan
-
-    with pytest.raises(ValueError, match="requires a set_quality_and_nan"):
-        job.run_calibration(handler, config)
-
-
 def test_run_calibration_raises_for_missing_csv(tmp_path):
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
@@ -263,9 +247,7 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
     )
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
-    )
+    config = SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
 
     with pytest.raises(FileNotFoundError, match="File not found"):
         job.run_calibration(handler, config)
@@ -341,9 +323,7 @@ def test_get_science_time_range_fallback_nonexistent_file(tmp_path):
 def test_calibrate_returns_list_of_paths_to_the_calibration_layer_files(
     quality_csv, tmp_path, temp_datastore, dynamic_work_folder
 ):
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(quality_csv))
 
     results = calibrate(
         start_date=datetime(2026, 1, 16),
@@ -536,9 +516,7 @@ def create_temporary_csv_config(csv_content):
     csv_path = Path(tempfile.mktemp(suffix=".csv"))
     csv_path.write_text(csv_content)
 
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(csv_path))
 
     return config
 
@@ -855,9 +833,7 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
     )
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
-    )
+    config = SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
 
     # Should succeed: resolver finds the file via CWD fallback
     calfile, datafile = job.run_calibration(handler, config)

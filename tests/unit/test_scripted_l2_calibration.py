@@ -10,11 +10,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.cli.calibrate import calibrate
-from imap_mag.config import AppSettings
-from imap_mag.config.CalibrationConfig import (
-    CalibrationConfig,
-    ScriptedL2CalibrationConfig,
-)
+from imap_mag.config import AppSettings, GradiometryConfig
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -22,6 +18,9 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     DatastoreAccessMode,
     Sensor,
+)
+from mag_toolkit.calibration.CalibrationConfig import (
+    ScriptedL2CalibrationConfig,
 )
 from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
     SPARSE_DATASTORE_FOLDER_NAME,
@@ -63,7 +62,6 @@ def _make_job(
     tmp_path: Path,
     metakernel: str | None = "metakernel.txt",
     create_metakernel: bool = True,
-    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ) -> ScriptedL2CalibrationJob:
     """Build a ScriptedL2CalibrationJob wired to temp folders.
 
@@ -82,7 +80,6 @@ def _make_job(
         app_settings,
         matlab_repo_path=repo,
         metakernel=metakernel,
-        datastore_access_mode=datastore_access_mode,
     )
     job.setup_datastore(datastore)
     return job
@@ -144,6 +141,8 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     config = ScriptedL2CalibrationConfig(
         calibration_matrix_version=8,
         input_json_file="+calibration/calibration/input_v002.json",
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
+        matlab_repo=str(job.matlab_repo_path),
     )
 
     captured = {}
@@ -198,7 +197,10 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
     )
     job.setup_datastore(datastore)
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
+        matlab_repo=str(job.matlab_repo_path),
     )
 
     captured = {}
@@ -222,7 +224,10 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
     work_folder = job.work_folder
     datastore = job.data_store
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
+        matlab_repo=str(job.matlab_repo_path),
     )
 
     captured_config = {}
@@ -248,7 +253,7 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
 
 def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
     job = _make_job(
-        tmp_path, datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY
+        tmp_path,
     )
     work_folder = job.work_folder
     datastore = job.data_store
@@ -256,7 +261,10 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
     (datastore / "spice" / "lsk").mkdir(parents=True)
     (datastore / "spice" / "lsk" / "naif0012.tls").write_text("kernel")
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
+        matlab_repo=str(job.matlab_repo_path),
     )
 
     captured = {}
@@ -289,7 +297,10 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
 def test_missing_metakernel_raises(tmp_path, monkeypatch):
     job = _make_job(tmp_path, metakernel="absent.txt", create_metakernel=False)
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        matlab_repo=str(job.matlab_repo_path),
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match=r"absent\.txt"):
@@ -299,7 +310,9 @@ def test_missing_metakernel_raises(tmp_path, monkeypatch):
 def test_missing_output_layer_raises(tmp_path, monkeypatch):
     job = _make_job(tmp_path)
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        matlab_repo=str(job.matlab_repo_path),
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match="was not created"):
@@ -309,7 +322,7 @@ def test_missing_output_layer_raises(tmp_path, monkeypatch):
 def test_wrong_config_type_raises(tmp_path):
     job = _make_job(tmp_path)
     with pytest.raises(TypeError, match="ScriptedL2CalibrationConfig"):
-        job.run_calibration(_handler(1), CalibrationConfig())
+        job.run_calibration(_handler(1), GradiometryConfig())
 
 
 def test_generates_metakernel_when_none(tmp_path, monkeypatch):
@@ -327,7 +340,9 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
     )
 
     config = ScriptedL2CalibrationConfig(
-        calibration_matrix_version=8, input_json_file="input.json"
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        matlab_repo=str(job.matlab_repo_path),
     )
 
     captured = {}
@@ -358,6 +373,7 @@ def test_scripted_calibrate_cli_publishes_layer(
     config = ScriptedL2CalibrationConfig(
         calibration_matrix_version=8,
         input_json_file="+calibration/calibration/input_v002.json",
+        matlab_repo=str(repo),
     )
 
     results = calibrate(
@@ -365,7 +381,6 @@ def test_scripted_calibrate_cli_publishes_layer(
         method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
-        matlab_repo_path=repo,
         metakernel=Path("metakernel.txt"),
     )
 

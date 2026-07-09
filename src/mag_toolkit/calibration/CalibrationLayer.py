@@ -248,8 +248,8 @@ class CalibrationLayer(Layer):
             if save_contents:
                 self._write_to_csv(data_file_path, createDirectory)
 
-        if self.metadata.data_filename is not None and self.metadata.data_hash is None:
-            data_file_path = filepath.parent / self.metadata.data_filename
+        data_file_path = filepath.parent / self.metadata.data_filename
+        if self.metadata.data_hash is None and data_file_path.exists():
             self.metadata.data_hash = IFilePathHandler.default_file_hash(data_file_path)
 
         dependency = f"imap-pipeline-core version {get_version()}"

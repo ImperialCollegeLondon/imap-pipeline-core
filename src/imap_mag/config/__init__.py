@@ -5,17 +5,18 @@ from imap_mag.config.CalibrationCommandConfig import (
     SparseDatastoreConfig,
     SparseDatastorePattern,
 )
-from imap_mag.config.CalibrationConfig import (
-    CalibrationConfig,
-    GradiometryConfig,
-    ScriptedL2CalibrationConfig,
-)
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
 from imap_mag.config.SaveMode import SaveMode
+from mag_toolkit.calibration.CalibrationConfig import (
+    CalibrationConfig,
+    GradiometryConfig,
+    ScriptedL2CalibrationConfig,
+    SetQualityAndNaNConfig,
+)
 
 __all__ = [
     "ApiSource",
@@ -32,6 +33,7 @@ __all__ = [
     "SaveMode",
     "ScriptedL2CalibrationConfig",
     "SdcApiSource",
+    "SetQualityAndNaNConfig",
     "SparseDatastoreConfig",
     "SparseDatastorePattern",
     "WebPodaApiSource",

@@ -8,11 +8,11 @@ import pytest
 from prefect.filesystems import LocalFileSystem
 from prefect_github import GitHubRepository
 
-from imap_mag.config import ScriptedL2CalibrationConfig
-from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, DatastoreAccessMode
+from mag_toolkit.calibration import DatastoreAccessMode
+from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
+    PrefectScriptedL2CalibrationConfig,
     _github_repo_name,
     _resolve_matlab_repo_path,
     calibrate_and_apply_flow,
@@ -20,7 +20,6 @@ from prefect_server.performCalibration import (
     generate_apply_calibration_flow_run_name,
     generate_calibrate_and_apply_flow_run_name,
     generate_calibration_flow_run_name,
-    gradiometry_flow,
 )
 
 
@@ -42,10 +41,12 @@ class TestPerformCalibrationFlowNames:
         assert "kepko" in result
 
     def test_generate_calibration_flow_name_with_date_range(self):
+        mock_configuration = MagicMock()
+        mock_configuration.get_method.return_value = MagicMock(value="kepko")
         mock_params = {
             "start_date": datetime(2025, 1, 1),
             "end_date": datetime(2025, 1, 31),
-            "method": MagicMock(value="kepko"),
+            "configuration": mock_configuration,
             "mode": MagicMock(value="norm"),
             "sensor": MagicMock(value="mago"),
         }
@@ -71,15 +72,6 @@ class TestPerformCalibrationFlowNames:
 
         assert "+2" in result
 
-    def test_gradiometry_flow_calls_gradiometry(self):
-        with patch("prefect_server.performCalibration.gradiometry") as mock_gradiometry:
-            gradiometry_flow.fn(
-                start_date=datetime(2025, 1, 1),
-                mode=ScienceMode.Normal,
-            )
-
-        mock_gradiometry.assert_called_once()
-
     def test_calibrate_and_apply_flow_calls_both(self):
         mock_layer = MagicMock()
         mock_layer.metadata.science = ["test_science.cdf"]
@@ -97,6 +89,7 @@ class TestPerformCalibrationFlowNames:
         ):
             calibrate_and_apply_flow.fn(
                 start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(),
             )
 
         mock_calibrate.assert_called_once()
@@ -112,8 +105,11 @@ class TestPerformCalibrationFlowNames:
         block = LocalFileSystem(basepath=str(repo))
         mock_settings = MagicMock()
         mock_settings.work_folder = tmp_path
-        config = ScriptedL2CalibrationConfig(
-            calibration_matrix_version=8, input_json_file="input.json"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+            datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
         )
 
         mock_layer = MagicMock()
@@ -136,21 +132,13 @@ class TestPerformCalibrationFlowNames:
         ):
             calibrate_and_apply_flow.fn(
                 start_date=datetime(2026, 1, 30),
-                method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
                 configuration=config,
                 metakernel=Path("mk.txt"),
-                matlab_repo=block,
-                datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
             )
 
         mock_calibrate.assert_called_once()
         kwargs = mock_calibrate.call_args.kwargs
-        assert kwargs["matlab_repo_path"] == repo
         assert kwargs["metakernel"] == Path("mk.txt")
-        assert (
-            kwargs["datastore_access_mode"]
-            == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY
-        )
         mock_apply.assert_called_once()
 
     def test_calibrate_and_apply_flow_scripted_requires_matlab_repo(self, tmp_path):
@@ -163,8 +151,22 @@ class TestPerformCalibrationFlowNames:
             with pytest.raises(ValueError, match="matlab_repo is required"):
                 calibrate_and_apply_flow.fn(
                     start_date=datetime(2026, 1, 30),
-                    method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
-                    matlab_repo=None,
+                    configuration=PrefectScriptedL2CalibrationConfig(
+                        calibration_matrix_version=8,
+                        input_json_file="input.json",
+                        matlab_repo=None,
+                        datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
+                    ),
+                )
+            with pytest.raises(ValueError, match="matlab_repo is required"):
+                calibrate_and_apply_flow.fn(
+                    start_date=datetime(2026, 1, 30),
+                    configuration=PrefectScriptedL2CalibrationConfig(
+                        calibration_matrix_version=8,
+                        input_json_file="input.json",
+                        matlab_repo="",
+                        datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
+                    ),
                 )
 
 
@@ -174,6 +176,9 @@ class TestPerformCalibrationFlows:
             mock_calibrate.return_value = []
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(
+                    kappa=0.1, sc_interference_threshold=0.2
+                ),
             )
 
         mock_calibrate.assert_called_once()
@@ -276,8 +281,12 @@ class TestCalibrateFlowScripted:
             with pytest.raises(ValueError, match="matlab_repo is required"):
                 calibrate_flow.fn(
                     start_date=datetime(2026, 1, 30),
-                    method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
-                    matlab_repo=None,
+                    configuration=PrefectScriptedL2CalibrationConfig(
+                        calibration_matrix_version=8,
+                        input_json_file="input.json",
+                        matlab_repo=None,
+                        datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
+                    ),
                 )
 
     def test_scripted_resolves_repo_and_passes_to_calibrate(self, tmp_path):
@@ -286,8 +295,11 @@ class TestCalibrateFlowScripted:
         block = LocalFileSystem(basepath=str(repo))
         mock_settings = MagicMock()
         mock_settings.work_folder = tmp_path
-        config = ScriptedL2CalibrationConfig(
-            calibration_matrix_version=8, input_json_file="input.json"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+            datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
         )
 
         with (
@@ -302,28 +314,10 @@ class TestCalibrateFlowScripted:
         ):
             calibrate_flow.fn(
                 start_date=datetime(2026, 1, 30),
-                method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
                 configuration=config,
                 metakernel=Path("mk.txt"),
-                matlab_repo=block,
-                datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
             )
 
         mock_calibrate.assert_called_once()
         kwargs = mock_calibrate.call_args.kwargs
-        assert kwargs["matlab_repo_path"] == repo
         assert kwargs["metakernel"] == Path("mk.txt")
-        assert (
-            kwargs["datastore_access_mode"]
-            == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY
-        )
-
-    def test_non_scripted_method_ignores_matlab_repo(self):
-        """Existing methods must not attempt any matlab_repo resolution."""
-        with patch(
-            "prefect_server.performCalibration.calibrate", return_value=[]
-        ) as mock_calibrate:
-            calibrate_flow.fn(start_date=datetime(2025, 1, 1))
-
-        mock_calibrate.assert_called_once()
-        assert mock_calibrate.call_args.kwargs["matlab_repo_path"] is None

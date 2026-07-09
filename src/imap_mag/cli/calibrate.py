@@ -12,7 +12,6 @@ from imap_mag.config import (
     CalibrationConfig,
     GradiometryConfig,
     SaveMode,
-    ScriptedL2CalibrationConfig,
 )
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder
@@ -22,7 +21,6 @@ from mag_toolkit.calibration import (
     CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
-    DatastoreAccessMode,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
@@ -55,10 +53,8 @@ def gradiometry(
     """
     Run gradiometry calibration.
     """
-    configuration = CalibrationConfig(
-        gradiometer=GradiometryConfig(
-            kappa=kappa, sc_interference_threshold=sc_interference_threshold
-        )
+    configuration = GradiometryConfig(
+        kappa=kappa, sc_interference_threshold=sc_interference_threshold
     )
 
     return _calibrate_for_date(
@@ -88,7 +84,7 @@ def calibrate(
     ] = None,
     method: Annotated[
         CalibrationMethod, typer.Option(help="Calibration method")
-    ] = CalibrationMethod.KEPKO,
+    ] = CalibrationMethod.SET_QUALITY_AND_NAN,
     mode: Annotated[
         ScienceMode, typer.Option(help="Science mode")
     ] = ScienceMode.Normal,
@@ -113,20 +109,6 @@ def calibrate(
             "scripted-l2, one is generated.",
         ),
     ] = None,
-    matlab_repo_path: Annotated[
-        Path | None,
-        typer.Option(
-            help="Local path to the acquired MATLAB calibration repository "
-            "(required for the scripted-l2 method).",
-        ),
-    ] = None,
-    datastore_access_mode: Annotated[
-        DatastoreAccessMode,
-        typer.Option(
-            help="How the scripted-l2 MATLAB pipeline accesses the datastore: read "
-            "it directly, or build a sparse local copy in the work folder first.",
-        ),
-    ] = DatastoreAccessMode.READ_DIRECTLY,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -151,8 +133,6 @@ def calibrate(
             configuration=configuration,
             save_mode=save_mode,
             metakernel=metakernel,
-            matlab_repo_path=matlab_repo_path,
-            datastore_access_mode=datastore_access_mode,
         )
         results.append(result)
         current += timedelta(days=1)
@@ -187,8 +167,6 @@ def _calibrate_for_date(
     configuration: str | None,
     save_mode: SaveMode,
     metakernel: Path | None = None,
-    matlab_repo_path: Path | None = None,
-    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ) -> Path:
     """Run calibration for a single date."""
     app_settings = AppSettings()  # type: ignore
@@ -213,11 +191,7 @@ def _calibrate_for_date(
 
     # The scripted-l2 method uses an extended configuration with extra required
     # fields, so parse against the correct model for the chosen method.
-    config_cls: type[CalibrationConfig] = (
-        ScriptedL2CalibrationConfig
-        if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION
-        else CalibrationConfig
-    )
+    config_cls = CalibrationConfig.get_class(method)
     if configuration is None:
         calibration_configuration = config_cls()
     elif Path(configuration).is_file():
@@ -242,15 +216,11 @@ def _calibrate_for_date(
                 calibration_job_parameters, work_folder, datastore_finder
             )
         case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
-            assert matlab_repo_path is not None, (
-                "matlab_repo_path must be provided for scripted-l2 calibration"
-            )
             calibrator = ScriptedL2CalibrationJob(
                 calibration_job_parameters,
                 app_settings,
-                matlab_repo_path=matlab_repo_path,
+                matlab_repo_path=calibration_configuration.matlab_repo,
                 metakernel=metakernel,
-                datastore_access_mode=datastore_access_mode,
             )
         case _:
             raise ValueError("Calibration method is not implemented")

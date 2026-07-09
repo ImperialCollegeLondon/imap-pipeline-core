@@ -8,7 +8,6 @@ import pandas as pd
 import yaml
 from pydantic import BaseModel
 
-from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
     Mission,
@@ -54,6 +53,8 @@ class Layer(BaseModel, ABC):
         return model
 
     def _set_content_date_from_filepath(self, filepath: Path) -> None:
+        from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
+
         handler = FilePathHandlerSelector.find_by_path(
             filepath, throw_if_not_found=False
         )

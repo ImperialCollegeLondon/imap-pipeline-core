@@ -75,9 +75,6 @@ class CalibrationMethod(Enum):
         self.short_name = short_name
         self.long_name = long_name
 
-    KEPKO = "kepko", "Kepko"
-    LEINWEBER = "leinweber", "Leinweber"
-    IMAPLO_PIVOT = "imaplo", "IMAP-Lo Pivot Platform Interference"
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"

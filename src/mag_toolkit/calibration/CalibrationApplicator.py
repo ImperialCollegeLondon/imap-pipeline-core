@@ -12,10 +12,7 @@ from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
 from imap_processing.mag.l2.mag_l2_data import ValidFrames
 
-from imap_mag.cli.fetch.spice import generate_spice_metakernel
 from imap_mag.config import AppSettings
-from imap_mag.io.file import SciencePathHandler
-from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 from imap_mag.util import ScienceMode
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -104,6 +101,8 @@ class CalibrationApplicator:
         ],
     ) -> tuple[list[Path], Path]:
         """Currently operating on unprocessed data."""
+        from imap_mag.io.file import SciencePathHandler
+        from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
@@ -163,6 +162,8 @@ class CalibrationApplicator:
 
         # need to get the spice furnished as the l2 step does time truncation needed clock kernels and rotations
         if spice_metakernel is None:
+            from imap_mag.cli.fetch.spice import generate_spice_metakernel
+
             spice_metakernel = generate_spice_metakernel(
                 start_time=day_to_process + timedelta(hours=-1),
                 end_time=day_to_process

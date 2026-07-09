@@ -10,22 +10,26 @@ from prefect.runtime import flow_run
 from prefect_github import GitHubRepository
 
 from imap_mag.cli.apply import FileType, apply
-from imap_mag.cli.calibrate import Sensor, calibrate, gradiometry
+from imap_mag.cli.calibrate import Sensor, calibrate
 from imap_mag.config import SaveMode
 from imap_mag.config.AppSettings import AppSettings
-from imap_mag.config.CalibrationConfig import (
-    CalibrationConfig,
-    ScriptedL2CalibrationConfig,
-)
 from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
     CalibrationMethod,
-    DatastoreAccessMode,
+)
+from mag_toolkit.calibration.CalibrationConfig import (
+    GradiometryConfig,
+    ScriptedL2CalibrationConfig,
+    SetQualityAndNaNConfig,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 
 logger = logging.getLogger(__name__)
+
+
+class PrefectScriptedL2CalibrationConfig(ScriptedL2CalibrationConfig):
+    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None
 
 
 def _github_repo_name(repository_url: str) -> str:
@@ -64,7 +68,7 @@ def _resolve_matlab_repo_path(
     a GitHubRepository block (pulled into a subfolder of the work folder named after
     the repo), or None. Raises if a provided repo cannot be found or pulled.
     """
-    if matlab_repo is None:
+    if not matlab_repo:
         return None
 
     block: LocalFileSystem | GitHubRepository | None = None
@@ -112,13 +116,9 @@ def _resolve_matlab_repo_path(
 
 
 def generate_calibration_flow_run_name() -> str:
-    match flow_run.flow_name:
-        case PREFECT_CONSTANTS.FLOW_NAMES.GRADIOMETRY:
-            method_name = CalibrationMethod.GRADIOMETER
-        case _:
-            method_name = flow_run.parameters["method"]
 
     parameters = flow_run.parameters
+    method_name = parameters["configuration"].get_method()
     start_date: datetime = parameters["start_date"]
     end_date = parameters.get("end_date")
     method: CalibrationMethod = method_name
@@ -171,94 +171,26 @@ def generate_calibrate_and_apply_flow_run_name() -> str:
 
 
 @flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.GRADIOMETRY,
-    log_prints=True,
-    flow_run_name=generate_calibration_flow_run_name,
-)
-def gradiometry_flow(
-    start_date: datetime,
-    mode: ScienceMode,
-    kappa: float = 0.0,
-    sc_interference_threshold: float = 10.0,
-):
-    """
-    Run the gradiometry calibration.
-    """
-
-    gradiometry(
-        start_date=start_date,
-        mode=mode,
-        kappa=kappa,
-        sc_interference_threshold=sc_interference_threshold,
-        save_mode=SaveMode.LocalAndDatabase,
-    )
-
-
-@flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE,
     log_prints=True,
     flow_run_name=generate_calibration_flow_run_name,
 )
 def calibrate_flow(
     start_date: datetime,
+    configuration: PrefectScriptedL2CalibrationConfig
+    | SetQualityAndNaNConfig
+    | GradiometryConfig,
     end_date: datetime | None = None,
-    method: CalibrationMethod = CalibrationMethod.KEPKO,
     mode: ScienceMode = ScienceMode.Normal,
-    configuration: ScriptedL2CalibrationConfig | CalibrationConfig | None = None,
     sensor: Sensor = Sensor.MAGO,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
-    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None,
-    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ) -> list[Path]:
-    """Calibrate for a date or date range. Returns a list of calibration layer paths.
 
-    Args:
-        start_date: First date to calibrate.
-        end_date: Last date to calibrate (inclusive). If None, only start_date.
-        method: Calibration method to run. Only SCRIPTED_L2_CALIBRATION uses the
-            metakernel/matlab_repo/datastore_access_mode arguments.
-        mode: Science mode (norm/burst) to calibrate.
-        configuration: Calibration configuration. A ScriptedL2CalibrationConfig for
-            the scripted-l2 method, otherwise a CalibrationConfig (or None).
-        sensor: Sensor to calibrate (defaults to MAGo).
-        save_mode: Whether to save locally only or also index to the database.
-        metakernel: Filename of the SPICE metakernel to use for the scripted-l2
-            method. Treated like ``spice_metakernel`` in ``apply_flow``: if provided
-            it must exist (in the datastore's spice/mk folder); if None and the
-            method is scripted-l2 one is generated.
-        matlab_repo: Where to acquire the MATLAB calibration code from for the
-            scripted-l2 method. A LocalFileSystem block (local path), a
-            GitHubRepository block (pulled into the work folder), the name of such
-            a block, or None for the other methods.
-        datastore_access_mode: For scripted-l2, whether MATLAB reads the datastore
-            directly or from a sparse copy built in the work folder.
-    """
-    matlab_repo_path: Path | None = None
-    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
-        app_settings = AppSettings()  # type: ignore
-        # Pull/resolve the MATLAB code into the (stable) base work folder so it is
-        # cloned once and reused across every day in the range.
-        matlab_repo_path = _resolve_matlab_repo_path(
-            matlab_repo, app_settings.work_folder
-        )
-        if matlab_repo_path is None:
-            raise ValueError(
-                "matlab_repo is required for the scripted-l2 calibration method."
-            )
-
-    return calibrate(
-        start_date=start_date.replace(tzinfo=None),
-        end_date=end_date.replace(tzinfo=None) if end_date else None,
-        method=method,
-        mode=mode,
-        sensor=sensor,
-        configuration=configuration.model_dump_json() if configuration else None,
-        save_mode=save_mode,
-        metakernel=metakernel,
-        matlab_repo_path=matlab_repo_path,
-        datastore_access_mode=datastore_access_mode,
+    paths = _run_calibration(
+        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
+    return paths
 
 
 @flow(
@@ -267,59 +199,20 @@ def calibrate_flow(
     flow_run_name=generate_calibrate_and_apply_flow_run_name,
 )
 def calibrate_and_apply_flow(
+    configuration: PrefectScriptedL2CalibrationConfig
+    | SetQualityAndNaNConfig
+    | GradiometryConfig,
     start_date: datetime,
     end_date: datetime | None = None,
-    method: CalibrationMethod = CalibrationMethod.KEPKO,
-    configuration: ScriptedL2CalibrationConfig | CalibrationConfig | None = None,
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
     offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
-    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None,
-    datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
 ):
-    """
-    Calibrate and apply the calibration in one flow, for a date or date range.
-
-    Accepts all the options available to ``calibrate_flow`` (passed through to it
-    unchanged), plus the apply-specific output type options below.
-
-    Args:
-        offset_file_output_type: File type for the apply step's offset file output.
-        L2_output_type: File type for the apply step's L2 output.
-        metakernel: Filename of the SPICE metakernel to use for the scripted-l2
-            method. See ``calibrate_flow``.
-        matlab_repo: Where to acquire the MATLAB calibration code from for the
-            scripted-l2 method. See ``calibrate_flow``.
-        datastore_access_mode: For scripted-l2, whether MATLAB reads the datastore
-            directly or from a sparse copy built in the work folder.
-    """
-    matlab_repo_path: Path | None = None
-    if method == CalibrationMethod.SCRIPTED_L2_CALIBRATION:
-        app_settings = AppSettings()  # type: ignore
-        # Pull/resolve the MATLAB code into the (stable) base work folder so it is
-        # cloned once and reused across every day in the range.
-        matlab_repo_path = _resolve_matlab_repo_path(
-            matlab_repo, app_settings.work_folder
-        )
-        if matlab_repo_path is None:
-            raise ValueError(
-                "matlab_repo is required for the scripted-l2 calibration method."
-            )
-
-    cal_layer_paths: list[Path] = calibrate(
-        start_date=start_date.replace(tzinfo=None),
-        end_date=end_date.replace(tzinfo=None) if end_date else None,
-        method=method,
-        mode=mode,
-        sensor=sensor,
-        configuration=configuration.model_dump_json() if configuration else None,
-        save_mode=save_mode,
-        metakernel=metakernel,
-        matlab_repo_path=matlab_repo_path,
-        datastore_access_mode=datastore_access_mode,
+    cal_layer_paths = _run_calibration(
+        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
 
     layer = CalibrationLayer.from_file(cal_layer_paths[0])
@@ -334,6 +227,42 @@ def calibrate_and_apply_flow(
         save_mode=save_mode,
         mode=mode,
     )
+
+
+def _run_calibration(
+    configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+):
+    if type(configuration) is PrefectScriptedL2CalibrationConfig:
+        app_settings = AppSettings()  # type: ignore
+        # Pull/resolve the MATLAB code into the (stable) base work folder so it is
+        # cloned once and reused across every day in the range. The resolved local
+        # path (a plain string) replaces the block reference so that the config
+        # crossing the JSON boundary matches the base ScriptedL2CalibrationConfig's
+        # `matlab_repo: str` field.
+        matlab_repo_path = _resolve_matlab_repo_path(
+            configuration.matlab_repo, app_settings.work_folder
+        )
+        if matlab_repo_path is None:
+            raise ValueError(
+                "matlab_repo is required for the scripted-l2 calibration method."
+            )
+        # the lower level calibrate needs to remove the references to the prefect blocks and just have the path to the repo, so we update the configuration to have the path instead of the block reference
+        configuration = configuration.model_copy(
+            update={"matlab_repo": str(matlab_repo_path)}
+        )
+
+    cal_layer_paths: list[Path] = calibrate(
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
+        method=configuration.get_method(),
+        mode=mode,
+        sensor=sensor,
+        configuration=configuration.model_dump_json() if configuration else None,
+        save_mode=save_mode,
+        metakernel=metakernel,
+    )
+
+    return cal_layer_paths
 
 
 @flow(
@@ -357,16 +286,6 @@ def apply_flow(
         ReferenceFrame.SRF,
     ],
 ):
-    """Apply calibration layers for a date or date range.
-
-    Args:
-        layers: Layer filenames or glob patterns (e.g. ["*noop*"], ["*"]).
-        start_date: Start date for processing.
-        end_date: End date (inclusive). If None, only start_date is processed.
-        mode: Science mode (norm/burst) for discovering science files when file is None.
-        science_input_file: Science filename. If None, discovered using mode and date.
-        save_mode: Where to save output files.
-    """
     apply(
         layers,
         start_date=start_date.replace(tzinfo=None),

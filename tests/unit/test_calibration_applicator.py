@@ -372,7 +372,7 @@ class TestApplyPostValidation:
         with (
             _patch_apply_base_deps(tmp_path),
             patch(
-                "mag_toolkit.calibration.CalibrationApplicator.generate_spice_metakernel",
+                "imap_mag.cli.fetch.spice.generate_spice_metakernel",
                 return_value=None,
             ),
             pytest.raises(ValueError, match="Failed to generate spice metakernel"),
@@ -406,7 +406,7 @@ class TestApplyPostValidation:
                 return_value=tmp_path / "offsets.cdf",
             ),
             patch(
-                "mag_toolkit.calibration.CalibrationApplicator.AncillaryPathHandler.from_filename",
+                "imap_mag.io.FilePathHandlerSelector.AncillaryPathHandler.from_filename",
                 return_value=None,
             ),
             pytest.raises(ValueError, match="Could not parse rotation file name"),

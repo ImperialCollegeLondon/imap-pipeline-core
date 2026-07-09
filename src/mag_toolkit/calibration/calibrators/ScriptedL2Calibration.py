@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from imap_mag.config import AppSettings
-from imap_mag.config.CalibrationConfig import (
-    CalibrationConfig,
-    ScriptedL2CalibrationConfig,
-)
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationJobParameters
+from mag_toolkit.calibration.CalibrationConfig import (
+    CalibrationConfig,
+    ScriptedL2CalibrationConfig,
+)
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
     DatastoreAccessMode,
@@ -40,22 +40,7 @@ MATLAB_SCRIPT_RELATIVE_PATH = (
 
 
 class ScriptedL2CalibrationJob(CalibrationJob):
-    """Calibration job that runs the external MATLAB ``calibrate_l2_offsets`` pipeline.
-
-    Unlike the other calibrators, the MATLAB script reads its L1 inputs from a
-    datastore (``sharepoint_flight_data``) and fixes its own output filenames
-    (``imap_mag_manual-{mode}-layer_{date}_v{VVV}.json``). This job therefore
-    fetches no science files itself; instead it:
-
-    * generates a MATLAB user/env config file (in the work folder) mapping the
-      datastore + work-folder output paths,
-    * resolves (or generates) the SPICE metakernel,
-    * optionally builds a sparse local copy of the datastore in the work folder
-      (see :class:`DatastoreAccessMode`),
-    * invokes ``calibration.scripts.calibrate_l2_offsets`` from the root of the
-      acquired MATLAB repository,
-    * collects the produced layer JSON + CSV from the work folder.
-    """
+    """Calibration job that runs the external MATLAB ``calibrate_l2_offsets`` pipeline."""
 
     def __init__(
         self,
@@ -63,12 +48,15 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         app_settings: AppSettings,
         matlab_repo_path: Path,
         metakernel: Path | str | None = None,
-        datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY,
     ):
-        self.matlab_repo_path = Path(matlab_repo_path)
-        if self.matlab_repo_path is None or not self.matlab_repo_path.is_dir():
+        if matlab_repo_path is None:
             raise ValueError(
-                "A valid matlab-repo-path (an existing directory) is required for the scripted-l2 calibration method."
+                "A valid MATLAB repository path is required for the scripted-l2 calibration method."
+            )
+        self.matlab_repo_path = Path(matlab_repo_path)
+        if not self.matlab_repo_path.is_dir():
+            raise FileNotFoundError(
+                f"MATLAB repository not found at {self.matlab_repo_path}."
             )
         matlab_script = self.matlab_repo_path / MATLAB_SCRIPT_RELATIVE_PATH
         if not matlab_script.is_file():
@@ -85,7 +73,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         self.name = CalibrationMethod.SCRIPTED_L2_CALIBRATION
         self.app_settings = app_settings
         self.metakernel = metakernel
-        self.datastore_access_mode = datastore_access_mode
 
     @staticmethod
     def _work_folder_context(
@@ -125,7 +112,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         # Decide which datastore MATLAB will read from, building a sparse local copy
         # in the work folder if requested.
         sparse_datastore: Path | None = None
-        if self.datastore_access_mode == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY:
+        if config.datastore_access_mode == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY:
             sparse_datastore = self._build_sparse_datastore(
                 date, mode, metakernel_filename, config.calibration_matrix_version
             )
@@ -143,7 +130,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 output_data_version=output_data_version,
                 input_json_file=config.input_json_file,
                 user_config_path=user_config_path,
-                matlab_mode=mode.value,
+                matlab_mode=str(mode.value),
             )
 
             call_matlab(

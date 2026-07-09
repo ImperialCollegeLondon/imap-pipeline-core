@@ -20,7 +20,6 @@ from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
     calibrate_flow,
-    gradiometry_flow,
 )
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
@@ -407,13 +406,6 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    gradiometer_deployable = gradiometry_flow.to_deployment(
-        name="gradiometer",
-        job_variables=matlab_shared_job_variables,
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-    )
-
     apply_shared_job_variables = shared_job_variables.copy()
     apply_shared_job_variables["mem_limit"] = "6g"
     apply_shared_job_variables["memswap_limit"] = "6g"
@@ -434,7 +426,6 @@ async def adeploy_flows(local_debug: bool = False):
 
     matlab_deployables = await asyncio.gather(
         calibration_deployable,
-        gradiometer_deployable,
         apply_deployable,
         calibrate_and_apply_deployable,
     )
