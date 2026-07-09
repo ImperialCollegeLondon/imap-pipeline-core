@@ -28,15 +28,14 @@ def _download_json_file(base_url: str, file_name: str) -> list[Any]:
 
 
 class NOAARTSWApiClient:
-    """Interacts with SOLAR-1 and ACE APIs provided by NOAA.
+    """Interacts with NOAA's RTSW API, for SOLAR-1 and ACE spacecrafts data.
 
-    Which specific JSON file to use depends on the spacecraft as well as the
-    time range to retrieve, using the file that covers as much as possible
-    within the requested time range.
+    Which specific JSON file to use depends on the specific content to fetch, mag or
+    plasma data.
     """
 
-    def __init__(self, solar1_ace_url: str):
-        self._url = solar1_ace_url
+    def __init__(self, url: str):
+        self._url = url
 
         if not self._url:
             raise ValueError("SOLAR-1 and ACE URL cannot be empty.")
@@ -72,19 +71,28 @@ class NOAARTSWApiClient:
                 f"It must be 'mag' or 'plasma', but {content} found"
             )
 
+        start_time = time()
+        logger.info(f"Downloading {content} data for {spacecraft}...")
+
         _data: list[dict[str, Any]] = _download_json_file(
             self._url, f"{content}_1m.json"
         )
-
         # We return only data relevant for the selected spacecraft
-        return [record for record in _data if record["source"] == spacecraft]
+        _data = [record for record in _data if record["source"] == spacecraft]
+
+        logger.debug(
+            f"Downloaded {len(_data)} {content} records for {spacecraft} in "
+            f"{time() - start_time:.2f} seconds."
+        )
+
+        return _data
 
 
 class DSCOVRApiClient:
     """Interacts with the DSCOVR APIs provided by NOAA."""
 
-    def __init__(self, dscovr_url: str):
-        self._url = dscovr_url
+    def __init__(self, url: str):
+        self._url = url
 
         if not self._url:
             raise ValueError("DSCOVR URL cannot be empty.")
@@ -114,7 +122,7 @@ class DSCOVRApiClient:
         start_time = time()
         logger.info(
             f"Downloading {content} data for DSCOVR from {start_date} "
-            + f"until {datetime.now(tz=UTC)}."
+            + f"until {datetime.now(tz=UTC)}..."
         )
 
         # Determine which file to download based on the time range
