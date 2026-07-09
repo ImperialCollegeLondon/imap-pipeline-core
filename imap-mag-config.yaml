@@ -5,7 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
-data_store:  '/mnt/box/IMAP Flight Data/Flight Data'
+data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 
