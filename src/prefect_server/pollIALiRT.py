@@ -202,6 +202,8 @@ async def poll_ialirt_flow(
 
     logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
 
+    current_window_start = start_date
+
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
 
     iteration = 1
@@ -212,6 +214,9 @@ async def poll_ialirt_flow(
             break
 
         logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")
+
+        setattr(run_parameters, "start_date", current_window_start)
+        setattr(run_parameters, "end_date", current_time)
 
         # launch tasks concurrently
         tasks = []
@@ -240,6 +245,8 @@ async def poll_ialirt_flow(
 
         if not wait_for_new_data_to_arrive:
             break
+
+        current_window_start = current_time
 
         # Calculate how long the downloads took
         batch_duration = (datetime_provider.now() - current_time).total_seconds()

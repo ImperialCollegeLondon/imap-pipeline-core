@@ -67,7 +67,7 @@ class IALiRTPipeline(Pipeline):
             stages=[
                 GetProcessingDatesStage(
                     database=self._database,
-                    date_resolution_mode=DateResolutionMode.DATE_ONLY,
+                    date_resolution_mode=DateResolutionMode.EXACT_DATETIME,
                     datetime_provider=self._datetime_provider,
                 ),
                 DownloadIALiRTStage(
