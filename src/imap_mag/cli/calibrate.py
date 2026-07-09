@@ -233,7 +233,7 @@ def _calibrate_for_date(
             f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
         )
 
-    # add pipleine metadata, ensures hash is correct
+    # Enforce pipeline metadata, ensures hash is correct as MATLAB cal may not do it
     layer.save_calibration_layer(
         metadata_path, createDirectory=False, save_contents=False
     )
