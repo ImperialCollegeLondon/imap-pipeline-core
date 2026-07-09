@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def _download_json_file(base_url: str, file_name: str) -> list[Any]:
-    """Download a JSON file return its content as a list of objects.
+    """Download a JSON file return its instrument as a list of objects.
 
     Args:
         base_url: The base URL of the API.
@@ -30,7 +30,7 @@ def _download_json_file(base_url: str, file_name: str) -> list[Any]:
 class NOAARTSWApiClient:
     """Interacts with NOAA's RTSW API, for SOLAR-1 and ACE spacecrafts data.
 
-    Which specific JSON file to use depends on the specific content to fetch, mag or
+    Which specific JSON file to use depends on the specific instrument to fetch, mag or
     plasma data.
     """
 
@@ -41,7 +41,7 @@ class NOAARTSWApiClient:
             raise ValueError("SOLAR-1 and ACE URL cannot be empty.")
 
     def get_data(
-        self, spacecraft: Literal["SOLAR1", "ACE"], content: Literal["mag", "plasma"]
+        self, spacecraft: Literal["SOLAR1", "ACE"], instrument: Literal["mag", "plasma"]
     ) -> list[dict[str, Any]]:
         """Download SOLAR-1 and ACE data from real-time space weather API.
 
@@ -54,34 +54,34 @@ class NOAARTSWApiClient:
         Args:
             spacecraft: The spacecraft to retrieve the data for. Must be "SOLAR1" or
                 "ACE"
-            content: The content to retrieve. Must be `mag` or `plasma`.
+            instrument: The instrument to retrieve. Must be `mag` or `plasma`.
 
         Returns:
             A list of dictionaries containing the combined data from both files.
         """
         if spacecraft not in ("SOLAR1", "ACE"):
             raise ValueError(
-                "Invalid spacecraft type requested. "
-                f"It must be 'SOLAR1' or 'ACE', but {spacecraft} found"
+                "Invalid spacecraft requested. "
+                f"It must be 'SOLAR1' or 'ACE', but '{spacecraft}' found"
             )
 
-        if content not in ("mag", "plasma"):
+        if instrument not in ("mag", "plasma"):
             raise ValueError(
-                f"Invalid content type requested for {spacecraft}. "
-                f"It must be 'mag' or 'plasma', but {content} found"
+                f"Invalid instrument type requested for {spacecraft}. "
+                f"It must be 'mag' or 'plasma', but '{instrument}' found"
             )
 
         start_time = time()
-        logger.info(f"Downloading {content} data for {spacecraft}...")
+        logger.info(f"Downloading {instrument} data for {spacecraft}...")
 
         _data: list[dict[str, Any]] = _download_json_file(
-            self._url, f"{content}_1m.json"
+            self._url, f"{instrument}_1m.json"
         )
         # We return only data relevant for the selected spacecraft
         _data = [record for record in _data if record["source"] == spacecraft]
 
         logger.debug(
-            f"Downloaded {len(_data)} {content} records for {spacecraft} in "
+            f"Downloaded {len(_data)} {instrument} records for {spacecraft} in "
             f"{time() - start_time:.2f} seconds."
         )
 
@@ -98,7 +98,7 @@ class DSCOVRApiClient:
             raise ValueError("DSCOVR URL cannot be empty.")
 
     def get_data(
-        self, content: Literal["mag", "plasma"], start_date: datetime
+        self, instrument: Literal["mag", "plasma"], start_date: datetime
     ) -> list[dict[str, Any]]:
         """Download DSCOVR data from solar wind API.
 
@@ -107,21 +107,21 @@ class DSCOVRApiClient:
         that covers as much as possible of the requested time range.
 
         Args:
-            content: The content to retrieve. Must be `mag` or `plasma`.
+            instrument: The instrument to retrieve. Must be `mag` or `plasma`.
             start_date: The start date of the requested time range.
 
         Returns:
             A list of dictionaries containing the DSCOVR data.
         """
-        if content not in ("mag", "plasma"):
+        if instrument not in ("mag", "plasma"):
             raise ValueError(
-                "Invalid content type requested for DSCOVR. "
-                f"It must be 'mag' or 'plasma', but {content} found"
+                "Invalid instrument type requested for DSCOVR. "
+                f"It must be 'mag' or 'plasma', but '{instrument}' found"
             )
 
         start_time = time()
         logger.info(
-            f"Downloading {content} data for DSCOVR from {start_date} "
+            f"Downloading {instrument} data for DSCOVR from {start_date} "
             + f"until {datetime.now(tz=UTC)}..."
         )
 
@@ -136,10 +136,10 @@ class DSCOVRApiClient:
         dt = datetime.now(tz=UTC) - start_date
         for file_name, hours in time_ranges.items():
             if dt.total_seconds() <= hours * 3600:
-                _file = f"{content}-{file_name}.json"
+                _file = f"{instrument}-{file_name}.json"
                 break
         else:
-            _file = f"{content}-7-day.json"
+            _file = f"{instrument}-7-day.json"
 
         # Download the data from the DSCOVR API
         _data: list[list[Any]] = _download_json_file(self._url, _file)
@@ -150,7 +150,7 @@ class DSCOVRApiClient:
         _data_dicts = [dict(zip(_cols, row)) for row in _data[1:]]
 
         logger.debug(
-            f"Downloaded {len(_data_dicts)} {content} records for DSCOVR in "
+            f"Downloaded {len(_data_dicts)} {instrument} records for DSCOVR in "
             f"{time() - start_time:.2f} seconds."
         )
 
