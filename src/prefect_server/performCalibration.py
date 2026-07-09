@@ -19,6 +19,7 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
+    EmptyCalibrationConfig,
     GradiometryConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
@@ -157,7 +158,7 @@ def generate_calibrate_and_apply_flow_run_name() -> str:
     parameters = flow_run.parameters
     start_date: datetime = parameters["start_date"]
     end_date = parameters.get("end_date")
-    method: CalibrationMethod = parameters["method"]
+    method: CalibrationMethod = parameters["configuration"].get_method()
     mode: ScienceMode = parameters["mode"]
     sensor: Sensor = parameters.get("sensor", Sensor.MAGO)
 
@@ -179,7 +180,8 @@ def calibrate_flow(
     start_date: datetime,
     configuration: PrefectScriptedL2CalibrationConfig
     | SetQualityAndNaNConfig
-    | GradiometryConfig,
+    | GradiometryConfig
+    | EmptyCalibrationConfig,
     end_date: datetime | None = None,
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
@@ -201,7 +203,8 @@ def calibrate_flow(
 def calibrate_and_apply_flow(
     configuration: PrefectScriptedL2CalibrationConfig
     | SetQualityAndNaNConfig
-    | GradiometryConfig,
+    | GradiometryConfig
+    | EmptyCalibrationConfig,
     start_date: datetime,
     end_date: datetime | None = None,
     mode: ScienceMode = ScienceMode.Normal,

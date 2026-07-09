@@ -25,10 +25,12 @@ from prefect_server.performCalibration import (
 
 class TestPerformCalibrationFlowNames:
     def test_generate_calibrate_and_apply_name_includes_date_and_sensor(self):
+        mock_configuration = MagicMock()
+        mock_configuration.get_method.return_value = MagicMock(value="kepko")
         mock_params = {
             "start_date": datetime(2025, 1, 15),
             "end_date": None,
-            "method": MagicMock(value="kepko"),
+            "configuration": mock_configuration,
             "mode": MagicMock(value="norm"),
             "sensor": MagicMock(value="mago"),
         }
