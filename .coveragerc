@@ -4,11 +4,8 @@
 branch = True
 source =
     src/
-# uncomment the following to omit files during running
-# omit =
-#         *__init__*
-#         */usr/local/lib*
-#         *tests*
+omit =
+    src/imap_db/migrations/*
 
 
 [report]
