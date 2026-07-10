@@ -296,5 +296,5 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
-            "publish_to_sharepoint=false, display_plots=false,spice_transform_and_write=false)"
+            "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
         )

@@ -83,9 +83,9 @@ class SparseDatastoreBuilder:
                 get_previous_if_empty=pattern.get_previous_if_empty,
             )
 
+            check_disk_space(target_root.parent, self.disk_usage_threshold)
             for source in matches:
                 relative = source.relative_to(self.source_datastore)
-                check_disk_space(target_root.parent, self.disk_usage_threshold)
                 size = self._copy_file(source, target_root / relative)
                 if size:
                     copied_files += 1
@@ -123,7 +123,6 @@ class SparseDatastoreBuilder:
         if destination.exists():
             return 0
 
-        check_disk_space(destination.parent, self.disk_usage_threshold)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
 
@@ -153,6 +152,9 @@ class SparseDatastoreBuilder:
                 if size:
                     files += 1
                     total_bytes += size
+
+                if files % 4 == 0:
+                    check_disk_space(target_root.parent, self.disk_usage_threshold)
             else:
                 logger.warning(
                     f"Kernel '{kernel_relative}' referenced by {metakernel_filename} "
