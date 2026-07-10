@@ -35,13 +35,15 @@ export PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW=ignore
 if [ "$1" != "--skip-tests" ]; then
     args=(
         run pytest
-        # distribute tests across 4 processes aggressively
+        # distribute tests across 3 processes aggressively
         # See https://pytest-xdist.readthedocs.io/en/latest/distribution.html
         -n auto --dist loadscope --maxprocesses=3
+        # Show test name, not all the log messages, and colorize output
+        -vvv --log-disable=root --color=yes
         # coverage parameters
-        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --cov-fail-under=80
+        --cov-config=.coveragerc --cov=src --cov-append --cov-report=xml --cov-report term-missing --cov-report=html --cov-fail-under=90
         --junitxml=test-results.xml # CI readable report
-        --durations 10  # print top 10 slow tests
+        --durations 20  # print top 20 slow tests
         tests # folder name of tests
     )
     poetry "${args[@]}"
