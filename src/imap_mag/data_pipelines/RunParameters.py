@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Annotated
@@ -63,3 +63,73 @@ class FetchByDatesRunParameters(PipelineRunParameters):
             }
         ),
     ] = False
+
+
+@dataclass
+class IndexByIdsRunParameters(PipelineRunParameters):
+    """Manually index specific files by their database IDs.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
+
+    file_ids: Annotated[
+        list[int],
+        Field(
+            json_schema_extra={
+                "title": "File IDs",
+                "description": "List of file IDs to index.",
+            }
+        ),
+    ] = field(default_factory=list)
+
+
+@dataclass
+class IndexByDateRangeRunParameters(PipelineRunParameters):
+    """Manually index files modified within a date range.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
+
+    modified_after: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Modified after",
+                "description": "Index files modified after this datetime.",
+            }
+        ),
+    ] = None
+
+    modified_before: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "Modified before",
+                "description": "Index files modified before this datetime.",
+            }
+        ),
+    ] = None
+
+
+@dataclass
+class IndexByFileNamesRunParameters(PipelineRunParameters):
+    """Manually index files matching specific path patterns or exact paths.
+
+    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    """
+
+    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
+
+    file_paths: Annotated[
+        list[str],
+        Field(
+            json_schema_extra={
+                "title": "File paths",
+                "description": "List of file paths or fnmatch patterns to index.",
+            }
+        ),
+    ] = field(default_factory=list)

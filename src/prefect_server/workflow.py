@@ -16,6 +16,7 @@ from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
+from prefect_server.fileAnalyserFlow import file_analyser_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -396,13 +397,24 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    matlab_shared_job_variables = shared_job_variables.copy()
-    matlab_shared_job_variables["mem_limit"] = "4g"
-    matlab_shared_job_variables["memswap_limit"] = "4g"
+    big_files_shared_job_variables = shared_job_variables | {
+        "mem_limit": "4G",
+        "memswap_limit": "4G",
+    }
+
+    file_analysis_deployable = file_analyser_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
+        job_variables=big_files_shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
 
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
-        job_variables=matlab_shared_job_variables,
+        job_variables=big_files_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
@@ -411,16 +423,17 @@ async def adeploy_flows(local_debug: bool = False):
 
     gradiometer_deployable = gradiometry_flow.to_deployment(
         name="gradiometer",
-        job_variables=matlab_shared_job_variables,
+        job_variables=big_files_shared_job_variables,
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    apply_shared_job_variables = shared_job_variables.copy()
-    apply_shared_job_variables["mem_limit"] = "6g"
-    apply_shared_job_variables["memswap_limit"] = "6g"
+    apply_shared_job_variables = shared_job_variables | {
+        "mem_limit": "6G",
+        "memswap_limit": "6G",
+    }
 
     apply_deployable = apply_flow.to_deployment(
         name="apply",
@@ -465,6 +478,7 @@ async def adeploy_flows(local_debug: bool = False):
         postgres_upload_deployable,
         datastore_cleanup_deployable,
         datastore_indexer_deployable,
+        file_analysis_deployable,
     )
 
     if local_debug:
