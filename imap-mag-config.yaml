@@ -110,7 +110,20 @@ calibrate:
             # Interference / thruster profiles.
             - pattern: 'calibration/inputs/Profiles/**/*'
             # Pre-computed offsets (spin plane / spin axis / leinweber / kepko).
-            - pattern: 'calibration/calculated_offsets/**/*'
+            - pattern: 'calibration/calculated_offsets/kepko/*'
+            - pattern: 'calibration/calculated_offsets/leinweber/*'
+            - pattern: 'calibration/calculated_offsets/spin_axis/*'
+            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v*.csv*'
+              days_before: 1
+              days_after: 1
+              get_previous_if_empty: true
+              highest_sequence_only: true
+            - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v*.csv*'
+              days_before: 2
+              days_after: 2
+              get_previous_if_empty: true
+              highest_sequence_only: true
+
             # Spin table + thruster activities (small, span the run). Filenames encode
             # a day-of-year coverage window ({from_doy}/{to_doy}) rather than a single
             # date, so these use highest_sequence_only to keep just the newest file per

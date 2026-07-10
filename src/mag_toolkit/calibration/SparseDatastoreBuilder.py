@@ -83,6 +83,12 @@ class SparseDatastoreBuilder:
                 get_previous_if_empty=pattern.get_previous_if_empty,
             )
 
+            logger.info(
+                f"Pattern '{pattern.pattern}' ({pattern.days_before}/{pattern.days_after}) "
+                f"matched {len(matches)} files for {[str(d.date()) for d in dates]} "
+                f"({mode.value})."
+            )
+
             check_disk_space(target_root.parent, self.disk_usage_threshold)
             for source in matches:
                 relative = source.relative_to(self.source_datastore)
