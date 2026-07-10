@@ -378,6 +378,7 @@ class TestFindMatchingFilesCoverageWindow:
 
 class TestFindMatchingFilesDatedPattern:
     PATTERN = "hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv"
+    SEQUENCE_PATTERN = "hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v{sequence}.csv"
 
     def _touch(self, tmp_path, date_str):
         p = (
@@ -488,6 +489,87 @@ class TestFindMatchingFilesDatedPattern:
             get_previous_if_empty=True,
         )
         assert result == []
+
+    def test_highest_sequence_only_keeps_highest_version_per_day(self, tmp_path):
+        self._touch(tmp_path, "20260129")  # v001
+        p = (
+            tmp_path
+            / "hk"
+            / "lo"
+            / "l1"
+            / "pivot-platform-angle"
+            / "2026"
+            / "01"
+            / "imap_lo_l1_pivot-platform-angle_20260129_v002.csv"
+        )
+        p.touch()
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_matching_files(
+            self.SEQUENCE_PATTERN,
+            start_date=datetime(2026, 1, 29),
+            end_date=datetime(2026, 1, 29),
+            highest_sequence_only=True,
+        )
+        assert [p.name for p in result] == [
+            "imap_lo_l1_pivot-platform-angle_20260129_v002.csv"
+        ]
+
+    def test_highest_sequence_only_keeps_all_distinct_days(self, tmp_path):
+        self._touch(tmp_path, "20260129")
+        self._touch(tmp_path, "20260130")
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_matching_files(
+            self.SEQUENCE_PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            highest_sequence_only=True,
+        )
+        names = sorted(p.name for p in result)
+        assert names == [
+            "imap_lo_l1_pivot-platform-angle_20260129_v001.csv",
+            "imap_lo_l1_pivot-platform-angle_20260130_v001.csv",
+        ]
+
+    def test_highest_sequence_only_applies_to_fallback_match(self, tmp_path):
+        self._touch(tmp_path, "20260115")  # v001
+        p = (
+            tmp_path
+            / "hk"
+            / "lo"
+            / "l1"
+            / "pivot-platform-angle"
+            / "2026"
+            / "01"
+            / "imap_lo_l1_pivot-platform-angle_20260115_v003.csv"
+        )
+        p.touch()
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_matching_files(
+            self.SEQUENCE_PATTERN,
+            start_date=datetime(2026, 1, 30),
+            end_date=datetime(2026, 1, 30),
+            days_before=1,
+            days_after=1,
+            get_previous_if_empty=True,
+            highest_sequence_only=True,
+        )
+        assert [p.name for p in result] == [
+            "imap_lo_l1_pivot-platform-angle_20260115_v003.csv"
+        ]
+
+    def test_highest_sequence_only_without_sequence_placeholder_raises(self, tmp_path):
+        finder = FileFinder(tmp_path)
+        with pytest.raises(ValueError, match="\\{sequence\\}"):
+            finder.find_matching_files(
+                self.PATTERN,
+                start_date=datetime(2026, 1, 30),
+                end_date=datetime(2026, 1, 30),
+                highest_sequence_only=True,
+            )
 
 
 class TestFindMatchingFilesPlaceholderValidation:

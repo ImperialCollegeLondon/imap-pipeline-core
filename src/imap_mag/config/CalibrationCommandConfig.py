@@ -34,8 +34,12 @@ class SparseDatastorePattern(BaseModel):
     day being calibrated. They default to 0 (only the day itself) so large per-day
     files such as burst science are not copied for days that are not needed.
 
-    ``highest_sequence_only`` (coverage-window patterns only) keeps only the
-    highest-sequence file per distinct coverage window instead of all of them.
+    ``highest_sequence_only`` keeps only the highest-sequence file per distinct
+    coverage window (coverage-window patterns), or, for dated patterns, the
+    single highest-sequence file per day - the sequence (e.g. version) to compare
+    must be identified by a ``{sequence}`` placeholder in ``pattern`` (e.g.
+    ``..._v{sequence}.csv``); a dated pattern with ``highest_sequence_only=True``
+    but no ``{sequence}`` placeholder is rejected as misconfigured.
 
     ``get_previous_if_empty`` (dated patterns only) falls back to the most recent
     file before the search window when nothing is found within it - useful for

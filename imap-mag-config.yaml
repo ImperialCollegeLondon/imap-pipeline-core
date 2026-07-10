@@ -98,7 +98,7 @@ calibrate:
             # Spacecraft HK (x285 packet) for interference/thruster cleaning.
             - pattern: 'hk/sc/l1/x285/%Y/%m/imap_sc_l1_x285_%Y%m%d_v*.csv'
             # IMAP-Lo pivot-platform HK - needs the nearest neighbouring days too.
-            - pattern: 'hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v*.csv'
+            - pattern: 'hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v{sequence}.csv'
               days_before: 1
               days_after: 1
               get_previous_if_empty: true
@@ -113,12 +113,12 @@ calibrate:
             - pattern: 'calibration/calculated_offsets/kepko/*'
             - pattern: 'calibration/calculated_offsets/leinweber/*'
             - pattern: 'calibration/calculated_offsets/spin_axis/*'
-            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v*.csv*'
+            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
               days_before: 1
               days_after: 1
               get_previous_if_empty: true
               highest_sequence_only: true
-            - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v*.csv*'
+            - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
               days_before: 2
               days_after: 2
               get_previous_if_empty: true

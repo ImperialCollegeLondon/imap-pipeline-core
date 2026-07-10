@@ -285,7 +285,12 @@ class FileFinder:
           in the search window (e.g. ``imap_..._%Y%m%d_v*.csv``).
 
         ``highest_sequence_only`` keeps only the highest-sequence file per
-        distinct coverage window (coverage-window patterns only).
+        distinct coverage window (coverage-window patterns), or, for dated
+        patterns, the single highest-sequence file per day, where the sequence
+        (e.g. version) to compare is identified by a required ``{sequence}``
+        placeholder in the pattern (e.g. ``..._v{sequence}.csv``) - a
+        ``ValueError`` is raised if a dated pattern is used with
+        ``highest_sequence_only=True`` but has no ``{sequence}`` placeholder.
 
         ``get_previous_if_empty`` falls back to the most recent match before the
         search window when nothing is found within it - useful for point-in-time
@@ -313,6 +318,7 @@ class FileFinder:
             end_date,
             days_before,
             days_after,
+            highest_sequence_only,
             get_previous_if_empty,
         )
 
@@ -426,8 +432,12 @@ class FileFinder:
         end_date: datetime,
         days_before: int,
         days_after: int,
+        highest_sequence_only: bool,
         get_previous_if_empty: bool,
     ) -> list[Path]:
+        if highest_sequence_only:
+            self._require_sequence_placeholder(relative_pattern)
+
         search_start = (start_date - timedelta(days=days_before)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -438,7 +448,9 @@ class FileFinder:
         matches: list[Path] = []
         day = search_start
         while day <= search_end:
-            matches.extend(self._glob_files(day.strftime(relative_pattern)))
+            matches.extend(
+                self._glob_dated_files(day, relative_pattern, highest_sequence_only)
+            )
             day += timedelta(days=1)
 
         if matches or not get_previous_if_empty:
@@ -447,12 +459,65 @@ class FileFinder:
         earliest = DatetimeProvider().beginning_of_imap()
         day = search_start - timedelta(days=1)
         while day >= earliest:
-            found = self._glob_files(day.strftime(relative_pattern))
+            found = self._glob_dated_files(day, relative_pattern, highest_sequence_only)
             if found:
                 return found
             day -= timedelta(days=1)
 
         return []
+
+    @staticmethod
+    def _require_sequence_placeholder(relative_pattern: str) -> None:
+        if "{sequence}" not in relative_pattern:
+            raise ValueError(
+                f"Pattern '{relative_pattern}' has highest_sequence_only=True but no "
+                "'{sequence}' placeholder to identify the version to compare - add "
+                "one (e.g. '..._v{sequence}.csv') or set highest_sequence_only=False."
+            )
+
+    def _glob_dated_files(
+        self, day: datetime, relative_pattern: str, highest_sequence_only: bool
+    ) -> list[Path]:
+        """Glob the files matching ``relative_pattern`` for a single ``day``.
+
+        If ``highest_sequence_only``, ``{sequence}`` in the pattern identifies the
+        version/sequence number to compare, and only the highest-sequence file is
+        returned (other wildcards, e.g. sensor, are treated as part of the day's
+        one result rather than distinguishing separate entities)."""
+        dated_pattern = day.strftime(relative_pattern)
+
+        if not highest_sequence_only:
+            return self._glob_files(dated_pattern.replace("{sequence}", "*"))
+
+        regex = self._dated_sequence_regex(Path(dated_pattern).name)
+        glob_pattern = dated_pattern.replace("{sequence}", "*")
+
+        candidates: list[tuple[Path, int]] = [
+            (path, int(match.group("sequence")))
+            for path in self._glob_files(glob_pattern)
+            if (match := regex.match(path.name))
+        ]
+        if not candidates:
+            return []
+
+        highest = max(sequence for _, sequence in candidates)
+        return sorted(path for path, sequence in candidates if sequence == highest)
+
+    @staticmethod
+    def _dated_sequence_regex(filename_pattern: str) -> re.Pattern:
+        """Build a regex that captures the ``{sequence}`` value encoded in
+        filenames matching ``filename_pattern`` (a single day's dated pattern,
+        basename only), treating any other ``*`` as an unconstrained wildcard."""
+        parts = re.split(r"(\{sequence\}|\*)", filename_pattern)
+        regex_parts = [
+            r"(?P<sequence>\d+)"
+            if part == "{sequence}"
+            else ".*"
+            if part == "*"
+            else re.escape(part)
+            for part in parts
+        ]
+        return re.compile("^" + "".join(regex_parts) + "$")
 
     def _glob_files(self, glob_pattern: str) -> list[Path]:
         return sorted(
