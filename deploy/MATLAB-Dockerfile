@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 ARG PYTHON_VERSION="3.14"
-ARG MATLAB_VERSION="r2026a"
+ARG MATLAB_VERSION="R2026a"
 
 FROM mathworks/matlab:${MATLAB_VERSION} AS matlab_install
 

@@ -4,7 +4,7 @@ set -e
 CLI_TOOL="imap_mag"
 TOOL_PYTHON_VERSION="${TOOL_PYTHON_VERSION:-python3.14}"
 PYTHON_VERSION_NUMBER_ONLY=${TOOL_PYTHON_VERSION#python}
-MATLAB_VERSION="${MATLAB_VERSION:-r2026a}"
+MATLAB_VERSION="${MATLAB_VERSION:-R2026a}"
 TOOL_PACKAGE="${TOOL_PACKAGE:-$CLI_TOOL-*.tar.gz}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev}"
 
@@ -25,6 +25,6 @@ fi
  fi
 
 # Check the command works!
-docker run \
+docker run --rm \
   --entrypoint /bin/sh $IMAGE_NAME\
   -c "imap-mag hello world"
