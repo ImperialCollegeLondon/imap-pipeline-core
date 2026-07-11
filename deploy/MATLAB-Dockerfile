@@ -87,6 +87,8 @@ COPY dist/docker /app
 RUN apt-get update && apt-get install -y \
     libxt6 \
     libgdk-pixbuf-2.0-0 \
+    libfontconfig1 \
+    libglx0 \
     git \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
