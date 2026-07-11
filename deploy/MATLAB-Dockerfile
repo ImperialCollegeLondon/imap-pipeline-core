@@ -89,6 +89,22 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf-2.0-0 \
     libfontconfig1 \
     libglx0 \
+    libgl1 \
+    libnspr4 \
+    libnss3 \
+    libfribidi0 \
+    libxrandr2 \
+    libxinerama1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libatk1.0-0t64 \
+    libatk-bridge2.0-0t64 \
+    libxft2 \
+    libpixman-1-0 \
+    libcups2t64 \
+    libncurses6 \
+    libasound2t64 \
     git \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
