@@ -106,6 +106,7 @@ RUN apt-get update && apt-get install -y \
     libncurses6 \
     libasound2t64 \
     git \
+    wget \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -115,6 +116,25 @@ RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} &&
     chown -R ${IMAP_USERNAME} /data && \
     chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME} && \
     mkdir -p /home/imap_pipeline/MATLAB
+
+# NASA NAIF MICE toolkit for MATLAB (precompiled glnxa64, no compiler needed).
+# See https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/MATLAB/req/mice.html
+RUN mkdir -p /opt/naif && chown ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/naif && \
+    cd /opt/naif && \
+    wget -q https://naif.jpl.nasa.gov/pub/naif/toolkit/MATLAB/PC_Linux_GCC_MATLAB9.x_64bit/packages/mice.tar.Z && \
+    zcat mice.tar.Z | tar xf - && \
+    rm mice.tar.Z
+
+# NASA CDF (Common Data Format) MATLAB patch (precompiled glnxa64, no compiler needed).
+# See https://cdf.gsfc.nasa.gov/quickstartguides/MATLAB/
+# "latest_matlab" tracks the current CDF release; the extracted dir is renamed to a
+# stable path so MATLABPATH below doesn't need to track the embedded version number.
+RUN mkdir -p /opt/cdf && chown ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/cdf && \
+    cd /opt/cdf && \
+    wget -q https://spdf.gsfc.nasa.gov/pub/software/cdf/dist/latest_matlab/matlab_cdf_lin64.tar.gz && \
+    tar xzf matlab_cdf_lin64.tar.gz && \
+    rm matlab_cdf_lin64.tar.gz && \
+    mv matlab_cdf*_patch-64 matlab_cdf_patch
 
 WORKDIR /app
 USER ${IMAP_USERNAME}
@@ -128,6 +148,10 @@ ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 COPY src/ /app/
 
 ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/${MATLAB_VERSION}/bin"
+
+# MATLAB adds every entry on MATLABPATH to its search path at startup, regardless of
+# where MATLAB itself is installed
+ENV MATLABPATH="/opt/naif/mice/lib:/opt/naif/mice/src/mice:/opt/cdf/matlab_cdf_patch"
 
 # Now the imap-mag CLI is available on the path and
 # the 3.x python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin
