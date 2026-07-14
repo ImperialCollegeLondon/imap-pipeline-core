@@ -61,12 +61,19 @@ class IALiRTApiClient:
                 logger.warning(
                     f"API returned None for {instrument}. Treating as empty."
                 )
-                data_chunk = []
+                data_chunk = {}
 
             logger.debug(
                 f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {window_end}."
             )
-            whole_data.extend(data_chunk)
+
+            records = (
+                data_chunk.get("data", [])
+                if isinstance(data_chunk, dict)
+                else data_chunk
+            )
+
+            whole_data.extend(records)
 
             window_start = window_end
 
