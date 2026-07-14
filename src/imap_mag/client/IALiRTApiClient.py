@@ -65,36 +65,7 @@ class IALiRTApiClient:
 
             whole_data.extend(data_chunk)
 
-            if data_chunk:
-                newest_data_timestamp = max(
-                    datetime.strptime(d[self.__DATE_INDEX], self.__DATE_FORMAT)
-                    for d in data_chunk
-                )
-
-                logger.debug(
-                    f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {newest_data_timestamp}."
-                )
-
-                next_date = newest_data_timestamp + timedelta(seconds=1)
-
-                if next_date <= window_start:
-                    logger.warning(
-                        f"Data timestamps did not advance past {window_start}. Forcing window forward to {window_end}"
-                    )
-                    window_start = window_end
-                else:
-                    window_start = next_date
-
-            elif window_end < end_date:
-                logger.debug(
-                    f"No data downloaded between {window_start} and {window_end}, but end date not reached. Advancing window_start to {window_end} to continue downloading."
-                )
-                window_start = window_end
-            else:
-                logger.debug(
-                    f"No more data to download between {window_start} and {end_date}."
-                )
-                break
+            window_start = window_end
 
         return whole_data
 

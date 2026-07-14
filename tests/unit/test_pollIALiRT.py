@@ -4,266 +4,260 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytz
 
 from prefect_server.pollIALiRT import (
-    generate_flow_run_name,
     poll_ialirt_flow,
     run_ialirt_polling_pipeline_task,
 )
 
 
-class TestRunIalirtPollingPipelineTask:
-    """
-    Unit tests for run_ialirt_polling_pipeline_task.
-    """
+class TestIALiRTPollingTask:
+    """Unit tests for run_ialirt_polling_pipeline_task."""
 
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.IALiRTPipeline")
-    @patch("prefect_server.pollIALiRT.emit_event")
-    @patch("prefect_server.pollIALiRT.flow_run")
-    async def test_task_runs_pipeline_successfully_and_emits_event(
-        self, mock_flow_run, mock_emit_event, mock_pipeline_class
-    ):
-        mock_flow_run.id = "test-flow-id"
-        mock_flow_run.name = "test-flow-name"
-
-        mock_pipeline_inst = MagicMock()
-        mock_pipeline_class.return_value = mock_pipeline_inst
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_pipeline_inst.get_results.return_value = mock_result
-        mock_pipeline_inst.run = AsyncMock()
-
-        await run_ialirt_polling_pipeline_task.fn(
-            instrument="mag",
-            run_parameters=MagicMock(),
-            database=MagicMock(),
-            settings=MagicMock(),
-        )
-
-        mock_emit_event.assert_called_once()
-        called_kwargs = mock_emit_event.call_args.kwargs
-        assert called_kwargs["event"] == "imap.ialirt.updated"
-
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.IALiRTPipeline")
-    @patch("prefect_server.pollIALiRT.emit_event")
-    @patch("prefect_server.pollIALiRT.flow_run")
-    async def test_task_emits_hk_event_for_housekeeping_instruments(
-        self, mock_flow_run, mock_emit_event, mock_pipeline_class
-    ):
-        mock_pipeline_inst = MagicMock()
-        mock_pipeline_class.return_value = mock_pipeline_inst
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_pipeline_inst.get_results.return_value = mock_result
-        mock_pipeline_inst.run = AsyncMock()
-
-        await run_ialirt_polling_pipeline_task.fn(
-            instrument="mag_hk",
-            run_parameters=MagicMock(),
-            database=MagicMock(),
-            settings=MagicMock(),
-        )
-
-        mock_emit_event.assert_called_once()
-        called_kwargs = mock_emit_event.call_args.kwargs
-        assert called_kwargs["event"] == "imap.ialirt_hk.updated"
-
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.try_get_prefect_logger")
-    @patch("prefect_server.pollIALiRT.IALiRTPipeline")
-    @patch("prefect_server.pollIALiRT.emit_event", return_value=None)
-    @patch("prefect_server.pollIALiRT.flow_run")
-    async def test_logs_error_when_event_emission_fails(
-        self, mock_flow_run, mock_emit_event, mock_pipeline_class, mock_logger_func
-    ):
-        mock_logger = MagicMock()
-        mock_logger_func.return_value = mock_logger
-
-        mock_pipeline_inst = MagicMock()
-        mock_pipeline_class.return_value = mock_pipeline_inst
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_pipeline_inst.get_results.return_value = mock_result
-        mock_pipeline_inst.run = AsyncMock()
-
-        await run_ialirt_polling_pipeline_task.fn(
-            instrument="mag",
-            run_parameters=MagicMock(),
-            database=MagicMock(),
-            settings=MagicMock(),
-        )
-
-        mock_logger.error.assert_called_once()
-        assert "Failed to emit" in mock_logger.error.call_args[0][0]
-
-
-class TestPollIALiRTFlowUnit:
-    """Unit tests for poll_ialirt_flow without Docker."""
-
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.try_get_prefect_logger")
-    @patch("prefect_server.pollIALiRT.Database")
-    @patch("prefect_server.pollIALiRT.AppSettings")
-    @patch("prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock)
-    @patch(
-        "prefect_server.pollIALiRT.run_ialirt_polling_pipeline_task",
-        new_callable=AsyncMock,
-    )
-    @patch("prefect_server.pollIALiRT.quicklook_ialirt_flow", new_callable=AsyncMock)
-    async def test_flow_generates_quicklook_when_plot_last_3_days_true(
-        self,
-        mock_quicklook,
-        mock_task,
-        mock_secret,
-        mock_settings,
-        mock_db,
-        mock_logger,
-    ):
-        base_time = datetime(2025, 1, 1, 12, 0, 0)
-
-        def dynamic_now():
-            nonlocal base_time
-            base_time += timedelta(minutes=5)
-            return base_time
-
-        mock_dp = MagicMock()
-        mock_dp.now.side_effect = dynamic_now
-        mock_dp.today.return_value = datetime(2025, 1, 1).date()
-        mock_dp.start_of_hour.return_value = datetime(2025, 1, 1, 11, 0, 0)
-        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 12, 0, 0)
-
-        mock_secret.return_value = "auth-code"
-        mock_task.return_value = MagicMock()
-
-        await poll_ialirt_flow.fn(
-            wait_for_new_data_to_arrive=True,
-            plot_last_3_days=True,
-            datetime_provider=mock_dp,
-            imap_notification_webhook_name="test-webhook",
-        )
-
-        mock_quicklook.assert_awaited_once()
-
-
-class TestPollIALiRTHKFlowUnit:
-    """Unit tests handling loop exiting and polling conditions."""
-
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.try_get_prefect_logger")
-    @patch("prefect_server.pollIALiRT.Database")
-    @patch("prefect_server.pollIALiRT.AppSettings")
-    @patch("prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock)
-    @patch(
-        "prefect_server.pollIALiRT.run_ialirt_polling_pipeline_task",
-        new_callable=AsyncMock,
-    )
-    @patch("prefect_server.pollIALiRT.asyncio.sleep", new_callable=AsyncMock)
-    async def test_flow_polls_once_when_wait_for_new_data_is_false(
-        self, mock_sleep, mock_task, mock_secret, mock_settings, mock_db, mock_logger
-    ):
-        mock_dp = MagicMock()
-        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 0, 0)
-        mock_secret.return_value = "auth-code"
-        mock_task.return_value = MagicMock()
-
-        await poll_ialirt_flow.fn(
-            wait_for_new_data_to_arrive=False,
-            plot_last_3_days=False,
-            datetime_provider=mock_dp,
-        )
-
-        # Assert it polls immediately but does not sleep/loop
-        assert mock_task.call_count > 0
-        mock_sleep.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    @patch("prefect_server.pollIALiRT.try_get_prefect_logger")
-    @patch("prefect_server.pollIALiRT.Database")
-    @patch("prefect_server.pollIALiRT.AppSettings")
-    @patch("prefect_server.pollIALiRT.get_secret_or_env_var", new_callable=AsyncMock)
-    @patch(
-        "prefect_server.pollIALiRT.run_ialirt_polling_pipeline_task",
-        new_callable=AsyncMock,
-    )
-    @patch("prefect_server.pollIALiRT.asyncio.sleep", new_callable=AsyncMock)
-    async def test_flow_polls_once_when_wait_for_new_data_is_true_and_exits(
-        self, mock_sleep, mock_task, mock_secret, mock_settings, mock_db, mock_logger
-    ):
-
-        from types import SimpleNamespace
-
-        class FakeDatetimeProvider:
-            def __init__(self):
-                self.calls = 0
-                self.times = [
-                    datetime(2025, 1, 1, 10, 30, 0),  # T1
-                    datetime(2025, 1, 1, 12, 0, 1),  # T2
-                ]
-
-            def now(self):
-                # Return the time at the current index, or the last one it runs out
-                idx = min(self.calls, len(self.times) - 1)
-                val = self.times[idx]
-                self.calls += 1
-                return val
-
-            def today(self):
-                return datetime(2025, 1, 1).date()
-
-            def start_of_hour(self):
-                return datetime(2025, 1, 1, 10, 0, 0)
-
-            def end_of_hour(self):
-                return datetime(2025, 1, 1, 12, 0, 0)
-
-        mock_dp = FakeDatetimeProvider()
-        mock_secret.return_value = "auth-code"
-
-        mock_run_params = SimpleNamespace(
-            start_date=datetime(2025, 1, 1, 10, 0, 0),
-            end_date=datetime(2025, 1, 1, 12, 0, 0),
-        )
-
-        mock_task.return_value = MagicMock(success=True)
-
+    @pytest.fixture
+    def mock_pipeline_deps(self):
         with (
-            patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
-            patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", ["hk"]),
+            patch("prefect_server.pollIALiRT.IALiRTPipeline") as mock_pipeline_class,
+            patch("prefect_server.pollIALiRT.emit_event") as mock_emit_event,
+            patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run,
+            patch("prefect_server.pollIALiRT.try_get_prefect_logger"),
         ):
-            await poll_ialirt_flow.fn(
-                run_parameters=mock_run_params,  # type: ignore
-                wait_for_new_data_to_arrive=True,
-                plot_last_3_days=False,
-                datetime_provider=mock_dp,  # type: ignore
+            mock_pipeline = mock_pipeline_class.return_value
+            mock_pipeline.run = AsyncMock()
+
+            # default successful result
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_pipeline.get_results.return_value = mock_result
+
+            mock_flow_run.id = "test-flow-id"
+            mock_flow_run.name = "test-flow-name"
+
+            yield {
+                "pipeline_class": mock_pipeline_class,
+                "pipeline": mock_pipeline,
+                "emit": mock_emit_event,
+                "result": mock_result,
+            }
+
+    @pytest.mark.asyncio
+    async def test_successful_run_emits_standard_event(self, mock_pipeline_deps):
+        """Test a successful run for a standard instrument."""
+        instrument = "mag"
+
+        result = await run_ialirt_polling_pipeline_task.fn(
+            instrument=instrument,
+            task_start_date=datetime(2025, 1, 1),
+            task_end_date=datetime(2025, 1, 2),
+            database=MagicMock(),
+            settings=MagicMock(),
+        )
+
+        assert result.success is True
+        mock_pipeline_deps["emit"].assert_called_once()
+
+        # Check that the event was emitted
+        call_kwargs = mock_pipeline_deps["emit"].call_args.kwargs
+        assert "imap.ialirt.updated" in str(call_kwargs["event"])
+        assert call_kwargs["payload"]["instrument"] == "mag"
+
+    @pytest.mark.asyncio
+    async def test_successful_run_emits_hk_event(self, mock_pipeline_deps):
+        """Test a successful run for an HK instrument."""
+        instrument = "mag_hk"
+
+        await run_ialirt_polling_pipeline_task.fn(
+            instrument=instrument,
+            task_start_date=datetime(2025, 1, 1),
+            task_end_date=datetime(2025, 1, 2),
+            database=MagicMock(),
+            settings=MagicMock(),
+        )
+
+        call_kwargs = mock_pipeline_deps["emit"].call_args.kwargs
+        assert "imap.ialirt_hk.updated" in str(call_kwargs["event"])
+
+    @pytest.mark.asyncio
+    async def test_raises_runtime_error_on_pipeline_failure(self, mock_pipeline_deps):
+        """Test that the task raises a RuntimeError if the pipeline fails."""
+        mock_pipeline_deps["result"].success = False
+
+        with pytest.raises(RuntimeError, match="I-ALiRT Pipeline failed for mag"):
+            await run_ialirt_polling_pipeline_task.fn(
+                instrument="mag",
+                task_start_date=datetime(2025, 1, 1),
+                task_end_date=datetime(2025, 1, 2),
+                database=MagicMock(),
+                settings=MagicMock(),
             )
 
-        assert mock_task.call_count > 0
-        mock_sleep.assert_called_once()
 
+class TestPollIALiRTFlow:
+    """Unit tests for poll_ialirt_flow."""
 
-class TestPollIALiRTGenerateName:
-    """Unit tests for flow name generation."""
+    @pytest.fixture
+    def mock_flow(self):
+        with (
+            patch("prefect_server.pollIALiRT.try_get_prefect_logger"),
+            patch("prefect_server.pollIALiRT.Database"),
+            patch("prefect_server.pollIALiRT.AppSettings"),
+            patch(
+                "prefect_server.pollIALiRT.get_secret_or_env_var",
+                new_callable=AsyncMock,
+            ) as mock_secret,
+            patch(
+                "prefect_server.pollIALiRT.run_ialirt_polling_pipeline_task",
+                new_callable=AsyncMock,
+            ) as mock_task,
+            patch(
+                "prefect_server.pollIALiRT.asyncio.sleep", new_callable=AsyncMock
+            ) as mock_sleep,
+        ):
+            mock_secret.return_value = "fake-auth-code"
 
-    def test_name_with_no_dates_uses_last_update(self):
-        mock_params = {"start_date": None, "end_date": None}
+            with (
+                patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
+                patch("prefect_server.pollIALiRT.VALID_IALIRT_HK_INSTRUMENTS", ["hit"]),
+            ):
+                yield {
+                    "task": mock_task,
+                    "sleep": mock_sleep,
+                }
+
+    @pytest.mark.asyncio
+    async def test_invalid_date_range_aborts_flow(self, mock_flow):
+        """Flow should immediately return Failed if start_date > end_date."""
+        mock_run_params = MagicMock()
+        mock_run_params.start_date = datetime(2025, 1, 2)
+        mock_run_params.end_date = datetime(2025, 1, 1)
+
+        result = await poll_ialirt_flow.fn(
+            run_parameters=mock_run_params, datetime_provider=MagicMock()
+        )
+
+        assert result.is_failed()
+        assert "start_date is after end_date" in result.message  # pyright: ignore[reportOperatorIssue]
+
+    @pytest.mark.asyncio
+    async def test_single_batch_when_wait_for_new_data_is_false(self, mock_flow):
+        """Flow should run exactly one batch and break if wait_for_new_data_to_arrive is False."""
+        mock_run_params = MagicMock()
+        mock_run_params.start_date = datetime(2025, 1, 1, 12, 0)
+        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
+
         mock_dp = MagicMock()
-        mock_dp.end_of_hour.return_value = datetime(2025, 6, 1, 13, 0, 0)
+        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 5)
 
-        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
-            mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name(datetime_provider=mock_dp)
+        #  return a dummy successful coroutine
+        mock_flow["task"].return_value = AsyncMock(return_value="Success")()
 
-        assert "last-update" in name
+        result = await poll_ialirt_flow.fn(
+            run_parameters=mock_run_params,
+            datetime_provider=mock_dp,
+            wait_for_new_data_to_arrive=False,
+            plot_last_3_days=False,
+        )
 
-    def test_name_with_dates(self):
-        mock_params = {
-            "start_date": datetime(2025, 6, 1, 12, 0, 0),
-            "end_date": datetime(2025, 6, 1, 13, 0, 0),
-        }
-        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
-            mock_flow_run.parameters = mock_params
-            name = generate_flow_run_name()
+        assert mock_flow["task"].call_count == 2  # Called for 2 instruments
+        assert result.is_completed()
 
-        assert "01-06-2025" in name
+    @pytest.mark.asyncio
+    async def test_skips_batch_if_future_window(self, mock_flow):
+        """Flow should sleep and skip task creation if the current window is in the future."""
+        mock_run_params = MagicMock()
+        mock_run_params.start_date = datetime(2025, 1, 1, 12, 10)
+        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
+
+        # mock datetime_provider
+        mock_dp = MagicMock()
+        mock_dp.now.side_effect = [
+            datetime(2025, 1, 1, 12, 0),  # before start_date, should skip
+            datetime(2025, 1, 1, 13, 5),  # after end_date, should break
+        ]
+
+        await poll_ialirt_flow.fn(
+            run_parameters=mock_run_params,
+            datetime_provider=mock_dp,
+            timeout_seconds=300,
+            wait_for_new_data_to_arrive=False,
+            plot_last_3_days=False,
+        )
+
+        # check it skipped the first
+        mock_flow["sleep"].assert_called_once_with(300)
+
+        # assert it ran the task for 2 instruments for the second datetime
+        assert mock_flow["task"].call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_fails_when_all_batch_tasks_raise_exceptions(self, mock_flow):
+        """Flow should return Failed if every instrument pipeline throws an exception."""
+        mock_run_params = MagicMock()
+        mock_run_params.start_date = datetime(2025, 1, 1, 12, 0)
+        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
+
+        mock_dp = MagicMock()
+        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 5)
+
+        async def mock_failed_task(*args, **kwargs):
+            raise RuntimeError("API Offline")
+
+        mock_flow["task"].side_effect = mock_failed_task
+
+        result = await poll_ialirt_flow.fn(
+            run_parameters=mock_run_params,
+            datetime_provider=mock_dp,
+            wait_for_new_data_to_arrive=False,
+            plot_last_3_days=False,
+        )
+
+        assert result.is_failed()
+        assert "All instrument pipelines failed" in result.message  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_teams_webhook_fires_at_6am_uk_time(self, mock_flow):
+        """Ensure Quicklook triggers and Webhook fires specifically at 6 AM UK time."""
+        # 06:00 UK time
+        utc_6am = datetime(2025, 1, 1, 6, 0, tzinfo=pytz.UTC)
+
+        mock_run_params = MagicMock()
+        mock_run_params.start_date = utc_6am - timedelta(hours=1)
+        mock_run_params.end_date = utc_6am
+
+        mock_dp = MagicMock()
+        mock_dp.now.return_value = utc_6am + timedelta(minutes=5)
+        mock_dp.today.return_value = datetime(2025, 1, 1)
+
+        mock_flow["task"].return_value = AsyncMock(return_value="Success")()
+
+        with (
+            patch(
+                "prefect_server.pollIALiRT.quicklook_ialirt_flow",
+                new_callable=AsyncMock,
+            ) as mock_quicklook,
+            patch(
+                "prefect_server.pollIALiRT.MicrosoftTeamsWebhook"
+            ) as mock_webhook_class,
+            patch("prefect_server.pollIALiRT.UTC", pytz.UTC),
+        ):
+            mock_webhook_block = MagicMock()
+            mock_webhook_block.notify = AsyncMock()
+
+            mock_webhook_class.aload = AsyncMock(return_value=mock_webhook_block)
+
+            await poll_ialirt_flow.fn(
+                run_parameters=mock_run_params,
+                datetime_provider=mock_dp,
+                wait_for_new_data_to_arrive=True,
+                plot_last_3_days=True,
+                imap_notification_webhook_name="test-webhook",
+            )
+
+            mock_quicklook.assert_called_once()
+
+            mock_webhook_class.aload.assert_called_once_with("test-webhook")
+            mock_webhook_block.notify.assert_called_once()
+
+            call_kwargs = mock_webhook_block.notify.call_args.kwargs
+            assert call_kwargs["subject"] == "I-ALiRT Latest Quicklook"

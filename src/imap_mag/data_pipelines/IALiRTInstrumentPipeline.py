@@ -30,6 +30,7 @@ class IALiRTPipeline(Pipeline):
         datetime_provider: DatetimeProvider = DatetimeProvider(),
     ):
         super().__init__(settings=settings, datetime_provider=datetime_provider)
+
         self.instrument = instrument
 
         self.is_hk = instrument.endswith("_hk")
@@ -61,6 +62,8 @@ class IALiRTPipeline(Pipeline):
             packet_definition=settings.packet_definition,
         )
 
+        self._datetime_provider = datetime_provider
+
     def build(self, run_params: AutomaticRunParameters | FetchByDatesRunParameters):  # type: ignore
         super().build(
             run_parameters=run_params,
@@ -73,6 +76,7 @@ class IALiRTPipeline(Pipeline):
                 DownloadIALiRTStage(
                     instrument=self.instrument,
                     fetcher=self._fetcher,
+                    datetime_provider=self._datetime_provider,
                 ),
                 PublishFileToDatastoreStage(
                     enabled=self._settings.fetch_ialirt.publish_to_data_store,

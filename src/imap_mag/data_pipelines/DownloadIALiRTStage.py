@@ -3,15 +3,22 @@ from pathlib import Path
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, FileRecord, Record, Stage
 from imap_mag.download.FetchIALiRT import FetchIALiRT
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 
 
 class DownloadIALiRTStage(Stage):
     """Download I-ALiRT data for a specific instrument and emit one FileRecord per day."""
 
-    def __init__(self, instrument: str, fetcher: FetchIALiRT):
+    def __init__(
+        self,
+        instrument: str,
+        fetcher: FetchIALiRT,
+        datetime_provider: DatetimeProvider = DatetimeProvider(),
+    ):
         super().__init__()
         self.instrument = instrument
         self.fetcher = fetcher
+        self._datetime_provider = datetime_provider
 
     async def process(self, item: Record, context: dict, **kwargs):
 
@@ -51,18 +58,13 @@ class DownloadIALiRTStage(Stage):
             )
             return
 
+        # update progress
         for file_path, path_handler in downloaded.items():
-            content_date = path_handler.get_content_date_for_indexing()
-
-            if content_date and (
-                context.get(PROGRESS_DATE_CONTEXT_KEY) is None
-                or content_date > context[PROGRESS_DATE_CONTEXT_KEY]
-            ):
-                context[PROGRESS_DATE_CONTEXT_KEY] = content_date
+            context[PROGRESS_DATE_CONTEXT_KEY] = end_date
 
             # Stream file to the next stage
             await self.publish_next(
-                FileRecord(file_path, content_date),  # type: ignore
+                FileRecord(file_path, end_date),  # type: ignore
                 context,
                 **kwargs,  # type: ignore
             )

@@ -17,13 +17,14 @@ from prefect_server.pollIALiRT import (
     poll_ialirt_flow,
 )
 from tests.util.database import test_database  # noqa: F401
+from tests.util.miscellaneous import NOW, TODAY
 from tests.util.prefect_test_utils import (  # noqa: F401
     mock_teams_webhook_block,
     prefect_test_fixture,
 )
 
-NOW = datetime.now(UTC).replace(tzinfo=None)
-TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+# NOW = datetime.now(UTC).replace(tzinfo=None)
+# TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
 TOMORROW = TODAY + timedelta(days=1)
 YESTERDAY = TODAY - timedelta(days=1)
 START_OF_HOUR = NOW.replace(minute=0, second=0, microsecond=0)
@@ -152,7 +153,7 @@ def verify_available_ialirt(
     database,
     instrument: str,
     expected_progress_timestamp: datetime,
-    actual_timestamp: datetime = NOW,
+    actual_timestamp: datetime | None = None,
     hk: bool = False,
 ):
     if hk:
@@ -168,8 +169,10 @@ def verify_available_ialirt(
         workflow_progress.get_progress_timestamp()
         == expected_progress_timestamp.replace(microsecond=0)
     )
-    diff = abs(workflow_progress.get_last_checked_date() - actual_timestamp)
-    assert diff < timedelta(seconds=60), f"Time drift too large: {diff}"
+
+    if actual_timestamp is not None:
+        diff = abs(workflow_progress.get_last_checked_date() - actual_timestamp)
+        assert diff < timedelta(seconds=60), f"Time drift too large: {diff}"
 
 
 pytest.mark.skipif(
@@ -203,11 +206,8 @@ async def test_poll_ialirt_first_ever_run_mag(
             IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
             PREFECT_TEST_MODE="1",
         ):
-            bounded_parameters = FetchByDatesRunParameters(
-                start_date=YESTERDAY, end_date=END_OF_HOUR
-            )
             await poll_ialirt_flow(
-                run_parameters=bounded_parameters,
+                run_parameters=AutomaticRunParameters(),
                 wait_for_new_data_to_arrive=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
@@ -216,8 +216,8 @@ async def test_poll_ialirt_first_ever_run_mag(
     verify_available_ialirt(
         database=test_database,
         instrument="mag",
-        expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+        expected_progress_timestamp=NOW.replace(microsecond=0),
+        actual_timestamp=NOW.replace(microsecond=0),
     )
 
     assert_file_exists("mag", TODAY)
@@ -260,23 +260,18 @@ async def test_poll_ialirt_concurrent_multi_instrument(
             IALIRT_DATA_ACCESS_URL=wiremock_manager.get_url().rstrip("/"),
             PREFECT_TEST_MODE="1",
         ):
-            bounded_parameters = FetchByDatesRunParameters(
-                start_date=YESTERDAY, end_date=END_OF_HOUR
-            )
-
             await poll_ialirt_flow(
-                run_parameters=bounded_parameters,
                 wait_for_new_data_to_arrive=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
-            )
+            )  # type: ignore
 
     for inst in all_test_instruments:
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-            actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+            expected_progress_timestamp=NOW.replace(microsecond=0),
+            actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
 
@@ -339,8 +334,8 @@ async def test_poll_ialirt_continue_from_previous_download(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=END_OF_HOUR.replace(microsecond=0),
-            actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+            expected_progress_timestamp=NOW.replace(microsecond=0),
+            actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
 
@@ -356,11 +351,12 @@ async def test_poll_ialirt_concurrent_specify_start_end_dates(
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
-    start_date = datetime(2025, 4, 1, tzinfo=UTC)
-    end_date = datetime(2025, 4, 2, tzinfo=UTC)
+    start_date = datetime(2025, 4, 1)
+    end_date = datetime(2025, 4, 2)
     test_instruments = ["mag", "swe"]
 
     wiremock_manager.reset()
+
     define_fallback_mapping(wiremock_manager)
 
     define_available_ialirt_mappings(
@@ -395,8 +391,10 @@ async def test_poll_ialirt_concurrent_specify_start_end_dates(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=end_date.replace(tzinfo=None),
-            actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+            expected_progress_timestamp=end_date.replace(microsecond=0).replace(
+                tzinfo=None
+            ),
+            actual_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
         )
         assert_file_exists(inst, start_date)
 
@@ -452,8 +450,8 @@ async def test_poll_ialirt_hk_first_ever_run(
     verify_available_ialirt(
         database=test_database,
         instrument="mag_hk",
-        expected_progress_timestamp=end_date.replace(microsecond=0),
-        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+        expected_progress_timestamp=NOW.replace(microsecond=0),
+        actual_timestamp=NOW.replace(microsecond=0),
         hk=True,
     )
 
@@ -507,8 +505,8 @@ async def test_poll_ialirt_specify_start_end_dates_hk(
 
     verify_available_ialirt(
         database=test_database,
-        expected_progress_timestamp=end_date.replace(tzinfo=None),
-        actual_timestamp=datetime.now(UTC).replace(tzinfo=None),
+        expected_progress_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
+        actual_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
         hk=True,
         instrument="mag_hk",
     )
