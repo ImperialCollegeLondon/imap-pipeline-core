@@ -63,6 +63,9 @@ class IALiRTApiClient:
                 )
                 data_chunk = []
 
+            logger.debug(
+                f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {window_end}."
+            )
             whole_data.extend(data_chunk)
 
             window_start = window_end
