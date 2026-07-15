@@ -96,6 +96,9 @@ class PREFECT_CONSTANTS:
         DATASTORE_INDEXER = "datastore-indexer"
 
     class DEPLOYMENT_NAMES:
+        CALIBRATE = "calibrate"
+        APPLY_CALIBRATION = "apply"
+        CALIBRATE_AND_APPLY = "calibrate_and_apply"
         POLL_IALIRT = "poll_ialirt"
         POLL_IALIRT_HK = "poll_ialirt_hk"
         POLL_HK = "poll_hk"
