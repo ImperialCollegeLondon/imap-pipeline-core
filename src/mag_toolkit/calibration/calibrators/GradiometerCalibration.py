@@ -3,10 +3,13 @@ from pathlib import Path
 
 import pytz
 
-from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
 from imap_mag.util import Level, ScienceMode
 from mag_toolkit.calibration import CalibrationJobParameters
+from mag_toolkit.calibration.CalibrationConfig import (
+    CalibrationConfig,
+    GradiometryConfig,
+)
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
@@ -75,6 +78,13 @@ class GradiometerCalibrationJob(CalibrationJob):
             .replace(tzinfo=None)
             .isoformat()
         )
+
+        if not isinstance(config, GradiometryConfig):
+            raise TypeError(
+                "GradiometerCalibration requires a GradiometryConfig, "
+                f"got {type(config).__name__}."
+            )
+
         calfile = self.work_folder / cal_handler.get_filename()
         datafile = (
             self.work_folder / cal_handler.get_equivalent_data_handler().get_filename()
@@ -88,7 +98,7 @@ class GradiometerCalibrationJob(CalibrationJob):
             )
 
         call_matlab(
-            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{datafile}", "{self.data_store}", "{config.gradiometer.kappa!s}", "{config.gradiometer.sc_interference_threshold!s}")'
+            f'calibration.wrappers.run_gradiometry("{dt_as_str}", "{self.required_files[self.mago_key]}", "{self.required_files[self.magi_key]}", "{calfile}", "{datafile}", "{self.data_store}", "{config.kappa!s}", "{config.sc_interference_threshold!s}")'
         )
 
         if not calfile.exists():

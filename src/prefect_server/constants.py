@@ -87,7 +87,6 @@ class PREFECT_CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
-        GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"

@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 ARG PYTHON_VERSION="3.14"
+ARG MATLAB_VERSION="R2026a"
 
-FROM mathworks/matlab:r2024a AS matlab_install
+FROM mathworks/matlab:${MATLAB_VERSION} AS matlab_install
 
 USER root
 
@@ -17,7 +18,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-ARG ADDITIONAL_PRODUCTS="Statistics_and_Machine_Learning_Toolbox Control_System_Toolbox Mapping_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox Communications_Toolbox"
+ARG ADDITIONAL_PRODUCTS="Statistics_and_Machine_Learning_Toolbox Signal_Processing_Toolbox Curve_Fitting_Toolbox Optimization_Toolbox MATLAB_Report_Generator Control_System_Toolbox Mapping_Toolbox Communications_Toolbox"
+ARG MATLAB_VERSION
 
 # Change matlab user id to chosen id so it has the specified access
 RUN usermod -u ${IMAP_USERID} matlab
@@ -29,7 +31,7 @@ RUN wget -q https://www.mathworks.com/mpm/glnxa64/mpm \
     && EXISTING_MATLAB_LOCATION=$(dirname $(dirname $(readlink -f $(which matlab)))) \
     && sudo HOME=${HOME} ./mpm install \
         --destination=${EXISTING_MATLAB_LOCATION} \
-        --release=r2024a \
+        --release=${MATLAB_VERSION} \
         --products ${ADDITIONAL_PRODUCTS} \
     || (echo "MPM Installation Failure. See below for more information:" && cat /tmp/mathworks_root.log && false) \
     && sudo rm -rf mpm /tmp/mathworks_root.log
@@ -45,6 +47,7 @@ ARG IMAP_USERID=5679
 
 ARG TOOL_PACKAGE="imap_mag-*.tar.gz"
 ARG PYTHON_VERSION
+
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -73,19 +76,65 @@ FROM python:${PYTHON_VERSION}-slim AS runtime-image
 
 ARG IMAP_USERNAME="imap_pipeline"
 ARG IMAP_USERID=5679
+ARG MATLAB_VERSION
 
 COPY --from=matlab_install /opt/matlab /opt/matlab
 
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app
 
-RUN apt-get update && apt-get install -y libxt6 libgdk-pixbuf-2.0-0
+#libs for matlab + git to clone using prefect blocks
+RUN apt-get update && apt-get install -y \
+    libxt6 \
+    libgdk-pixbuf-2.0-0 \
+    libfontconfig1 \
+    libglx0 \
+    libgl1 \
+    libnspr4 \
+    libnss3 \
+    libfribidi0 \
+    libxrandr2 \
+    libxinerama1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libatk1.0-0t64 \
+    libatk-bridge2.0-0t64 \
+    libxft2 \
+    libpixman-1-0 \
+    libcups2t64 \
+    libncurses6 \
+    libasound2t64 \
+    git \
+    wget \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} && \
     chown -R ${IMAP_USERNAME} /app && \
     mkdir -p /data && \
     chown -R ${IMAP_USERNAME} /data && \
-    chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME}
+    chown -R ${IMAP_USERNAME} /home/${IMAP_USERNAME} && \
+    mkdir -p /home/imap_pipeline/MATLAB
+
+# NASA NAIF MICE toolkit for MATLAB (precompiled glnxa64, no compiler needed).
+# See https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/MATLAB/req/mice.html
+RUN mkdir -p /opt/naif && chown ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/naif && \
+    cd /opt/naif && \
+    wget -q https://naif.jpl.nasa.gov/pub/naif/toolkit/MATLAB/PC_Linux_GCC_MATLAB9.x_64bit/packages/mice.tar.Z && \
+    zcat mice.tar.Z | tar xf - && \
+    rm mice.tar.Z
+
+# NASA CDF (Common Data Format) MATLAB patch (precompiled glnxa64, no compiler needed).
+# See https://cdf.gsfc.nasa.gov/quickstartguides/MATLAB/
+# "latest_matlab" tracks the current CDF release; the extracted dir is renamed to a
+# stable path so MATLABPATH below doesn't need to track the embedded version number.
+RUN mkdir -p /opt/cdf && chown ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/cdf && \
+    cd /opt/cdf && \
+    wget -q https://spdf.gsfc.nasa.gov/pub/software/cdf/dist/latest_matlab/matlab_cdf_lin64.tar.gz && \
+    tar xzf matlab_cdf_lin64.tar.gz && \
+    rm matlab_cdf_lin64.tar.gz && \
+    mv matlab_cdf*_patch-64 matlab_cdf_patch
 
 WORKDIR /app
 USER ${IMAP_USERNAME}
@@ -98,7 +147,11 @@ ENV PREFECT_PROFILES_PATH=/app/.prefect/profiles.toml
 #include the prefect workflows
 COPY src/ /app/
 
-ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/R2024a/bin"
+ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/${MATLAB_VERSION}/bin"
+
+# MATLAB adds every entry on MATLABPATH to its search path at startup, regardless of
+# where MATLAB itself is installed
+ENV MATLABPATH="/opt/naif/mice/lib:/opt/naif/mice/src/mice:/opt/cdf/matlab_cdf_patch"
 
 # Now the imap-mag CLI is available on the path and
 # the 3.x python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin

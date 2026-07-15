@@ -136,10 +136,12 @@ site/
 # Windows
 *:Zone.Identifier
 
+# dev env files and test data
 .work
 /output
 src/matlab
 dev.env
 debug
-tests/datastore/spice/spk/de440.bsp
-tests/datastore/ialirt/
+tests/datastore/spice/spk/de440.bsptests/datastore/ialirt/
+.claude/settings.local.json
+tests/datastore/hk/mag/l0/hsk-pw/2025/05/

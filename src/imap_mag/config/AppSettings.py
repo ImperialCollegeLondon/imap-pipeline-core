@@ -9,12 +9,18 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
+from imap_mag.config.CalibrationCommandConfig import (
+    DEFAULT_METAKERNEL_FILE_TYPES,
+    CalibrationCommandConfig,
+)
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
+    FetchDSCOVRConfig,
     FetchIALiRTConfig,
     FetchScienceConfig,
+    FetchSOLAR1andACEConfig,
     FetchSpiceConfig,
     FetchWebTCADLaTiSConfig,
 )
@@ -49,6 +55,10 @@ class AppSettings(BaseSettings):
     packet_definition: Path
     disk_usage_threshold: float = 0.95
 
+    # SPICE kernel types to include when generating a metakernel. Shared by the
+    # calibration applicator and the scripted L2 calibration.
+    metakernel_file_types: list[str] = DEFAULT_METAKERNEL_FILE_TYPES
+
     # Command settings
     check_ialirt: CommandConfig
     fetch_binary: FetchBinaryConfig
@@ -56,8 +66,11 @@ class AppSettings(BaseSettings):
     fetch_ialirt: FetchIALiRTConfig
     fetch_science: FetchScienceConfig
     fetch_spice: FetchSpiceConfig
+    fetch_solar1_ace: FetchSOLAR1andACEConfig
+    fetch_dscovr: FetchDSCOVRConfig
     plot_ialirt: QuicklookConfig
     calibration: CommandConfig
+    calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig
@@ -65,8 +78,12 @@ class AppSettings(BaseSettings):
     datastore_cleanup: DatastoreCleanupConfig
 
     # functions
-    def setup_work_folder_for_command(self, command_config: CommandConfig) -> Path:
-        return command_config.setup_work_folder(self)
+    def setup_work_folder_for_command(
+        self,
+        command_config: CommandConfig,
+        name_context: dict[str, str] | None = None,
+    ) -> Path:
+        return command_config.setup_work_folder(self, name_context)
 
     @classmethod
     def settings_customise_sources(

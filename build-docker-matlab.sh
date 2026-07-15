@@ -3,6 +3,8 @@ set -e
 
 CLI_TOOL="imap_mag"
 TOOL_PYTHON_VERSION="${TOOL_PYTHON_VERSION:-python3.14}"
+PYTHON_VERSION_NUMBER_ONLY=${TOOL_PYTHON_VERSION#python}
+MATLAB_VERSION="${MATLAB_VERSION:-R2026a}"
 TOOL_PACKAGE="${TOOL_PACKAGE:-$CLI_TOOL-*.tar.gz}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/imperialcollegelondon/imap-pipeline-core:local-dev}"
 
@@ -17,12 +19,12 @@ fi
 
  if [ "$1" == "--local" ]
    then
-    docker build --build-arg USERID=$UID --build-arg PYTHON_VERSION=$TOOL_PYTHON_VERSION -f deploy/MATLAB-Dockerfile -t $IMAGE_NAME .
+    docker build --build-arg USERID=$UID --build-arg PYTHON_VERSION=$PYTHON_VERSION_NUMBER_ONLY --build-arg MATLAB_VERSION=$MATLAB_VERSION -f deploy/MATLAB-Dockerfile -t $IMAGE_NAME .
  else
-    docker build --build-arg PYTHON_VERSION=$TOOL_PYTHON_VERSION -f deploy/MATLAB-Dockerfile -t $IMAGE_NAME .
+    docker build --build-arg PYTHON_VERSION=$PYTHON_VERSION_NUMBER_ONLY --build-arg MATLAB_VERSION=$MATLAB_VERSION -f deploy/MATLAB-Dockerfile -t $IMAGE_NAME .
  fi
 
 # Check the command works!
-docker run \
+docker run --rm \
   --entrypoint /bin/sh $IMAGE_NAME\
   -c "imap-mag hello world"

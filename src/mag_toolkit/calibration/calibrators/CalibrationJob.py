@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
-from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io import FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
+from mag_toolkit.calibration.CalibrationConfig import CalibrationConfig
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 
 logger = logging.getLogger(__name__)

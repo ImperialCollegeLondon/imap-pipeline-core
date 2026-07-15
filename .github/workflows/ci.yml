@@ -32,6 +32,7 @@ concurrency:
 
 env:
   PREFERED_PYTHON_VERSION: "3.14"
+  MATLAB_VERSION: "R2026a"
   CALIBRATION_TAG: "v0.2.0"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
@@ -222,13 +223,13 @@ jobs:
         with:
           report_name: Coverage Report (${{ matrix.python-versions }})
           path: "coverage.xml"
-          minimum_coverage: 80
+          minimum_coverage: 90
           fail_below_threshold: true
 
   matlab-build:
     strategy:
       matrix:
-        python-versions: ["3.11", "3.12", "3.13", "3.14"]
+        python-versions: ["3.14"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -349,6 +350,9 @@ jobs:
         with:
           context: .
           file: deploy/MATLAB-Dockerfile
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-versions }}
+            MATLAB_VERSION=${{ env.MATLAB_VERSION }}
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}

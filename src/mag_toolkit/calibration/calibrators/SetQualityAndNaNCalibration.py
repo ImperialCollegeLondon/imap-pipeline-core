@@ -5,10 +5,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from imap_mag.config.CalibrationConfig import CalibrationConfig
 from imap_mag.io.file import CalibrationLayerPathHandler, SciencePathHandler
 from imap_mag.io.FileFinder import FileFinder
 from imap_mag.util import Level, ScienceMode
+from mag_toolkit.calibration.CalibrationConfig import (
+    CalibrationConfig,
+    SetQualityAndNaNConfig,
+)
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -86,14 +89,14 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
     ) -> tuple[Path, Path]:
-        if config.set_quality_and_nan is None:
-            raise ValueError(
-                "SetQualityAndNaN calibration requires a set_quality_and_nan configuration "
-                "with a csv_file path."
+        if not isinstance(config, SetQualityAndNaNConfig):
+            raise TypeError(
+                "SetQualityAndNaNCalibration requires a SetQualityAndNaNConfig, "
+                f"got {type(config).__name__}."
             )
 
         csv_path = self._finder.find_by_name_or_path(
-            config.set_quality_and_nan.csv_file, throw_if_not_found=True
+            config.csv_file, throw_if_not_found=True
         )
 
         input_df = pd.read_csv(

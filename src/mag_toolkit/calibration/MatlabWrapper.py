@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+from pathlib import Path
 from shutil import which
 
 logger = logging.getLogger(__name__)
@@ -33,19 +34,39 @@ def get_matlab_command():
         return "matlab"
 
 
-def call_matlab(command, first_call=True, timeout=60 * 5):
-    """Run a MATLAB batch command, folding path setup into the first invocation.
+def call_matlab(
+    command,
+    timeout=60 * 5,
+    cwd: Path | str | None = None,
+    include_project_paths: bool = True,
+):
+    """Run a MATLAB batch command, folding project path setup into the first call.
 
-    On the first call in a process (``first_call=True`` and path not yet
-    initialised) the ``addpath``/``savepath`` preamble is prepended to
-    ``command`` so that both path setup and the actual work happen in a
-    single MATLAB cold-start instead of two.
+    When ``include_project_paths`` is True and the imap-mag project paths have not
+    yet been set up in this process, the ``addpath``/``savepath`` preamble is
+    prepended to ``command`` so that both path setup and the actual work happen in
+    a single MATLAB cold-start instead of two. Subsequent calls skip the preamble
+    (it is persisted via ``savepath``), and self-contained external MATLAB projects
+    pass ``include_project_paths=False`` to opt out entirely.
+
+    ``DISPLAY`` is always removed from the environment so MATLAB never tries to
+    open plot windows.
+
+    Args:
+        command: The MATLAB command to run inside ``matlab -batch``.
+        timeout: Timeout in seconds for the MATLAB process.
+        cwd: Working directory to run MATLAB from. When calibrating with an
+            externally-acquired MATLAB project the working directory must be the
+            root of that project so its own ``addpath(pwd)`` logic resolves.
+        include_project_paths: If True, prepend the imap-mag project MATLAB path
+            preamble on the first call. Set False when invoking a self-contained
+            external MATLAB project that sets up its own paths.
     """
     global _matlab_path_initialized
 
     MATLAB_COMMAND = get_matlab_command()
 
-    if first_call and not _matlab_path_initialized:
+    if include_project_paths and not _matlab_path_initialized:
         batch_command = _build_path_setup_prefix() + command
         _matlab_path_initialized = True
         logger.info(
@@ -56,9 +77,20 @@ def call_matlab(command, first_call=True, timeout=60 * 5):
 
     cmd = [MATLAB_COMMAND, "-nodesktop", "-batch", batch_command]
 
-    logger.info(f"Calling MATLAB with command: \n  {' '.join(cmd)}")
+    # Always unset DISPLAY so MATLAB does not attempt to open plot windows.
+    env = os.environ.copy()
+    env.pop("DISPLAY", None)
+
+    logger.info(
+        f"Calling MATLAB with command (cwd={cwd or os.getcwd()}): \n  {' '.join(cmd)}"
+    )
     p = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        cwd=str(cwd) if cwd is not None else None,
+        env=env,
     )
 
     while (line := p.stdout.readline()) != "":  # type: ignore

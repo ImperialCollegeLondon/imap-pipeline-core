@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 import logging
 import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
-from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider
+
+if TYPE_CHECKING:
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +172,7 @@ class File(Base):
         hash: str | None,
         content_date: datetime | None,
         settings: AppSettings,
-    ) -> "File":
+    ) -> File:
         if not file.exists():
             raise FileNotFoundError(f"File {file} does not exist.")
 

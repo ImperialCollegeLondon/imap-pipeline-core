@@ -266,3 +266,31 @@ class TestFromFilenameAdvanced:
 
         assert handler is not None
         assert handler.kernel_folder == "sclk"
+
+
+class TestParseMetakernelKernels:
+    def test_strips_symbol_prefix(self, tmp_path):
+        mk = tmp_path / "mk.txt"
+        mk.write_text(
+            "KERNELS_TO_LOAD = ( '$KERNELS/lsk/naif0012.tls',\n"
+            "                    '$KERNELS/spk/de440.bsp' )\n"
+        )
+        kernels = SPICEPathHandler.parse_metakernel_kernels(mk)
+        assert kernels == ["lsk/naif0012.tls", "spk/de440.bsp"]
+
+    def test_no_kernels_to_load_block_returns_empty(self, tmp_path):
+        mk = tmp_path / "mk.txt"
+        mk.write_text("\\begintext\nNo kernels here.\n")
+        assert SPICEPathHandler.parse_metakernel_kernels(mk) == []
+
+
+class TestRewriteMetakernelPathValues:
+    def test_normalises_path_values_to_relative_spice(self):
+        text = (
+            "PATH_VALUES     = ( '/some/absolute/datastore/spice' )\n"
+            "KERNELS_TO_LOAD = ( '$KERNELS/lsk/naif0012.tls' )\n"
+        )
+        rewritten = SPICEPathHandler.rewrite_metakernel_path_values(text)
+        assert "PATH_VALUES     = ( 'spice' )" in rewritten
+        assert "/some/absolute/datastore/spice" not in rewritten
+        assert "$KERNELS/lsk/naif0012.tls" in rewritten

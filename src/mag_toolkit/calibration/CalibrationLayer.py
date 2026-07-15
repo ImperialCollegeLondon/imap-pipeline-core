@@ -10,6 +10,7 @@ import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from pydantic import PrivateAttr
 
+from imap_mag import get_version
 from imap_mag.io.file import CalibrationLayerPathHandler, IFilePathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -231,6 +232,11 @@ class CalibrationLayer(Layer):
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
 
+        return self.save_calibration_layer(
+            filepath, createDirectory, save_contents=True
+        )
+
+    def save_calibration_layer(self, filepath, createDirectory, save_contents=True):
         if self._contents is not None:
             if self.metadata.data_filename is None:
                 self.metadata.data_filename = Path(
@@ -239,8 +245,18 @@ class CalibrationLayer(Layer):
                     .get_filename()
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
-            self._write_to_csv(data_file_path, createDirectory)
+            if save_contents:
+                self._write_to_csv(data_file_path, createDirectory)
+
+        data_file_path = filepath.parent / self.metadata.data_filename
+        if self.metadata.data_hash is None and data_file_path.exists():
             self.metadata.data_hash = IFilePathHandler.default_file_hash(data_file_path)
+
+        dependency = f"imap-pipeline-core version {get_version()}"
+        if self.metadata.dependencies is None:
+            self.metadata.dependencies = []
+        if dependency not in self.metadata.dependencies:
+            self.metadata.dependencies.append(dependency)
 
         created = super()._write_to_json(filepath, createDirectory)
         return created

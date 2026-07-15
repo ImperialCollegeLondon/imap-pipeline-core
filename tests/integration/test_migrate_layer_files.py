@@ -72,8 +72,12 @@ def _write_old_layer_pair(
         value_type=ValueType.BOUNDARY_CHANGES_ONLY,
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
     )
+    # Write the JSON directly via the base Layer serialization, bypassing
+    # CalibrationLayer.save_calibration_layer (which would compute data_hash
+    # from the CSV now sitting on disk).
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    with open(json_path, "w+") as f:
+        f.write(layer.getWriteable())
 
     assert json_path.exists()
     assert csv_path.exists()
