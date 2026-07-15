@@ -14,6 +14,7 @@ class NOAAPathHandler(IFilePathHandler):
     """Path handler for NOAA files."""
 
     mission: str
+    instrument: str
     root_folder: str = "noaa"
     content_date: datetime | None = None  # date data belongs to
     extension: str = "csv"
@@ -34,7 +35,7 @@ class NOAAPathHandler(IFilePathHandler):
         super()._check_property_values("file name", ["content_date"])
         assert self.content_date
 
-        return f"{self.mission}_noaa_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
+        return f"{self.mission}_{self.instrument}_noaa_{self.content_date.strftime('%Y%m%d')}.{self.extension}"
 
     def add_metadata(self, metadata: dict) -> None:
         raise NotImplementedError()
@@ -45,7 +46,7 @@ class NOAAPathHandler(IFilePathHandler):
     @classmethod
     def from_filename(cls, filename: str | Path) -> "NOAAPathHandler | None":
         match = re.match(
-            r"(?P<mission>\w+)_noaa_(?P<date>\d{8})\.(?P<ext>\w+)",
+            r"(?P<mission>\w+)_(?P<instrument>\w+)_noaa_(?P<date>\d{8})\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -58,6 +59,7 @@ class NOAAPathHandler(IFilePathHandler):
         else:
             return cls(
                 mission=match["mission"],
+                instrument=match["instrument"],
                 content_date=datetime.strptime(match["date"], "%Y%m%d"),
                 extension=match["ext"],
             )
