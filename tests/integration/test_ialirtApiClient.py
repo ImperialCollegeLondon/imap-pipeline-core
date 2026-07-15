@@ -57,23 +57,28 @@ def test_download_ialirt_data_in_chunks(
     ]
 
     # 1 hour increments
+    # priority=1 ensures these exact URL mappings always beat any lower-priority
+    # pattern-based fallback mappings added by other tests in the same session.
     wiremock_manager.add_string_mapping(
         "/space-weather?instrument=mag&time_utc_start=2025-10-14T03%3A00%3A00&time_utc_end=2025-10-14T04%3A00%3A00",
         json.dumps(
             {"meta": {"count": 1, "instrument": "mag"}, "data": response_chunk1}
         ),
+        priority=1,
     )
     wiremock_manager.add_string_mapping(
         "/space-weather?instrument=mag&time_utc_start=2025-10-14T04%3A00%3A00&time_utc_end=2025-10-14T05%3A00%3A00",
         json.dumps(
             {"meta": {"count": 1, "instrument": "mag"}, "data": response_chunk2}
         ),
+        priority=1,
     )
     wiremock_manager.add_string_mapping(
         "/space-weather?instrument=mag&time_utc_start=2025-10-14T05%3A00%3A00&time_utc_end=2025-10-14T06%3A00%3A00",
         json.dumps(
             {"meta": {"count": 1, "instrument": "mag"}, "data": response_chunk3}
         ),
+        priority=1,
     )
 
     ialirt_data_access = IALiRTApiClient(
