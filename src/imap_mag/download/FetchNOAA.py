@@ -1,7 +1,6 @@
 """Program to retrieve and process NOAA RTSW mag and plasma data."""
 
 import logging
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -34,13 +33,32 @@ class FetchNOAA:
         """Transform the date index in a series of python datetime objects."""
         return pd.to_datetime(data[self._DATE_INDEX]).dt.to_pydatetime()
 
-    def _download_csv(
+    def download_csv(
         self,
         spacecraft: Literal["SOLAR1", "ACE"],
         instrument: Literal["mag", "plasma"],
-        process_fn: Callable[[pd.DataFrame], pd.DataFrame],
     ) -> dict[Path, IFilePathHandler]:
-        """Downloads the data from the server and saves it as CSV."""
+        """Downloads the data from the server and saves it as CSV.
+
+        Args:
+            spacecraft: The spacecraft to retrieve the data for. Must be "SOLAR1" or
+                "ACE"
+            instrument: The instrument to retrieve. Must be `mag` or `plasma`.
+
+        Returns:
+            A dicitonary of paths and path handlers with the data.
+        """
+        if spacecraft not in ("SOLAR1", "ACE"):
+            raise ValueError(
+                "Invalid spacecraft requested. "
+                f"It must be 'SOLAR1' or 'ACE', but '{spacecraft}' found"
+            )
+
+        if instrument not in ("mag", "plasma"):
+            raise ValueError(
+                f"Invalid instrument type requested for {spacecraft}. "
+                f"It must be 'mag' or 'plasma', but '{instrument}' found"
+            )
 
         downloaded: list[dict[str, Any]] = self._data_access.get_data(
             spacecraft=spacecraft,
@@ -53,6 +71,7 @@ class FetchNOAA:
             )
             return dict()
 
+        process_fn = _process_noaa_mag if instrument == "mag" else _process_noaa_plasma
         downloaded_data = process_fn(pd.DataFrame(downloaded))
         return self._add_to_files(spacecraft, instrument, downloaded_data)
 
@@ -136,9 +155,56 @@ class FetchNOAA:
                 file_path, mode=write_mode, header=(write_mode == "w"), index=True
             )
             logger.debug(
-                f"I-ALiRT {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
+                f"{spacecraft} {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
             )
 
             downloaded_files[file_path] = path_handler
 
         return downloaded_files
+
+
+def _process_noaa_mag(data: pd.DataFrame) -> pd.DataFrame:
+    """Process the mag data to pick only the relevant columns.
+
+    Args:
+        data: Mag data to process.
+
+    Returns:
+        Dataframe with processed mag data.
+    """
+    expected_columns = [
+        "time_tag",
+        "bx_gsm",
+        "by_gsm",
+        "bz_gsm",
+        "theta_gsm",
+        "phi_gsm",
+    ]
+    return data[expected_columns]
+
+
+def _process_noaa_plasma(data: pd.DataFrame) -> pd.DataFrame:
+    """Process the plasma data to pick only the relevant columns.
+
+    It also renames the columns to remove the 'proton_' prefix.
+
+    Args:
+        data: Plasma data to process.
+
+    Returns:
+        Dataframe with processed plasma data.
+    """
+    expected_columns = [
+        "time_tag",
+        "proton_speed",
+        "proton_temperature",
+        "proton_density",
+    ]
+    data: pd.DataFrame = data[expected_columns]
+    return data.rename(
+        columns={
+            "proton_speed": "speed",
+            "proton_temperature": "temperature",
+            "proton_density": "density",
+        }
+    )
