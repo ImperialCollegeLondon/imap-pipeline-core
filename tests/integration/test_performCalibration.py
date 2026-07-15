@@ -5,7 +5,8 @@ import pytest
 
 from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, Sensor
+from mag_toolkit.calibration import Sensor
+from mag_toolkit.calibration.CalibrationConfig import EmptyCalibrationConfig
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -59,8 +60,7 @@ def test_calibrate_flow_creates_calibration_layer(
     results = calibrate_flow(
         start_date=datetime(2026, 1, 16),
         mode=ScienceMode.Normal,
-        method=CalibrationMethod.NOOP,
-        configuration=None,
+        configuration=EmptyCalibrationConfig(),
         sensor=Sensor.MAGO,
         save_mode=SaveMode.LocalOnly,
     )
@@ -82,8 +82,7 @@ def test_calibrate_and_apply_flow_creates_output(
 ):
     calibrate_and_apply_flow(
         start_date=datetime(2026, 1, 16),
-        method=CalibrationMethod.NOOP,
-        configuration=None,
+        configuration=EmptyCalibrationConfig(),
         mode=ScienceMode.Normal,
         sensor=Sensor.MAGO,
         save_mode=SaveMode.LocalOnly,

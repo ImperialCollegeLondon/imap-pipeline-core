@@ -123,7 +123,7 @@ class TestUploadNewFiles:
         )
         mock_db.get_files_since.return_value = []
 
-        result = await upload_new_files(
+        result = await upload_new_files.fn(
             destination_block_or_blockname="test-block",
             how_many=None,
             app_settings=mock_settings,
@@ -158,7 +158,7 @@ class TestUploadNewFiles:
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.upload_file_flow",
             new_callable=AsyncMock,
         ) as mock_upload:
-            await upload_new_files(
+            await upload_new_files.fn(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,
@@ -195,7 +195,7 @@ class TestUploadNewFiles:
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.upload_file_flow",
             new_callable=AsyncMock,
         ):
-            result = await upload_new_files(
+            result = await upload_new_files.fn(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,
@@ -220,7 +220,7 @@ class TestRemoveDeletedFiles:
         )
         mock_db.get_files_deleted_since.return_value = []
 
-        result = await remove_deleted_files(
+        result = await remove_deleted_files.fn(
             destination_block_or_blockname="test-block",
             how_many=None,
             app_settings=mock_settings,
@@ -253,7 +253,7 @@ class TestRemoveDeletedFiles:
             "prefect_server.uploadSharedDocsFlow.prefect_managedfiletransfer.delete_files_flow",
             new_callable=AsyncMock,
         ):
-            result = await remove_deleted_files(
+            result = await remove_deleted_files.fn(
                 destination_block_or_blockname="test-block",
                 how_many=None,
                 app_settings=mock_settings,

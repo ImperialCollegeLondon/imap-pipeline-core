@@ -75,14 +75,14 @@ class CalibrationMethod(Enum):
         self.short_name = short_name
         self.long_name = long_name
 
-    KEPKO = "kepko", "Kepko"
-    LEINWEBER = "leinweber", "Leinweber"
-    IMAPLO_PIVOT = "imaplo", "IMAP-Lo Pivot Platform Interference"
     GRADIOMETER = "gradiometer", "Gradiometer"
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
-    MANUAL = "manual", "Manual offsets"
     SET_QUALITY_AND_NAN = "quality", "Set Quality and NaN"
+    SCRIPTED_L2_CALIBRATION = (
+        "manual",
+        "Scripted L2 Calibration (MATLAB calibrate L2 script)",
+    )
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":
@@ -91,6 +91,20 @@ class CalibrationMethod(Enum):
                 return method
 
         raise ValueError(f"Unknown calibration method: {name}")
+
+
+class DatastoreAccessMode(StrEnum):
+    """How a calibration job that shells out to MATLAB accesses the datastore.
+
+    READ_DIRECTLY: MATLAB reads the datastore in place via the path in the
+        generated file-path config (default).
+    LOCAL_WORK_FOLDER_COPY: a sparse copy of just the files needed for the days
+        being calibrated is built in the work folder, and MATLAB is pointed at
+        that instead.
+    """
+
+    READ_DIRECTLY = "read_directly"
+    LOCAL_WORK_FOLDER_COPY = "local_work_folder_copy"
 
 
 class Sensor(StrEnum):
@@ -118,7 +132,7 @@ def serialize_dt(dt: np.datetime64, _info):
 class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     data_filename: Path | None = None
     data_hash: str | None = None
-    dependencies: list[str]
+    dependencies: list[str] = []
     science: list[str]
     content_date: Annotated[
         np.datetime64 | None,

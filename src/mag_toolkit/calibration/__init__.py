@@ -3,6 +3,7 @@ from .CalibrationDefinitions import (
     CalibrationMetadata,
     CalibrationMethod,
     CalibrationValue,
+    DatastoreAccessMode,
     Mission,
     ScienceValue,
     Sensor,
@@ -13,6 +14,7 @@ from .calibrators import (
     CalibrationJob,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
+    ScriptedL2CalibrationJob,
     SetQualityAndNaNCalibrationJob,
 )
 from .ScienceLayer import ScienceLayer
@@ -25,11 +27,13 @@ __all__ = [
     "CalibrationMetadata",
     "CalibrationMethod",
     "CalibrationValue",
+    "DatastoreAccessMode",
     "EmptyCalibrationJob",
     "GradiometerCalibrationJob",
     "Mission",
     "ScienceLayer",
     "ScienceValue",
+    "ScriptedL2CalibrationJob",
     "Sensor",
     "SetQualityAndNaNCalibrationJob",
 ]

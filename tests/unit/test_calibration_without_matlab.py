@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
@@ -8,6 +9,11 @@ from tests.util.miscellaneous import (
     copy_test_file,
     write_calibration_layer_pair,
 )
+
+
+def _cal_work_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
+    """The calibrate command's dynamic work folder (base/calibrate_{date}_{mode})."""
+    return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}"
 
 
 def test_empty_calibrator_makes_correct_matlab_call(
@@ -24,7 +30,10 @@ def test_empty_calibrator_makes_correct_matlab_call(
     def mock_call_matlab(command):
         assert command.startswith("calibration.wrappers.run_empty_calibrator")
         write_calibration_layer_pair(
-            dynamic_work_folder, "noop-norm", datetime(2025, 10, 17), 1
+            _cal_work_folder(dynamic_work_folder, datetime(2025, 10, 17)),
+            "noop-norm",
+            datetime(2025, 10, 17),
+            1,
         )
 
     monkeypatch.setattr(
@@ -57,7 +66,10 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
     def mock_call_matlab(command):
         assert command.startswith("calibration.wrappers.run_gradiometry")
         write_calibration_layer_pair(
-            dynamic_work_folder, "gradiometer-norm", datetime(2026, 9, 30), 1
+            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
+            "gradiometer-norm",
+            datetime(2026, 9, 30),
+            1,
         )
 
     monkeypatch.setattr(
@@ -92,13 +104,15 @@ def test_gradiometer_calibrator_finds_next_viable_version(
 ):
     """Calibration always produces v001 output; datastore bumps to v002 when v001 already exists."""
 
+    work = _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30))
+
     def mock_call_matlab(command):
         assert (
             command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{dynamic_work_folder}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer_20260930_v001.json", "{dynamic_work_folder}/imap_mag_gradiometer-norm-layer-data_20260930_v001.csv", "{temp_datastore}", "0.25", "10.0")'
+            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{work}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{work}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{work}/imap_mag_gradiometer-norm-layer_20260930_v001.json", "{work}/imap_mag_gradiometer-norm-layer-data_20260930_v001.csv", "{temp_datastore}", "0.25", "10.0")'
         )
         write_calibration_layer_pair(
-            dynamic_work_folder, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=0
+            work, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=0
         )
 
     monkeypatch.setattr(
@@ -143,7 +157,11 @@ def test_calibration_layer_versioned_together_when_only_json_exists(
     def mock_call_matlab(command):
         # Calibration always emits v001 — versioning is the datastore's job
         write_calibration_layer_pair(
-            dynamic_work_folder, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=0
+            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
+            "gradiometer-norm",
+            datetime(2026, 9, 30),
+            1,
+            seed=0,
         )
 
     monkeypatch.setattr(
@@ -188,7 +206,11 @@ def test_calibration_layer_versioned_together_when_only_csv_exists(
     def mock_call_matlab(command):
         # Calibration always emits v001 — versioning is the datastore's job
         write_calibration_layer_pair(
-            dynamic_work_folder, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=0
+            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
+            "gradiometer-norm",
+            datetime(2026, 9, 30),
+            1,
+            seed=0,
         )
 
     monkeypatch.setattr(
