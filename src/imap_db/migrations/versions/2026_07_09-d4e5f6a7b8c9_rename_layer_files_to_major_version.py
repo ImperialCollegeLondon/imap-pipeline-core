@@ -138,6 +138,7 @@ def _run_migration(connection: sa.engine.Connection, datastore_path: Path) -> No
                     and isinstance(data.get("metadata"), dict)
                     and "data_filename" in data["metadata"]
                 ):
+                    data["id"] = new_name
                     data["metadata"]["data_filename"] = new_csv_name
                     with open(new_json_disk_path, "w") as f:
                         json.dump(data, f, indent=2)
