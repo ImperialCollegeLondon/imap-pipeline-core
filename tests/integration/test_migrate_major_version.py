@@ -115,6 +115,7 @@ def test_migrate_major_version_renames_legacy_layer_files_and_updates_version_ma
         e) A second run of Migration B raises no errors and leaves the data unchanged.
     """
     date = datetime(2026, 1, 16)
+    initial_last_modified = datetime(2026, 1, 16, 12, 0, 0)
     csv_content = "time,offset_x,offset_y,offset_z\n2026-01-16T00:00:00,1.0,2.0,3.0\n"
 
     store_dir = tmp_path / "calibration" / "layers" / "2026" / "01"
@@ -149,8 +150,8 @@ def test_migrate_major_version_renames_legacy_layer_files_and_updates_version_ma
                 size=json_path.stat().st_size,
                 content_date=date,
                 creation_date=datetime(2026, 1, 16, 12, 0, 0),
-                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
-                software_version=__version__,
+                last_modified_date=initial_last_modified,
+                software_version="0.0.0",
             ),
             File(
                 name=csv_path.name,
@@ -164,8 +165,8 @@ def test_migrate_major_version_renames_legacy_layer_files_and_updates_version_ma
                 size=csv_path.stat().st_size,
                 content_date=date,
                 creation_date=datetime(2026, 1, 16, 12, 0, 0),
-                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
-                software_version=__version__,
+                last_modified_date=initial_last_modified,
+                software_version="0.0.0",
             ),
         ]
     )
@@ -211,6 +212,12 @@ def test_migrate_major_version_renames_legacy_layer_files_and_updates_version_ma
     assert json_records[0].path == f"calibration/layers/2026/01/{new_json_name}", (
         f"JSON DB record path mismatch: {json_records[0].path!r}."
     )
+    assert json_records[0].software_version == __version__, (
+        "JSON DB record software_version should be set to the current package version."
+    )
+    assert json_records[0].last_modified_date > initial_last_modified, (
+        "JSON DB record last_modified_date should be updated during migration."
+    )
 
     assert len(csv_records) == 1, (
         f"Expected exactly one DB record with name {new_csv_name!r}; got {len(csv_records)}."
@@ -220,6 +227,12 @@ def test_migrate_major_version_renames_legacy_layer_files_and_updates_version_ma
     )
     assert csv_records[0].path == f"calibration/layers/2026/01/{new_csv_name}", (
         f"CSV DB record path mismatch: {csv_records[0].path!r}."
+    )
+    assert csv_records[0].software_version == __version__, (
+        "CSV DB record software_version should be set to the current package version."
+    )
+    assert csv_records[0].last_modified_date > initial_last_modified, (
+        "CSV DB record last_modified_date should be updated during migration."
     )
 
     # --- Assertion (e): idempotency - second run must not raise ---

@@ -25,6 +25,8 @@ from pathlib import Path
 import sqlalchemy as sa
 from alembic import op
 
+from imap_mag import __version__
+
 # revision identifiers, used by Alembic.
 revision = "d4e5f6a7b8c9"
 down_revision = "c3d4e5f6a7b8"
@@ -56,7 +58,9 @@ def _run_migration(connection: sa.engine.Connection, datastore_path: Path) -> No
         {"pattern": _LAYER_JSON_LIKE},
     ).fetchall()
 
-    logger.info(f"Found {len(rows)} active layer JSON files to inspect.")
+    logger.info(
+        f"Found {len(rows)} active layer JSON files to inspect in {datastore_path}."
+    )
 
     for file_id, old_name, old_path, _version_major in rows:
         # --- already in new format? ---
@@ -150,9 +154,17 @@ def _run_migration(connection: sa.engine.Connection, datastore_path: Path) -> No
         # --- update DB: JSON row ---
         connection.execute(
             sa.text(
-                "UPDATE files SET name = :name, path = :path, version_major = 1 WHERE id = :id"
+                "UPDATE files "
+                "SET name = :name, path = :path, version_major = 1, "
+                "last_modified_date = CURRENT_TIMESTAMP, software_version = :software_version "
+                "WHERE id = :id"
             ),
-            {"name": new_name, "path": new_path, "id": file_id},
+            {
+                "name": new_name,
+                "path": new_path,
+                "id": file_id,
+                "software_version": __version__,
+            },
         )
         logger.info(f"Updated DB record {file_id}: {old_name} -> {new_name}.")
 
@@ -160,9 +172,17 @@ def _run_migration(connection: sa.engine.Connection, datastore_path: Path) -> No
         if csv_row is not None:
             connection.execute(
                 sa.text(
-                    "UPDATE files SET name = :name, path = :path, version_major = 1 WHERE id = :id"
+                    "UPDATE files "
+                    "SET name = :name, path = :path, version_major = 1, "
+                    "last_modified_date = CURRENT_TIMESTAMP, software_version = :software_version "
+                    "WHERE id = :id"
                 ),
-                {"name": new_csv_name, "path": new_csv_path, "id": csv_row.id},
+                {
+                    "name": new_csv_name,
+                    "path": new_csv_path,
+                    "id": csv_row.id,
+                    "software_version": __version__,
+                },
             )
             logger.info(f"Updated DB record for CSV {old_csv_name} -> {new_csv_name}.")
 
