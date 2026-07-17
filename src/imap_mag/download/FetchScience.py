@@ -84,6 +84,14 @@ class FetchScience:
                         f"Downloaded file from SDC Data Access: {downloaded_file}"
                     )
 
+                    version_str = file["version"].lstrip("v")
+                    if "." in version_str:
+                        parts = version_str.split(".", 1)
+                        version_major = int(parts[0])
+                        version = int(parts[1])
+                    else:
+                        version_major = 1  # legacy: treat as major 1
+                        version = int(version_str)
                     downloaded[downloaded_file] = SciencePathHandler(
                         level=level.value,
                         descriptor=file["descriptor"],
@@ -91,7 +99,9 @@ class FetchScience:
                         ingestion_date=datetime.strptime(
                             file["ingestion_date"], "%Y%m%d %H:%M:%S"
                         ),
-                        version=int(file["version"].lstrip("v")),
+                        version=version,
+                        version_major=version_major,
+                        has_major_version=("." in file["version"].lstrip("v")),
                         extension="cdf",
                         version_is_locked=True,  # lock version for files downloaded from SDC as they should not be changed
                     )

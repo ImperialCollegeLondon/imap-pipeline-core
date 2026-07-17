@@ -158,10 +158,12 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     metadata_path, data_path = job.run_calibration(_handler(7), config)
 
     assert (
-        metadata_path == work_folder / "imap_mag_manual-norm-layer_20260130_v007.json"
+        metadata_path
+        == work_folder / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
     )
     assert (
-        data_path == work_folder / "imap_mag_manual-norm-layer-data_20260130_v007.csv"
+        data_path
+        == work_folder / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
     )
     assert metadata_path.exists() and data_path.exists()
 
@@ -387,9 +389,9 @@ def test_scripted_calibrate_cli_publishes_layer(
     assert len(results) == 1
     assert (
         temp_datastore
-        / "calibration/layers/2026/01/imap_mag_manual-norm-layer_20260130_v001.json"
+        / "calibration/layers/2026/01/imap_mag_manual-norm-layer_20260130_v001.0001.json"
     ).exists()
     assert (
         temp_datastore
-        / "calibration/layers/2026/01/imap_mag_manual-norm-layer-data_20260130_v001.csv"
+        / "calibration/layers/2026/01/imap_mag_manual-norm-layer-data_20260130_v001.0001.csv"
     ).exists()

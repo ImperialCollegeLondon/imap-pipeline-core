@@ -27,6 +27,7 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     HKBinaryPathHandler,
     HKDecodedPathHandler,
+    SciencePathHandler,
 )
 from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -809,9 +810,9 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     # Verify version bumped
     assert path_handler.version == 2
 
-    # Verify the source passed to inner manager was the rewritten JSON referencing v002 CSV
+    # Verify the source passed to inner manager was the rewritten JSON referencing v001.0002 CSV
     assert captured_contents[0]["metadata"]["data_filename"] == (
-        "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+        "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
     )
 
     # Verify DB record for v002 stores the companion CSV hash
@@ -1075,6 +1076,118 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     assert database_files[0].hash == hashlib.md5(file_contents.encode()).hexdigest()
     assert database_files[0].path == str(path_handler.get_full_path())
     assert database_files[0].deletion_date is None
+
+
+def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """SciencePathHandler with version_major=2 stores version_major=2 in the DB record."""
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_science_file_vmaj", "science content vmaj"
+    )
+    path_handler = SciencePathHandler(
+        level="l2-pre",
+        descriptor="norm-srf",
+        content_date=datetime(2026, 1, 16),
+        version=1,
+        version_major=2,
+        has_major_version=True,
+        extension="cdf",
+    )
+
+    test_file = Path(tempfile.gettempdir()) / "test_science_version_major.cdf"
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "science content vmaj"),
+        path_handler,
+    )
+    mock_database.get_files.return_value = []
+
+    captured_files: list[File] = []
+    mock_database.upsert_file.side_effect = lambda f: captured_files.append(f)
+
+    # Exercise.
+    database_manager.add_file(original_file, path_handler)
+
+    # Verify: version_major must be persisted in the DB record.
+    assert len(captured_files) == 1
+    assert captured_files[0].version_major == 2
+
+
+def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mixed_legacy_and_new_format_files(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """__get_next_available_version skips both legacy-format (v001) and new-format
+    (v001.0002) version slots that are already occupied in the DB, regardless of
+    which naming convention they originally used."""
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_science_mixed_fmt", "new science content"
+    )
+    path_handler = SciencePathHandler(
+        level="l2-pre",
+        descriptor="norm-srf",
+        content_date=datetime(2026, 1, 16),
+        version=1,
+        version_major=1,
+        has_major_version=True,
+        extension="cdf",
+    )
+
+    # Pre-populate DB with one legacy-format file (version=1) and one new-format
+    # file (version=2).  The new file has different content so no hash match occurs.
+    folder = "science/mag/l2-pre/2026/01"
+    mock_database.get_files.return_value = [
+        File(
+            name="imap_mag_l2-pre_norm-srf_20260116_v001.cdf",
+            path=f"{folder}/imap_mag_l2-pre_norm-srf_20260116_v001.cdf",
+            descriptor="imap_mag_l2-pre_norm-srf",
+            version=1,
+            version_major=0,
+            hash="legacy_hash_v001",
+            size=100,
+            content_date=datetime(2026, 1, 16),
+            software_version=__version__,
+        ),
+        File(
+            name="imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            path=f"{folder}/imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            descriptor="imap_mag_l2-pre_norm-srf",
+            version=2,
+            version_major=1,
+            hash="new_fmt_hash_v001_0002",
+            size=100,
+            content_date=datetime(2026, 1, 16),
+            software_version=__version__,
+        ),
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "test_science_mixed_fmt.cdf"
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "new science content"),
+        path_handler,
+    )
+
+    captured_files: list[File] = []
+    mock_database.upsert_file.side_effect = lambda f: captured_files.append(f)
+
+    # Exercise.
+    database_manager.add_file(original_file, path_handler)
+
+    # Verify: version is bumped past both v1 (legacy) and v2 (new format) to v3.
+    assert path_handler.version == 3
+    assert len(captured_files) == 1
+    assert captured_files[0].version == 3
 
 
 class TestDBIndexedDatastoreFileManagerUnit:

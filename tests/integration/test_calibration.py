@@ -60,10 +60,10 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
         method=CalibrationMethod.NOOP,
     )
     assert Path(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.0001.json"
     ).exists()
     with open(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.json"
+        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.0001.json"
     ) as f:
         noop_layer = json.load(f)
 
@@ -76,7 +76,7 @@ def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
 
     layer_data = (
         clean_datastore
-        / "calibration/layers/2025/04/imap_mag_noop-norm-layer-data_20250421_v001.csv"
+        / "calibration/layers/2025/04/imap_mag_noop-norm-layer-data_20250421_v001.0001.csv"
     )
     assert layer_data.exists()
     with open(layer_data) as f:
@@ -115,7 +115,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
     )
     layer_metadata = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.json"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.0001.json"
     )
     assert layer_metadata.exists()
     with open(layer_metadata) as f:
@@ -130,7 +130,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
 
     layer_data = (
         temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v001.csv"
+        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v001.0001.csv"
     )
     assert layer_data.exists()
     with open(layer_data) as f:

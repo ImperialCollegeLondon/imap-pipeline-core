@@ -366,8 +366,8 @@ def test_calibrate_creates_layer_json_and_csv_file(temp_datastore, dynamic_work_
         f"Expected 2 files (json + csv) but found {len(layer_files)}: {[f.name for f in layer_files]}"
     )
     expected = [
-        "imap_mag_quality-norm-layer-data_20260116_v001.csv",
-        "imap_mag_quality-norm-layer_20260116_v001.json",
+        "imap_mag_quality-norm-layer-data_20260116_v001.0001.csv",
+        "imap_mag_quality-norm-layer_20260116_v001.0001.json",
     ]
     actual = sorted(f.name for f in layer_files)
     assert actual == expected, f"Expected files {expected} but found {actual}"
@@ -404,7 +404,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -570,7 +570,7 @@ def test_apply_empty_quality_layer_does_not_overwrite_existing_nan(
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -642,7 +642,7 @@ def test_apply_empty_quality_layer_on_top_of_existing_flags_and_bitmasks_does_no
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -762,7 +762,7 @@ def test_apply_quality_layer_on_top_of_existing_flags_and_bitmasks_can_override_
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -871,15 +871,15 @@ def test_calibrate_twice_identical_config_deduplicates_to_v001(
             save_mode=SaveMode.LocalAndDatabase,
         )
 
-    v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.json"
-    v001_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.csv"
-    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
-    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0001.json"
+    v001_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0001.csv"
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
 
-    assert v001_json.exists(), "v001 JSON must exist"
-    assert v001_csv.exists(), "v001 CSV must exist"
-    assert not v002_json.exists(), "Identical second run must NOT create v002 JSON"
-    assert not v002_csv.exists(), "Identical second run must NOT create v002 CSV"
+    assert v001_json.exists(), "v001.0001 JSON must exist"
+    assert v001_csv.exists(), "v001.0001 CSV must exist"
+    assert not v002_json.exists(), "Identical second run must NOT create v001.0002 JSON"
+    assert not v002_csv.exists(), "Identical second run must NOT create v001.0002 CSV"
 
     layer = CalibrationLayer.from_file(v001_json, load_contents=False)
     assert layer.metadata.data_filename.name == v001_csv.name
@@ -924,12 +924,12 @@ def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
         save_mode=SaveMode.LocalAndDatabase,
     )
 
-    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
-    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
-    assert v002_json.exists(), "Different second run must produce v002 JSON"
-    assert v002_csv.exists(), "Different second run must produce v002 CSV"
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
+    assert v002_json.exists(), "Different second run must produce v001.0002 JSON"
+    assert v002_csv.exists(), "Different second run must produce v001.0002 CSV"
 
     layer = CalibrationLayer.from_file(v002_json, load_contents=False)
     assert layer.metadata.data_filename.name == v002_csv.name, (
-        "v002 JSON must reference v002 CSV"
+        "v001.0002 JSON must reference v001.0002 CSV"
     )
