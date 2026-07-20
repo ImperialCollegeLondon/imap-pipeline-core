@@ -52,7 +52,7 @@ class TestCreateQueues:
             [
                 PREFECT_CONSTANTS.QUEUES.HIGH_PRIORITY,
                 PREFECT_CONSTANTS.QUEUES.DEFAULT,
-                PREFECT_CONSTANTS.QUEUES.LOW,
+                PREFECT_CONSTANTS.QUEUES.LOW_BIG,
             ]
         )
 
