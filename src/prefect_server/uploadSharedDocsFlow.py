@@ -47,7 +47,7 @@ async def upload_shared_docs_flow(
         | str
     ) = PREFECT_CONSTANTS.DEFAULT_UPLOAD_DESTINATION_BLOCK_NAME,
     find_files_after: datetime | None = None,
-    how_many: int | None = None,
+    how_many: int | None = 50,
     do_uploads: bool = True,
     do_deletes: bool = True,
     workflow_progress_key: str = PREFECT_CONSTANTS.DEFAULT_UPLOAD_WORKFLOW_PROGRESS_KEY,

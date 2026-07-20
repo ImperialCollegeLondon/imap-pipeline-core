@@ -32,7 +32,7 @@ class TestCreateQueues:
 
         await ServerConfig._create_queues(mock_client, local_debug=False)
 
-        assert mock_client.create_work_queue.call_count == 3
+        assert mock_client.create_work_queue.call_count == 4
 
     @pytest.mark.asyncio
     async def test_skips_existing_queues(self):
@@ -42,7 +42,7 @@ class TestCreateQueues:
 
         await ServerConfig._create_queues(mock_client, local_debug=False)
 
-        assert mock_client.create_work_queue.call_count == 2
+        assert mock_client.create_work_queue.call_count == 3
 
     @pytest.mark.asyncio
     async def test_creates_no_queues_when_all_exist(self):
@@ -52,7 +52,8 @@ class TestCreateQueues:
             [
                 PREFECT_CONSTANTS.QUEUES.HIGH_PRIORITY,
                 PREFECT_CONSTANTS.QUEUES.DEFAULT,
-                PREFECT_CONSTANTS.QUEUES.LOW,
+                PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+                PREFECT_CONSTANTS.QUEUES.LOW_BIG,
             ]
         )
 
