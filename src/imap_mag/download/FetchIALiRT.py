@@ -53,7 +53,11 @@ class FetchIALiRT:
 
             max_hours_per_chunk = 1.5
         else:
-            processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
+            processing_map = {
+                "mag": lambda df: process_ialirt_mag_data(df),
+                "codice_hi": lambda df: process_codice_hi_data(df),
+                "codice_lo": lambda df: process_codice_lo_data(df),
+            }
             process_fn = processing_map.get(instrument.lower(), lambda df: df)
             max_hours_per_chunk = 4
 
@@ -289,5 +293,46 @@ def process_ialirt_hk_data(
                     raise ValueError(
                         f"Unknown conversion type '{conversion['type']}' for column '{col}'."
                     )
+
+    return df
+
+
+def process_codice_hi_data(df: pd.DataFrame):
+    """Flatten raw codice_hi data"""
+    import json
+
+    df["codice_hi_epoch"] = df["codice_hi_epoch"].apply(json.loads)
+    df["codice_hi_h"] = df["codice_hi_h"].apply(json.loads)
+
+    df_exploded = df.explode(["codice_hi_epoch", "codice_hi_h"]).reset_index(drop=True)
+
+    records = []
+    for row in df_exploded.itertuples():
+        base_info = {
+            "time_utc": row.time_utc,
+            "codice_hi_epoch": row.codice_hi_epoch,
+            "instrument": row.instrument,
+            "kernel_set_key": row.kernel_set_key,
+            "ttj2000ns": row.ttj2000ns,
+        }
+
+        for i, dim1 in enumerate(row["codice_hi_h"]):  # type: ignore
+            for j, dim2 in enumerate(dim1):
+                for k, value in enumerate(dim2):
+                    record = base_info.copy()
+                    record["bin_i"] = i
+                    record["bin_j"] = j
+                    record["bin_k"] = k
+                    record["value"] = value
+                    records.append(record)
+
+    return pd.DataFrame(records)
+
+
+def process_codice_lo_data(df: pd.DataFrame):
+    """Handle empty values in codice_lo data"""
+    import numpy as np
+
+    df = df.replace("", np.nan)
 
     return df
