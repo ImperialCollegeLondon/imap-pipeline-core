@@ -103,7 +103,7 @@ class CalibrationMatrix:
             "Discipline": ["Space Physics>Heliospheric Physics"],
             "Data_type": ["L2-calibration>Level-2 calibration matrices"],
             "Descriptor": ["MAG>Magnetometer"],
-            "Data_version": ["v000"],
+            "Data_version": [f"v{0:03d}"],
             "Generation_date": ["20250101"],
             "Logical_file_id": ["imap_mag_l2-calibration_20250101"],
             "Logical_source": ["imap_mag_l2_calibration"],

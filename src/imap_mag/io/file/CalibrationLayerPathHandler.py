@@ -26,6 +26,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
+    version_major: int = 1
+    has_major_version: bool = True
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
@@ -44,7 +46,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         super()._check_property_values("file name", ["descriptor", "content_date"])
         assert self.content_date
 
-        return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
+        if self.has_major_version:
+            return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version_major:03d}.{self.version:04d}.{self.extension}"
+        else:
+            return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
 
     def get_unsequenced_pattern(self) -> re.Pattern:
         super()._check_property_values("pattern", ["descriptor", "content_date"])
@@ -58,24 +63,27 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             )
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{full_descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{full_descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?:(?P<major>\d+)\.)?(?P<version>\d+)\.{self.extension}"
         )
 
     def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":
-        return CalibrationLayerPathHandler(
+        handler = CalibrationLayerPathHandler(
             descriptor=self.descriptor,
             extra_descriptor="-data",
             content_date=self.content_date,
             version=self.version,
             extension="csv",
         )
+        handler.version_major = self.version_major
+        handler.has_major_version = self.has_major_version
+        return handler
 
     @classmethod
     def from_filename(
         cls, filename: str | Path
     ) -> "CalibrationLayerPathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<descr>[^_]+)?-layer(?P<extra_descr>[^_]+)?_(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
+            r"imap_mag_(?P<descr>[^_]+)?-layer(?P<extra_descr>[^_]+)?_(?P<date>\d{8})_v(?P<major_or_minor>\d+)(?:\.(?P<minor>\d+))?\.(?P<ext>\w+)",
             Path(filename).name,
         )
         logger.debug(
@@ -84,14 +92,27 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
 
         if match is None:
             return None
+
+        if match["minor"] is not None:
+            # New format: _vMMM.mmmm.ext
+            version_major = int(match["major_or_minor"])
+            version = int(match["minor"])
+            has_major_version = True
         else:
-            return cls(
-                descriptor=match["descr"],
-                extra_descriptor=match["extra_descr"] or "",
-                content_date=datetime.strptime(match["date"], "%Y%m%d"),
-                version=int(match["version"]),
-                extension=match["ext"],
-            )
+            # Legacy format: _vNNN.ext
+            version_major = 1
+            version = int(match["major_or_minor"])
+            has_major_version = False
+
+        return cls(
+            descriptor=match["descr"],
+            extra_descriptor=match["extra_descr"] or "",
+            content_date=datetime.strptime(match["date"], "%Y%m%d"),
+            version=version,
+            version_major=version_major,
+            has_major_version=has_major_version,
+            extension=match["ext"],
+        )
 
     def increase_sequence(self) -> None:
         super().increase_sequence()

@@ -42,11 +42,12 @@ def test_get_file_path_builds_file_path() -> None:
         level="l1b",
         descriptor="norm-magi",
         start_date=datetime(2025, 5, 2),
-        version="v002",
+        major_version=1,
+        minor_version=2,
     )
 
     # Verify.
-    assert filename == Path("imap_mag_l1b_norm-magi_20250502_v002.cdf")
+    assert filename == Path("imap_mag_l1b_norm-magi_20250502_v001.0002.cdf")
     assert file_path == Path(
         os.path.join("some_test_folder", "imap", "mag", "l1b", "2025", "05", filename)
     )

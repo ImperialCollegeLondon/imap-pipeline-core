@@ -26,6 +26,7 @@ class Layer(BaseModel, ABC):
     validity: Validity
     sensor: Sensor
     version: int
+    version_major: int = 0
     metadata: CalibrationMetadata
     _data_path: Path | None = None
     _contents: pd.DataFrame | None = None

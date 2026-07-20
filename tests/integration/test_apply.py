@@ -18,7 +18,7 @@ from tests.util.miscellaneous import TEST_DATA, copy_test_file, open_cdf
 def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     output_l2_file = (
         datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-{frame}_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-{frame}_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
     output_offsets_file = (
@@ -82,7 +82,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
 
     assert not (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.0001.cdf"
     ).exists()
     assert not (
         temp_datastore
@@ -106,7 +106,7 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
 
     assert not (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.0001.cdf"
     ).exists()
     assert not (
         temp_datastore
@@ -160,7 +160,7 @@ def test_apply_performs_correct_rotation(
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.0001.cdf"
     )
 
     assert output_file.exists()
@@ -207,7 +207,7 @@ def test_apply_adds_offsets_together_correctly(
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.0001.cdf"
     )
 
     assert output_file.exists()
@@ -280,7 +280,7 @@ def test_apply_writes_magnitudes_correctly(
 
     output_file = (
         temp_datastore
-        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.cdf"
+        / "science/mag/l2-pre/2025/10/imap_mag_l2-pre_norm-srf_20251017_v001.0001.cdf"
     )
 
     assert output_file.exists()
@@ -417,4 +417,33 @@ def test_apply_does_not_delete_files_outside_work_folder(
     assert re.search(
         r"Skipping deletion of file outside work folder.*should_not_be_deleted\.cdf",
         capture_cli_logs.text,
+    )
+
+
+def test_apply_output_l2_uses_major_version_format_when_version_major_is_1(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """When version_major=1 (the default configured in imap-mag-config.yaml), apply()
+    writes the output L2-pre science file using the new _vMMM.mmmm naming convention
+    (e.g. _v001.0001.cdf) rather than the legacy _vNNN.cdf format.
+
+    This verifies that AppSettings.version_major drives the output filename via
+    SciencePathHandler.has_major_version / version_major fields set in apply.py.
+    """
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+    )
+
+    # With version_major=1 and version=1 the filename must use _v001.0001.cdf format.
+    output_l2_file = (
+        temp_datastore
+        / "science/mag/l2-pre/2026/01/imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
+    )
+    assert output_l2_file.exists(), (
+        f"Expected L2 file {output_l2_file.name!r} in _vMMM.mmmm format when "
+        "version_major=1 is configured, but it was not found in the datastore."
     )

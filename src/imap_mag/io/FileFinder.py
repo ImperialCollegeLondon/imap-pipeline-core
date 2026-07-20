@@ -214,6 +214,7 @@ class FileFinder:
         mode: ScienceMode,
         sensor: MAGSensor,
         levels_to_search=["l1c", "l1b"],
+        version_major: int | None = None,
     ) -> str:
         """Find the highest version science file for a given date and mode.
         Returns the filename of the highest version match.
@@ -245,6 +246,14 @@ class FileFinder:
                     and handler.get_sensor() == sensor
                 ):
                     candidates.append((f.name, handler.version))
+
+            if version_major is not None:
+                candidates = [
+                    (name, ver)
+                    for name, ver in candidates
+                    if (h := SciencePathHandler.from_filename(name)) is not None
+                    and h.version_major == version_major
+                ]
 
             if candidates:
                 candidates.sort(key=lambda x: x[1], reverse=True)

@@ -7,6 +7,7 @@ import pytest
 
 from imap_mag.config import AppSettings, NestedAliasEnvSettingsSource
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.util.Environment import Environment
 
 
 def test_custom_env_settings_no_aliases_loads_default():
@@ -165,6 +166,24 @@ def test_setup_work_folder_allowed_when_disk_has_space(tmp_path):
         result = config.setup_work_folder(settings)
 
     assert result == tmp_path
+
+
+# ── version_major settings ────────────────────────────────────────────────────
+
+
+def test_version_major_defaults_to_1():
+    """version_major has a default of 1 (also set in the project yaml)."""
+    settings = AppSettings()
+
+    assert settings.version_major == 1
+
+
+def test_version_major_overridden_by_env_var():
+    """MAG_VERSION_MAJOR environment variable overrides the default."""
+    with Environment(MAG_VERSION_MAJOR="2"):
+        settings = AppSettings()
+
+    assert settings.version_major == 2
 
 
 def test_setup_work_folder_blocked_for_sub_folder(tmp_path):

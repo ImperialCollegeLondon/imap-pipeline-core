@@ -336,6 +336,8 @@ def _apply_for_date(
 
         l2_handler.level = "l2-pre"  # set level to l2-pre for the output file naming, as it's pre-release l2
         l2_handler.version = 1  # set version to 0 for the output file naming
+        l2_handler.version_major = app_settings.version_major
+        l2_handler.has_major_version = True
         outputManager.add_file(L2_file, l2_handler)
 
     cleanup_workfolder_after_apply(

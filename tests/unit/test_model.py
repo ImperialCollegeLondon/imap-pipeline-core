@@ -20,6 +20,11 @@ def test_get_descriptor_from_filename():
         ),
         ("imap_mag_l1d_burst-srf_20251207_v001.cdf", "imap_mag_l1d_burst-srf"),
         ("report_2023-05-01_v10.pdf", "report"),
+        # New versioning format: _vMMM.mmmm suffix should be stripped
+        (
+            "imap_mag_l1a_norm-mago_20250101_v001.0001.cdf",
+            "imap_mag_l1a_norm-mago",
+        ),
     ]
 
     for filename, expected_descriptor in test_cases:
@@ -80,6 +85,34 @@ class TestFileArchiveToNewFilePath:
         original.archive_to_new_file_path(Path("/archive/test_file.cdf"))
 
         assert original.deletion_date is not None
+
+    def test_preserves_version_major(self):
+        original = _make_file(version_major=5)
+
+        archived = original.archive_to_new_file_path(Path("/archive/test_file.cdf"))
+
+        assert archived.version_major == 5
+
+
+class TestFileMergeRecord:
+    def test_merge_record_copies_version_major(self):
+        original = _make_file(path="science/mag/l1a/test_file.cdf", version_major=1)
+        updated = _make_file(
+            path="science/mag/l1a/test_file.cdf", version_major=2, hash="newhash"
+        )
+
+        changed = original.merge_record(updated)
+
+        assert changed is True
+        assert original.version_major == 2
+
+    def test_merge_record_returns_false_when_version_major_unchanged(self):
+        original = _make_file(path="science/mag/l1a/test_file.cdf", version_major=1)
+        same = _make_file(path="science/mag/l1a/test_file.cdf", version_major=1)
+
+        changed = original.merge_record(same)
+
+        assert changed is False
 
 
 class TestFileGetDatastoreRelativePath:
@@ -209,6 +242,24 @@ class TestFileFromFile:
         assert "subdir" in f.path
         assert str(tmp_path) not in f.path
 
+    def test_version_major_is_stored_when_provided(self, tmp_path):
+        mock_settings = MagicMock()
+        mock_settings.data_store = tmp_path
+
+        test_file = tmp_path / "test.cdf"
+        test_file.write_bytes(b"content")
+
+        f = File.from_file(
+            test_file,
+            version=1,
+            hash=None,
+            content_date=datetime(2025, 1, 1),
+            settings=mock_settings,
+            version_major=3,
+        )
+
+        assert f.version_major == 3
+
 
 class TestFileFilterToLatestVersionsOnly:
     def test_selects_latest_version_per_date(self):
@@ -265,6 +316,51 @@ class TestFileFilterToLatestVersionsOnly:
         result = File.filter_to_latest_versions_only(files)
 
         assert len(result) == 2
+
+    def test_without_version_major_filter_returns_latest_version_across_all_majors(
+        self,
+    ):
+        files = [
+            _make_file(
+                descriptor="mag-l1a",
+                version=1,
+                version_major=1,
+                content_date=datetime(2025, 1, 1),
+            ),
+            _make_file(
+                descriptor="mag-l1a",
+                version=2,
+                version_major=2,
+                content_date=datetime(2025, 1, 1),
+            ),
+        ]
+
+        result = File.filter_to_latest_versions_only(files)
+
+        assert len(result) == 1
+        assert result[0].version == 2
+
+    def test_with_version_major_filter_restricts_to_that_major(self):
+        files = [
+            _make_file(
+                descriptor="mag-l1a",
+                version=1,
+                version_major=1,
+                content_date=datetime(2025, 1, 1),
+            ),
+            _make_file(
+                descriptor="mag-l1a",
+                version=2,
+                version_major=2,
+                content_date=datetime(2025, 1, 1),
+            ),
+        ]
+
+        result = File.filter_to_latest_versions_only(files, version_major=1)
+
+        assert len(result) == 1
+        assert result[0].version == 1
+        assert result[0].version_major == 1
 
 
 class TestWorkflowProgress:
