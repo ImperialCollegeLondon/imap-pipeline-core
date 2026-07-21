@@ -26,7 +26,6 @@ _ALL_FLOW_NAMES = [
     "cleanup_datastore_flow",
     "index_datastore_flow",
     "calibrate_flow",
-    "gradiometry_flow",
     "apply_flow",
     "calibrate_and_apply_flow",
 ]

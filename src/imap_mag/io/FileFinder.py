@@ -1,7 +1,8 @@
 import fnmatch
 import glob
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Literal, overload
 
@@ -16,6 +17,7 @@ from imap_mag.io.file import (
 )
 from imap_mag.io.FilePathHandlerSelector import FilePathHandlerSelector
 from imap_mag.util import MAGSensor, ScienceMode
+from imap_mag.util.DatetimeProvider import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +214,7 @@ class FileFinder:
         mode: ScienceMode,
         sensor: MAGSensor,
         levels_to_search=["l1c", "l1b"],
+        version_major: int | None = None,
     ) -> str:
         """Find the highest version science file for a given date and mode.
         Returns the filename of the highest version match.
@@ -244,6 +247,14 @@ class FileFinder:
                 ):
                     candidates.append((f.name, handler.version))
 
+            if version_major is not None:
+                candidates = [
+                    (name, ver)
+                    for name, ver in candidates
+                    if (h := SciencePathHandler.from_filename(name)) is not None
+                    and h.version_major == version_major
+                ]
+
             if candidates:
                 candidates.sort(key=lambda x: x[1], reverse=True)
                 logger.info(
@@ -253,6 +264,273 @@ class FileFinder:
 
         raise FileNotFoundError(
             f"No science file found for date {date.strftime('%Y-%m-%d')} and mode {mode.value}"
+        )
+
+    _COVERAGE_PLACEHOLDERS = frozenset({"from_doy", "to_doy", "sequence"})
+    _COVERAGE_PLACEHOLDER_RE = re.compile(r"\{from_doy\}|\{to_doy\}|\{sequence\}")
+    _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+
+    def find_matching_files(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int = 0,
+        days_after: int = 0,
+        highest_sequence_only: bool = False,
+        get_previous_if_empty: bool = False,
+    ) -> list[Path]:
+        """Find files matching ``relative_pattern`` (relative to ``data_store``)
+        that cover the search window ``[start_date - days_before, end_date + days_after]``.
+
+        ``relative_pattern`` is either:
+        - A day-of-year coverage-window pattern, using ``{from_doy}``/``{to_doy}``
+          placeholders for the ``{year}_{doy}`` coverage-window start/end encoded
+          in the filename (e.g. ``imap_{from_doy}_{to_doy}_hist_{sequence}.sff``
+          matches ``imap_2026_165_2026_166_hist_01.sff``), and an optional
+          ``{sequence}`` placeholder for a per-window sequence number. Files are
+          returned if their coverage window overlaps the search window at all.
+        - A dated pattern, using ``strftime`` codes to fill in the date per day
+          in the search window (e.g. ``imap_..._%Y%m%d_v*.csv``).
+
+        ``highest_sequence_only`` keeps only the highest-sequence file per
+        distinct coverage window (coverage-window patterns), or, for dated
+        patterns, the single highest-sequence file per day, where the sequence
+        (e.g. version) to compare is identified by a required ``{sequence}``
+        placeholder in the pattern (e.g. ``..._v{sequence}.csv``) - a
+        ``ValueError`` is raised if a dated pattern is used with
+        ``highest_sequence_only=True`` but has no ``{sequence}`` placeholder.
+
+        ``get_previous_if_empty`` falls back to the most recent match before the
+        search window when nothing is found within it - useful for point-in-time
+        state files that are only regenerated occasionally, where the state as of
+        the start of the window is still needed. For coverage-window patterns this
+        is the file(s) with the latest coverage-window end before the search
+        window; for dated patterns it is the most recent day with a match.
+        """
+        self._validate_pattern_placeholders(relative_pattern)
+
+        if "{from_doy}" in relative_pattern:
+            return self._find_by_coverage_window(
+                relative_pattern,
+                start_date,
+                end_date,
+                days_before,
+                days_after,
+                highest_sequence_only,
+                get_previous_if_empty,
+            )
+
+        return self._find_dated_files(
+            relative_pattern,
+            start_date,
+            end_date,
+            days_before,
+            days_after,
+            highest_sequence_only,
+            get_previous_if_empty,
+        )
+
+    @classmethod
+    def _validate_pattern_placeholders(cls, pattern: str) -> None:
+        unsupported = (
+            set(cls._PLACEHOLDER_RE.findall(pattern)) - cls._COVERAGE_PLACEHOLDERS
+        )
+        if unsupported:
+            raise ValueError(
+                f"Pattern '{pattern}' contains unsupported placeholder(s): "
+                f"{', '.join(sorted(unsupported))}. Supported placeholders are: "
+                f"{', '.join(sorted(cls._COVERAGE_PLACEHOLDERS))}."
+            )
+
+    def _find_by_coverage_window(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int,
+        days_after: int,
+        highest_sequence_only: bool,
+        get_previous_if_empty: bool,
+    ) -> list[Path]:
+        search_start = start_date - timedelta(days=days_before)
+        search_end = end_date + timedelta(days=days_after)
+
+        candidates = self._coverage_window_candidates(relative_pattern)
+
+        matching = [
+            candidate
+            for candidate in candidates
+            if candidate[1] <= search_end and candidate[2] >= search_start
+        ]
+
+        if not matching and get_previous_if_empty:
+            previous = [
+                candidate for candidate in candidates if candidate[2] < search_start
+            ]
+            if previous:
+                latest_end = max(candidate[2] for candidate in previous)
+                matching = [
+                    candidate for candidate in previous if candidate[2] == latest_end
+                ]
+
+        return self._select_by_sequence(matching, highest_sequence_only)
+
+    def _coverage_window_candidates(
+        self, relative_pattern: str
+    ) -> list[tuple[Path, datetime, datetime, int]]:
+        pattern = self._coverage_window_regex(Path(relative_pattern).name)
+        glob_pattern = self._COVERAGE_PLACEHOLDER_RE.sub("*", relative_pattern)
+
+        candidates: list[tuple[Path, datetime, datetime, int]] = []
+        for path in sorted(self._data_store.glob(glob_pattern)):
+            if not path.is_file():
+                continue
+
+            match = pattern.match(path.name)
+            if not match:
+                continue
+
+            groups = match.groupdict()
+            window_start = datetime.strptime(
+                f"{groups['from_year']}{groups['from_doy']}", "%Y%j"
+            )
+            window_end = datetime.strptime(
+                f"{groups['to_year']}{groups['to_doy']}", "%Y%j"
+            )
+            sequence = int(groups["sequence"]) if "sequence" in groups else 0
+            candidates.append((path, window_start, window_end, sequence))
+        return candidates
+
+    @staticmethod
+    def _select_by_sequence(
+        candidates: list[tuple[Path, datetime, datetime, int]],
+        highest_sequence_only: bool,
+    ) -> list[Path]:
+        if not highest_sequence_only:
+            return [path for path, _, _, _ in candidates]
+
+        best: dict[tuple[datetime, datetime], tuple[Path, int]] = {}
+        for path, window_start, window_end, sequence in candidates:
+            key = (window_start, window_end)
+            if key not in best or sequence > best[key][1]:
+                best[key] = (path, sequence)
+        return sorted(path for path, _ in best.values())
+
+    @staticmethod
+    def _coverage_window_regex(pattern: str) -> re.Pattern:
+        """Build a regex that captures the DOY window (and optional sequence)
+        encoded in filenames matching ``pattern``."""
+        parts = re.split(r"(\{from_doy\}|\{to_doy\}|\{sequence\})", pattern)
+        regex_parts = []
+        for part in parts:
+            if part == "{from_doy}":
+                regex_parts.append(r"(?P<from_year>\d{4})_(?P<from_doy>\d{3})")
+            elif part == "{to_doy}":
+                regex_parts.append(r"(?P<to_year>\d{4})_(?P<to_doy>\d{3})")
+            elif part == "{sequence}":
+                regex_parts.append(r"(?P<sequence>\d+)")
+            else:
+                regex_parts.append(re.escape(part))
+        return re.compile("^" + "".join(regex_parts) + "$")
+
+    def _find_dated_files(
+        self,
+        relative_pattern: str,
+        start_date: datetime,
+        end_date: datetime,
+        days_before: int,
+        days_after: int,
+        highest_sequence_only: bool,
+        get_previous_if_empty: bool,
+    ) -> list[Path]:
+        if highest_sequence_only:
+            self._require_sequence_placeholder(relative_pattern)
+
+        search_start = (start_date - timedelta(days=days_before)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        search_end = (end_date + timedelta(days=days_after)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        matches: list[Path] = []
+        day = search_start
+        while day <= search_end:
+            matches.extend(
+                self._glob_dated_files(day, relative_pattern, highest_sequence_only)
+            )
+            day += timedelta(days=1)
+
+        if matches or not get_previous_if_empty:
+            return matches
+
+        earliest = DatetimeProvider().beginning_of_imap()
+        day = search_start - timedelta(days=1)
+        while day >= earliest:
+            found = self._glob_dated_files(day, relative_pattern, highest_sequence_only)
+            if found:
+                return found
+            day -= timedelta(days=1)
+
+        return []
+
+    @staticmethod
+    def _require_sequence_placeholder(relative_pattern: str) -> None:
+        if "{sequence}" not in relative_pattern:
+            raise ValueError(
+                f"Pattern '{relative_pattern}' has highest_sequence_only=True but no "
+                "'{sequence}' placeholder to identify the version to compare - add "
+                "one (e.g. '..._v{sequence}.csv') or set highest_sequence_only=False."
+            )
+
+    def _glob_dated_files(
+        self, day: datetime, relative_pattern: str, highest_sequence_only: bool
+    ) -> list[Path]:
+        """Glob the files matching ``relative_pattern`` for a single ``day``.
+
+        If ``highest_sequence_only``, ``{sequence}`` in the pattern identifies the
+        version/sequence number to compare, and only the highest-sequence file is
+        returned (other wildcards, e.g. sensor, are treated as part of the day's
+        one result rather than distinguishing separate entities)."""
+        dated_pattern = day.strftime(relative_pattern)
+
+        if not highest_sequence_only:
+            return self._glob_files(dated_pattern.replace("{sequence}", "*"))
+
+        regex = self._dated_sequence_regex(Path(dated_pattern).name)
+        glob_pattern = dated_pattern.replace("{sequence}", "*")
+
+        candidates: list[tuple[Path, int]] = [
+            (path, int(match.group("sequence")))
+            for path in self._glob_files(glob_pattern)
+            if (match := regex.match(path.name))
+        ]
+        if not candidates:
+            return []
+
+        highest = max(sequence for _, sequence in candidates)
+        return sorted(path for path, sequence in candidates if sequence == highest)
+
+    @staticmethod
+    def _dated_sequence_regex(filename_pattern: str) -> re.Pattern:
+        """Build a regex that captures the ``{sequence}`` value encoded in
+        filenames matching ``filename_pattern`` (a single day's dated pattern,
+        basename only), treating any other ``*`` as an unconstrained wildcard."""
+        parts = re.split(r"(\{sequence\}|\*)", filename_pattern)
+        regex_parts = [
+            r"(?P<sequence>\d+)"
+            if part == "{sequence}"
+            else ".*"
+            if part == "*"
+            else re.escape(part)
+            for part in parts
+        ]
+        return re.compile("^" + "".join(regex_parts) + "$")
+
+    def _glob_files(self, glob_pattern: str) -> list[Path]:
+        return sorted(
+            path for path in self._data_store.glob(glob_pattern) if path.is_file()
         )
 
     def __find_files_and_sequences(

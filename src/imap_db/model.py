@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 import logging
 import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
-from imap_mag.config.AppSettings import AppSettings
 from imap_mag.util import DatetimeProvider
+
+if TYPE_CHECKING:
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ class File(Base):
 
     descriptor: Mapped[str] = mapped_column(String(128))
     version: Mapped[int] = mapped_column(Integer())
+    version_major: Mapped[int] = mapped_column(Integer(), default=0, server_default="0")
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer())
     content_date: Mapped[datetime] = mapped_column(DateTime(), nullable=True)
@@ -86,6 +91,7 @@ class File(Base):
             and self.descriptor == new_file.descriptor
             and self.content_date == new_file.content_date
             and self.version == new_file.version
+            and self.version_major == new_file.version_major
         ):
             logger.info(f"File record is identical - no updates needed for {self.path}")
             return False
@@ -107,6 +113,7 @@ class File(Base):
         self.descriptor = new_file.descriptor
         self.content_date = new_file.content_date
         self.version = new_file.version
+        self.version_major = new_file.version_major
 
         now = DatetimeProvider().now()
         self.last_modified_date = now
@@ -126,6 +133,7 @@ class File(Base):
             path=new_path.as_posix(),
             descriptor=self.descriptor,
             version=self.version,
+            version_major=self.version_major,
             hash=self.hash,
             size=self.size,
             content_date=self.content_date,
@@ -152,7 +160,8 @@ class File(Base):
         # Match everything up to the last date/version pattern
         # This regex captures everything before date patterns (YYYYMMDD or YYYY-MM-DD) and version patterns (vNNN or NNN)
         match = re.match(
-            r"^(.+?)(?:_(?:\d{8}|\d{4}-\d{2}-\d{2}|v\d+|\d+))+$", name_without_extension
+            r"^(.+?)(?:_(?:\d{8}|\d{4}-\d{2}-\d{2}|v\d+(?:\.\d+)?|\d+))+$",
+            name_without_extension,
         )
         if match:
             return match.group(1)
@@ -168,7 +177,8 @@ class File(Base):
         hash: str | None,
         content_date: datetime | None,
         settings: AppSettings,
-    ) -> "File":
+        version_major: int = 0,
+    ) -> File:
         if not file.exists():
             raise FileNotFoundError(f"File {file} does not exist.")
 
@@ -188,6 +198,7 @@ class File(Base):
             path=file_with_datastore_relative_path,
             descriptor=cls.get_descriptor_from_filename(file.name),
             version=version,
+            version_major=version_major,
             hash=hash,
             size=size,
             content_date=content_date,
@@ -216,7 +227,9 @@ class File(Base):
         return file_with_datastore_relative_path.as_posix()
 
     @classmethod
-    def filter_to_latest_versions_only(cls, files: list[Self]) -> list[Self]:
+    def filter_to_latest_versions_only(
+        cls, files: list[Self], version_major: int | None = None
+    ) -> list[Self]:
         """
         Select only the latest version of files per day.
 
@@ -226,10 +239,14 @@ class File(Base):
 
         Args:
             files: List of File objects from database
+            version_major: If provided, pre-filter to only files with this major version
 
         Returns:
             List of File objects containing only the latest version per day
         """
+
+        if version_major is not None:
+            files = [f for f in files if f.version_major == version_major]
 
         # Group files by type and date so we have lists with each version of the file
         files_by_date: dict[str, list[tuple[Self, int]]] = defaultdict(list)

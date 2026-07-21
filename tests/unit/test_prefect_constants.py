@@ -12,7 +12,7 @@ class TestPrefectConstants:
     def test_queue_names_are_defined(self):
         assert PREFECT_CONSTANTS.QUEUES.HIGH_PRIORITY is not None
         assert PREFECT_CONSTANTS.QUEUES.DEFAULT is not None
-        assert PREFECT_CONSTANTS.QUEUES.LOW is not None
+        assert PREFECT_CONSTANTS.QUEUES.LOW_BIG is not None
 
     def test_block_names_are_defined(self):
         assert PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME is not None

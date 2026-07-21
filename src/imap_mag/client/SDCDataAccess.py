@@ -37,14 +37,18 @@ class SDCDataAccess:
         level: str,
         descriptor: str,
         start_date: datetime,
-        version: str,
+        # The major version of the data. If None, the version will be constructed
+        # using the minor version in the legacy vXXX format.
+        major_version: int | None,
+        minor_version: int,
     ) -> tuple[Path, Path]:
         science_file = imap_data_access.ScienceFilePath.generate_from_inputs(
             instrument="mag",
             data_level=level,
             descriptor=descriptor,
             start_time=start_date.strftime("%Y%m%d"),
-            version=version,
+            major_version=major_version,
+            minor_version=minor_version,
         )
 
         return (science_file.filename, science_file.construct_path())

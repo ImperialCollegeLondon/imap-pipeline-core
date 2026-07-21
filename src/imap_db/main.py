@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import signal
 
 import sqlalchemy
 import typer
@@ -33,11 +34,20 @@ engine = create_engine(url, echo=True)  # echo for dev to outputing SQL
 def create_db(with_schema: bool = False, with_data: bool = False):
     print("sql sqlalchemy version: " + sqlalchemy.__version__)
 
-    if not database_exists(engine.url):
-        print("Creating db")
-        create_database(engine.url)
-    else:
-        print("Db already exists")
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Database operation timed out")
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(30)  # 30 second timeout
+
+    try:
+        if not database_exists(engine.url):
+            print("Creating db")
+            create_database(engine.url)
+        else:
+            print("Db already exists")
+    finally:
+        signal.alarm(0)  # Cancel the alarm
 
     if with_schema:
         print("Creating all tables")

@@ -16,6 +16,7 @@ def _make_file(name, path, hash_val, *, deletion_date=None, last_modified_date=N
         path=path,
         descriptor="test-descriptor",
         version=1,
+        version_major=0,
         hash=hash_val,
         size=100,
         software_version="1.0",

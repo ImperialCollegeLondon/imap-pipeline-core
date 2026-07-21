@@ -70,7 +70,8 @@ class PREFECT_CONSTANTS:
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
         DEFAULT = "default"
-        LOW = "low"
+        LOW_SMALL = "low-small"
+        LOW_BIG = "low-big"
 
     class FLOW_NAMES:
         POLL_IALIRT = "poll-ialirt"
@@ -86,7 +87,6 @@ class PREFECT_CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
-        GRADIOMETRY = "gradiometry"
         PUBLISH = "publish"
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"

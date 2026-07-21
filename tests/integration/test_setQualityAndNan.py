@@ -10,7 +10,6 @@ import pytest
 from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import SaveMode
-from imap_mag.config.CalibrationConfig import CalibrationConfig, SetQualityAndNaNConfig
 from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -18,6 +17,9 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     Sensor,
     SetQualityAndNaNCalibrationJob,
+)
+from mag_toolkit.calibration.CalibrationConfig import (
+    SetQualityAndNaNConfig,
 )
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
@@ -48,9 +50,7 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     work_folder = tmp_path / "work"
     work_folder.mkdir()
 
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(quality_csv))
 
     cal_handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
@@ -238,22 +238,6 @@ def test_run_calibration_creates_two_change_points_if_window_contained_within_on
     assert df1.iloc[1][CONSTANTS.CSV_VARS.OFFSET_Z] == 0.0
 
 
-def test_run_calibration_raises_without_config(tmp_path):
-
-    params = CalibrationJobParameters(
-        date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
-    )
-    job = SetQualityAndNaNCalibrationJob(params, tmp_path)
-    handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
-        content_date=datetime(2026, 1, 16),
-    )
-    config = CalibrationConfig()  # no set_quality_and_nan
-
-    with pytest.raises(ValueError, match="requires a set_quality_and_nan"):
-        job.run_calibration(handler, config)
-
-
 def test_run_calibration_raises_for_missing_csv(tmp_path):
     params = CalibrationJobParameters(
         date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
@@ -263,9 +247,7 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
     )
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
-    )
+    config = SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
 
     with pytest.raises(FileNotFoundError, match="File not found"):
         job.run_calibration(handler, config)
@@ -341,9 +323,7 @@ def test_get_science_time_range_fallback_nonexistent_file(tmp_path):
 def test_calibrate_returns_list_of_paths_to_the_calibration_layer_files(
     quality_csv, tmp_path, temp_datastore, dynamic_work_folder
 ):
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(quality_csv))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(quality_csv))
 
     results = calibrate(
         start_date=datetime(2026, 1, 16),
@@ -386,8 +366,8 @@ def test_calibrate_creates_layer_json_and_csv_file(temp_datastore, dynamic_work_
         f"Expected 2 files (json + csv) but found {len(layer_files)}: {[f.name for f in layer_files]}"
     )
     expected = [
-        "imap_mag_quality-norm-layer-data_20260116_v001.csv",
-        "imap_mag_quality-norm-layer_20260116_v001.json",
+        "imap_mag_quality-norm-layer-data_20260116_v001.0001.csv",
+        "imap_mag_quality-norm-layer_20260116_v001.0001.json",
     ]
     actual = sorted(f.name for f in layer_files)
     assert actual == expected, f"Expected files {expected} but found {actual}"
@@ -424,7 +404,7 @@ def test_calibrate_and_apply_set_quality_and_nan_end_to_end(
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -536,9 +516,7 @@ def create_temporary_csv_config(csv_content):
     csv_path = Path(tempfile.mktemp(suffix=".csv"))
     csv_path.write_text(csv_content)
 
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file=str(csv_path))
-    )
+    config = SetQualityAndNaNConfig(csv_file=str(csv_path))
 
     return config
 
@@ -592,7 +570,7 @@ def test_apply_empty_quality_layer_does_not_overwrite_existing_nan(
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -664,7 +642,7 @@ def test_apply_empty_quality_layer_on_top_of_existing_flags_and_bitmasks_does_no
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -784,7 +762,7 @@ def test_apply_quality_layer_on_top_of_existing_flags_and_bitmasks_can_override_
 
     output_l2_file = (
         temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.cdf"
+        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
     )
     assert output_l2_file.exists()
 
@@ -855,9 +833,7 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
     )
-    config = CalibrationConfig(
-        set_quality_and_nan=SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
-    )
+    config = SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
 
     # Should succeed: resolver finds the file via CWD fallback
     calfile, datafile = job.run_calibration(handler, config)
@@ -895,15 +871,15 @@ def test_calibrate_twice_identical_config_deduplicates_to_v001(
             save_mode=SaveMode.LocalAndDatabase,
         )
 
-    v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.json"
-    v001_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.csv"
-    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
-    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0001.json"
+    v001_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0001.csv"
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
 
-    assert v001_json.exists(), "v001 JSON must exist"
-    assert v001_csv.exists(), "v001 CSV must exist"
-    assert not v002_json.exists(), "Identical second run must NOT create v002 JSON"
-    assert not v002_csv.exists(), "Identical second run must NOT create v002 CSV"
+    assert v001_json.exists(), "v001.0001 JSON must exist"
+    assert v001_csv.exists(), "v001.0001 CSV must exist"
+    assert not v002_json.exists(), "Identical second run must NOT create v001.0002 JSON"
+    assert not v002_csv.exists(), "Identical second run must NOT create v001.0002 CSV"
 
     layer = CalibrationLayer.from_file(v001_json, load_contents=False)
     assert layer.metadata.data_filename.name == v001_csv.name
@@ -948,12 +924,12 @@ def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
         save_mode=SaveMode.LocalAndDatabase,
     )
 
-    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v002.json"
-    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v002.csv"
-    assert v002_json.exists(), "Different second run must produce v002 JSON"
-    assert v002_csv.exists(), "Different second run must produce v002 CSV"
+    v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"
+    v002_csv = layer_dir / "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
+    assert v002_json.exists(), "Different second run must produce v001.0002 JSON"
+    assert v002_csv.exists(), "Different second run must produce v001.0002 CSV"
 
     layer = CalibrationLayer.from_file(v002_json, load_contents=False)
     assert layer.metadata.data_filename.name == v002_csv.name, (
-        "v002 JSON must reference v002 CSV"
+        "v001.0002 JSON must reference v001.0002 CSV"
     )

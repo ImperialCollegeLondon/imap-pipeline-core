@@ -10,6 +10,7 @@ import xarray as xr
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from pydantic import PrivateAttr
 
+from imap_mag import get_version
 from imap_mag.io.file import CalibrationLayerPathHandler, IFilePathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -182,7 +183,11 @@ class CalibrationLayer(Layer):
         offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GENERATION_DATE] = str(
             np.datetime64("now")
         )
-        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = self.version
+        if self.version_major > 0:
+            data_version = f"v{self.version_major:03d}.{self.version:04d}"
+        else:
+            data_version = f"v{self.version:03d}"
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = data_version
 
         offsets_dataset.attrs["Parents"] = deepcopy(self.metadata.dependencies)
 
@@ -196,6 +201,7 @@ class CalibrationLayer(Layer):
         original_science: ScienceLayer,
         calibration_id: str,
         method: CalibrationMethod = CalibrationMethod.SUM,
+        version_major: int = 0,
     ):
         """Set the metadata for the offsets layer based on the original science layer."""
         if self._contents is None:
@@ -214,6 +220,7 @@ class CalibrationLayer(Layer):
         )
         self.id = calibration_id
         self.version = 1
+        self.version_major = version_major
         self.method = method
         self.value_type = ValueType.VECTOR
         self.sensor = original_science.sensor
@@ -231,6 +238,11 @@ class CalibrationLayer(Layer):
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
 
+        return self.save_calibration_layer(
+            filepath, createDirectory, save_contents=True
+        )
+
+    def save_calibration_layer(self, filepath, createDirectory, save_contents=True):
         if self._contents is not None:
             if self.metadata.data_filename is None:
                 self.metadata.data_filename = Path(
@@ -239,8 +251,18 @@ class CalibrationLayer(Layer):
                     .get_filename()
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
-            self._write_to_csv(data_file_path, createDirectory)
+            if save_contents:
+                self._write_to_csv(data_file_path, createDirectory)
+
+        data_file_path = filepath.parent / self.metadata.data_filename
+        if self.metadata.data_hash is None and data_file_path.exists():
             self.metadata.data_hash = IFilePathHandler.default_file_hash(data_file_path)
+
+        dependency = f"imap-pipeline-core version {get_version()}"
+        if self.metadata.dependencies is None:
+            self.metadata.dependencies = []
+        if dependency not in self.metadata.dependencies:
+            self.metadata.dependencies.append(dependency)
 
         created = super()._write_to_json(filepath, createDirectory)
         return created

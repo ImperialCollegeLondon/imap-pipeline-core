@@ -12,6 +12,7 @@ class VersionedPathHandler(SequenceablePathHandler):
     """
 
     version: int = 1
+    version_major: int = 0
 
     def get_sequence(self) -> int:
         return self.version

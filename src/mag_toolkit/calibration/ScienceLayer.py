@@ -20,6 +20,14 @@ from mag_toolkit.calibration.Layer import Layer
 logger = logging.getLogger(__name__)
 
 
+def _parse_data_version(attr: str) -> int:
+    """Parse Data_version attribute like 'v001' or 'v001.0001', returning the minor (sequence) part."""
+    s = attr.lstrip("v")
+    if "." in s:
+        return int(s.split(".", 1)[1])  # minor part
+    return int(s)
+
+
 class ScienceLayer(Layer):
     science_file: str
     value_type: ValueType
@@ -164,7 +172,9 @@ class ScienceLayer(Layer):
             else Sensor.MAGI
         )
 
-        version = int(dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION][0][1:])
+        version = _parse_data_version(
+            dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION][0]
+        )
 
         metadata = CalibrationMetadata(
             dependencies=[],

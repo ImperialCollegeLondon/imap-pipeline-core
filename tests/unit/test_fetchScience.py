@@ -97,6 +97,8 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
             version=7,
+            version_major=1,
+            has_major_version=False,
             extension="cdf",
             version_is_locked=True,
         )
@@ -226,6 +228,8 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
             version=7,
+            version_major=1,
+            has_major_version=False,
             extension="cdf",
             version_is_locked=True,
         )
@@ -284,6 +288,8 @@ def test_fetch_l2_science_with_both_sensors(
             content_date=datetime(2025, 5, 2),
             ingestion_date=datetime(2025, 6, 2),
             version=7,
+            version_major=1,
+            has_major_version=False,
             extension="cdf",
             version_is_locked=True,
         )

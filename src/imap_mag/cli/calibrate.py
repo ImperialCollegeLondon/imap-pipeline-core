@@ -7,7 +7,12 @@ import typer
 
 from imap_mag.cli import apply
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.config import AppSettings, CalibrationConfig, GradiometryConfig, SaveMode
+from imap_mag.config import (
+    AppSettings,
+    CalibrationConfig,
+    GradiometryConfig,
+    SaveMode,
+)
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
@@ -18,6 +23,7 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     EmptyCalibrationJob,
     GradiometerCalibrationJob,
+    ScriptedL2CalibrationJob,
     Sensor,
     SetQualityAndNaNCalibrationJob,
 )
@@ -47,10 +53,8 @@ def gradiometry(
     """
     Run gradiometry calibration.
     """
-    configuration = CalibrationConfig(
-        gradiometer=GradiometryConfig(
-            kappa=kappa, sc_interference_threshold=sc_interference_threshold
-        )
+    configuration = GradiometryConfig(
+        kappa=kappa, sc_interference_threshold=sc_interference_threshold
     )
 
     return _calibrate_for_date(
@@ -80,7 +84,7 @@ def calibrate(
     ] = None,
     method: Annotated[
         CalibrationMethod, typer.Option(help="Calibration method")
-    ] = CalibrationMethod.KEPKO,
+    ] = CalibrationMethod.SET_QUALITY_AND_NAN,
     mode: Annotated[
         ScienceMode, typer.Option(help="Science mode")
     ] = ScienceMode.Normal,
@@ -97,6 +101,14 @@ def calibrate(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    metakernel: Annotated[
+        Path | None,
+        typer.Option(
+            help="Filename of the SPICE metakernel to use (scripted-l2 method). "
+            "Must exist in the spice/mk folder of the datastore. If omitted for "
+            "scripted-l2, one is generated.",
+        ),
+    ] = None,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -120,6 +132,7 @@ def calibrate(
             sensor=sensor,
             configuration=configuration,
             save_mode=save_mode,
+            metakernel=metakernel,
         )
         results.append(result)
         current += timedelta(days=1)
@@ -133,10 +146,20 @@ def _calibrate_for_date(
     sensor: Sensor,
     configuration: str | None,
     save_mode: SaveMode,
+    metakernel: Path | None = None,
 ) -> Path:
     """Run calibration for a single date."""
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
+    # Use the dedicated calibrate command config so each run gets its own uniquely
+    # named work folder (based on the date + mode being calibrated).
+    work_folder = app_settings.setup_work_folder_for_command(
+        app_settings.calibrate,
+        name_context={
+            "date": start_date.strftime("%Y%m%d"),
+            "mode": mode.value,
+            "sensor": sensor.value,
+        },
+    )
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -146,13 +169,20 @@ def _calibrate_for_date(
         database=Database() if Database.get_environment_url() else None,
     )
 
-    if configuration is None:
-        calibration_configuration = CalibrationConfig()
+    # The scripted-l2 method uses an extended configuration with extra required
+    # fields, so parse against the correct model for the chosen method.
+    config_cls = CalibrationConfig.get_class(method)
+    if configuration is None or len(configuration.strip()) == 0:
+        if method != CalibrationMethod.NOOP:
+            raise ValueError(
+                f"Calibration method {method.short_name} requires a configuration to be provided"
+            )
+        calibration_configuration = config_cls()
     elif Path(configuration).is_file():
         logger.info(f"Loading calibration configuration from {configuration}")
-        calibration_configuration = CalibrationConfig.from_file(Path(configuration))
+        calibration_configuration = config_cls.from_file(Path(configuration))
     else:
-        calibration_configuration = CalibrationConfig.model_validate_json(configuration)
+        calibration_configuration = config_cls.model_validate_json(configuration)
 
     calibration_job_parameters = CalibrationJobParameters(
         date=start_date, mode=mode, sensor=sensor
@@ -169,6 +199,13 @@ def _calibrate_for_date(
             calibrator = SetQualityAndNaNCalibrationJob(
                 calibration_job_parameters, work_folder, datastore_finder
             )
+        case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+            calibrator = ScriptedL2CalibrationJob(
+                calibration_job_parameters,
+                app_settings,
+                matlab_repo_path=calibration_configuration.matlab_repo,
+                metakernel=metakernel,
+            )
         case _:
             raise ValueError("Calibration method is not implemented")
 
@@ -177,9 +214,10 @@ def _calibrate_for_date(
     outputManager = DatastoreFileManager.CreateByMode(
         app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
     )
-
     calibration_handler = CalibrationLayerPathHandler(
-        descriptor=f"{method.short_name}-{mode.value}", content_date=start_date
+        descriptor=f"{method.short_name}-{mode.value}",
+        content_date=start_date,
+        version_major=app_settings.version_major,
     )
 
     metadata_path, data_path = calibrator.run_calibration(
@@ -196,6 +234,11 @@ def _calibrate_for_date(
         raise ValueError(
             f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
         )
+
+    # Enforce pipeline metadata, ensures hash is correct as MATLAB cal may not do it
+    layer.save_calibration_layer(
+        metadata_path, createDirectory=False, save_contents=False
+    )
 
     (output_calibration_path, _) = outputManager.add_file(
         metadata_path, path_handler=calibration_handler

@@ -80,9 +80,50 @@ class SPICEPathHandler(VersionedPathHandler):
     # SPICE files might span long date ranges so this is just the starting date for the content
     content_date: datetime | None = None
 
+    METAKERNEL_FOLDER: typing.ClassVar[str] = "mk"
+
     @staticmethod
     def get_root_folder() -> str:
         return "spice"
+
+    @classmethod
+    def get_metakernel_folder(cls, datastore: Path) -> Path:
+        """Return the folder holding metakernels within a datastore (spice/mk)."""
+        return datastore / cls.get_root_folder() / cls.METAKERNEL_FOLDER
+
+    @classmethod
+    def get_metakernel_path(cls, datastore: Path, metakernel_filename: str) -> Path:
+        """Return the full path to a metakernel by filename within a datastore."""
+        return cls.get_metakernel_folder(datastore) / metakernel_filename
+
+    @staticmethod
+    def parse_metakernel_kernels(metakernel_path: Path) -> list[str]:
+        """Return the kernel paths (relative to the datastore ``spice`` folder)
+        referenced by a metakernel's ``KERNELS_TO_LOAD`` block.
+
+        Assumes the metakernel's kernel entries are relative to the datastore's
+        ``spice`` folder (i.e. ``PATH_VALUES`` is ``spice``), which is how the
+        production metakernels are written.
+        """
+        text = metakernel_path.read_text()
+        block_match = re.search(
+            r"KERNELS_TO_LOAD\s*=\s*\((?P<body>.*?)\)", text, re.DOTALL
+        )
+        if not block_match:
+            return []
+        entries = re.findall(r"'([^']*)'", block_match.group("body"))
+        # Strip the leading "$SYMBOL/" so each entry is relative to the spice
+        # folder (e.g. "$KERNELS/lsk/naif0012.tls" -> "lsk/naif0012.tls").
+        return [re.sub(r"^\$\w+/", "", entry).lstrip("/") for entry in entries]
+
+    @staticmethod
+    def rewrite_metakernel_path_values(text: str) -> str:
+        """Normalise a metakernel's ``PATH_VALUES`` to the relative ``spice`` folder."""
+        return re.sub(
+            r"PATH_VALUES\s*=\s*\([^)]*\)",
+            "PATH_VALUES     = ( 'spice' )",
+            text,
+        )
 
     matching_file_patterns: typing.ClassVar[list[tuple[str, str]]] = [
         (r"^de.*\.bsp$", "spk"),

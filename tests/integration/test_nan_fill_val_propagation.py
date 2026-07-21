@@ -75,7 +75,7 @@ def test_nan_fill_values_propagate_through_calibration_and_apply_from_layers_and
     layer_json = _create_noop_layer(
         modified_science, temp_datastore / "calibration/layers/2026/01"
     )
-    layer_csv = layer_json.parent / "imap_mag_noop-layer-data_20260116_v001.csv"
+    layer_csv = layer_json.parent / "imap_mag_noop-layer-data_20260116_v001.0001.csv"
     assert layer_json.exists()
     assert layer_csv.exists()
 

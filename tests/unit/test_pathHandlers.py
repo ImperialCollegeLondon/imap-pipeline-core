@@ -33,7 +33,7 @@ def test_path_handler_returns_correct_values_for_standard_l2_file():
     assert provider.get_filename() == "imap_mag_l2_norm-mago_20251017_v001.cdf"
     assert provider.supports_sequencing() is True
     assert provider.get_unsequenced_pattern().pattern == (
-        r"imap_mag_l2_norm\-mago_20251017_v(?P<version>\d+)\.cdf"
+        r"imap_mag_l2_norm\-mago_20251017_v(?:(?P<major>\d+)\.)?(?P<version>\d+)\.cdf"
     )
     assert provider.get_full_path() == Path(
         "science/mag/l2/2025/10/imap_mag_l2_norm-mago_20251017_v001.cdf"
@@ -149,6 +149,8 @@ def test_calibration_layer_get_equivalent_data_handler():
             Path("imap/mag/l1b/2025/10/imap_mag_l1b_norm-mago_20251004_v002.cdf"),
             SciencePathHandler(
                 version=2,
+                version_major=1,
+                has_major_version=False,
                 level="l1b",
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 4),
@@ -164,6 +166,7 @@ def test_calibration_layer_get_equivalent_data_handler():
                 version=2,
                 descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
+                has_major_version=False,
             ),
             "CalibrationLayerPathHandler",
         ),
@@ -330,6 +333,8 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="norm-mago",
                 content_date=datetime(2025, 5, 2),
                 version=1,
+                version_major=1,
+                has_major_version=False,
                 extension="cdf",
             ),
         ),
@@ -340,6 +345,8 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
                 version=1,
+                version_major=1,
+                has_major_version=False,
                 extension="cdf",
             ),
         ),
@@ -350,6 +357,8 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="norm-mago",
                 content_date=datetime(2025, 10, 17),
                 version=1,
+                version_major=1,
+                has_major_version=False,
                 extension="cdf",
             ),
         ),
@@ -360,6 +369,8 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="norm-dsrf",
                 content_date=datetime(2026, 12, 31),
                 version=10,
+                version_major=1,
+                has_major_version=False,
                 extension="cdf",
             ),
         ),
@@ -370,6 +381,8 @@ def test_get_filename_error_on_no_required_parameter(provider):
                 descriptor="burst",
                 content_date=datetime(2026, 12, 31),
                 version=10,
+                version_major=1,
+                has_major_version=False,
                 extension="cdf",
             ),
         ),
@@ -406,3 +419,146 @@ def test_behavior_on_no_suitable_provider_found(capture_cli_logs, throw_error):
         assert path_handler is None
 
     assert f"No suitable path handler found for file {path}." in capture_cli_logs.text
+
+
+# ── Version field parsing and generation ──────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "filename, expected_version_major, expected_version, expected_has_major_version",
+    [
+        (
+            "imap_mag_l1a_norm-mago_20250101_v001.0005.cdf",
+            1,
+            5,
+            True,
+        ),
+        (
+            "imap_mag_l2-pre_norm-mago_20250101_v003.cdf",
+            1,
+            3,
+            False,
+        ),
+    ],
+)
+def test_science_from_filename_parses_version_fields(
+    filename, expected_version_major, expected_version, expected_has_major_version
+):
+    # Exercise.
+    handler = SciencePathHandler.from_filename(filename)
+
+    # Verify.
+    assert handler is not None
+    assert handler.version_major == expected_version_major
+    assert handler.version == expected_version
+    assert handler.has_major_version == expected_has_major_version
+
+
+def test_science_get_filename_with_major_version_produces_new_format():
+    # Set up.
+    handler = SciencePathHandler(
+        level="l1a",
+        descriptor="norm-mago",
+        content_date=datetime(2025, 1, 1),
+        version=5,
+        version_major=1,
+        has_major_version=True,
+        extension="cdf",
+    )
+
+    # Exercise and verify.
+    assert handler.get_filename() == "imap_mag_l1a_norm-mago_20250101_v001.0005.cdf"
+
+
+def test_science_get_filename_without_major_version_produces_legacy_format():
+    # Set up.
+    handler = SciencePathHandler(
+        level="l2-pre",
+        descriptor="norm-mago",
+        content_date=datetime(2025, 1, 1),
+        version=3,
+        version_major=1,
+        has_major_version=False,
+        extension="cdf",
+    )
+
+    # Exercise and verify.
+    assert handler.get_filename() == "imap_mag_l2-pre_norm-mago_20250101_v003.cdf"
+
+
+def test_science_get_unsequenced_pattern_matches_both_formats():
+    # Set up.
+    handler = SciencePathHandler(
+        level="l1a",
+        descriptor="norm-mago",
+        content_date=datetime(2025, 1, 1),
+        extension="cdf",
+    )
+
+    # Exercise.
+    pattern = handler.get_unsequenced_pattern()
+
+    # Verify.
+    assert pattern.match("imap_mag_l1a_norm-mago_20250101_v001.0005.cdf") is not None
+    assert pattern.match("imap_mag_l1a_norm-mago_20250101_v003.cdf") is not None
+
+
+# ── CalibrationLayerPathHandler version round-trips ───────────────────────────
+
+
+@pytest.mark.parametrize(
+    "filename, expected_version_major, expected_version, expected_has_major_version",
+    [
+        (
+            "imap_mag_noop-layer_20250101_v001.0005.json",
+            1,
+            5,
+            True,
+        ),
+        (
+            "imap_mag_noop-layer_20250101_v003.json",
+            1,
+            3,
+            False,
+        ),
+    ],
+)
+def test_calibration_layer_from_filename_parses_version_fields(
+    filename, expected_version_major, expected_version, expected_has_major_version
+):
+    # Exercise.
+    handler = CalibrationLayerPathHandler.from_filename(filename)
+
+    # Verify.
+    assert handler is not None
+    assert handler.version_major == expected_version_major
+    assert handler.version == expected_version
+    assert handler.has_major_version == expected_has_major_version
+
+
+def test_calibration_layer_get_filename_with_major_version_produces_new_format():
+    # Set up.
+    handler = CalibrationLayerPathHandler(
+        descriptor="noop",
+        content_date=datetime(2025, 1, 1),
+        version=5,
+        version_major=1,
+        has_major_version=True,
+    )
+
+    # Exercise and verify.
+    assert handler.get_filename() == "imap_mag_noop-layer_20250101_v001.0005.json"
+
+
+def test_calibration_layer_get_filename_without_major_version_produces_legacy_format():
+    # Set up.
+    handler = CalibrationLayerPathHandler(
+        descriptor="noop",
+        content_date=datetime(2025, 1, 1),
+        version=3,
+        version_major=1,
+        has_major_version=False,
+    )
+
+    # Exercise and verify.
+    assert handler.get_filename() == "imap_mag_noop-layer_20250101_v003.json"

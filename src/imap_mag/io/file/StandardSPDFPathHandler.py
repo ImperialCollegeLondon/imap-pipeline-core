@@ -21,6 +21,7 @@ class StandardSPDFPathHandler(VersionedPathHandler):
     descriptor: str | None = None
     content_date: datetime | None = None  # date data belongs to
     extension: str | None = None
+    has_major_version: bool = True
 
     def get_filename(self) -> str:
         super()._check_property_values(
@@ -34,6 +35,8 @@ class StandardSPDFPathHandler(VersionedPathHandler):
             content_date=self.content_date,
             version=self.version,
             extension=self.extension,
+            version_major=self.version_major,
+            legacy=not self.has_major_version,
         )
 
     def get_content_date_for_indexing(self):
@@ -46,12 +49,18 @@ class StandardSPDFPathHandler(VersionedPathHandler):
         assert self.descriptor and self.content_date
 
         return re.compile(
-            rf"{self.mission}_{self.instrument}_{self.level}_{re.escape(self.descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?P<version>\d+)\.{self.extension}"
+            rf"{self.mission}_{self.instrument}_{self.level}_{re.escape(self.descriptor)}_{self.content_date.strftime('%Y%m%d')}_v(?:(?P<major>\d+)\.)?(?P<version>\d+)\.{self.extension}"
         )
 
     @classmethod
     def generate_filename_from_logical_source(
-        cls, logical_source: str, content_date: datetime, version: int, extension: str
+        cls,
+        logical_source: str,
+        content_date: datetime,
+        version: int,
+        extension: str,
+        version_major: int = 0,
+        legacy: bool = False,
     ) -> str:
         if not logical_source:
             raise ValueError("Logical_source is required to generate filename")
@@ -62,4 +71,7 @@ class StandardSPDFPathHandler(VersionedPathHandler):
         if not extension:
             raise ValueError("extension is required to generate filename")
 
-        return f"{logical_source.lower()}_{content_date.strftime('%Y%m%d')}_v{version:03d}.{extension}"
+        if version_major > 0 and not legacy:
+            return f"{logical_source.lower()}_{content_date.strftime('%Y%m%d')}_v{version_major:03d}.{version:04d}.{extension}"
+        else:
+            return f"{logical_source.lower()}_{content_date.strftime('%Y%m%d')}_v{version:03d}.{extension}"

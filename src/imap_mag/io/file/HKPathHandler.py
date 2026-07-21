@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import HKPacket
 
@@ -50,6 +49,7 @@ class HKPathHandler(IFilePathHandler):
     @staticmethod
     def _get_allowed_descriptors() -> set[str]:
         """Get allowed HK descriptors based on the HKPacket enumeration."""
+        from imap_mag.client.WebTCADLaTiS import HKWebTCADItems
 
         return {
             HKPathHandler.convert_packet_to_descriptor(hk.packet_name).partition("-")[0]

@@ -309,9 +309,11 @@ def test_calibration_layer_identical_content_deduplicates_to_existing_version(
 
     (result_path, _) = manager.add_file(work_json, handler)
 
-    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.json"
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0001.json"
     assert handler.version == 1
-    assert not (store_dir / "imap_mag_quality-norm-layer_20260116_v002.json").exists()
+    assert not (
+        store_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"
+    ).exists()
 
 
 def test_calibration_layer_different_content_bumps_to_v002(
@@ -339,13 +341,13 @@ def test_calibration_layer_different_content_bumps_to_v002(
 
     (result_path, _) = manager.add_file(work_json, handler)
 
-    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v002.json"
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0002.json"
     assert handler.version == 2
 
-    # JSON in datastore at v002 must reference v002 CSV
+    # JSON in datastore at v001.0002 must reference v001.0002 CSV
     saved = json.loads(result_path.read_text())
     assert saved["metadata"]["data_filename"] == (
-        "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+        "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
     )
 
 
@@ -372,7 +374,7 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
     csv_handler = json_handler.get_equivalent_data_handler()  # version now 2
     (csv_result, _) = manager.add_file(work_csv, csv_handler)
 
-    assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v002.csv"
+    assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
     assert csv_result.read_bytes() == work_csv.read_bytes()
 
 

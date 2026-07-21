@@ -1,6 +1,9 @@
 import logging
 import shutil
 from datetime import datetime
+
+# import get env variable lib
+from os import environ as env
 from pathlib import Path
 from typing import Literal, overload
 
@@ -14,7 +17,8 @@ globalState = {"verbose": False}
 
 def initialiseLoggingForCommand(folder):
     # initialise all logging into the workfile
-    level = "debug" if globalState["verbose"] else "info"
+    ENV_LOGGING_ROOT_LEVEL = env.get("IMAP_MAG_LOGGING_ROOT_LEVEL", "INFO").upper()
+    level = "debug" if globalState["verbose"] else ENV_LOGGING_ROOT_LEVEL.lower()
 
     logFile = Path(
         folder,

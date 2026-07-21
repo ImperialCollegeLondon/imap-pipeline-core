@@ -31,7 +31,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PREFERED_PYTHON_VERSION: "3.14"
+  PREFERED_PYTHON_VERSION: "3.12"
+  MATLAB_VERSION: "R2026a"
   CALIBRATION_TAG: "v0.2.0"
   MLM_LICENSE_TOKEN: ${{secrets.MLM_LICENSE_TOKEN }}
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
@@ -46,7 +47,9 @@ jobs:
   build:
     strategy:
       matrix:
-        python-versions: ["3.11", "3.12", "3.13", "3.14"]
+        #python-versions: ["3.11", "3.12", "3.13", "3.14"]
+        # https://github.com/IMAP-Science-Operations-Center/imap_processing/blob/dev/pyproject.toml#L17
+        python-versions: ["3.11", "3.12"] # blocked by imap_processing package not supporting 3.13 and 3.14 yet
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -170,7 +173,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        python-versions: ["3.11", "3.12", "3.13", "3.14"]
+        python-versions: ["3.11", "3.12"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -228,7 +231,7 @@ jobs:
   matlab-build:
     strategy:
       matrix:
-        python-versions: ["3.11", "3.12", "3.13", "3.14"]
+        python-versions: ["3.12"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
@@ -349,6 +352,9 @@ jobs:
         with:
           context: .
           file: deploy/MATLAB-Dockerfile
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-versions }}
+            MATLAB_VERSION=${{ env.MATLAB_VERSION }}
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}

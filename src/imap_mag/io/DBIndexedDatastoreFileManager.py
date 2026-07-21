@@ -227,9 +227,12 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             version = 0
 
+        version_major: int = getattr(path_handler, "version_major", 0)
+
         new_file = File.from_file(
             file=file,
             version=version,
+            version_major=version_major,
             hash=path_handler.get_content_identity(file),
             content_date=path_handler.get_content_date_for_indexing(),
             settings=self.__settings,

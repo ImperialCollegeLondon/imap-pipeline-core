@@ -8,6 +8,20 @@ work_folder: '.work'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
+version_major: 1
+
+# SPICE kernel types included when generating a metakernel. Shared by the
+# calibration applicator and the scripted L2 calibration.
+metakernel_file_types:
+    - leapseconds
+    - planetary_constants
+    - science_frames
+    - imap_frames
+    - spacecraft_clock
+    - attitude_history
+    - pointing_attitude
+    - planetary_ephemeris
+    - ephemeris_reconstructed
 
 sdc: &sdc_creds
     url_base: "https://api.dev.imap-mission.com"
@@ -66,6 +80,59 @@ plot_ialirt:
 
 calibration:
     work_sub_folder:
+
+# Configuration for the calibrate flow. work_sub_folder supports {date}/{mode}/{sensor}
+# placeholders so each calibrate run gets its own uniquely-named work folder.
+calibrate:
+    work_sub_folder: 'calibrate_{date}_{mode}'
+    scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
+    scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
+    # Files copied into the sparse datastore (LOCAL_WORK_FOLDER_COPY mode). Paths are
+    # relative to the datastore root; dates use strftime codes (%Y/%m/%d), and
+    # {level}/{mode}/{matrix_version} are filled from the run. days_before/days_after
+    # (default 0) widen the copy to neighbouring days for inputs that need them.
+    sparse_datastore:
+        patterns:
+            # L1 science - only the day being calibrated (large per-day files).
+            - pattern: 'science/mag/{level}/%Y/%m/imap_mag_{level}_{mode}-mago_%Y%m%d_v*.cdf'
+            - pattern: 'science/mag/{level}/%Y/%m/imap_mag_{level}_{mode}-magi_%Y%m%d_v*.cdf'
+            # Spacecraft HK (x285 packet) for interference/thruster cleaning.
+            - pattern: 'hk/sc/l1/x285/%Y/%m/imap_sc_l1_x285_%Y%m%d_v*.csv'
+            # IMAP-Lo pivot-platform HK - needs the nearest neighbouring days too.
+            - pattern: 'hk/lo/l1/pivot-platform-angle/%Y/%m/imap_lo_l1_pivot-platform-angle_%Y%m%d_v{sequence}.csv'
+              days_before: 1
+              days_after: 1
+              get_previous_if_empty: true
+              highest_sequence_only: true
+
+            # Only the calibration matrices version in use (each version is large).
+            - pattern: 'calibration/inputs/Matrices/CalibrationMatricesV{matrix_version}.mat'
+            - pattern: 'calibration/inputs/Matrices/CalibrationMatricesV{matrix_version}.json'
+            # Interference / thruster profiles.
+            - pattern: 'calibration/inputs/Profiles/**/*'
+            # Pre-computed offsets (spin plane / spin axis / leinweber / kepko).
+            - pattern: 'calibration/calculated_offsets/kepko/*'
+            - pattern: 'calibration/calculated_offsets/leinweber/*'
+            - pattern: 'calibration/calculated_offsets/spin_axis/*'
+            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
+              days_before: 1
+              days_after: 1
+              get_previous_if_empty: true
+              highest_sequence_only: true
+            - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
+              days_before: 2
+              days_after: 2
+              get_previous_if_empty: true
+              highest_sequence_only: true
+
+            # Spin table + thruster activities (small, span the run). Filenames encode
+            # a day-of-year coverage window ({from_doy}/{to_doy}) rather than a single
+            # date, so these use highest_sequence_only to keep just the newest file per
+            # distinct window.
+            - pattern: 'spice/spin/imap_{from_doy}_{to_doy}_{sequence}.spin'
+              highest_sequence_only: true
+            - pattern: 'spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff'
+              highest_sequence_only: true
 
 publish:
     api:
