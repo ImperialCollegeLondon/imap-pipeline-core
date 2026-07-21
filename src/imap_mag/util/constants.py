@@ -39,8 +39,6 @@ class CONSTANTS:
         IALIRT_HIT = "hit"
         IALIRT_SWE = "swe"
         IALIRT_SWAPI = "swapi"
-        IALIRT_CODICE_LO = "codice_lo"
-        IALIRT_CODICE_HI = "codice_hi"
 
 
 VALID_IALIRT_INSTRUMENTS = [

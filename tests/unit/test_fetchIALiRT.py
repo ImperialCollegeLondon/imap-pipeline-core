@@ -318,9 +318,9 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_colu
         assert "time_utc,a,b,c,d,e" in file_content
         assert "2025-05-02T00:00:00,10,11,12,13,14" in file_content
         assert "2025-05-02T01:00:00,15,16,17,18,19" in file_content
-        assert "2025-05-02T02:00:00,1,NULL,2,3," in file_content
-        assert "2025-05-02T03:00:00,4,NULL,5,6," in file_content
-        assert "2025-05-02T04:00:00,7,NULL,8,9," in file_content
+        assert "2025-05-02T02:00:00,1,,2,3," in file_content
+        assert "2025-05-02T03:00:00,4,,5,6," in file_content
+        assert "2025-05-02T04:00:00,7,,8,9," in file_content
 
     assert "Downloaded 3 mag entries from I-ALiRT Data Access." in capture_cli_logs.text
     assert "Downloaded I-ALiRT mag data for 1 days: 2025-05-02" in capture_cli_logs.text
@@ -396,8 +396,8 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_col
         file_content = f.read()
 
         assert "time_utc,a,b,c,d,e" in file_content
-        assert "2025-05-02T00:00:00,16,NULL,17,18," in file_content
-        assert "2025-05-02T01:00:00,19,NULL,20,21," in file_content
+        assert "2025-05-02T00:00:00,16,,17,18," in file_content
+        assert "2025-05-02T01:00:00,19,,20,21," in file_content
         assert "2025-05-02T02:00:00,1,2.0,3,4,5.0" in file_content
         assert "2025-05-02T03:00:00,6,7.0,8,9,10.0" in file_content
         assert "2025-05-02T04:00:00,11,12.0,13,14,15.0" in file_content
