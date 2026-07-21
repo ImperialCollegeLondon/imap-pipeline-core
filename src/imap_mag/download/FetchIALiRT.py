@@ -200,7 +200,11 @@ class FetchIALiRT:
                 )
 
                 combined_data.to_csv(
-                    file_path, mode=write_mode, header=(write_mode == "w"), index=True
+                    file_path,
+                    mode=write_mode,
+                    header=(write_mode == "w"),
+                    index=True,
+                    na_rep="NULL",
                 )
                 logger.debug(
                     f"I-ALiRT {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
