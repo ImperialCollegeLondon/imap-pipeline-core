@@ -2,6 +2,7 @@ import typer
 
 from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.fetch.ialirt import fetch_ialirt, fetch_ialirt_hk
+from imap_mag.cli.fetch.noaa import fetch_noaa
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.cli.fetch.small_forces import fetch_small_forces
 from imap_mag.cli.fetch.spice import fetch_spice, generate_spice_metakernel
@@ -19,6 +20,7 @@ app.command("ialirt", help="Download CSV I-ALiRT MAG data from SDC")(fetch_ialir
 app.command("ialirt-hk", help="Download CSV I-ALiRT MAG HK data from SDC")(
     fetch_ialirt_hk
 )
+app.command("noaa", help="Download NOAA SOLAR1 and ACE data from NOAA RTSW")(fetch_noaa)
 app.command("science", help="Download CDF science data from SDC")(fetch_science)
 app.command("spice", help="Download spice kernels from SDC")(fetch_spice)
 app.command("metakernel", help="Build a SPICE metakernel from available kernels")(

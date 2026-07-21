@@ -11,7 +11,7 @@ from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.download.FetchNOAA import (
     FetchNOAA,
     _process_noaa_mag,
-    _process_noaa_plasma,
+    _process_noaa_wind,
 )
 from imap_mag.io import FileFinder
 from imap_mag.io.file import NOAAPathHandler
@@ -107,11 +107,11 @@ def test_process_noaa_mag_preserves_values() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _process_noaa_plasma
+# _process_noaa_wind
 # ---------------------------------------------------------------------------
 
 
-def test_process_noaa_plasma_all_columns_present_and_renamed() -> None:
+def test_process_noaa_wind_all_columns_present_and_renamed() -> None:
     # Set up.
     data = pd.DataFrame(
         {
@@ -124,7 +124,7 @@ def test_process_noaa_plasma_all_columns_present_and_renamed() -> None:
     )
 
     # Exercise.
-    result = _process_noaa_plasma(data)
+    result = _process_noaa_wind(data)
 
     # Verify - proton_ prefix removed, extra column dropped.
     assert list(result.columns) == ["time_tag", "speed", "temperature", "density"]
@@ -133,7 +133,7 @@ def test_process_noaa_plasma_all_columns_present_and_renamed() -> None:
     assert len(result) == 1
 
 
-def test_process_noaa_plasma_missing_column_raises() -> None:
+def test_process_noaa_wind_missing_column_raises() -> None:
     # Set up - omit 'proton_density'.
     data = pd.DataFrame(
         {
@@ -146,10 +146,10 @@ def test_process_noaa_plasma_missing_column_raises() -> None:
 
     # Exercise & verify.
     with pytest.raises(KeyError):
-        _process_noaa_plasma(data)
+        _process_noaa_wind(data)
 
 
-def test_process_noaa_plasma_preserves_values() -> None:
+def test_process_noaa_wind_preserves_values() -> None:
     # Set up.
     data = pd.DataFrame(
         {
@@ -161,7 +161,7 @@ def test_process_noaa_plasma_preserves_values() -> None:
     )
 
     # Exercise.
-    result = _process_noaa_plasma(data)
+    result = _process_noaa_wind(data)
 
     # Verify renamed columns carry the original values.
     assert all(result["speed"].tolist() == data["proton_speed"])
@@ -432,22 +432,22 @@ def test_download_csv_mag_calls_process_mag_and_add_to_files(
     assert result is mock.sentinel.files
 
 
-@mock.patch("imap_mag.download.FetchNOAA._process_noaa_plasma")
-def test_download_csv_plasma_calls_process_plasma_and_add_to_files(
-    mock_process_plasma: mock.Mock, fetch_noaa: FetchNOAA
+@mock.patch("imap_mag.download.FetchNOAA._process_noaa_wind")
+def test_download_csv_wind_calls_process_wind_and_add_to_files(
+    mock_process_wind: mock.Mock, fetch_noaa: FetchNOAA
 ) -> None:
     # Set up.
     raw_data = [{"time_tag": "2026-07-21T08:00:00", "proton_speed": 400.0}]
     fetch_noaa._data_access.get_data.return_value = raw_data  # type: ignore
-    mock_process_plasma.return_value = mock.sentinel.processed
+    mock_process_wind.return_value = mock.sentinel.processed
 
     with mock.patch.object(
         fetch_noaa, "_add_to_files", return_value=mock.sentinel.files
     ) as mock_add:
         # Exercise.
-        result = fetch_noaa.download_csv(spacecraft="ACE", instrument="plasma")
+        result = fetch_noaa.download_csv(spacecraft="ACE", instrument="wind")
 
     # Verify.
-    mock_process_plasma.assert_called_once()
-    mock_add.assert_called_once_with("ACE", "plasma", mock.sentinel.processed)
+    mock_process_wind.assert_called_once()
+    mock_add.assert_called_once_with("ACE", "wind", mock.sentinel.processed)
     assert result is mock.sentinel.files

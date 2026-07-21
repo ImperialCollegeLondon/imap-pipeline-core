@@ -57,7 +57,7 @@ def _publish_files(
 
 
 # E.g.,
-# imap-mag fetch noaa --spacecraft SOLAR1 --instrument plasma
+# imap-mag fetch noaa --spacecraft SOLAR1 --instrument wind
 def fetch_noaa(
     spacecraft: Annotated[
         Literal["SOLAR1", "ACE"],
@@ -66,7 +66,7 @@ def fetch_noaa(
         ),
     ],
     instrument: Annotated[
-        Literal["mag", "plasma"],
+        Literal["mag", "wind"],
         typer.Option(
             help="Instrument data to download. Must be 'mag' or 'palsma'",
         ),

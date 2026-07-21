@@ -61,10 +61,10 @@ class TestFetchNOAACommand:
             patch("imap_mag.cli.fetch.noaa.FetchNOAA", return_value=mock_fetch),
             patch("imap_mag.cli.fetch.noaa.initialiseLoggingForCommand"),
         ):
-            fetch_noaa(spacecraft="ACE", instrument="plasma")
+            fetch_noaa(spacecraft="ACE", instrument="wind")
 
         mock_fetch.download_csv.assert_called_once_with(
-            spacecraft="ACE", instrument="plasma"
+            spacecraft="ACE", instrument="wind"
         )
 
 
