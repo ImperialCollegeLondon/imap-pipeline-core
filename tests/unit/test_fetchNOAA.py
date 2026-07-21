@@ -208,3 +208,74 @@ def test_get_index_as_datetime_unparseable_string_raises(fetch_noaa: FetchNOAA) 
     # Exercise & verify.
     with pytest.raises((ValueError, Exception)):
         fetch_noaa._get_index_as_datetime(data)
+
+
+# ---------------------------------------------------------------------------
+# FetchNOAA.download_csv
+# ---------------------------------------------------------------------------
+
+
+def test_download_csv_invalid_spacecraft_raises(fetch_noaa: FetchNOAA) -> None:
+    with pytest.raises(ValueError, match="BAD_CRAFT"):
+        fetch_noaa.download_csv(spacecraft="BAD_CRAFT", instrument="mag")  # type: ignore
+
+
+def test_download_csv_invalid_instrument_raises(fetch_noaa: FetchNOAA) -> None:
+    with pytest.raises(ValueError, match="bad_instrument"):
+        fetch_noaa.download_csv(spacecraft="SOLAR1", instrument="bad_instrument")  # type: ignore
+
+
+def test_download_csv_no_data_returns_empty_dict(fetch_noaa: FetchNOAA) -> None:
+    # Set up.
+    fetch_noaa._data_access.get_data.return_value = []  # type: ignore
+
+    # Exercise.
+    result = fetch_noaa.download_csv(spacecraft="SOLAR1", instrument="mag")
+
+    # Verify.
+    assert result == {}
+    fetch_noaa._data_access.get_data.assert_called_once_with(  # type: ignore
+        spacecraft="SOLAR1", instrument="mag"
+    )
+
+
+@mock.patch("imap_mag.download.FetchNOAA._process_noaa_mag")
+def test_download_csv_mag_calls_process_mag_and_add_to_files(
+    mock_process_mag: mock.Mock, fetch_noaa: FetchNOAA
+) -> None:
+    # Set up.
+    raw_data = [{"time_tag": "2026-07-21T08:00:00", "bx_gsm": 1.0}]
+    fetch_noaa._data_access.get_data.return_value = raw_data  # type: ignore
+    mock_process_mag.return_value = mock.sentinel.processed
+
+    with mock.patch.object(
+        fetch_noaa, "_add_to_files", return_value=mock.sentinel.files
+    ) as mock_add:
+        # Exercise.
+        result = fetch_noaa.download_csv(spacecraft="SOLAR1", instrument="mag")
+
+    # Verify.
+    mock_process_mag.assert_called_once()
+    mock_add.assert_called_once_with("SOLAR1", "mag", mock.sentinel.processed)
+    assert result is mock.sentinel.files
+
+
+@mock.patch("imap_mag.download.FetchNOAA._process_noaa_plasma")
+def test_download_csv_plasma_calls_process_plasma_and_add_to_files(
+    mock_process_plasma: mock.Mock, fetch_noaa: FetchNOAA
+) -> None:
+    # Set up.
+    raw_data = [{"time_tag": "2026-07-21T08:00:00", "proton_speed": 400.0}]
+    fetch_noaa._data_access.get_data.return_value = raw_data  # type: ignore
+    mock_process_plasma.return_value = mock.sentinel.processed
+
+    with mock.patch.object(
+        fetch_noaa, "_add_to_files", return_value=mock.sentinel.files
+    ) as mock_add:
+        # Exercise.
+        result = fetch_noaa.download_csv(spacecraft="ACE", instrument="plasma")
+
+    # Verify.
+    mock_process_plasma.assert_called_once()
+    mock_add.assert_called_once_with("ACE", "plasma", mock.sentinel.processed)
+    assert result is mock.sentinel.files
