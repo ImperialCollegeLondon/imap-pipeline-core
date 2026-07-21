@@ -299,10 +299,6 @@ def process_ialirt_hk_data(
 
 def process_codice_hi_data(df: pd.DataFrame):
     """Flatten raw codice_hi data"""
-    import json
-
-    df["codice_hi_epoch"] = df["codice_hi_epoch"].apply(json.loads)
-    df["codice_hi_h"] = df["codice_hi_h"].apply(json.loads)
 
     df_exploded = df.explode(["codice_hi_epoch", "codice_hi_h"]).reset_index(drop=True)
 
