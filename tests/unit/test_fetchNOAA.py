@@ -1,9 +1,34 @@
 """Tests for NOAA data processing functions."""
 
+from datetime import datetime
+from pathlib import Path
+from unittest import mock
+
 import pandas as pd
 import pytest
 
-from imap_mag.download.FetchNOAA import _process_noaa_mag, _process_noaa_plasma
+from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
+from imap_mag.download.FetchNOAA import (
+    FetchNOAA,
+    _process_noaa_mag,
+    _process_noaa_plasma,
+)
+from imap_mag.io import FileFinder
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def fetch_noaa(tmp_path: Path) -> FetchNOAA:
+    """Minimal FetchNOAA instance with mocked external dependencies."""
+    return FetchNOAA(
+        data_access=mock.create_autospec(NOAARTSWApiClient, spec_set=True),
+        work_folder=tmp_path,
+        datastore_finder=mock.create_autospec(FileFinder, spec_set=True),
+    )
+
 
 # ---------------------------------------------------------------------------
 # _process_noaa_mag
@@ -142,3 +167,44 @@ def test_process_noaa_plasma_preserves_values() -> None:
     assert all(result["temperature"].tolist() == data["proton_temperature"])
     assert all(result["density"].tolist() == data["proton_density"])
     assert all(result["time_tag"].tolist() == data["time_tag"])
+
+
+# ---------------------------------------------------------------------------
+# FetchNOAA._get_index_as_datetime
+# ---------------------------------------------------------------------------
+
+
+def test_get_index_as_datetime_converts_multiple_timestamps(
+    fetch_noaa: FetchNOAA,
+) -> None:
+    # Set up.
+    data = pd.DataFrame(
+        {
+            "time_tag": [
+                "2026-07-21T08:00:00",
+                "2026-07-21T09:00:00",
+                "2026-07-21T10:00:00",
+            ]
+        }
+    )
+
+    # Exercise.
+    result = fetch_noaa._get_index_as_datetime(data)
+
+    # Verify - all entries are converted to plain Python datetimes in order.
+    assert list(result) == [
+        datetime(2026, 7, 21, 8, 0, 0),
+        datetime(2026, 7, 21, 9, 0, 0),
+        datetime(2026, 7, 21, 10, 0, 0),
+    ]
+
+
+def test_get_index_as_datetime_unparseable_string_raises(fetch_noaa: FetchNOAA) -> None:
+    # Set up.
+    data = pd.DataFrame(
+        {"time_tag": ["2026-07-21T08:00:00", "not-a-date", "2026-07-21T10:00:00"]}
+    )
+
+    # Exercise & verify.
+    with pytest.raises((ValueError, Exception)):
+        fetch_noaa._get_index_as_datetime(data)
