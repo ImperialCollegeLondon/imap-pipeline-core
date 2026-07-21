@@ -14,6 +14,7 @@ from imap_mag.download.FetchNOAA import (
     _process_noaa_plasma,
 )
 from imap_mag.io import FileFinder
+from imap_mag.io.file import NOAAPathHandler
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -208,6 +209,177 @@ def test_get_index_as_datetime_unparseable_string_raises(fetch_noaa: FetchNOAA) 
     # Exercise & verify.
     with pytest.raises((ValueError, Exception)):
         fetch_noaa._get_index_as_datetime(data)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for _add_to_files tests
+# ---------------------------------------------------------------------------
+
+
+def _write_csv(path: Path, data: pd.DataFrame) -> None:
+    """Write a CSV in the same format FetchNOAA._add_to_files produces."""
+    df = data.copy()
+    df.drop_duplicates(subset="time_tag", keep="last", inplace=True)
+    df.sort_values(by="time_tag", inplace=True)
+    df.set_index("time_tag", inplace=True, drop=True)
+    df = df.reindex(sorted(df.columns), axis="columns")
+    df.to_csv(path, mode="w", header=True, index=True)
+
+
+# ---------------------------------------------------------------------------
+# FetchNOAA._add_to_files
+# ---------------------------------------------------------------------------
+
+
+def test_add_to_files_no_existing_file_creates_new_file_in_work_folder(
+    fetch_noaa: FetchNOAA, tmp_path: Path
+) -> None:
+    # Set up.
+    data = pd.DataFrame(
+        {
+            "time_tag": ["2026-07-21T08:00:00", "2026-07-21T09:00:00"],
+            "bx_gsm": [1.0, 2.0],
+        }
+    )
+    fetch_noaa._datastore_finder.find_by_handler.return_value = None  # type: ignore
+
+    # Exercise.
+    result = fetch_noaa._add_to_files("SOLAR1", "mag", data)
+
+    # Verify - new file created in work folder with header and all rows.
+    expected_path = tmp_path / "SOLAR1_mag_noaa_20260721.csv"
+    assert list(result.keys()) == [expected_path]
+    handler = result[expected_path]
+    assert isinstance(handler, NOAAPathHandler)
+    assert handler.mission == "SOLAR1"
+    assert handler.instrument == "mag"
+    assert handler.content_date == datetime(
+        2026, 7, 21, 9, 0, 0
+    )  # max of input timestamps
+    written = pd.read_csv(expected_path)
+    assert list(written["time_tag"]) == ["2026-07-21T08:00:00", "2026-07-21T09:00:00"]
+    assert list(written["bx_gsm"]) == [1.0, 2.0]
+
+
+def test_add_to_files_appends_when_new_timestamps_are_strictly_newer(
+    fetch_noaa: FetchNOAA, tmp_path: Path
+) -> None:
+    # Set up - existing file has T1; new data has T2 > T1, same columns.
+    existing_file = tmp_path / "existing.csv"
+    _write_csv(
+        existing_file,
+        pd.DataFrame({"time_tag": ["2026-07-21T08:00:00"], "bx_gsm": [1.0]}),
+    )
+    fetch_noaa._datastore_finder.find_by_handler.return_value = existing_file  # type: ignore
+
+    new_data = pd.DataFrame({"time_tag": ["2026-07-21T09:00:00"], "bx_gsm": [2.0]})
+
+    # Exercise.
+    result = fetch_noaa._add_to_files("SOLAR1", "mag", new_data)
+
+    # Verify - existing file is updated in-place; both rows are present.
+    assert existing_file in result
+    written = pd.read_csv(existing_file)
+    assert list(written["time_tag"]) == ["2026-07-21T08:00:00", "2026-07-21T09:00:00"]
+    assert list(written["bx_gsm"]) == [1.0, 2.0]
+
+
+def test_add_to_files_rewrites_file_and_deduplicates_when_timestamps_overlap(
+    fetch_noaa: FetchNOAA, tmp_path: Path
+) -> None:
+    # Set up - existing file has T1, T2; new data has T2 (duplicate) and T3.
+    existing_file = tmp_path / "existing.csv"
+    _write_csv(
+        existing_file,
+        pd.DataFrame(
+            {
+                "time_tag": ["2026-07-21T08:00:00", "2026-07-21T09:00:00"],
+                "bx_gsm": [1.0, 2.0],
+            }
+        ),
+    )
+    fetch_noaa._datastore_finder.find_by_handler.return_value = existing_file  # type: ignore
+
+    new_data = pd.DataFrame(
+        {
+            "time_tag": ["2026-07-21T09:00:00", "2026-07-21T10:00:00"],
+            "bx_gsm": [99.0, 3.0],  # 99.0 replaces the old T2 value
+        }
+    )
+
+    # Exercise.
+    result = fetch_noaa._add_to_files("SOLAR1", "mag", new_data)
+
+    # Verify - file rewritten with T1, T2 (new value), T3; no duplicate rows.
+    assert existing_file in result
+    written = pd.read_csv(existing_file)
+    assert list(written["time_tag"]) == [
+        "2026-07-21T08:00:00",
+        "2026-07-21T09:00:00",
+        "2026-07-21T10:00:00",
+    ]
+    assert list(written["bx_gsm"]) == [1.0, 99.0, 3.0]
+
+
+def test_add_to_files_rewrites_file_when_new_data_has_more_columns(
+    fetch_noaa: FetchNOAA, tmp_path: Path
+) -> None:
+    # Set up - existing file has only bx_gsm; new data also has by_gsm.
+    existing_file = tmp_path / "existing.csv"
+    _write_csv(
+        existing_file,
+        pd.DataFrame({"time_tag": ["2026-07-21T08:00:00"], "bx_gsm": [1.0]}),
+    )
+    fetch_noaa._datastore_finder.find_by_handler.return_value = existing_file  # type: ignore
+
+    new_data = pd.DataFrame(
+        {
+            "time_tag": ["2026-07-21T09:00:00"],
+            "bx_gsm": [2.0],
+            "by_gsm": [3.0],
+        }
+    )
+
+    # Exercise.
+    result = fetch_noaa._add_to_files("SOLAR1", "mag", new_data)
+
+    # Verify - file rewritten with both rows; existing row has NaN for by_gsm.
+    assert existing_file in result
+    written = pd.read_csv(existing_file)
+    assert list(written["time_tag"]) == ["2026-07-21T08:00:00", "2026-07-21T09:00:00"]
+    assert list(written["bx_gsm"]) == [1.0, 2.0]
+    assert pd.isna(
+        written.loc[written["time_tag"] == "2026-07-21T08:00:00", "by_gsm"].iloc[0]
+    )
+    assert (
+        written.loc[written["time_tag"] == "2026-07-21T09:00:00", "by_gsm"].iloc[0]
+        == 3.0
+    )
+
+
+def test_add_to_files_multiple_days_produce_multiple_files(
+    fetch_noaa: FetchNOAA, tmp_path: Path
+) -> None:
+    # Set up - data spans two calendar days.
+    data = pd.DataFrame(
+        {
+            "time_tag": [
+                "2026-07-21T08:00:00",
+                "2026-07-21T09:00:00",
+                "2026-07-22T08:00:00",
+            ],
+            "bx_gsm": [1.0, 2.0, 3.0],
+        }
+    )
+    fetch_noaa._datastore_finder.find_by_handler.side_effect = [None, None]  # type: ignore
+
+    # Exercise.
+    result = fetch_noaa._add_to_files("SOLAR1", "mag", data)
+
+    # Verify - one file per day, each in the work folder.
+    assert len(result) == 2
+    assert tmp_path / "SOLAR1_mag_noaa_20260721.csv" in result
+    assert tmp_path / "SOLAR1_mag_noaa_20260722.csv" in result
 
 
 # ---------------------------------------------------------------------------
