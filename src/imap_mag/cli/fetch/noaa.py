@@ -39,7 +39,7 @@ def _publish_files(
 ) -> dict[Path, IFilePathHandler]:
     """Publish downloaded files to data store."""
 
-    if not app_settings.fetch_ialirt.publish_to_data_store:
+    if not app_settings.fetch_solar1_ace.publish_to_data_store:
         logger.info("Files not published to data store based on config.")
         return downloaded_files
 
