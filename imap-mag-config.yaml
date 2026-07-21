@@ -184,8 +184,6 @@ postgres_upload:
         - "ialirt/**/imap_ialirt_hit_*.csv"
         - "ialirt/**/imap_ialirt_swe_*.csv"
         - "ialirt/**/imap_ialirt_swapi_*.csv"
-        - "ialirt/**/imap_ialirt_codice_lo_*.csv"
-        - "ialirt/**/imap_ialirt_codice_hi_*.csv"
 
 datastore_cleanup:
     dry_run: false

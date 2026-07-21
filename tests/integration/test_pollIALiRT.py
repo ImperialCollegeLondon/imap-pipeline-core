@@ -238,7 +238,7 @@ async def test_poll_ialirt_concurrent_multi_instrument(
     wiremock_manager.reset()
     define_fallback_mapping(wiremock_manager)
 
-    test_science_batch = ["mag", "swe", "codice_lo"]
+    test_science_batch = ["mag", "swe"]
     test_hk_batch = []
     all_test_instruments = test_science_batch + test_hk_batch
 
@@ -300,7 +300,7 @@ async def test_poll_ialirt_continue_from_previous_download(
     wiremock_manager.reset()
     define_fallback_mapping(wiremock_manager)
 
-    test_instruments = ["mag", "swe", "codice_lo"]
+    test_instruments = ["mag", "swe"]
 
     define_available_ialirt_mappings(
         wiremock_manager,
