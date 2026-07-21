@@ -39,7 +39,3 @@ class SdcApiSource(ApiSource):
 
 class SOLAR1andACEApiSource(ApiSource):
     url_base: str = Field(validation_alias=CONSTANTS.ENV_VAR_NAMES.SOLAR1_ACE_URL)
-
-
-class DSCOVRApiSource(ApiSource):
-    url_base: str = Field(validation_alias=CONSTANTS.ENV_VAR_NAMES.DSCOVR_URL)

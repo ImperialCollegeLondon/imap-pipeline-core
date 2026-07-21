@@ -1,7 +1,6 @@
 """Interct with the other L1 API."""
 
 import logging
-from datetime import UTC, datetime
 from time import time
 from typing import Any, Literal
 
@@ -86,72 +85,3 @@ class NOAARTSWApiClient:
         )
 
         return _data
-
-
-class DSCOVRApiClient:
-    """Interacts with the DSCOVR APIs provided by NOAA."""
-
-    def __init__(self, url: str):
-        self._url = url
-
-        if not self._url:
-            raise ValueError("DSCOVR URL cannot be empty.")
-
-    def get_data(
-        self, instrument: Literal["mag", "wind"], start_date: datetime
-    ) -> list[dict[str, Any]]:
-        """Download DSCOVR data from solar wind API.
-
-        The DSCOVR API privides several files, each containing data for a specific time
-        range for the last 2h, 6h, 1 day, 3 day and 7 day. We will download the file
-        that covers as much as possible of the requested time range.
-
-        Args:
-            instrument: The instrument to retrieve. Must be `mag` or `wind`.
-            start_date: The start date of the requested time range.
-
-        Returns:
-            A list of dictionaries containing the DSCOVR data.
-        """
-        if instrument not in ("mag", "wind"):
-            raise ValueError(
-                "Invalid instrument type requested for DSCOVR. "
-                f"It must be 'mag' or 'wind', but '{instrument}' found"
-            )
-
-        start_time = time()
-        logger.info(
-            f"Downloading {instrument} data for DSCOVR from {start_date} "
-            + f"until {datetime.now(tz=UTC)}..."
-        )
-
-        # Determine which file to download based on the time range
-        time_ranges = {
-            "2-hour": 2,
-            "6-hour": 6,
-            "1-day": 24,
-            "3-day": 72,
-            "7-day": 168,
-        }
-        dt = datetime.now(tz=UTC) - start_date
-        for file_name, hours in time_ranges.items():
-            if dt.total_seconds() <= hours * 3600:
-                _file = f"{instrument}-{file_name}.json"
-                break
-        else:
-            _file = f"{instrument}-7-day.json"
-
-        # Download the data from the DSCOVR API
-        _data: list[list[Any]] = _download_json_file(self._url, _file)
-
-        # Convert the list of lists to a list of dictionaries using the first row as
-        # keys
-        _cols = _data[0]
-        _data_dicts = [dict(zip(_cols, row)) for row in _data[1:]]
-
-        logger.debug(
-            f"Downloaded {len(_data_dicts)} {instrument} records for DSCOVR in "
-            f"{time() - start_time:.2f} seconds."
-        )
-
-        return _data_dicts
