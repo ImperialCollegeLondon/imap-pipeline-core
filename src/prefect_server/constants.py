@@ -71,7 +71,8 @@ class PREFECT_CONSTANTS:
     class QUEUES:
         HIGH_PRIORITY = "high-priority"
         DEFAULT = "default"
-        LOW = "low"
+        LOW_SMALL = "low-small"
+        LOW_BIG = "low-big"
 
     class FLOW_NAMES:
         POLL_IALIRT = "poll-ialirt"

@@ -143,6 +143,7 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPICE_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     poll_lo_pivot_platform_deployable = poll_lo_pivot_platform_flow.to_deployment(
@@ -152,6 +153,7 @@ async def adeploy_flows(local_debug: bool = False):
         ),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     poll_hi45_esa_step_deployable = poll_hi45_esa_step_flow.to_deployment(
@@ -159,6 +161,7 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HI45_ESA_STEP_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     poll_hi90_esa_step_deployable = poll_hi90_esa_step_flow.to_deployment(
@@ -166,6 +169,7 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HI90_ESA_STEP_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     poll_spin_table_deployable = poll_spin_table_flow.to_deployment(
@@ -173,6 +177,7 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPIN_TABLE_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     poll_small_forces_deployable = poll_small_forces_flow.to_deployment(
@@ -180,6 +185,7 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SMALL_FORCES_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     sci_polling_schedules = []
@@ -252,6 +258,7 @@ async def adeploy_flows(local_debug: bool = False):
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         schedules=sci_polling_schedules,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     publish_deployable = publish_flow.to_deployment(
@@ -292,6 +299,7 @@ async def adeploy_flows(local_debug: bool = False):
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
     upload_deployable = upload_shared_docs_flow.to_deployment(
@@ -304,6 +312,7 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         triggers=[
             DeploymentEventTrigger(
                 name="Trigger upload after I-ALiRT poll",
@@ -338,6 +347,7 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         triggers=[
             DeploymentEventTrigger(
@@ -359,6 +369,7 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
@@ -371,6 +382,7 @@ async def adeploy_flows(local_debug: bool = False):
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
         ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
@@ -381,7 +393,7 @@ async def adeploy_flows(local_debug: bool = False):
     calibration_deployable = calibrate_flow.to_deployment(
         name="calibrate",
         job_variables=matlab_shared_job_variables,
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
@@ -392,14 +404,14 @@ async def adeploy_flows(local_debug: bool = False):
     apply_deployable = apply_flow.to_deployment(
         name="apply",
         job_variables=apply_shared_job_variables,
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name="calibrate_and_apply",
         job_variables=apply_shared_job_variables,
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 

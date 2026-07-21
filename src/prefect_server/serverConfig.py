@@ -66,14 +66,23 @@ class ServerConfig:
             )
             print(f"Created new work queue '{PREFECT_CONSTANTS.QUEUES.DEFAULT}'")
 
-        if PREFECT_CONSTANTS.QUEUES.LOW not in [q.name for q in existing_queues]:
+        if PREFECT_CONSTANTS.QUEUES.LOW_SMALL not in [q.name for q in existing_queues]:
             await client.create_work_queue(
-                name=PREFECT_CONSTANTS.QUEUES.LOW,
+                name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+                concurrency_limit=3,
+                priority=20,
+                work_pool_name=work_pool,
+            )
+            print(f"Created new work queue '{PREFECT_CONSTANTS.QUEUES.LOW_SMALL}'")
+
+        if PREFECT_CONSTANTS.QUEUES.LOW_BIG not in [q.name for q in existing_queues]:
+            await client.create_work_queue(
+                name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
                 concurrency_limit=1,
                 priority=30,
                 work_pool_name=work_pool,
             )
-            print(f"Created new work queue '{PREFECT_CONSTANTS.QUEUES.LOW}'")
+            print(f"Created new work queue '{PREFECT_CONSTANTS.QUEUES.LOW_BIG}'")
 
     @staticmethod
     async def _create_variables(client):
