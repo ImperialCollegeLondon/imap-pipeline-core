@@ -49,19 +49,18 @@ def generate_flow_run_name(
 
 
 @task(
-    name="Execute I-ALiRT Pipeline",
+    name="Download I-ALiRT",
+    task_run_name="Download-I-ALiRT-{instrument}-{task_start_date}-to-{task_end_date}",
     retries=2,
     retry_delay_seconds=30,
     cache_policy=NO_CACHE,
 )
 async def run_ialirt_polling_pipeline_task(
     instrument: str,
-    task_start_date: datetime,
-    task_end_date: datetime,
     database: Database | None,
     settings: AppSettings,
+    run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
-    run_parameters: AutomaticRunParameters | FetchByDatesRunParameters | None = None,
 ):
     """Wrap IALiRTPipeline in a Prefect task."""
     logger = try_get_prefect_logger(__name__)
@@ -73,34 +72,7 @@ async def run_ialirt_polling_pipeline_task(
         datetime_provider=datetime_provider,
     )
 
-    logger.info(f"Building and running pipeline for {instrument.upper()}")
-
-    # if no run_parameters start_date will be fetched from the DB and end_date will be
-    # overwritten with the 5 min batch window end time
-    if run_parameters is None:
-        task_run_parameters = FetchByDatesRunParameters(end_date=task_end_date)
-    # if user provides start_date and end_date then overwrite with the current 5 minute batch window
-    elif isinstance(run_parameters, FetchByDatesRunParameters):
-        task_run_parameters = FetchByDatesRunParameters(
-            start_date=(
-                task_start_date
-                if task_start_date is not None
-                else run_parameters.start_date
-            ),
-            end_date=task_end_date,
-            force_redownload=run_parameters.force_redownload,
-            progress_mode=run_parameters.progress_mode,
-        )
-    # if AutomaticRunParameters was used
-    # overwrite with the 5 min batch window start and end times
-    else:
-        task_run_parameters = FetchByDatesRunParameters(
-            start_date=task_start_date,
-            end_date=task_end_date,
-            progress_mode=run_parameters.progress_mode,
-        )
-
-    pipeline.build(task_run_parameters)
+    pipeline.build(run_parameters)
     await pipeline.run()
 
     result = pipeline.get_results()
@@ -156,11 +128,11 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
-    timeout_seconds: Annotated[
+    polling_interval_seconds: Annotated[
         int,
         Field(
             json_schema_extra={
-                "title": "Timeout",
+                "title": "Polling Interval",
                 "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
             }
         ),
@@ -258,9 +230,9 @@ async def poll_ialirt_flow(
         # to avoid spamming the API
         if current_window_start > current_time:
             logger.info(
-                f"Skipped Batch #{iteration}. Sleeping for {timeout_seconds:.1f}s"
+                f"Skipped Batch #{iteration}. Sleeping for {polling_interval_seconds:.1f}s"
             )
-            await asyncio.sleep(timeout_seconds)
+            await asyncio.sleep(polling_interval_seconds)
             iteration += 1
             continue
 
@@ -311,8 +283,10 @@ async def poll_ialirt_flow(
             logger.info("wait_for_new_data_to_arrive=False; exiting after one batch.")
             break
 
-        logger.info(f"Batch #{iteration} complete. Sleeping for {timeout_seconds:.1f}s")
-        await asyncio.sleep(timeout_seconds)
+        logger.info(
+            f"Batch #{iteration} complete. Sleeping for {polling_interval_seconds:.1f}s"
+        )
+        await asyncio.sleep(polling_interval_seconds)
         iteration += 1
 
     if plot_last_3_days:
