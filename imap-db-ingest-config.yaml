@@ -1,7 +1,6 @@
 jobs:
   imap_mag_l1_hsk-procstat_v:
     target_table: hsk_procstat
-    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -288,9 +287,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-procstat_*_v*.csv
   imap_mag_l1_hsk-pw_v:
     target_table: hsk_pw
-    filename_match: imap_mag_l1_hsk-pw_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -425,9 +424,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-pw_*_v*.csv
   imap_mag_l1_hsk-sci_v:
     target_table: hsk_sci
-    filename_match: imap_mag_l1_hsk-sci_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -678,9 +677,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-sci_*_v*.csv
   imap_mag_l1_hsk-sid15_v:
     target_table: hsk_sid15
-    filename_match: imap_mag_l1_hsk-sid15_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -2915,9 +2914,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-sid15_*_v*.csv
   imap_mag_l1_hsk-status_v:
     target_table: hsk_status
-    filename_match: imap_mag_l1_hsk-status_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -3000,9 +2999,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_hsk-status_*_v*.csv
   imap_sc_l1_x285_v:
     target_table: sc_x285
-    filename_match: imap_sc_l1_x285_*_v*.csv
     id_mapping:
       epoch:
         db_column: epoch
@@ -5861,9 +5860,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_sc_l1_x285_*_v*.csv
   imap_sc_l1_x286_v:
     target_table: sc_x286
-    filename_match: imap_sc_l1_x286_*_v*.csv
     id_mapping:
       epoch:
         db_column: id
@@ -10386,9 +10385,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_sc_l1_x286_*_v*.csv
   imap_mag_l1_ehs-hkadc_v:
     target_table: ehs-hkadc
-    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10486,9 +10485,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_ehs-hkadc_*_v*.csv
   imap_mag_l1_els-confld_v:
     target_table: els-confld
-    filename_match: imap_mag_l1_els-confld_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10546,9 +10545,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_els-confld_*_v*.csv
   imap_mag_l1_els-itf_v:
     target_table: els-itf
-    filename_match: imap_mag_l1_els-itf_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10634,9 +10633,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_els-itf_*_v*.csv
   imap_mag_l1_mem-chckrep_v:
     target_table: mem-chckrep
-    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10686,9 +10685,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_mag_l1_mem-chckrep_*_v*.csv
   imap_mag_l1_prog-btsucc_v:
     target_table: prog-btsucc
-    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10763,9 +10762,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_prog-btsucc_*_v*.csv
   imap_mag_l1_prog-mtran_v:
     target_table: prog-mtran
-    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10820,9 +10819,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_prog-mtran_*_v*.csv
   imap_mag_l1_tcc-succ_v:
     target_table: tcc-succ
-    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
     id_mapping:
       shcoarse:
         db_column: shcoarse
@@ -10881,9 +10880,9 @@ jobs:
       columns:
       - column: time_met_iso
         order: DESC
+    filename_match: imap_mag_l1_tcc-succ_*_v*.csv
   imap_ialirt_hk:
     target_table: ialirt_mag_hk
-    filename_match: imap_ialirt_hk_*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
@@ -11025,9 +11024,9 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: imap_ialirt_hk_*.csv
   imap_ialirt:
     target_table: ialirt_mag
-    filename_match: imap_ialirt_*.csv
     id_mapping:
       time_utc:
         db_column: time_utc
@@ -11104,6 +11103,131 @@ jobs:
         nullable: false
     filename_to_column:
       template: imap_ialirt_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+    filename_match: imap_ialirt_*.csv
+  ace_mag_noaa:
+    target_table: ace_mag_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      bx_gsm:
+        db_column: bx_gsm
+        type: float
+        nullable: false
+      by_gsm:
+        db_column: by_gsm
+        type: float
+        nullable: false
+      bz_gsm:
+        db_column: bz_gsm
+        type: float
+        nullable: false
+      phi_gsm:
+        db_column: phi_gsm
+        type: float
+        nullable: false
+      theta_gsm:
+        db_column: theta_gsm
+        type: float
+        nullable: false
+    filename_to_column:
+      template: ACE_mag_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ace_wind_noaa:
+    target_table: ace_wind_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      density:
+        db_column: density
+        type: float
+        nullable: false
+      speed:
+        db_column: speed
+        type: float
+        nullable: false
+      temperature:
+        db_column: temperature
+        type: integer
+        nullable: false
+    filename_to_column:
+      template: ACE_wind_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  solar_mag_noaa:
+    target_table: solar_mag_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      bx_gsm:
+        db_column: bx_gsm
+        type: float
+        nullable: false
+      by_gsm:
+        db_column: by_gsm
+        type: float
+        nullable: false
+      bz_gsm:
+        db_column: bz_gsm
+        type: float
+        nullable: false
+      phi_gsm:
+        db_column: phi_gsm
+        type: float
+        nullable: false
+      theta_gsm:
+        db_column: theta_gsm
+        type: float
+        nullable: false
+    filename_to_column:
+      template: SOLAR1_mag_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  solar_wind_noaa:
+    target_table: solar_wind_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      density:
+        db_column: density
+        type: float
+        nullable: false
+      speed:
+        db_column: speed
+        type: float
+        nullable: false
+      temperature:
+        db_column: temperature
+        type: integer
+        nullable: false
+    filename_to_column:
+      template: SOLAR1_wind_noaa_[date].csv
       columns:
         date:
           db_column: file_date
