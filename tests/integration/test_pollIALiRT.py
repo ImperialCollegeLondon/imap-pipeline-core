@@ -165,10 +165,7 @@ def verify_available_ialirt(
             f"{instrument.upper()}_{CONSTANTS.DATABASE.IALIRT_PROGRESS_ID}"
         )
 
-    assert (
-        workflow_progress.get_progress_timestamp()
-        == expected_progress_timestamp.replace(microsecond=0)
-    )
+    assert workflow_progress.get_progress_timestamp() == expected_progress_timestamp
 
     if actual_timestamp is not None:
         diff = abs(workflow_progress.get_last_checked_date() - actual_timestamp)
@@ -208,7 +205,7 @@ async def test_poll_ialirt_first_ever_run_mag(
         ):
             await poll_ialirt_flow(
                 run_parameters=AutomaticRunParameters(),
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )
@@ -216,7 +213,7 @@ async def test_poll_ialirt_first_ever_run_mag(
     verify_available_ialirt(
         database=test_database,
         instrument="mag",
-        expected_progress_timestamp=NOW.replace(microsecond=0),
+        expected_progress_timestamp=END_OF_TODAY,
         actual_timestamp=NOW.replace(microsecond=0),
     )
 
@@ -261,7 +258,7 @@ async def test_poll_ialirt_concurrent_multi_instrument(
             PREFECT_TEST_MODE="1",
         ):
             await poll_ialirt_flow(
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )  # type: ignore
@@ -270,7 +267,7 @@ async def test_poll_ialirt_concurrent_multi_instrument(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=NOW.replace(microsecond=0),
+            expected_progress_timestamp=END_OF_TODAY,
             actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
@@ -325,7 +322,7 @@ async def test_poll_ialirt_continue_from_previous_download(
         ):
             await poll_ialirt_flow(
                 run_parameters=AutomaticRunParameters(),
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )  # type: ignore
@@ -334,7 +331,7 @@ async def test_poll_ialirt_continue_from_previous_download(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=NOW.replace(microsecond=0),
+            expected_progress_timestamp=END_OF_TODAY,
             actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
@@ -382,7 +379,7 @@ async def test_poll_ialirt_concurrent_specify_start_end_dates(
 
             await poll_ialirt_flow(
                 run_parameters=bounded_params,
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )
@@ -443,14 +440,14 @@ async def test_poll_ialirt_hk_first_ever_run(
 
             await poll_ialirt_flow(
                 run_parameters=bounded_params,
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )
     verify_available_ialirt(
         database=test_database,
         instrument="mag_hk",
-        expected_progress_timestamp=NOW.replace(microsecond=0),
+        expected_progress_timestamp=END_OF_HOUR,
         actual_timestamp=NOW.replace(microsecond=0),
         hk=True,
     )
@@ -498,14 +495,14 @@ async def test_poll_ialirt_specify_start_end_dates_hk(
 
             await poll_ialirt_flow(
                 run_parameters=bounded_params,
-                wait_for_new_data_to_arrive=False,
+                wait_for_new_data_to_arrive_up_to_an_hour=False,
                 plot_last_3_days=False,
                 datetime_provider=DatetimeProvider(fixed_now=NOW),
             )
 
     verify_available_ialirt(
         database=test_database,
-        expected_progress_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
+        expected_progress_timestamp=END_OF_HOUR.replace(tzinfo=None),
         actual_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
         hk=True,
         instrument="mag_hk",
@@ -595,7 +592,7 @@ async def test_poll_ialirt_send_quicklook_at_6am_uk_time(
         ):
             await poll_ialirt_flow(
                 run_parameters=AutomaticRunParameters(),
-                wait_for_new_data_to_arrive=True,
+                wait_for_new_data_to_arrive_up_to_an_hour=True,
                 plot_last_3_days=True,
                 datetime_provider=datetime_provider,
             )  # type: ignore

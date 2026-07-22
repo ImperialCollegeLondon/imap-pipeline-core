@@ -49,19 +49,18 @@ def generate_flow_run_name(
 
 
 @task(
-    name="Execute I-ALiRT Pipeline",
-    retries=2,
+    name="Download I-ALiRT",
+    task_run_name="Download-I-ALiRT-{instrument}",
+    retries=1,
     retry_delay_seconds=30,
     cache_policy=NO_CACHE,
 )
 async def run_ialirt_polling_pipeline_task(
     instrument: str,
-    task_start_date: datetime,
-    task_end_date: datetime,
     database: Database | None,
     settings: AppSettings,
+    run_parameters: AutomaticRunParameters | FetchByDatesRunParameters,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
-    run_parameters: AutomaticRunParameters | FetchByDatesRunParameters | None = None,
 ):
     """Wrap IALiRTPipeline in a Prefect task."""
     logger = try_get_prefect_logger(__name__)
@@ -73,34 +72,7 @@ async def run_ialirt_polling_pipeline_task(
         datetime_provider=datetime_provider,
     )
 
-    logger.info(f"Building and running pipeline for {instrument.upper()}")
-
-    # if no run_parameters start_date will be fetched from the DB and end_date will be
-    # overwritten with the 5 min batch window end time
-    if run_parameters is None:
-        task_run_parameters = FetchByDatesRunParameters(end_date=task_end_date)
-    # if user provides start_date and end_date then overwrite with the current 5 minute batch window
-    elif isinstance(run_parameters, FetchByDatesRunParameters):
-        task_run_parameters = FetchByDatesRunParameters(
-            start_date=(
-                task_start_date
-                if task_start_date is not None
-                else run_parameters.start_date
-            ),
-            end_date=task_end_date,
-            force_redownload=run_parameters.force_redownload,
-            progress_mode=run_parameters.progress_mode,
-        )
-    # if AutomaticRunParameters was used
-    # overwrite with the 5 min batch window start and end times
-    else:
-        task_run_parameters = FetchByDatesRunParameters(
-            start_date=task_start_date,
-            end_date=task_end_date,
-            progress_mode=run_parameters.progress_mode,
-        )
-
-    pipeline.build(task_run_parameters)
+    pipeline.build(run_parameters)
     await pipeline.run()
 
     result = pipeline.get_results()
@@ -147,7 +119,7 @@ async def poll_ialirt_flow(
             }
         ),
     ] = AutomaticRunParameters(),
-    wait_for_new_data_to_arrive: Annotated[
+    wait_for_new_data_to_arrive_up_to_an_hour: Annotated[
         bool,
         Field(
             json_schema_extra={
@@ -156,11 +128,11 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
-    timeout_seconds: Annotated[
+    polling_interval_seconds: Annotated[
         int,
         Field(
             json_schema_extra={
-                "title": "Timeout",
+                "title": "Polling Interval",
                 "description": "Time in seconds to wait between polling for new data. Only used when waiting for new data.",
             }
         ),
@@ -193,6 +165,7 @@ async def poll_ialirt_flow(
             }
         ),
     ] = True,
+    force_send_notification: bool = False,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
         None | DatetimeProvider,
@@ -204,6 +177,14 @@ async def poll_ialirt_flow(
     for all 8 instruments every 5 minutes.
     """
     logger = try_get_prefect_logger(__name__)
+
+    if (
+        wait_for_new_data_to_arrive_up_to_an_hour
+        and type(run_parameters) is not AutomaticRunParameters
+    ):
+        raise ValueError(
+            "When waiting for new data to arrive, run_parameters must be of type Automatic Run"
+        )
 
     database = Database() if use_database else None
     settings = AppSettings()  # type: ignore
@@ -219,69 +200,15 @@ async def poll_ialirt_flow(
 
     combined_instruments = VALID_IALIRT_INSTRUMENTS + VALID_IALIRT_HK_INSTRUMENTS
 
-    end_date = getattr(run_parameters, "end_date", None)
-    start_date = getattr(run_parameters, "start_date", None)
+    polling_window_end_date = datetime_provider.end_of_hour() - timedelta(
+        seconds=polling_interval_seconds
+    )
 
-    if not end_date:
-        end_date = datetime_provider.end_of_hour()
-    if not start_date:
-        start_date = datetime_provider.start_of_hour()
-
-    # Make dates naive for comparison with datetime_provider.now()
-    if hasattr(end_date, "tzinfo") and end_date.tzinfo is not None:
-        end_date = end_date.replace(tzinfo=None)
-
-    if hasattr(start_date, "tzinfo") and start_date.tzinfo is not None:
-        start_date = start_date.replace(tzinfo=None)
-
-    if start_date > end_date:
-        logger.error(
-            f"Invalid date range: start_date ({start_date}) "
-            f"is later than end_date ({end_date}). Aborting flow."
-        )
-        return Failed(message="Invalid date range: start_date is after end_date.")
-
-    logger.info(f"Starting IALirt Polling: {start_date} - {end_date}")
-
-    current_window_start = start_date
     iteration = 1
     while True:
-        current_time = datetime_provider.now().replace(tzinfo=None)
-
-        if current_window_start >= end_date:
-            logger.info("Reached end_date; stopping polling loop.")
-            break
-
-        logger.info(f"Starting 5-Minute I-ALiRT Polling Batch #{iteration}")
-
-        # skip this batch if window start is still in the future
-        # to avoid spamming the API
-        if current_window_start > current_time:
-            logger.info(
-                f"Skipped Batch #{iteration}. Sleeping for {timeout_seconds:.1f}s"
-            )
-            await asyncio.sleep(timeout_seconds)
-            iteration += 1
-            continue
-
-        task_end_date = min(end_date, current_time)
-
-        task_start_date = None
-        if isinstance(run_parameters, FetchByDatesRunParameters):
-            if iteration == 1 and run_parameters.start_date is not None:
-                # if first iteration then use the provided time
-                task_start_date = run_parameters.start_date
-            else:
-                # use the 5 min batch window start
-                task_start_date = current_window_start
-
-        setattr(run_parameters, "end_date", task_end_date)
-
         tasks = [
             run_ialirt_polling_pipeline_task(
                 instrument=inst,
-                task_start_date=task_start_date,  # type: ignore
-                task_end_date=task_end_date,
                 database=database,
                 settings=settings,
                 datetime_provider=datetime_provider,
@@ -296,26 +223,31 @@ async def poll_ialirt_flow(
         exception_count = sum(isinstance(r, Exception) for r in results)
         for inst, result in zip(combined_instruments, results):
             if isinstance(result, Exception):
-                logger.error(f"Download failed for {inst.upper()}: {result}")
+                logger.error(f"Download failed for {inst.upper()}", exc_info=result)
 
         if exception_count == len(combined_instruments):
-            error_message = "All instrument pipelines failed in a single batch."
-            logger.error(error_message)
-            return Failed(message=error_message)
+            return Failed(message="All I-ALiRT downloads failed")
 
-        # advance the window to the current batch time
-        current_window_start = current_time
-
-        # if not waiting for new data run only one batch
-        if not wait_for_new_data_to_arrive:
-            logger.info("wait_for_new_data_to_arrive=False; exiting after one batch.")
+        if not wait_for_new_data_to_arrive_up_to_an_hour:
             break
 
-        logger.info(f"Batch #{iteration} complete. Sleeping for {timeout_seconds:.1f}s")
-        await asyncio.sleep(timeout_seconds)
+        if wait_for_new_data_to_arrive_up_to_an_hour:
+            if (
+                datetime_provider.now() + timedelta(seconds=polling_interval_seconds)
+                >= polling_window_end_date
+            ):
+                logger.info(
+                    f"Will be end of hour soon - stopping after {iteration} iterations"
+                )
+                break
+
+        logger.info(
+            f"Batch #{iteration} complete. Sleeping for {polling_interval_seconds:.1f}s"
+        )
+        await asyncio.sleep(polling_interval_seconds)
         iteration += 1
 
-    if plot_last_3_days:
+    if plot_last_3_days or force_send_notification:
         await quicklook_ialirt_flow(
             start_date=datetime_provider.today() - timedelta(days=2),
             end_date=datetime_provider.now(),
@@ -323,11 +255,13 @@ async def poll_ialirt_flow(
         )
 
         # If this is the 6 AM (UK time) polling job, send the latest figure to Teams
-        uk_end_time = end_date.replace(tzinfo=UTC).astimezone(
+        uk_end_time = polling_window_end_date.replace(tzinfo=UTC).astimezone(
             pytz.timezone("Europe/London")
         )
 
-        if wait_for_new_data_to_arrive and (uk_end_time.hour == 6):
+        if (
+            wait_for_new_data_to_arrive_up_to_an_hour and (uk_end_time.hour == 6)
+        ) or force_send_notification:
             imap_webhook_block = await MicrosoftTeamsWebhook.aload(
                 imap_notification_webhook_name
             )

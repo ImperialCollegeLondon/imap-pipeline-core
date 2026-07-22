@@ -38,10 +38,10 @@ def _log_stage_async(func):
         if logged_args and kwargs_str:
             kwargs_str = f" {kwargs_str}"
 
-        logger.info(f"{log_prefix}{method_name}({logged_args}{kwargs_str})")
+        logger.debug(f"{log_prefix}{method_name}({logged_args}{kwargs_str})")
         try:
             result = await func(*args, **kwargs)
-            logger.info(f"{log_prefix} {method_name} completed")
+            logger.debug(f"{log_prefix} {method_name} completed")
             return result
         except Exception as e:
             logger.error(f"{log_prefix}Error in {method_name}", exc_info=e)

@@ -1,12 +1,13 @@
 """Unit tests for pollIALiRT helpers, flow logic, and name generation."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytz
 
 from prefect_server.pollIALiRT import (
+    AutomaticRunParameters,
+    FetchByDatesRunParameters,
     poll_ialirt_flow,
     run_ialirt_polling_pipeline_task,
 )
@@ -48,13 +49,13 @@ class TestIALiRTPollingTask:
 
         result = await run_ialirt_polling_pipeline_task.fn(
             instrument=instrument,
-            task_start_date=datetime(2025, 1, 1),
-            task_end_date=datetime(2025, 1, 2),
             database=MagicMock(),
             settings=MagicMock(),
+            run_parameters=AutomaticRunParameters(),
         )
 
         assert result.success is True
+        mock_pipeline_deps["pipeline"].build.assert_called_once()
         mock_pipeline_deps["emit"].assert_called_once()
 
         # Check that the event was emitted
@@ -69,10 +70,9 @@ class TestIALiRTPollingTask:
 
         await run_ialirt_polling_pipeline_task.fn(
             instrument=instrument,
-            task_start_date=datetime(2025, 1, 1),
-            task_end_date=datetime(2025, 1, 2),
             database=MagicMock(),
             settings=MagicMock(),
+            run_parameters=AutomaticRunParameters(),
         )
 
         call_kwargs = mock_pipeline_deps["emit"].call_args.kwargs
@@ -86,10 +86,9 @@ class TestIALiRTPollingTask:
         with pytest.raises(RuntimeError, match="I-ALiRT Pipeline failed for mag"):
             await run_ialirt_polling_pipeline_task.fn(
                 instrument="mag",
-                task_start_date=datetime(2025, 1, 1),
-                task_end_date=datetime(2025, 1, 2),
                 database=MagicMock(),
                 settings=MagicMock(),
+                run_parameters=AutomaticRunParameters(),
             )
 
 
@@ -115,6 +114,7 @@ class TestPollIALiRTFlow:
             ) as mock_sleep,
         ):
             mock_secret.return_value = "fake-auth-code"
+            mock_task.return_value = "Success"
 
             with (
                 patch("prefect_server.pollIALiRT.VALID_IALIRT_INSTRUMENTS", ["mag"]),
@@ -126,79 +126,68 @@ class TestPollIALiRTFlow:
                 }
 
     @pytest.mark.asyncio
-    async def test_invalid_date_range_aborts_flow(self, mock_flow):
-        """Flow should immediately return Failed if start_date > end_date."""
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = datetime(2025, 1, 2)
-        mock_run_params.end_date = datetime(2025, 1, 1)
-
-        result = await poll_ialirt_flow.fn(
-            run_parameters=mock_run_params, datetime_provider=MagicMock()
+    async def test_raises_value_error_when_waiting_with_non_automatic_run_parameters(
+        self, mock_flow
+    ):
+        """Flow should raise ValueError if waiting for new data with non-Automatic run parameters."""
+        bounded_params = FetchByDatesRunParameters(
+            start_date=datetime(2025, 1, 1), end_date=datetime(2025, 1, 2)
         )
 
-        assert result.is_failed()
-        assert "start_date is after end_date" in result.message  # pyright: ignore[reportOperatorIssue]
+        with pytest.raises(
+            ValueError, match="run_parameters must be of type Automatic Run"
+        ):
+            await poll_ialirt_flow.fn(
+                run_parameters=bounded_params,
+                wait_for_new_data_to_arrive_up_to_an_hour=True,
+            )
 
     @pytest.mark.asyncio
     async def test_single_batch_when_wait_for_new_data_is_false(self, mock_flow):
-        """Flow should run exactly one batch and break if wait_for_new_data_to_arrive is False."""
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = datetime(2025, 1, 1, 12, 0)
-        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
-
+        """Flow should run exactly one batch and break if wait_for_new_data_to_arrive_up_to_an_hour is False."""
         mock_dp = MagicMock()
-        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 5)
-
-        #  return a dummy successful coroutine
-        mock_flow["task"].return_value = AsyncMock(return_value="Success")()
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 13, 0)
 
         result = await poll_ialirt_flow.fn(
-            run_parameters=mock_run_params,
+            run_parameters=AutomaticRunParameters(),
             datetime_provider=mock_dp,
-            wait_for_new_data_to_arrive=False,
+            wait_for_new_data_to_arrive_up_to_an_hour=False,
             plot_last_3_days=False,
         )
 
         assert mock_flow["task"].call_count == 2  # Called for 2 instruments
+        mock_flow["sleep"].assert_not_called()
         assert result.is_completed()
 
     @pytest.mark.asyncio
-    async def test_skips_batch_if_future_window(self, mock_flow):
-        """Flow should sleep and skip task creation if the current window is in the future."""
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = datetime(2025, 1, 1, 12, 10)
-        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
-
-        # mock datetime_provider
+    async def test_multiple_iterations_sleep_between_batches_when_waiting(
+        self, mock_flow
+    ):
+        """Flow should sleep between iterations and stop once nearing the end of the hour."""
         mock_dp = MagicMock()
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 13, 0)
         mock_dp.now.side_effect = [
-            datetime(2025, 1, 1, 12, 0),  # before start_date, should skip
-            datetime(2025, 1, 1, 13, 5),  # after end_date, should break
+            datetime(2025, 1, 1, 12, 0),  # plenty of time left, sleep and loop again
+            datetime(2025, 1, 1, 12, 53),  # close to end of hour, stop
         ]
 
-        await poll_ialirt_flow.fn(
-            run_parameters=mock_run_params,
+        result = await poll_ialirt_flow.fn(
+            run_parameters=AutomaticRunParameters(),
             datetime_provider=mock_dp,
-            timeout_seconds=300,
-            wait_for_new_data_to_arrive=False,
+            polling_interval_seconds=300,
+            wait_for_new_data_to_arrive_up_to_an_hour=True,
             plot_last_3_days=False,
         )
 
-        # check it skipped the first
         mock_flow["sleep"].assert_called_once_with(300)
-
-        # assert it ran the task for 2 instruments for the second datetime
-        assert mock_flow["task"].call_count == 2
+        assert mock_flow["task"].call_count == 4  # 2 instruments x 2 iterations
+        assert result.is_completed()
 
     @pytest.mark.asyncio
     async def test_fails_when_all_batch_tasks_raise_exceptions(self, mock_flow):
         """Flow should return Failed if every instrument pipeline throws an exception."""
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = datetime(2025, 1, 1, 12, 0)
-        mock_run_params.end_date = datetime(2025, 1, 1, 13, 0)
-
         mock_dp = MagicMock()
-        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 5)
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 13, 0)
 
         async def mock_failed_task(*args, **kwargs):
             raise RuntimeError("API Offline")
@@ -206,30 +195,23 @@ class TestPollIALiRTFlow:
         mock_flow["task"].side_effect = mock_failed_task
 
         result = await poll_ialirt_flow.fn(
-            run_parameters=mock_run_params,
+            run_parameters=AutomaticRunParameters(),
             datetime_provider=mock_dp,
-            wait_for_new_data_to_arrive=False,
+            wait_for_new_data_to_arrive_up_to_an_hour=False,
             plot_last_3_days=False,
         )
 
         assert result.is_failed()
-        assert "All instrument pipelines failed" in result.message  # type: ignore
+        assert "All I-ALiRT downloads failed" in result.message  # type: ignore
 
     @pytest.mark.asyncio
     async def test_teams_webhook_fires_at_6am_uk_time(self, mock_flow):
         """Ensure Quicklook triggers and Webhook fires specifically at 6 AM UK time."""
-        # 06:00 UK time
-        utc_6am = datetime(2025, 1, 1, 6, 0, tzinfo=pytz.UTC)
-
-        mock_run_params = MagicMock()
-        mock_run_params.start_date = utc_6am - timedelta(hours=1)
-        mock_run_params.end_date = utc_6am
-
         mock_dp = MagicMock()
-        mock_dp.now.return_value = utc_6am + timedelta(minutes=5)
+        # end_of_hour - polling_interval_seconds (300s default) lands on 06:00 UTC == 06:00 UK (winter)
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 6, 5)
+        mock_dp.now.return_value = datetime(2025, 1, 1, 6, 0)
         mock_dp.today.return_value = datetime(2025, 1, 1)
-
-        mock_flow["task"].return_value = AsyncMock(return_value="Success")()
 
         with (
             patch(
@@ -239,7 +221,6 @@ class TestPollIALiRTFlow:
             patch(
                 "prefect_server.pollIALiRT.MicrosoftTeamsWebhook"
             ) as mock_webhook_class,
-            patch("prefect_server.pollIALiRT.UTC", pytz.UTC),
         ):
             mock_webhook_block = MagicMock()
             mock_webhook_block.notify = AsyncMock()
@@ -247,9 +228,9 @@ class TestPollIALiRTFlow:
             mock_webhook_class.aload = AsyncMock(return_value=mock_webhook_block)
 
             await poll_ialirt_flow.fn(
-                run_parameters=mock_run_params,
+                run_parameters=AutomaticRunParameters(),
                 datetime_provider=mock_dp,
-                wait_for_new_data_to_arrive=True,
+                wait_for_new_data_to_arrive_up_to_an_hour=True,
                 plot_last_3_days=True,
                 imap_notification_webhook_name="test-webhook",
             )
@@ -261,3 +242,32 @@ class TestPollIALiRTFlow:
 
             call_kwargs = mock_webhook_block.notify.call_args.kwargs
             assert call_kwargs["subject"] == "I-ALiRT Latest Quicklook"
+
+    @pytest.mark.asyncio
+    async def test_teams_webhook_does_not_fire_outside_6am_uk_time(self, mock_flow):
+        """Quicklook still runs but the Teams webhook should not fire outside 6 AM UK time."""
+        mock_dp = MagicMock()
+        mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 12, 5)
+        mock_dp.now.return_value = datetime(2025, 1, 1, 12, 0)
+        mock_dp.today.return_value = datetime(2025, 1, 1)
+
+        with (
+            patch(
+                "prefect_server.pollIALiRT.quicklook_ialirt_flow",
+                new_callable=AsyncMock,
+            ) as mock_quicklook,
+            patch(
+                "prefect_server.pollIALiRT.MicrosoftTeamsWebhook"
+            ) as mock_webhook_class,
+        ):
+            mock_webhook_class.aload = AsyncMock()
+
+            await poll_ialirt_flow.fn(
+                run_parameters=AutomaticRunParameters(),
+                datetime_provider=mock_dp,
+                wait_for_new_data_to_arrive_up_to_an_hour=True,
+                plot_last_3_days=True,
+            )
+
+            mock_quicklook.assert_called_once()
+            mock_webhook_class.aload.assert_not_called()
