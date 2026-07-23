@@ -12,7 +12,6 @@ from .CalibrationJobParameters import CalibrationJobParameters
 from .CalibrationLayer import CalibrationLayer
 from .calibrators import (
     CalibrationJob,
-    EmptyCalibrationJob,
     GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
     SetQualityAndNaNCalibrationJob,
@@ -28,7 +27,6 @@ __all__ = [
     "CalibrationMethod",
     "CalibrationValue",
     "DatastoreAccessMode",
-    "EmptyCalibrationJob",
     "GradiometerCalibrationJob",
     "Mission",
     "ScienceLayer",

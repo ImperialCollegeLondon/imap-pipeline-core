@@ -76,6 +76,9 @@ class CalibrationMethod(Enum):
         self.long_name = long_name
 
     GRADIOMETER = "gradiometer", "Gradiometer"
+    # NOOP is not a selectable calibration job; it is retained only as the internal
+    # descriptor/method for the zero-offset layer that ``apply`` auto-creates when no
+    # calibration layers are supplied.
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
     SET_QUALITY_AND_NAN = "quality", "Set Quality and NaN"
