@@ -8,6 +8,7 @@ from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
 from imap_mag.io.file.LatestFilePathHandler import LatestFilePathHandler
+from imap_mag.io.file.NOAAPathHandler import NOAAPathHandler
 from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
 from imap_mag.io.file.QuicklookPathHandler import QuicklookPathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
@@ -28,6 +29,7 @@ __all__ = [
     "IALiRTQuicklookPathHandler",
     "IFilePathHandler",
     "LatestFilePathHandler",
+    "NOAAPathHandler",
     "PartitionedPathHandler",
     "QuicklookPathHandler",
     "SPICEPathHandler",
