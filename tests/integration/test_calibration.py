@@ -1,103 +1,15 @@
 import json
 import os
-import shutil
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from imap_mag.cli.calibrate import calibrate, gradiometry
-from imap_mag.config.AppSettings import AppSettings
+from imap_mag.cli.calibrate import gradiometry
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, Sensor
+from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
-from tests.util.miscellaneous import DATASTORE
-
-
-def prepare_test_file(test_file, sub_folders, year=None, month=None, rename=None):
-    """
-    Prepare a calibration test file by copying the specified calibration layer
-    to the output directory with the correct folder structure.
-    """
-    datastore = AppSettings().data_store
-    dest_filename = test_file if rename is None else rename
-    if year and month:
-        dest_filepath = (
-            datastore / sub_folders / str(year) / f"{month:02d}" / dest_filename
-        )
-        original_filepath = DATASTORE / f"{sub_folders}/{year}/{month:02d}/{test_file}"
-    else:
-        dest_filepath = datastore / sub_folders / dest_filename
-        original_filepath = DATASTORE / sub_folders / test_file
-    os.makedirs(dest_filepath.parent, exist_ok=True)
-    shutil.copy(
-        original_filepath,
-        dest_filepath,
-    )
-
-
-@pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
-    reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
-)
-def test_empty_calibration_layer_is_created_with_offsets_for_every_vector(
-    tmp_path, monkeypatch, clean_datastore, dynamic_work_folder
-):
-    prepare_test_file(
-        "imap_mag_l1c_norm-mago-hundred-vectors_20250421_v001.cdf",
-        "science/mag/l1c",
-        2025,
-        4,
-        rename="imap_mag_l1c_norm-mago_20250421_v001.cdf",
-    )
-
-    calibrate(
-        start_date=datetime(2025, 4, 21),
-        sensor=Sensor.MAGO,
-        mode=ScienceMode.Normal,
-        method=CalibrationMethod.NOOP,
-    )
-    assert Path(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.0001.json"
-    ).exists()
-    with open(
-        f"{clean_datastore}/calibration/layers/2025/04/imap_mag_noop-norm-layer_20250421_v001.0001.json"
-    ) as f:
-        noop_layer = json.load(f)
-
-    assert noop_layer["method"] == "noop"
-    assert len(noop_layer["metadata"]["science"]) == 1
-    assert (
-        noop_layer["metadata"]["science"][0]
-        == "imap_mag_l1c_norm-mago_20250421_v001.cdf"
-    )
-
-    layer_data = (
-        clean_datastore
-        / "calibration/layers/2025/04/imap_mag_noop-norm-layer-data_20250421_v001.0001.csv"
-    )
-    assert layer_data.exists()
-    with open(layer_data) as f:
-        noop_data = pd.read_csv(layer_data)
-
-    assert len(noop_data) == 100
-
-    real_timestamps = [
-        "2025-04-21T12:16:05.569359872",
-        "2025-04-21T12:16:06.069359872",
-        "2025-04-21T12:16:06.569359872",
-        "2025-04-21T12:16:07.069359872",
-    ]
-    for val, timestamp in zip(noop_data.iterrows(), real_timestamps):
-        assert np.datetime64(val[1]["time"]) == np.datetime64(timestamp)
-        assert val[1]["offset_x"] == 0
-        assert val[1]["offset_y"] == 0
-        assert val[1]["offset_z"] == 0
-        assert val[1]["timedelta"] is not None
-        assert val[1]["quality_flag"] is not None
-        assert val[1]["quality_bitmask"] is not None
 
 
 @pytest.mark.skipif(

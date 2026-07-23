@@ -1,12 +1,12 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, Sensor
 from tests.util.miscellaneous import (
-    TEST_DATA,
-    copy_test_file,
     write_calibration_layer_pair,
 )
 
@@ -16,46 +16,15 @@ def _cal_work_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
     return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}"
 
 
-def test_empty_calibrator_makes_correct_matlab_call(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
-):
-    copy_test_file(
-        TEST_DATA / "imap_mag_l1c_norm-mago-four-vectors-four-ranges_20251017_v000.cdf",
-        temp_datastore / "science/mag/l1c/2025/10",
-        "imap_mag_l1c_norm-mago_20251017_v000.cdf",
-    )
-
-    def mock_call_matlab(command):
-        assert command.startswith("calibration.wrappers.run_empty_calibrator")
-        write_calibration_layer_pair(
-            _cal_work_folder(dynamic_work_folder, datetime(2025, 10, 17)),
-            "noop-norm",
-            datetime(2025, 10, 17),
-            1,
+def test_noop_method_is_not_runnable(temp_datastore, dynamic_work_folder):
+    """The do-nothing 'noop' calibrator has been removed as a selectable method."""
+    with pytest.raises(ValueError, match="not runnable"):
+        calibrate(
+            start_date=datetime(2025, 10, 17),
+            sensor=Sensor.MAGO,
+            mode=ScienceMode.Normal,
+            method=CalibrationMethod.NOOP,
         )
-
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.EmptyCalibration.call_matlab",
-        mock_call_matlab,
-    )
-
-    calibrate(
-        start_date=datetime(2025, 10, 17),
-        sensor=Sensor.MAGO,
-        mode=ScienceMode.Normal,
-        method=CalibrationMethod.NOOP,
-    )
-
-    assert (
-        temp_datastore
-        / "calibration/layers/2025/10/imap_mag_noop-norm-layer_20251017_v001.0001.json"
-    ).exists()
-    assert (
-        temp_datastore
-        / "calibration/layers/2025/10/imap_mag_noop-norm-layer-data_20251017_v001.0001.csv"
-    ).exists()
 
 
 def test_gradiometer_calibrator_makes_correct_matlab_call(
