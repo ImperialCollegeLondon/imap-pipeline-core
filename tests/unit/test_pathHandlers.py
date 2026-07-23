@@ -321,7 +321,7 @@ def test_get_filename_error_on_no_required_parameter(provider):
             ),
         ),
         (
-            "imap_ialirt_20251014.csv",
+            "imap_ialirt_mag_20251014.csv",
             IALiRTPathHandler(
                 content_date=datetime(2025, 10, 14),
             ),

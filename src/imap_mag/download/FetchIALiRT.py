@@ -9,8 +9,7 @@ import yaml
 
 from imap_mag.client.IALiRTApiClient import IALiRTApiClient
 from imap_mag.io import FileFinder
-from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.process import get_packet_definition_folder
 from imap_mag.util.constants import CONSTANTS
 
@@ -37,43 +36,36 @@ class FetchIALiRT:
         self.__datastore_finder = datastore_finder
         self.__packetDefinitionFolder = get_packet_definition_folder(packet_definition)
 
-    def download_mag_to_csv(
+    def download_instrument_data(
         self,
+        instrument: str,
         start_date: datetime,
         end_date: datetime,
+        housekeeping: bool = False,
     ) -> dict[Path, IALiRTPathHandler]:
-        """Retrieve I-ALiRT MAG science data."""
+        """Retrieve I-ALiRT science data for a specific instrument."""
+
+        if housekeeping:
+            process_fn = lambda df: process_ialirt_hk_data(  # noqa: E731
+                df,
+                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
+            )
+
+            max_hours_per_chunk = 1.5
+        else:
+            processing_map = {"mag": lambda df: process_ialirt_mag_data(df)}
+            process_fn = processing_map.get(instrument.lower(), lambda df: df)
+            max_hours_per_chunk = 4
 
         return self.__download_to_csv(
-            instrument="mag",
+            instrument=instrument,
             start_date=start_date,
             end_date=end_date,
             path_handler_factory=lambda content_date: IALiRTPathHandler(
-                content_date=content_date
+                content_date=content_date, instrument=instrument
             ),
-            process_fn=lambda df: process_ialirt_mag_data(df),
-            max_hours_per_chunk=4,  # Limit to 4 hours per chunk to avoid 400 error
-        )
-
-    def download_mag_hk_to_csv(
-        self,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> dict[Path, IALiRTHKPathHandler]:
-        """Retrieve I-ALiRT MAG HK data."""
-
-        return self.__download_to_csv(
-            instrument="mag_hk",
-            start_date=start_date,
-            end_date=end_date,
-            path_handler_factory=lambda content_date: IALiRTHKPathHandler(
-                content_date=content_date
-            ),
-            process_fn=lambda df: process_ialirt_hk_data(
-                df,
-                self.__packetDefinitionFolder / self.__IALIRT_PACKET_DEFINITION_FILE,
-            ),
-            max_hours_per_chunk=2,  # Limit to 3 hours per chunk to avoid 400 error
+            process_fn=process_fn,
+            max_hours_per_chunk=max_hours_per_chunk,  # to avoid 400 error for large data requests, limit to 4 hours per chunk for science data and 2 hours per chunk for housekeeping data
         )
 
     def __download_to_csv(
@@ -84,10 +76,10 @@ class FetchIALiRT:
         path_handler_factory,
         process_fn,
         max_hours_per_chunk: int | None = None,
-    ) -> dict[Path, IFilePathHandler]:
+    ) -> dict[Path, IALiRTPathHandler]:
         """Retrieve I-ALiRT data for a specific instrument."""
 
-        downloaded_files: dict[Path, IFilePathHandler] = dict()
+        downloaded_files: dict[Path, IALiRTPathHandler] = dict()
 
         downloaded: list[dict] = self.__data_access.get_all_by_dates(
             instrument=instrument,
@@ -102,20 +94,33 @@ class FetchIALiRT:
             )
 
             downloaded_data = pd.DataFrame(downloaded)
-            downloaded_data = process_fn(downloaded_data)
+
+            if process_fn is not None:
+                downloaded_data = process_fn(downloaded_data)
 
             # Aggregate data by multiple instruments per timestamp
-            rules: dict = dict.fromkeys(downloaded_data, "first")
-            del rules[self.__DATE_INDEX]
+            valid_columns = [
+                col for col in downloaded_data.columns if col != self.__DATE_INDEX
+            ]
+            if not valid_columns:
+                logger.warning(
+                    f"Received data for {instrument} containing only timestamps and no actual data columns. Skipping aggregation."
+                )
+                # Ensure the data still has the time_utc index for downstream processing
+                downloaded_data.drop_duplicates(
+                    subset=[self.__DATE_INDEX], inplace=True
+                )
+            else:
+                rules: dict = {col: "first" for col in valid_columns}
 
-            if "instrument" in rules:
-                rules["instrument"] = lambda x: ",".join(x.dropna().unique())
+                if "instrument" in rules:
+                    rules["instrument"] = lambda x: ",".join(x.dropna().unique())
 
-            downloaded_data = (
-                downloaded_data.groupby(self.__DATE_INDEX)
-                .aggregate(rules)
-                .reset_index()
-            )
+                downloaded_data = (
+                    downloaded_data.groupby(self.__DATE_INDEX)
+                    .aggregate(rules)
+                    .reset_index()
+                )
 
             downloaded_dates = pd.to_datetime(
                 downloaded_data[self.__DATE_INDEX]
@@ -197,7 +202,7 @@ class FetchIALiRT:
                     f"I-ALiRT {instrument} data {'written' if write_mode == 'w' else 'appended'} to {file_path.as_posix()}."
                 )
 
-                downloaded_files[file_path] = path_handler
+                downloaded_files[file_path] = path_handler  # type: ignore
         else:
             logger.debug(f"No {instrument} data downloaded from I-ALiRT Data Access.")
 
@@ -251,7 +256,7 @@ def process_ialirt_hk_data(
 
     # Flatten nested mag_hk_status dict into individual columns with mag_hk_ prefix
     if "mag_hk_status" in df.columns:
-        status_df = pd.json_normalize(df["mag_hk_status"])
+        status_df = pd.json_normalize(df["mag_hk_status"])  # type: ignore
         status_df.columns = [f"mag_hk_{col}" for col in status_df.columns]
         status_df.index = df.index
         df = pd.concat([df.drop(columns=["mag_hk_status"]), status_df], axis=1)
