@@ -133,8 +133,8 @@ All core functionality and logic should be available as simnple CLI commands as 
 ```bash
 export IALIRT_API_KEY=[YOUR_SECRET_HERE!]
 export MAG_FETCH_IALIRT_API_URL_BASE=https://ialirt.imap-mission.com/api-key
-imap-mag fetch ialirt --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
-imap-mag fetch ialirt-hk --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
+imap-mag fetch ialirt --instrument mag --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
+imap-mag fetch ialirt --instrument mag_hk --start-date 2026-03-01 --end-date '2026-03-01 04:00:00'
 ```
 
 ### Fetch Binary HK from WebPODA

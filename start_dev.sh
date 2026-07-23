@@ -55,7 +55,7 @@ runDatabase() {
         docker container rm -f $DB_CONTAINER
     fi
 
-    docker run --rm --name $DB_CONTAINER -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:17-alpine
+    docker run --rm --name $DB_CONTAINER -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:18-alpine
 }
 
 runWiremock() {

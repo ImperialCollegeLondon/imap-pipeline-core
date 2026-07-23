@@ -143,5 +143,6 @@ src/matlab
 dev.env
 debug
 tests/datastore/spice/spk/de440.bsp
+tests/datastore/ialirt/
 .claude/settings.local.json
 tests/datastore/hk/mag/l0/hsk-pw/2025/05/

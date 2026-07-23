@@ -1,13 +1,17 @@
 import logging
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Annotated
 
 from prefect import flow
+from prefect.client.schemas.objects import FlowRun
+from prefect.deployments import run_deployment
 from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
 from prefect_github import GitHubRepository
+from pydantic import Field
 
 from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate
@@ -29,8 +33,87 @@ from prefect_server.constants import PREFECT_CONSTANTS
 logger = logging.getLogger(__name__)
 
 
+# Shared, self-documenting definition of the split_by_day flow parameter so the
+# title/description show up consistently in the Prefect UI for every flow that
+# supports it (calibrate, apply, calibrate-and-apply).
+SplitByDay = Annotated[
+    bool,
+    Field(
+        json_schema_extra={
+            "title": "Split by day",
+            "description": (
+                "If true and a date range spanning more than one day is given, each "
+                "day is resubmitted as its own deployment flow run so the range is "
+                "processed in daily chunks that can run in parallel across multiple "
+                "servers. If false (the default), the whole range runs sequentially "
+                "within this single flow run."
+            ),
+        },
+    ),
+]
+
+
 class PrefectScriptedL2CalibrationConfig(ScriptedL2CalibrationConfig):
     matlab_repo: LocalFileSystem | GitHubRepository | str | None = None
+
+
+def _days_in_range(start_date: datetime, end_date: datetime | None) -> list[datetime]:
+    """Return each day (inclusive) in the ``[start_date, end_date]`` range.
+
+    A single day is returned when ``end_date`` is ``None`` or equal to ``start_date``.
+
+    Args:
+        start_date: First day of the range.
+        end_date: Last day of the range (inclusive), or ``None`` for a single day.
+
+    Returns:
+        One ``datetime`` per day, preserving the time-of-day of ``start_date``.
+    """
+    effective_end = end_date or start_date
+    num_days = (effective_end.date() - start_date.date()).days + 1
+    return [start_date + timedelta(days=i) for i in range(num_days)]
+
+
+def _submit_days_as_deployment_runs(
+    deployment_name: str,
+    days: list[datetime],
+    base_parameters: dict,
+) -> list[FlowRun]:
+    """Resubmit one deployment flow run per day so a date range fans out across workers.
+
+    Each per-day run is created with ``start_date == end_date`` for that day and
+    ``split_by_day`` disabled, so a worker (potentially on a different server) processes
+    exactly one day. Runs are submitted without waiting for completion (``timeout=0``)
+    so all days are enqueued and picked up in parallel by the worker pool.
+
+    Args:
+        deployment_name: The ``"<flow-name>/<deployment-name>"`` to run for each day.
+        days: The days to submit, one deployment run each.
+        base_parameters: Parameters shared by every day. ``start_date``, ``end_date``
+            and ``split_by_day`` are set per run and must not be included here.
+
+    Returns:
+        The created flow runs, one per day, in the same order as ``days``.
+    """
+    flow_runs: list[FlowRun] = []
+    for day in days:
+        flow_run_result: FlowRun = run_deployment(
+            name=deployment_name,
+            parameters={
+                **base_parameters,
+                "start_date": day,
+                "end_date": day,
+                "split_by_day": False,
+            },
+            as_subflow=True,
+            timeout=0,  # submit and return immediately; do not wait for the day to finish
+        )
+        logger.info(
+            f"Submitted {deployment_name} run for {day.date()} as flow run "
+            f"'{flow_run_result.name}' ({flow_run_result.id})"
+        )
+        flow_runs.append(flow_run_result)
+    return flow_runs
 
 
 def _github_repo_name(repository_url: str) -> str:
@@ -187,7 +270,22 @@ def calibrate_flow(
     sensor: Sensor = Sensor.MAGO,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
-) -> list[Path]:
+    split_by_day: SplitByDay = False,
+) -> list[Path] | list[FlowRun]:
+
+    days = _days_in_range(start_date, end_date)
+    if split_by_day and len(days) > 1:
+        return _submit_days_as_deployment_runs(
+            deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE}",
+            days=days,
+            base_parameters={
+                "configuration": configuration,
+                "mode": mode,
+                "sensor": sensor,
+                "save_mode": save_mode,
+                "metakernel": metakernel,
+            },
+        )
 
     paths = _run_calibration(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
@@ -213,7 +311,24 @@ def calibrate_and_apply_flow(
     L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
-):
+    split_by_day: SplitByDay = False,
+) -> None | list[FlowRun]:
+    days = _days_in_range(start_date, end_date)
+    if split_by_day and len(days) > 1:
+        return _submit_days_as_deployment_runs(
+            deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY}",
+            days=days,
+            base_parameters={
+                "configuration": configuration,
+                "mode": mode,
+                "sensor": sensor,
+                "offset_file_output_type": offset_file_output_type,
+                "L2_output_type": L2_output_type,
+                "save_mode": save_mode,
+                "metakernel": metakernel,
+            },
+        )
+
     cal_layer_paths = _run_calibration(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
@@ -288,7 +403,26 @@ def apply_flow(
         ReferenceFrame.GSE,
         ReferenceFrame.SRF,
     ],
-):
+    split_by_day: SplitByDay = False,
+) -> None | list[FlowRun]:
+    days = _days_in_range(start_date, end_date)
+    if split_by_day and len(days) > 1:
+        return _submit_days_as_deployment_runs(
+            deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.APPLY_CALIBRATION}",
+            days=days,
+            base_parameters={
+                "layers": layers,
+                "mode": mode,
+                "science_input_file": science_input_file,
+                "offset_file_output_type": offset_file_output_type,
+                "L2_output_type": L2_output_type,
+                "save_mode": save_mode,
+                "rotation_calibration_file_name": rotation_calibration_file_name,
+                "spice_metakernel": spice_metakernel,
+                "reference_frames": reference_frames,
+            },
+        )
+
     apply(
         layers,
         start_date=start_date.replace(tzinfo=None),
