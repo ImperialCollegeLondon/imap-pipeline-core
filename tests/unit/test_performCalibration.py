@@ -13,8 +13,10 @@ from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     PrefectScriptedL2CalibrationConfig,
+    _days_in_range,
     _github_repo_name,
     _resolve_matlab_repo_path,
+    apply_flow,
     calibrate_and_apply_flow,
     calibrate_flow,
     generate_apply_calibration_flow_run_name,
@@ -186,8 +188,6 @@ class TestPerformCalibrationFlows:
         mock_calibrate.assert_called_once()
 
     def test_apply_flow_calls_apply(self):
-        from prefect_server.performCalibration import apply_flow
-
         with patch("prefect_server.performCalibration.apply") as mock_apply:
             mock_apply.return_value = []
             apply_flow.fn(
@@ -195,6 +195,183 @@ class TestPerformCalibrationFlows:
                 start_date=datetime(2025, 1, 1),
             )
 
+        mock_apply.assert_called_once()
+
+
+class TestDaysInRange:
+    def test_single_day_when_end_date_none(self):
+        assert _days_in_range(datetime(2025, 1, 5), None) == [datetime(2025, 1, 5)]
+
+    def test_single_day_when_end_equals_start(self):
+        assert _days_in_range(datetime(2025, 1, 5), datetime(2025, 1, 5)) == [
+            datetime(2025, 1, 5)
+        ]
+
+    def test_inclusive_range(self):
+        days = _days_in_range(datetime(2025, 1, 1), datetime(2025, 1, 3))
+        assert days == [
+            datetime(2025, 1, 1),
+            datetime(2025, 1, 2),
+            datetime(2025, 1, 3),
+        ]
+
+    def test_preserves_time_of_day(self):
+        days = _days_in_range(datetime(2025, 1, 1, 6, 30), datetime(2025, 1, 2, 6, 30))
+        assert days == [
+            datetime(2025, 1, 1, 6, 30),
+            datetime(2025, 1, 2, 6, 30),
+        ]
+
+
+class TestSplitByDay:
+    """split_by_day fans a date range out into one deployment run per day."""
+
+    def _make_flow_run(self, name):
+        fake = MagicMock()
+        fake.name = name
+        return fake
+
+    def test_calibrate_flow_splits_range_into_per_day_deployment_runs(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                side_effect=lambda **kwargs: self._make_flow_run(
+                    str(kwargs["parameters"]["start_date"])
+                ),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.calibrate") as mock_calibrate,
+        ):
+            result = calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 3),
+                configuration=GradiometryConfig(),
+                split_by_day=True,
+            )
+
+        # one deployment run per day, and the local calibration never runs
+        assert mock_run_deployment.call_count == 3
+        assert len(result) == 3
+        mock_calibrate.assert_not_called()
+
+        # each child run targets a single day with split_by_day disabled
+        for call, day in zip(
+            mock_run_deployment.call_args_list,
+            [datetime(2025, 1, 1), datetime(2025, 1, 2), datetime(2025, 1, 3)],
+        ):
+            params = call.kwargs["parameters"]
+            assert params["start_date"] == day
+            assert params["end_date"] == day
+            assert params["split_by_day"] is False
+            assert call.kwargs["timeout"] == 0
+            assert (
+                call.kwargs["name"]
+                == f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE}"
+            )
+
+    def test_calibrate_flow_single_day_runs_inline_even_when_split_requested(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment"
+            ) as mock_run_deployment,
+            patch(
+                "prefect_server.performCalibration.calibrate",
+                return_value=[Path("layer.json")],
+            ) as mock_calibrate,
+        ):
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(),
+                split_by_day=True,
+            )
+
+        mock_run_deployment.assert_not_called()
+        mock_calibrate.assert_called_once()
+
+    def test_calibrate_flow_range_without_split_runs_inline(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment"
+            ) as mock_run_deployment,
+            patch(
+                "prefect_server.performCalibration.calibrate",
+                return_value=[Path("layer.json")],
+            ) as mock_calibrate,
+        ):
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 3),
+                configuration=GradiometryConfig(),
+                split_by_day=False,
+            )
+
+        mock_run_deployment.assert_not_called()
+        mock_calibrate.assert_called_once()
+
+    def test_calibrate_and_apply_flow_splits_range(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                return_value=self._make_flow_run("child"),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.calibrate") as mock_calibrate,
+            patch("prefect_server.performCalibration.apply") as mock_apply,
+        ):
+            result = calibrate_and_apply_flow.fn(
+                configuration=GradiometryConfig(),
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 2),
+                split_by_day=True,
+            )
+
+        assert mock_run_deployment.call_count == 2
+        assert len(result) == 2
+        mock_calibrate.assert_not_called()
+        mock_apply.assert_not_called()
+        assert (
+            mock_run_deployment.call_args.kwargs["name"]
+            == f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY}"
+        )
+
+    def test_apply_flow_splits_range(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                return_value=self._make_flow_run("child"),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.apply") as mock_apply,
+        ):
+            result = apply_flow.fn(
+                layers=["*noop*"],
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 3),
+                split_by_day=True,
+            )
+
+        assert mock_run_deployment.call_count == 3
+        assert len(result) == 3
+        mock_apply.assert_not_called()
+        first_params = mock_run_deployment.call_args_list[0].kwargs["parameters"]
+        assert first_params["layers"] == ["*noop*"]
+        assert first_params["split_by_day"] is False
+        assert (
+            mock_run_deployment.call_args.kwargs["name"]
+            == f"{PREFECT_CONSTANTS.FLOW_NAMES.APPLY_CALIBRATION}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.APPLY_CALIBRATION}"
+        )
+
+    def test_apply_flow_default_does_not_split(self):
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment"
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.apply") as mock_apply,
+        ):
+            apply_flow.fn(
+                layers=["*noop*"],
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 3),
+            )
+
+        mock_run_deployment.assert_not_called()
         mock_apply.assert_called_once()
 
 
