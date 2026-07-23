@@ -12,6 +12,7 @@ import pytest
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import AppSettings, GradiometryConfig
 from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
@@ -177,6 +178,15 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     assert 'modes=["norm"]' in command
     assert "publish_to_sharepoint=false" in command
     assert "display_plots=false" in command
+    # imap-pipeline-core dictates the versioned layer/data file names to MATLAB.
+    assert (
+        'output_layer_filename="imap_mag_manual-norm-layer_20260130_v001.0007.json"'
+        in command
+    )
+    assert (
+        'output_data_filename="imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"'
+        in command
+    )
 
     # Invoked from the repo root, no project path preamble.
     assert captured["kwargs"]["cwd"] == job.matlab_repo_path
@@ -357,6 +367,47 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
     job.run_calibration(_handler(1), config)
 
     assert f'"{generated_name}"' in captured["command"]
+
+
+def test_layer_data_hash_algorithm_matches_matlab_contract(tmp_path):
+    """Pin the exact data_hash algorithm shared with the MATLAB calibration.
+
+    The MATLAB ``calibrate_l2_offsets`` pipeline now writes the layer JSON
+    ``data_hash`` itself, and imap-pipeline-core trusts that value instead of
+    recomputing it. Both sides must therefore agree byte-for-byte: the hash is the
+    lowercase hex MD5 digest of the raw CSV file bytes. The identical fixed content
+    and expected digest are asserted in the calibration repo's tLayer MATLAB test.
+    """
+    content = (
+        b"time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask\n"
+        b"2026-01-30T00:00:00.000000000,1,2,3,0,0,0\n"
+    )
+    csv_file = tmp_path / "sample-layer-data.csv"
+    csv_file.write_bytes(content)
+
+    assert (
+        IFilePathHandler.default_file_hash(csv_file)
+        == "8e6ec03138bae9a6d3521d46ec6c30ec"
+    )
+
+
+def test_python_preserves_matlab_supplied_data_hash(tmp_path):
+    """A data_hash already present in the layer metadata is not recomputed.
+
+    MATLAB fills in ``data_hash`` when it writes the layer, so re-saving the layer
+    in the pipeline (``save_calibration_layer``) must keep MATLAB's value rather than
+    overwrite it from the CSV on disk.
+    """
+    from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+    json_path, _ = write_calibration_layer_pair(tmp_path, "manual-norm", DATE, 1)
+    matlab_hash = "deadbeefdeadbeefdeadbeefdeadbeef"
+    layer = CalibrationLayer.from_file(json_path, load_contents=False)
+    layer.metadata.data_hash = matlab_hash
+    layer.save_calibration_layer(json_path, createDirectory=False, save_contents=False)
+
+    reloaded = CalibrationLayer.from_file(json_path, load_contents=False)
+    assert reloaded.metadata.data_hash == matlab_hash
 
 
 def test_scripted_calibrate_cli_publishes_layer(

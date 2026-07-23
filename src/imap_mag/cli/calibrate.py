@@ -21,7 +21,6 @@ from mag_toolkit.calibration import (
     CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
-    EmptyCalibrationJob,
     GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
     Sensor,
@@ -115,8 +114,8 @@ def calibrate(
 
     Supports single date (--date) or date ranges (--start-date/--end-date).
 
-    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop
-    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method noop
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method gradiometer
+    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method gradiometer
     """
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
@@ -149,6 +148,13 @@ def _calibrate_for_date(
     metakernel: Path | None = None,
 ) -> Path:
     """Run calibration for a single date."""
+    if method == CalibrationMethod.NOOP:
+        # NOOP is retained only as the internal descriptor for the zero-offset layer
+        # that ``apply`` auto-creates; it is not a runnable calibration job.
+        raise ValueError(
+            "The 'noop' calibration method is not runnable. It exists only for the "
+            "internal zero-offset layer. Choose a real calibration method."
+        )
     app_settings = AppSettings()  # type: ignore
     # Use the dedicated calibrate command config so each run gets its own uniquely
     # named work folder (based on the date + mode being calibrated).
@@ -173,11 +179,9 @@ def _calibrate_for_date(
     # fields, so parse against the correct model for the chosen method.
     config_cls = CalibrationConfig.get_class(method)
     if configuration is None or len(configuration.strip()) == 0:
-        if method != CalibrationMethod.NOOP:
-            raise ValueError(
-                f"Calibration method {method.short_name} requires a configuration to be provided"
-            )
-        calibration_configuration = config_cls()
+        raise ValueError(
+            f"Calibration method {method.short_name} requires a configuration to be provided"
+        )
     elif Path(configuration).is_file():
         logger.info(f"Loading calibration configuration from {configuration}")
         calibration_configuration = config_cls.from_file(Path(configuration))
@@ -189,8 +193,6 @@ def _calibrate_for_date(
     )
     calibrator: CalibrationJob
     match method:
-        case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
         case CalibrationMethod.GRADIOMETER:
             calibrator = GradiometerCalibrationJob(
                 calibration_job_parameters, work_folder
