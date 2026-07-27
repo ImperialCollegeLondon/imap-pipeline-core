@@ -101,7 +101,7 @@ async def poll_hk_flow(
     ] = False,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ):
