@@ -144,8 +144,10 @@ class FetchIALiRT:
 
                 daily_dates = self.__get_index_as_datetime(daily_data)
                 min_daily_date = min(daily_dates)
+                max_daily_date = max(daily_dates)
 
                 path_handler = path_handler_factory(content_date)
+                path_handler.max_record_date = max_daily_date
 
                 # Find file in datastore
                 file_path: Path | None = self.__datastore_finder.find_by_handler(

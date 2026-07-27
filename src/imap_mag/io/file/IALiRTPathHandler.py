@@ -23,6 +23,7 @@ class IALiRTPathHandler(IFilePathHandler):
     extension: str = "csv"
     is_hk: bool = False
     is_legacy: bool = False  # if legacy naming
+    max_record_date: datetime | None = None  # latest actual data timestamp downloaded
 
     def supports_sequencing(self) -> bool:
         return False
