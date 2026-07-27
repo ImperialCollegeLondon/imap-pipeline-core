@@ -123,7 +123,7 @@ async def adeploy_flows(local_debug: bool = False):
     poll_ialirt_deployable = poll_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_IALIRT,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_IALIRT_CRON),
-        job_variables=shared_job_variables | {"mem_limit": "3G", "memswap_limit": "3G"},
+        job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         concurrency_limit=ConcurrencyLimitConfig(
             limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
@@ -297,7 +297,7 @@ async def adeploy_flows(local_debug: bool = False):
 
     quicklook_ialirt_deployable = quicklook_ialirt_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.QUICKLOOK_IALIRT,
-        job_variables=shared_job_variables | {"mem_limit": "3G", "memswap_limit": "3G"},
+        job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
