@@ -49,9 +49,11 @@ class DownloadIALiRTStage(Stage):
             )
             return
 
-        # update progress
+        # update progress: use the latest actual data timestamp downloaded, not
+        # the requested end_date, so we don't skip over data on the next run if
+        # the window extends beyond what has actually arrived yet.
         for file_path, path_handler in downloaded.items():
-            context[PROGRESS_DATE_CONTEXT_KEY] = end_date
+            context[PROGRESS_DATE_CONTEXT_KEY] = path_handler.max_record_date
 
             # Stream file to the next stage
             await self.publish_next(
