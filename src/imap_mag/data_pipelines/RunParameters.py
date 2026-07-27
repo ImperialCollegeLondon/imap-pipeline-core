@@ -20,6 +20,7 @@ class PipelineRunParameters:
             json_schema_extra={
                 "title": "Progress save mode",
                 "description": "Mode for updating workflow progress. 'auto' will update progress only if the new progress date is newer than the existing progress date. 'never' will not update progress. 'force' will update progress regardless of the existing progress date.",
+                "position": 0,
             }
         ),
     ] = ProgressUpdateMode.AUTO_UPDATE_PROGRESS_IF_NEWER
@@ -40,6 +41,7 @@ class FetchByDatesRunParameters(PipelineRunParameters):
             json_schema_extra={
                 "title": "Start date",
                 "description": "Start date for the download. Default is after the last progress date.",
+                "position": 1,
             }
         ),
     ] = None
@@ -50,6 +52,7 @@ class FetchByDatesRunParameters(PipelineRunParameters):
             json_schema_extra={
                 "title": "End date",
                 "description": "End date for the download. Default is end of today.",
+                "position": 2,
             }
         ),
     ] = None
@@ -60,6 +63,7 @@ class FetchByDatesRunParameters(PipelineRunParameters):
             json_schema_extra={
                 "title": "Force redownload",
                 "description": "If True, redownload data for all days in the date range even if previously crawled",
+                "position": 3,
             }
         ),
     ] = False

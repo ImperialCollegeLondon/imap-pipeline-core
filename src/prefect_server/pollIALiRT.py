@@ -32,16 +32,16 @@ from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 def generate_flow_run_name(
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> str:
-    parameters = flow_run.parameters
+    parameters = flow_run.parameters["run_parameters"]
 
     start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters.get("start_date")
+        parameters.start_date.strftime("%d-%m-%YT%H:%M:%S")
+        if hasattr(parameters, "start_date") and parameters.start_date is not None
         else "last-update"
     )
     end_date: datetime = (
-        parameters["end_date"]
-        if parameters.get("end_date")
+        parameters.end_date
+        if hasattr(parameters, "end_date") and parameters.end_date is not None
         else datetime_provider.end_of_hour()
     )
 
@@ -168,7 +168,7 @@ async def poll_ialirt_flow(
     force_send_notification: bool = False,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ):

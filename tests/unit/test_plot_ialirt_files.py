@@ -106,13 +106,63 @@ class TestLoadCsvFiles:
 
 
 class TestPlotIalirtFilesFunction:
-    def test_returns_empty_when_no_input_files(self, tmp_path):
-        result = plot_ialirt_files(
-            science_files=[],
-            hk_files=[],
-            save_folder=tmp_path,
+    def test_generates_empty_plot_with_warning_when_no_input_files(
+        self, tmp_path, caplog
+    ):
+        from unittest.mock import MagicMock, patch
+
+        mock_db = MagicMock()
+        mock_db.get_workflow_progress.return_value.get_progress_timestamp.return_value = None
+        mock_db.get_workflow_progress.return_value.get_last_checked_date.return_value = None
+
+        with patch(
+            "imap_mag.plot.plot_ialirt_files.Database",
+            return_value=mock_db,
+        ):
+            result = plot_ialirt_files(
+                science_files=[],
+                hk_files=[],
+                save_folder=tmp_path,
+            )
+
+        assert len(result) == 1
+        ((output_file, _),) = result.items()
+        assert output_file.exists()
+        assert "No I-ALiRT data present in files" in caplog.text
+
+    def test_does_not_crash_when_only_hk_data_present(self, tmp_path):
+        """Regression test: create_figure used to raise KeyError for columns
+        (e.g. mag_B_GSE_x) that only exist in science data, when only HK data
+        is available (or vice versa)."""
+        from unittest.mock import MagicMock, patch
+
+        hk_only_df = pd.DataFrame(
+            {"mag_hk_hk3v3": [3.3, 3.31]},
+            index=pd.date_range("2025-10-17", periods=2, freq="1min", tz="UTC"),
         )
-        assert result == {}
+
+        mock_db = MagicMock()
+        mock_db.get_workflow_progress.return_value.get_progress_timestamp.return_value = None
+        mock_db.get_workflow_progress.return_value.get_last_checked_date.return_value = None
+
+        with (
+            patch(
+                "imap_mag.plot.plot_ialirt_files._load_csv_files",
+                side_effect=[pd.DataFrame(), hk_only_df],
+            ),
+            patch(
+                "imap_mag.plot.plot_ialirt_files.Database",
+                return_value=mock_db,
+            ),
+        ):
+            result = plot_ialirt_files(
+                science_files=[],
+                hk_files=[Path("hk.csv")],
+                save_folder=tmp_path,
+                combine_plots=True,
+            )
+
+        assert len(result) == 1
 
     def test_calls_create_figure_once_when_combine_plots(self, tmp_path):
         from unittest.mock import MagicMock, patch
