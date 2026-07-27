@@ -61,10 +61,6 @@ fetch_solar1_ace:
     api:
         url_base: "https://services.swpc.noaa.gov/json/rtsw"
 
-fetch_dscovr:
-    api:
-        url_base: "https://services.swpc.noaa.gov/products/solar-wind"
-
 fetch_webtcad:
     api:
         # Example URL: https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/AnalogTelemetryItem_SID1.csv?TMID=58350&time,value&time%3E=2026-02-11T13:43:32.000Z&time%3C=2026-02-12T13:43:32.000Z&format_time(yyyy-MM-dd%27T%27HH:mm:ss.SSS)&limit(10)
