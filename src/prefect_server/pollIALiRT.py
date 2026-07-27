@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -35,7 +36,7 @@ def generate_flow_run_name(
     parameters = flow_run.parameters["run_parameters"]
 
     start_date: str = (
-        parameters.start_date.strftime("%d-%m-%YT%H:%M:%S")
+        parameters.start_date.strftime("%d-%m-%Y")
         if hasattr(parameters, "start_date") and parameters.start_date is not None
         else "last-update"
     )
@@ -45,7 +46,7 @@ def generate_flow_run_name(
         else datetime_provider.end_of_hour()
     )
 
-    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
 
 
 @task(
@@ -281,3 +282,16 @@ async def poll_ialirt_flow(
             )  # type: ignore
 
     return Completed(message="Hourly I-ALiRT Polling completed successfully.")
+
+
+# Enable quick local dev like `source .env && python -m src.prefect_server.spiceDownloadFlow` and "debug this file" in vscode
+if __name__ == "__main__":
+    # we are running locally for development?
+    if os.environ.get("ENV_NAME", "") == "dev":
+        print("Setting up database for dev environment...")
+        from imap_db.main import create_db, upgrade_db
+
+        create_db()
+        upgrade_db()
+
+    poll_ialirt_flow.serve()

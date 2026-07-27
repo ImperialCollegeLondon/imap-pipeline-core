@@ -27,7 +27,7 @@ class TestPollIALiRTFlowGenerateName:
             name = generate_flow_run_name(datetime_provider=mock_dp)
 
         assert "last-update" in name
-        assert "01-01-2025T13:00:00" in name
+        assert "01-01-2025" in name
 
     def test_generate_flow_run_name_with_date_params(self):
         run_params = FetchByDatesRunParameters(
@@ -40,7 +40,7 @@ class TestPollIALiRTFlowGenerateName:
             mock_flow_run.parameters = mock_params
             name = generate_flow_run_name()
 
-        assert name == "Poll-IALiRT-from-24-07-2026T15:07:00-to-27-07-2026T00:00:00"
+        assert name == "Poll-IALiRT-from-24-07-2026-to-27-07-2026"
 
 
 class TestIALiRTPollingTask:

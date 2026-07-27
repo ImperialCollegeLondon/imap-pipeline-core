@@ -1,7 +1,8 @@
 """Program to retrieve and process MAG I-ALiRT data."""
 
 import logging
-from datetime import datetime
+from collections.abc import Callable
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -73,7 +74,7 @@ class FetchIALiRT:
         instrument: str,
         start_date: datetime,
         end_date: datetime,
-        path_handler_factory,
+        path_handler_factory: Callable[[datetime], IALiRTPathHandler],
         process_fn,
         max_hours_per_chunk: int | None = None,
     ) -> dict[Path, IALiRTPathHandler]:
@@ -132,15 +133,19 @@ class FetchIALiRT:
             )
 
             for day_info, daily_data in downloaded_data.groupby(downloaded_dates):
-                date: datetime = (
-                    day_info[0] if isinstance(day_info, tuple) else day_info
-                )  # type: ignore
+                content_date = day_info[0] if isinstance(day_info, tuple) else day_info  # type: ignore
+                # if date is a datetime.date object, convert to datetime.datetime for consistency
+                if isinstance(content_date, date) and not isinstance(
+                    content_date, datetime
+                ):
+                    content_date: datetime = datetime.combine(
+                        content_date, datetime.min.time()
+                    )
 
                 daily_dates = self.__get_index_as_datetime(daily_data)
                 min_daily_date = min(daily_dates)
-                max_daily_date = max(daily_dates)
 
-                path_handler = path_handler_factory(max_daily_date)
+                path_handler = path_handler_factory(content_date)
 
                 # Find file in datastore
                 file_path: Path | None = self.__datastore_finder.find_by_handler(
@@ -149,11 +154,13 @@ class FetchIALiRT:
 
                 if file_path is not None and file_path.exists():
                     logger.debug(
-                        f"File for {date.strftime('%Y-%m-%d')} already exists: {file_path.as_posix()}. Appending new data."
+                        f"File for {content_date.strftime('%Y-%m-%d')} already exists: {file_path.as_posix()}. Appending new data."
                     )
                     existing_data = pd.read_csv(file_path)
                 else:
-                    logger.debug(f"Creating new file for {date.strftime('%Y-%m-%d')}.")
+                    logger.debug(
+                        f"Creating new file for {content_date.strftime('%Y-%m-%d')}."
+                    )
 
                     file_path = self.__work_folder / path_handler.get_filename()
                     existing_data = pd.DataFrame()

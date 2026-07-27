@@ -11,13 +11,23 @@ from imap_mag.util import DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
 
 
-def generate_flow_run_name() -> str:
+def generate_flow_run_name(
+    datetime_provider: DatetimeProvider = DatetimeProvider(),
+) -> str:
     parameters = flow_run.parameters
 
-    start_date = parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-    end_date = parameters["end_date"].strftime("%d-%m-%YT%H:%M:%S")
+    start_date: str = (
+        parameters["start_date"].strftime("%d-%m-%Y")
+        if parameters.get("start_date") is not None
+        else (datetime_provider.today() - timedelta(days=2)).strftime("%d-%m-%Y")
+    )
+    end_date: datetime = (
+        parameters["end_date"]
+        if parameters.get("end_date") is not None
+        else datetime_provider.end_of_today()
+    )
 
-    return f"Plot-IALiRT-from-{start_date}-to-{end_date}"
+    return f"IALiRT-Quicklook-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
 
 
 @flow(
@@ -82,8 +92,8 @@ async def quicklook_ialirt_flow(
         end_date = datetime_provider.end_of_today()
 
     plot_ialirt(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.replace(tzinfo=None),
+        end_date=end_date.replace(tzinfo=None),
         combined_plot=combined_plot,
         save_mode=SaveMode.LocalAndDatabase,
         force_latest_update=force_latest_update,

@@ -12,6 +12,7 @@ set -e
 
 # VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TASK IS STARTING
 echo "STARTING DEV SERVERS"
+set -a # automatically export all variables
 source ./defaults.env
 
 if [ -f ".env" ]; then
@@ -20,6 +21,7 @@ if [ -f ".env" ]; then
 else
     echo "No local .env file found, skipping"
 fi
+set +a # stop automatically exporting all variables
 
 # if .venv is missing, run poetry install
 if [ ! -d ".venv" ]; then
