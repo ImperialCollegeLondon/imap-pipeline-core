@@ -3464,14 +3464,14 @@ sgqlc = ">=15.0"
 
 [[package]]
 name = "prefect-managedfiletransfer"
-version = "0.6.0"
+version = "0.6.2"
 description = "Upload, download, and delete files easily between Local/SFTP/Cloud storage using rclone"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect_managedfiletransfer-0.6.0-py3-none-any.whl", hash = "sha256:4adf9c935deb36e273839a1e4a641d25f30532975d8e1f1228d3fa000b8712b6"},
-    {file = "prefect_managedfiletransfer-0.6.0.tar.gz", hash = "sha256:0a71d12fcdf3c520cd367406c275163e3ef634ed05e210bb16cdc8e8f575de66"},
+    {file = "prefect_managedfiletransfer-0.6.2-py3-none-any.whl", hash = "sha256:54a1292d6d997fc0562ce08fc3aa292fdb6bae0e69fd6207724c60156ccd2b00"},
+    {file = "prefect_managedfiletransfer-0.6.2.tar.gz", hash = "sha256:a5340b9be3c325ed81d42c3ca4dcfaafc963a807d1f01b4f854bdcd1029ccd5e"},
 ]
 
 [package.dependencies]
@@ -5784,4 +5784,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "43cb52e62f5a4f648c154e374422acf290a0666631a6de7000dd5f9ea66ec77a"
+content-hash = "8902d34276e9b9b5aa12c8bf0efe56d0e0858465ba88a9780285a220715cd54f"
