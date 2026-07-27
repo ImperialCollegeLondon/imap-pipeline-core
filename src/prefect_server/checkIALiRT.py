@@ -80,7 +80,7 @@ async def check_ialirt_flow(
     ] = PREFECT_CONSTANTS.IMAP_WEBHOOK_BLOCK_NAME,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ) -> State:

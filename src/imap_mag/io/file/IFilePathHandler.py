@@ -62,7 +62,7 @@ class IFilePathHandler(abc.ABC):
         return hashlib.md5(source_file.read_bytes()).hexdigest()
 
     def get_content_identity(
-        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+        self, file_path_override: Path | None = None, parent_folder: Path = Path()
     ) -> str:
         """Return a hash representing content identity for deduplication.
 

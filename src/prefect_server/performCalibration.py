@@ -312,7 +312,7 @@ def calibrate_and_apply_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
-) -> None | list[FlowRun]:
+) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
         return _submit_days_as_deployment_runs(
@@ -404,7 +404,7 @@ def apply_flow(
         ReferenceFrame.SRF,
     ],
     split_by_day: SplitByDay = False,
-) -> None | list[FlowRun]:
+) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
         return _submit_days_as_deployment_runs(

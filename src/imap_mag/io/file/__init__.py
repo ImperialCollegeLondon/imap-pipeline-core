@@ -21,7 +21,6 @@ from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 __all__ = [
     "AncillaryPathHandler",
     "CalibrationLayerPathHandler",
-    "CalibrationLayerPathHandler",
     "HKBinaryPathHandler",
     "HKDecodedPathHandler",
     "IALiRTPathHandler",

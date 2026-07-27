@@ -138,7 +138,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         return alongside.parent / self.get_equivalent_data_handler().get_filename()
 
     def get_content_identity(
-        self, file_path_override: None | Path = None, parent_folder: Path = Path()
+        self, file_path_override: Path | None = None, parent_folder: Path = Path()
     ) -> str:
         """Return a hash representing content identity for deduplication.
 

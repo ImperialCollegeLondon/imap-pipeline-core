@@ -34,23 +34,14 @@ class DownloadIALiRTStage(Stage):
             f"Downloading I-ALiRT {self.instrument} data from {start_date} to {end_date}."
         )
 
-        if self.instrument.endswith("_hk"):
-            downloaded: dict[Path, IALiRTPathHandler] = (
-                self.fetcher.download_instrument_data(
-                    instrument=self.instrument,
-                    start_date=start_date,
-                    end_date=end_date,
-                    housekeeping=True,
-                )
-            )  # type: ignore
-        else:
-            downloaded: dict[Path, IALiRTPathHandler] = (
-                self.fetcher.download_instrument_data(
-                    instrument=self.instrument,
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-            )  # type: ignore
+        downloaded: dict[Path, IALiRTPathHandler] = (
+            self.fetcher.download_instrument_data(
+                instrument=self.instrument,
+                start_date=start_date,
+                end_date=end_date,
+                housekeeping=self.instrument.endswith("_hk"),
+            )
+        )
 
         if not downloaded:
             self.logger.info(
@@ -64,7 +55,7 @@ class DownloadIALiRTStage(Stage):
 
             # Stream file to the next stage
             await self.publish_next(
-                FileRecord(file_path, end_date),  # type: ignore
+                FileRecord(file_path, path_handler.content_date),  # type: ignore
                 context,
                 **kwargs,  # type: ignore
             )

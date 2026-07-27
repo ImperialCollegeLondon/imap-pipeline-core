@@ -24,6 +24,7 @@ class PublishFileToDatastoreStage(Stage):
             use_database=self.database is not None,
             database=self.database,
         )
+        self.files_saved = 0
 
     async def process(self, item: Record, context: dict, **kwargs):
 
@@ -54,4 +55,13 @@ class PublishFileToDatastoreStage(Stage):
 
         saved_path, _ = self.datastore_manager.add_file(file_path, path_handler)
 
+        self.files_saved += 1
         await self.publish_next(FileRecord(saved_path, content_date), context, **kwargs)
+
+    async def stage_completed(self, context: dict):
+        if self.enabled and self.files_saved > 0:
+            self.logger.info(
+                f"Publish files complete, {self.files_saved} files saved to datastore."
+            )
+
+        await super().stage_completed(context)
