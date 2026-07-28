@@ -238,6 +238,46 @@ class TestCreateFigureFunction:
         assert output_file.exists()
         assert handler is not None
 
+    def test_does_not_hang_with_single_categorical_hk_sample(self, tmp_path):
+        """Regression test: a single HK sample (e.g. one mag_hk_mode string
+        value, as happens when science data updates far more often than HK
+        data) made matplotlib mis-autoscale the date axis to a huge, bogus
+        time span. set_time_format() then tried to generate thousands of
+        ticks for that span, hanging/crashing figure rendering."""
+        from unittest.mock import MagicMock, patch
+
+        idx = pd.date_range("2025-10-17", periods=3, freq="1min", tz="UTC")
+        df = pd.DataFrame(
+            {col: [float(i) for i in range(3)] for col in _IALIRT_COLUMNS},
+            index=idx,
+        )
+        # Only one HK sample has a mode value; everywhere else it's NaN
+        # (dtype becomes object, mixing NaN with a single string "Burst").
+        df["mag_hk_mode"] = [None, "Burst", None]
+
+        mock_db = MagicMock()
+        mock_db.get_workflow_progress.return_value.get_progress_timestamp.return_value = None
+        mock_db.get_workflow_progress.return_value.get_last_checked_date.return_value = None
+
+        with (
+            patch(
+                "imap_mag.plot.plot_ialirt_files.Database",
+                return_value=mock_db,
+            ),
+            patch("imap_mag.plot.plot_ialirt_files.plt.close"),
+        ):
+            output_file, _handler = create_figure(df, tmp_path)
+            fig = plt.gcf()
+
+        assert output_file.exists()
+
+        mode_axis = next(ax for ax in fig.get_axes() if ax.get_title() == "Mode")
+        x_lim = mode_axis.get_xlim()
+        time_span_hours = (x_lim[1] - x_lim[0]) * 24
+        assert time_span_hours < 1
+
+        plt.close(fig)
+
 
 class TestSetTimeFormatFunction:
     def test_applies_time_formatter_to_figure_axes(self):
