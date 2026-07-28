@@ -312,6 +312,17 @@ def create_figure(
     )
     output_file = save_folder / f"ialirt_quicklook_{max_date.strftime('%Y%m%d')}.png"
 
+    if not ialirt_data.empty:
+        # Matplotlib can mis-autoscale a date axis to a huge, bogus time span
+        # when an axis only has a single data point plotted against a
+        # categorical (e.g. string) y-value (e.g. "Mode" with only one HK
+        # sample). Force every axis back to the real data range so
+        # set_time_format() doesn't try to generate ticks across that bogus
+        # span, which can hang/crash figure rendering.
+        min_date = ialirt_data.index.min().to_pydatetime()
+        for ax in fig.get_axes():
+            ax.set_xlim(mdates.date2num(min_date), mdates.date2num(max_date))
+
     set_time_format(fig)
     set_figure_title(fig, datetime_provider)
 
