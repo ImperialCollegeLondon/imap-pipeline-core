@@ -313,15 +313,9 @@ def create_figure(
     output_file = save_folder / f"ialirt_quicklook_{max_date.strftime('%Y%m%d')}.png"
 
     if not ialirt_data.empty:
-        # Matplotlib can mis-autoscale a date axis to a huge, bogus time span
-        # when an axis only has a single data point plotted against a
-        # categorical (e.g. string) y-value (e.g. "Mode" with only one HK
-        # sample). Force every axis back to the real data range so
-        # set_time_format() doesn't try to generate ticks across that bogus
-        # span, which can hang/crash figure rendering.
-        min_date = ialirt_data.index.min().to_pydatetime()
-        for ax in fig.get_axes():
-            ax.set_xlim(mdates.date2num(min_date), mdates.date2num(max_date))
+        _fix_bogus_axis_autoscale(
+            fig, ialirt_data.index.min().to_pydatetime(), max_date
+        )
 
     set_time_format(fig)
     set_figure_title(fig, datetime_provider)
@@ -337,6 +331,30 @@ def create_figure(
             content_date=max_date,
         ),
     )
+
+
+def _fix_bogus_axis_autoscale(
+    fig: plt.Figure, min_date: datetime, max_date: datetime
+) -> None:
+    """Reset axes whose autoscaled x-limits vastly exceed the real data range.
+
+    Matplotlib can mis-autoscale a date axis to a huge, bogus time span when
+    an axis only has a single data point plotted against a categorical (e.g.
+    string) y-value (e.g. "Mode" with only one HK sample). set_time_format()
+    would then try to generate ticks across that bogus span, which can
+    hang/crash figure rendering. Axes that autoscaled sensibly (i.e. within
+    the real data range, plus matplotlib's usual small margin) are left
+    untouched so their normal padding is preserved.
+    """
+    data_min_num = mdates.date2num(min_date)
+    data_max_num = mdates.date2num(max_date)
+    data_span = max(data_max_num - data_min_num, 1 / 24)  # at least 1 hour
+
+    for ax in fig.get_axes():
+        x_lim = ax.get_xlim()
+        axis_span = x_lim[1] - x_lim[0]
+        if axis_span > data_span * 10:
+            ax.set_xlim(data_min_num, data_max_num)
 
 
 def set_time_format(fig: plt.Figure) -> None:
