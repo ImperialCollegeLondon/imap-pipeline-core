@@ -13,8 +13,11 @@ from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 
 
 @pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
-    reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
+    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN"))
+    or not os.path.exists(
+        "src/matlab/calibration/+calibration/+wrappers/run_gradiometry.m"
+    ),  # needs the MATLAB repo containing this code to be checked out locally and MATLAB licence to be available
+    reason="MATLAB License or gradiometer.m file not available; skipping MATLAB tests",
 )
 def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_vector(
     tmp_path, monkeypatch, temp_datastore, dynamic_work_folder
