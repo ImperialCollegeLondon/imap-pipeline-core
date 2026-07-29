@@ -257,6 +257,9 @@ class CalibrationLayer(Layer):
         data_file_path = filepath.parent / self.metadata.data_filename
         if self.metadata.data_hash is None and data_file_path.exists():
             self.metadata.data_hash = IFilePathHandler.default_file_hash(data_file_path)
+            logger.debug(
+                f"Wrote data hash for {data_file_path!s} as {self.metadata.data_hash!s}."
+            )
 
         dependency = f"imap-pipeline-core version {get_version()}"
         if self.metadata.dependencies is None:

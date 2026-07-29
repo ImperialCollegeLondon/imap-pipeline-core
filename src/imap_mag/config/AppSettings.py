@@ -70,7 +70,7 @@ class AppSettings(BaseSettings):
     fetch_solar1_ace: FetchSOLAR1andACEConfig
     fetch_dscovr: FetchDSCOVRConfig
     plot_ialirt: QuicklookConfig
-    calibration: CommandConfig
+    apply: CommandConfig
     calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
     process: CommandConfig
     publish: PublishConfig

@@ -108,6 +108,13 @@ def calibrate(
             "scripted-l2, one is generated.",
         ),
     ] = None,
+    cleanup_temp_files_after_run: Annotated[
+        bool,
+        typer.Option(
+            help="Whether to clean up temporary files after the calibration run. "
+            "If False, temporary files are retained in the work folder for inspection.",
+        ),
+    ] = True,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -132,6 +139,7 @@ def calibrate(
             configuration=configuration,
             save_mode=save_mode,
             metakernel=metakernel,
+            cleanup_temp_files_after_run=cleanup_temp_files_after_run,
         )
         results.append(result)
         current += timedelta(days=1)
@@ -146,6 +154,7 @@ def _calibrate_for_date(
     configuration: str | None,
     save_mode: SaveMode,
     metakernel: Path | None = None,
+    cleanup_temp_files_after_run: bool = True,
 ) -> Path:
     """Run calibration for a single date."""
     if method == CalibrationMethod.NOOP:
@@ -189,7 +198,10 @@ def _calibrate_for_date(
         calibration_configuration = config_cls.model_validate_json(configuration)
 
     calibration_job_parameters = CalibrationJobParameters(
-        date=start_date, mode=mode, sensor=sensor
+        date=start_date,
+        mode=mode,
+        sensor=sensor,
+        cleanup_temp_files_after_run=cleanup_temp_files_after_run,
     )
     calibrator: CalibrationJob
     match method:
@@ -211,10 +223,21 @@ def _calibrate_for_date(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator.setup_calibration_files(datastore_finder)
-    calibrator.setup_datastore(app_settings.data_store)
+    calibrator.setup(app_settings.data_store, datastore_finder)
+
+    if app_settings.calibrate.output_folder_override:
+        logger.info(
+            f"Overriding output folder for calibration layers to {app_settings.calibrate.output_folder_override}"
+        )
+        settings_for_output = app_settings.model_copy()
+        settings_for_output.data_store = Path(
+            app_settings.calibrate.output_folder_override
+        )
+    else:
+        settings_for_output = app_settings
+
     outputManager = DatastoreFileManager.CreateByMode(
-        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+        settings_for_output, use_database=save_mode == SaveMode.LocalAndDatabase
     )
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=f"{method.short_name}-{mode.value}",
@@ -222,9 +245,12 @@ def _calibrate_for_date(
         version_major=app_settings.version_major,
     )
 
-    metadata_path, data_path = calibrator.run_calibration(
-        calibration_handler, calibration_configuration
-    )
+    try:
+        metadata_path, data_path = calibrator.run_calibration(
+            calibration_handler, calibration_configuration
+        )
+    finally:
+        calibrator.cleanup()
 
     # verify that the generated work-folder pair is internally consistent
     layer = CalibrationLayer.from_file(metadata_path, load_contents=False)
@@ -248,6 +274,10 @@ def _calibrate_for_date(
 
     outputManager.add_file(
         data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
+
+    logger.info(
+        f"Calibration complete for {start_date.strftime('%Y-%m-%d')} ({mode.value}) written to {output_calibration_path!s}."
     )
 
     return output_calibration_path

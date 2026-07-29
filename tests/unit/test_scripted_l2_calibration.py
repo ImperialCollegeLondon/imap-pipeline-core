@@ -82,7 +82,7 @@ def _make_job(
         matlab_repo_path=repo,
         metakernel=metakernel,
     )
-    job.setup_datastore(datastore)
+    job.setup(datastore)
     return job
 
 
@@ -207,7 +207,7 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
     job = ScriptedL2CalibrationJob(
         params, app_settings, matlab_repo_path=repo, metakernel="metakernel.txt"
     )
-    job.setup_datastore(datastore)
+    job.setup(datastore)
     config = ScriptedL2CalibrationConfig(
         calibration_matrix_version=8,
         input_json_file="input.json",

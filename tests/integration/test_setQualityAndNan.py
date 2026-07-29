@@ -828,7 +828,7 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
     work = tmp_path / "work"
     work.mkdir()
     job = SetQualityAndNaNCalibrationJob(params, work)
-    job.setup_datastore(datastore)  # CSV is not here
+    job.setup(datastore)  # CSV is not here
     handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),

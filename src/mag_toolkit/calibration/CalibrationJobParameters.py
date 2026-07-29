@@ -10,3 +10,4 @@ class CalibrationJobParameters(BaseModel):
     date: datetime
     mode: ScienceMode
     sensor: Sensor
+    cleanup_temp_files_after_run: bool = True

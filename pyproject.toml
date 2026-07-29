@@ -103,6 +103,7 @@ exclude = [
     "output",
     "data",
     "htmlcov",
+    "src/IMAP_MAG_Calibration",
 ]
 
 [tool.ruff.lint]

@@ -78,13 +78,15 @@ plot_ialirt:
     work_sub_folder:
     publish_to_data_store: true
 
-calibration:
+apply:
     work_sub_folder:
 
 # Configuration for the calibrate flow. work_sub_folder supports {date}/{mode}/{sensor}
 # placeholders so each calibrate run gets its own uniquely-named work folder.
 calibrate:
     work_sub_folder: 'calibrate_{date}_{mode}'
+    # where do layer folder get published to? If null, they are published to the data_store
+    output_folder_override: .work/output
     scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
     scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
     # Files copied into the sparse datastore (LOCAL_WORK_FOLDER_COPY mode). Paths are

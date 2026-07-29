@@ -327,6 +327,15 @@ def calibrate_flow(
     paths = _run_calibration(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
+
+    if len(paths) == 0:
+        raise RuntimeError(
+            f"No calibration layers were generated for {start_date} to {end_date}."
+        )
+
+    if len(paths) > 1:
+        logger.info(f"Calibration complete - {len(paths)} layers generated.")
+
     return paths
 
 
@@ -381,10 +390,18 @@ def calibrate_and_apply_flow(
         save_mode=save_mode,
         mode=mode,
     )
+    return None
 
 
 def _run_calibration(
-    configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+    configuration,
+    start_date,
+    end_date,
+    mode,
+    sensor,
+    save_mode,
+    metakernel,
+    cleanup_temp_files_after_run: bool = True,
 ):
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
@@ -414,6 +431,7 @@ def _run_calibration(
         configuration=configuration.model_dump_json() if configuration else None,
         save_mode=save_mode,
         metakernel=metakernel,
+        cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
     )
 
     return cal_layer_paths

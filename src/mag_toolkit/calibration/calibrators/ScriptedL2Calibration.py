@@ -1,6 +1,5 @@
 import json
 import logging
-import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -124,39 +123,31 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 date, mode, metakernel_filename, config.calibration_matrix_version
             )
             matlab_datastore = sparse_datastore
+            self._paths_needing_cleanup.append(sparse_datastore)
         else:
             matlab_datastore = self.data_store
 
         user_config_path = self._write_user_config(matlab_datastore)
+        self._paths_needing_cleanup.append(user_config_path)
 
-        try:
-            command = self._build_matlab_command(
-                date=date,
-                calibration_matrix_version=config.calibration_matrix_version,
-                metakernel_filename=metakernel_filename,
-                output_data_version=output_data_version,
-                input_json_file=config.input_json_file,
-                user_config_path=user_config_path,
-                matlab_mode=str(mode.value),
-                output_layer_filename=output_layer_filename,
-                output_data_filename=output_data_filename,
-            )
+        command = self._build_matlab_command(
+            date=date,
+            calibration_matrix_version=config.calibration_matrix_version,
+            metakernel_filename=metakernel_filename,
+            output_data_version=output_data_version,
+            input_json_file=config.input_json_file,
+            user_config_path=user_config_path,
+            matlab_mode=str(mode.value),
+            output_layer_filename=output_layer_filename,
+            output_data_filename=output_data_filename,
+        )
 
-            call_matlab(
-                command,
-                cwd=self.matlab_repo_path,
-                include_project_paths=False,
-                timeout=self._timeout_seconds(mode),
-            )
-        finally:
-            if user_config_path.exists():
-                logger.info(
-                    f"Cleaning up generated MATLAB user config file {user_config_path}"
-                )
-                user_config_path.unlink()
-            if sparse_datastore is not None and sparse_datastore.exists():
-                logger.info(f"Cleaning up sparse datastore at {sparse_datastore}")
-                shutil.rmtree(sparse_datastore, ignore_errors=True)
+        call_matlab(
+            command,
+            cwd=self.matlab_repo_path,
+            include_project_paths=False,
+            timeout=self._timeout_seconds(mode),
+        )
 
         calfile = self.work_folder / cal_handler.get_filename()
         datafile = (
@@ -201,8 +192,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         )
         target_root = self.work_folder / SPARSE_DATASTORE_FOLDER_NAME
         logger.info(f"Building sparse local copy of datastore in {target_root}")
-        if target_root.exists():
-            shutil.rmtree(target_root, ignore_errors=True)
+
         return builder.build(
             target_root, [date], mode, metakernel_filename, matrix_version
         )
