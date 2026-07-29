@@ -177,7 +177,7 @@ class TestPerformCalibrationFlowNames:
 class TestPerformCalibrationFlows:
     def test_calibrate_flow_calls_calibrate(self):
         with patch("prefect_server.performCalibration.calibrate") as mock_calibrate:
-            mock_calibrate.return_value = []
+            mock_calibrate.return_value = ["some_layer.json"]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 configuration=GradiometryConfig(

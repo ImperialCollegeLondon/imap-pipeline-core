@@ -158,9 +158,13 @@ def _resolve_matlab_repo_path(
     if isinstance(matlab_repo, str):
         block = _load_matlab_repo_block(matlab_repo)
         if block is None:
-            raise ValueError(
-                f"Could not load a MATLAB repository block named '{matlab_repo}'."
-            )
+            repo_path = Path(matlab_repo)
+            if not repo_path.is_dir():
+                raise ValueError(
+                    f"Could not load a MATLAB repository block named '{matlab_repo}' or resolve it as a local path."
+                )
+            logger.info(f"Using local MATLAB calibration repository at {repo_path}")
+            return repo_path
     else:
         block = matlab_repo
 
@@ -289,9 +293,9 @@ def calibrate_flow(
             }
         ),
     ] = PrefectScriptedL2CalibrationConfig(
-        calibration_matrix_version=8,
-        input_json_file="+calibration/calibration/calibration_input_jan_v017.json",
-        matlab_repo="",
+        calibration_matrix_version=9,
+        input_json_file="+calibration/calibration/[CAL_FILE_HERE].json",
+        matlab_repo="src/matlab/calibration",
     ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,

@@ -143,10 +143,24 @@ def call_matlab(
     try:
         while (line := p.stdout.readline()) != "":  # type: ignore
             line = line.rstrip()
+            log_method = logger.info
             if line.startswith("INFO: "):
                 line = line[len("INFO: ") :]
+            elif line.startswith("WARN: "):
+                line = line[len("WARN: ") :]
+                log_method = logger.warning
+            elif line.startswith("ERROR: "):
+                line = line[len("ERROR: ") :]
+                log_method = logger.error
+            elif line.startswith("DEBUG: "):
+                line = line[len("DEBUG: ") :]
+                log_method = logger.debug
+            elif line.startswith("CRITICAL: "):
+                line = line[len("CRITICAL: ") :]
+                log_method = logger.critical
+
             if line:
-                logger.info(line)
+                log_method(line)
 
         p.wait(timeout=timeout)
     except (subprocess.TimeoutExpired, KeyboardInterrupt):
