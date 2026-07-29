@@ -52,11 +52,16 @@ class SparseDatastoreBuilder:
         mode: ScienceMode,
         metakernel_filename: str,
         matrix_version: int | None = None,
+        force_rebuild: bool = False,
     ) -> Path:
         """Populate ``target_root`` with a sparse datastore and return it."""
         level = "l1b" if mode == ScienceMode.Burst else "l1c"
 
+        if target_root.exists() and force_rebuild:
+            shutil.rmtree(target_root, ignore_errors=True)
+
         # Ensure there is room in the work folder before copying anything in.
+        check_disk_space(target_root.parent, self.disk_usage_threshold)
 
         target_root.mkdir(parents=True, exist_ok=True)
 
@@ -127,7 +132,17 @@ class SparseDatastoreBuilder:
         """Copy ``source`` to ``destination`` if not already there, logging the
         file and its size. Returns the number of bytes copied (0 if skipped)."""
         if destination.exists():
-            return 0
+            # ensure files are at least the same size, otherwise overwrite
+            if destination.stat().st_size == source.stat().st_size:
+                logger.debug(
+                    f"File {destination} already exists and is the same size - skip copy into datastore."
+                )
+                return 0
+            else:
+                logger.warning(
+                    f"File {destination} already exists but is a different size - overwriting."
+                )
+                destination.unlink()
 
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)

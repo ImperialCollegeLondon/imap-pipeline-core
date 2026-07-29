@@ -1,16 +1,9 @@
-import os
 from datetime import datetime
-
-import pytest
 
 from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import Sensor
-from mag_toolkit.calibration.CalibrationConfig import EmptyCalibrationConfig
 from prefect_server.performCalibration import (
     apply_flow,
-    calibrate_and_apply_flow,
-    calibrate_flow,
 )
 from tests.util.miscellaneous import open_cdf
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
@@ -46,51 +39,3 @@ def test_apply_flow_resolves_layer_patterns_and_discovers_science_file(
         assert "b_srf" in cdf
         assert "epoch" in cdf
         assert "magnitude" in cdf
-
-
-@pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
-    reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
-)
-def test_calibrate_flow_creates_calibration_layer(
-    temp_datastore,
-    dynamic_work_folder,
-    prefect_test_fixture,  # noqa: F811
-):
-    results = calibrate_flow(
-        start_date=datetime(2026, 1, 16),
-        mode=ScienceMode.Normal,
-        configuration=EmptyCalibrationConfig(),
-        sensor=Sensor.MAGO,
-        save_mode=SaveMode.LocalOnly,
-    )
-
-    assert len(results) == 1
-    assert results[0].exists()
-    assert "noop-norm-layer" in results[0].name
-
-
-@pytest.mark.skipif(
-    not (os.getenv("MLM_LICENSE_FILE") or os.getenv("MLM_LICENSE_TOKEN")),
-    reason="MATLAB License not set or MATLAB is not available; skipping MATLAB tests",
-)
-def test_calibrate_and_apply_flow_creates_output(
-    temp_datastore,
-    dynamic_work_folder,
-    spice_kernels,
-    prefect_test_fixture,  # noqa: F811
-):
-    calibrate_and_apply_flow(
-        start_date=datetime(2026, 1, 16),
-        configuration=EmptyCalibrationConfig(),
-        mode=ScienceMode.Normal,
-        sensor=Sensor.MAGO,
-        save_mode=SaveMode.LocalOnly,
-    )
-
-    date = datetime(2026, 1, 16)
-    output_l2_file = (
-        temp_datastore
-        / f"science/mag/l2-pre/{date.year}/{date.month:02d}/imap_mag_l2-pre_norm-srf_{date.year}{date.month:02d}{date.day:02d}_v001.0001.cdf"
-    )
-    assert output_l2_file.exists()

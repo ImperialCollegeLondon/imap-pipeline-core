@@ -21,7 +21,6 @@ from mag_toolkit.calibration import (
     CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
-    EmptyCalibrationJob,
     GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
     Sensor,
@@ -109,14 +108,21 @@ def calibrate(
             "scripted-l2, one is generated.",
         ),
     ] = None,
+    cleanup_temp_files_after_run: Annotated[
+        bool,
+        typer.Option(
+            help="Whether to clean up temporary files after the calibration run. "
+            "If False, temporary files are retained in the work folder for inspection.",
+        ),
+    ] = True,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
 
     Supports single date (--date) or date ranges (--start-date/--end-date).
 
-    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method noop
-    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method noop
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method gradiometer
+    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method gradiometer
     """
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
@@ -133,6 +139,7 @@ def calibrate(
             configuration=configuration,
             save_mode=save_mode,
             metakernel=metakernel,
+            cleanup_temp_files_after_run=cleanup_temp_files_after_run,
         )
         results.append(result)
         current += timedelta(days=1)
@@ -147,8 +154,16 @@ def _calibrate_for_date(
     configuration: str | None,
     save_mode: SaveMode,
     metakernel: Path | None = None,
+    cleanup_temp_files_after_run: bool = True,
 ) -> Path:
     """Run calibration for a single date."""
+    if method == CalibrationMethod.NOOP:
+        # NOOP is retained only as the internal descriptor for the zero-offset layer
+        # that ``apply`` auto-creates; it is not a runnable calibration job.
+        raise ValueError(
+            "The 'noop' calibration method is not runnable. It exists only for the "
+            "internal zero-offset layer. Choose a real calibration method."
+        )
     app_settings = AppSettings()  # type: ignore
     # Use the dedicated calibrate command config so each run gets its own uniquely
     # named work folder (based on the date + mode being calibrated).
@@ -173,11 +188,9 @@ def _calibrate_for_date(
     # fields, so parse against the correct model for the chosen method.
     config_cls = CalibrationConfig.get_class(method)
     if configuration is None or len(configuration.strip()) == 0:
-        if method != CalibrationMethod.NOOP:
-            raise ValueError(
-                f"Calibration method {method.short_name} requires a configuration to be provided"
-            )
-        calibration_configuration = config_cls()
+        raise ValueError(
+            f"Calibration method {method.short_name} requires a configuration to be provided"
+        )
     elif Path(configuration).is_file():
         logger.info(f"Loading calibration configuration from {configuration}")
         calibration_configuration = config_cls.from_file(Path(configuration))
@@ -185,12 +198,13 @@ def _calibrate_for_date(
         calibration_configuration = config_cls.model_validate_json(configuration)
 
     calibration_job_parameters = CalibrationJobParameters(
-        date=start_date, mode=mode, sensor=sensor
+        date=start_date,
+        mode=mode,
+        sensor=sensor,
+        cleanup_temp_files_after_run=cleanup_temp_files_after_run,
     )
     calibrator: CalibrationJob
     match method:
-        case CalibrationMethod.NOOP:
-            calibrator = EmptyCalibrationJob(calibration_job_parameters, work_folder)
         case CalibrationMethod.GRADIOMETER:
             calibrator = GradiometerCalibrationJob(
                 calibration_job_parameters, work_folder
@@ -209,10 +223,21 @@ def _calibrate_for_date(
         case _:
             raise ValueError("Calibration method is not implemented")
 
-    calibrator.setup_calibration_files(datastore_finder)
-    calibrator.setup_datastore(app_settings.data_store)
+    calibrator.setup(app_settings.data_store, datastore_finder)
+
+    if app_settings.calibrate.output_folder_override:
+        logger.info(
+            f"Overriding output folder for calibration layers to {app_settings.calibrate.output_folder_override}"
+        )
+        settings_for_output = app_settings.model_copy()
+        settings_for_output.data_store = Path(
+            app_settings.calibrate.output_folder_override
+        )
+    else:
+        settings_for_output = app_settings
+
     outputManager = DatastoreFileManager.CreateByMode(
-        app_settings, use_database=save_mode == SaveMode.LocalAndDatabase
+        settings_for_output, use_database=save_mode == SaveMode.LocalAndDatabase
     )
     calibration_handler = CalibrationLayerPathHandler(
         descriptor=f"{method.short_name}-{mode.value}",
@@ -220,9 +245,12 @@ def _calibrate_for_date(
         version_major=app_settings.version_major,
     )
 
-    metadata_path, data_path = calibrator.run_calibration(
-        calibration_handler, calibration_configuration
-    )
+    try:
+        metadata_path, data_path = calibrator.run_calibration(
+            calibration_handler, calibration_configuration
+        )
+    finally:
+        calibrator.cleanup()
 
     # verify that the generated work-folder pair is internally consistent
     layer = CalibrationLayer.from_file(metadata_path, load_contents=False)
@@ -246,6 +274,10 @@ def _calibrate_for_date(
 
     outputManager.add_file(
         data_path, path_handler=calibration_handler.get_equivalent_data_handler()
+    )
+
+    logger.info(
+        f"Calibration complete for {start_date.strftime('%Y-%m-%d')} ({mode.value}) written to {output_calibration_path!s}."
     )
 
     return output_calibration_path

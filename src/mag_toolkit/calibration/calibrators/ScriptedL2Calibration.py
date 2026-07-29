@@ -1,6 +1,5 @@
 import json
 import logging
-import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -107,6 +106,13 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         mode = self.calibration_job_parameters.mode
         output_data_version = cal_handler.version
 
+        # imap-pipeline-core owns the layer file naming (it decides the major/minor
+        # version). Pass the exact layer JSON and companion CSV file names to MATLAB
+        # so the files it writes match what this job then looks for in the work folder.
+        # MATLAB falls back to its own default names when these are not provided.
+        output_layer_filename = cal_handler.get_filename()
+        output_data_filename = cal_handler.get_equivalent_data_handler().get_filename()
+
         metakernel_filename = self._resolve_metakernel(date)
 
         # Decide which datastore MATLAB will read from, building a sparse local copy
@@ -117,37 +123,31 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 date, mode, metakernel_filename, config.calibration_matrix_version
             )
             matlab_datastore = sparse_datastore
+            self._paths_needing_cleanup.append(sparse_datastore)
         else:
             matlab_datastore = self.data_store
 
         user_config_path = self._write_user_config(matlab_datastore)
+        self._paths_needing_cleanup.append(user_config_path)
 
-        try:
-            command = self._build_matlab_command(
-                date=date,
-                calibration_matrix_version=config.calibration_matrix_version,
-                metakernel_filename=metakernel_filename,
-                output_data_version=output_data_version,
-                input_json_file=config.input_json_file,
-                user_config_path=user_config_path,
-                matlab_mode=str(mode.value),
-            )
+        command = self._build_matlab_command(
+            date=date,
+            calibration_matrix_version=config.calibration_matrix_version,
+            metakernel_filename=metakernel_filename,
+            output_data_version=output_data_version,
+            input_json_file=config.input_json_file,
+            user_config_path=user_config_path,
+            matlab_mode=str(mode.value),
+            output_layer_filename=output_layer_filename,
+            output_data_filename=output_data_filename,
+        )
 
-            call_matlab(
-                command,
-                cwd=self.matlab_repo_path,
-                include_project_paths=False,
-                timeout=self._timeout_seconds(mode),
-            )
-        finally:
-            if user_config_path.exists():
-                logger.info(
-                    f"Cleaning up generated MATLAB user config file {user_config_path}"
-                )
-                user_config_path.unlink()
-            if sparse_datastore is not None and sparse_datastore.exists():
-                logger.info(f"Cleaning up sparse datastore at {sparse_datastore}")
-                shutil.rmtree(sparse_datastore, ignore_errors=True)
+        call_matlab(
+            command,
+            cwd=self.matlab_repo_path,
+            include_project_paths=False,
+            timeout=self._timeout_seconds(mode),
+        )
 
         calfile = self.work_folder / cal_handler.get_filename()
         datafile = (
@@ -192,8 +192,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         )
         target_root = self.work_folder / SPARSE_DATASTORE_FOLDER_NAME
         logger.info(f"Building sparse local copy of datastore in {target_root}")
-        if target_root.exists():
-            shutil.rmtree(target_root, ignore_errors=True)
+
         return builder.build(
             target_root, [date], mode, metakernel_filename, matrix_version
         )
@@ -283,8 +282,27 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         input_json_file: str,
         user_config_path: Path,
         matlab_mode: str,
+        output_layer_filename: str,
+        output_data_filename: str,
     ) -> str:
-        """Build the ``calibrate_l2_offsets`` MATLAB command for a single day."""
+        """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
+
+        Args:
+            date: The single day to calibrate (used for both start and end date).
+            calibration_matrix_version: Version of the calibration matrices to load.
+            metakernel_filename: Bare filename of the SPICE metakernel MATLAB should
+                furnish (looked up under ``{datastore}/spice/mk/``).
+            output_data_version: Data-product (minor) version for the L2-pre CDF and
+                diagnostic report file names MATLAB produces.
+            input_json_file: Path (relative to the MATLAB repo) of the calibration
+                input configuration JSON.
+            user_config_path: Path to the generated MATLAB user/env file-path config.
+            matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
+            output_layer_filename: Bare filename the layer JSON must be written as, so
+                imap-pipeline-core controls the major/minor versioned name.
+            output_data_filename: Bare filename the companion layer-data CSV must be
+                written as (paired with ``output_layer_filename``).
+        """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
 
         return (
@@ -296,5 +314,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
+            f'output_layer_filename="{output_layer_filename}", '
+            f'output_data_filename="{output_data_filename}", '
             "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
         )

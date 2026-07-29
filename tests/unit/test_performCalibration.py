@@ -1,6 +1,6 @@
 """Unit tests for performCalibration flow helper functions."""
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +15,7 @@ from prefect_server.performCalibration import (
     PrefectScriptedL2CalibrationConfig,
     _days_in_range,
     _github_repo_name,
+    _load_matlab_repo_block,
     _resolve_matlab_repo_path,
     apply_flow,
     calibrate_and_apply_flow,
@@ -63,6 +64,23 @@ class TestPerformCalibrationFlowNames:
         assert "01-01-2025" in result
         assert "31-01-2025" in result
 
+    def test_generate_calibration_flow_name_without_end_date(self):
+        mock_configuration = MagicMock()
+        mock_configuration.get_method.return_value = MagicMock(value="kepko")
+        mock_params = {
+            "start_date": datetime(2025, 1, 15),
+            "end_date": None,
+            "configuration": mock_configuration,
+            "mode": MagicMock(value="norm"),
+            "sensor": MagicMock(value="mago"),
+        }
+
+        with patch("prefect_server.performCalibration.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            result = generate_calibration_flow_run_name()
+
+        assert result == "Calibrating-15-01-2025-for-mago-norm-with-kepko"
+
     def test_generate_apply_calibration_name_truncates_many_layers(self):
         mock_params = {
             "start_date": datetime(2025, 1, 15),
@@ -75,6 +93,50 @@ class TestPerformCalibrationFlowNames:
             result = generate_apply_calibration_flow_run_name()
 
         assert "+2" in result
+
+    def test_generate_apply_calibration_name_does_not_truncate_few_layers(self):
+        mock_params = {
+            "start_date": datetime(2025, 1, 15),
+            "end_date": None,
+            "layers": ["layer1", "layer2"],
+        }
+
+        with patch("prefect_server.performCalibration.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            result = generate_apply_calibration_flow_run_name()
+
+        assert "layer1,layer2" in result
+        assert "+" not in result
+
+    def test_generate_apply_calibration_name_with_date_range(self):
+        mock_params = {
+            "start_date": datetime(2025, 1, 1),
+            "end_date": datetime(2025, 1, 5),
+            "layers": ["layer1"],
+        }
+
+        with patch("prefect_server.performCalibration.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            result = generate_apply_calibration_flow_run_name()
+
+        assert "01-01-2025-to-05-01-2025" in result
+
+    def test_generate_calibrate_and_apply_name_with_date_range(self):
+        mock_configuration = MagicMock()
+        mock_configuration.get_method.return_value = MagicMock(value="kepko")
+        mock_params = {
+            "start_date": datetime(2025, 1, 1),
+            "end_date": datetime(2025, 1, 5),
+            "configuration": mock_configuration,
+            "mode": MagicMock(value="norm"),
+            "sensor": MagicMock(value="mago"),
+        }
+
+        with patch("prefect_server.performCalibration.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            result = generate_calibrate_and_apply_flow_run_name()
+
+        assert "01-01-2025-to-05-01-2025" in result
 
     def test_calibrate_and_apply_flow_calls_both(self):
         mock_layer = MagicMock()
@@ -177,7 +239,7 @@ class TestPerformCalibrationFlowNames:
 class TestPerformCalibrationFlows:
     def test_calibrate_flow_calls_calibrate(self):
         with patch("prefect_server.performCalibration.calibrate") as mock_calibrate:
-            mock_calibrate.return_value = []
+            mock_calibrate.return_value = ["some_layer.json"]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 configuration=GradiometryConfig(
@@ -447,6 +509,116 @@ class TestResolveMatlabRepoPath:
         ):
             with pytest.raises(ValueError, match="Could not load"):
                 _resolve_matlab_repo_path("missing-block", tmp_path)
+
+    def test_string_falls_back_to_local_path_when_no_block_found(self, tmp_path):
+        repo = tmp_path / "local-repo"
+        repo.mkdir()
+        with patch(
+            "prefect_server.performCalibration._load_matlab_repo_block",
+            return_value=None,
+        ):
+            assert _resolve_matlab_repo_path(str(repo), tmp_path) == repo
+
+    def test_github_block_clears_existing_target_before_pull(self, tmp_path):
+        work = tmp_path / "work"
+        work.mkdir()
+        block = GitHubRepository(repository_url="git@github.com:Org/MyRepo.git")
+
+        stale_target = work / "MyRepo"
+        stale_target.mkdir()
+        (stale_target / "stale.txt").write_text("old")
+
+        def fake_get_directory(local_path=None, from_path=None):
+            Path(local_path).mkdir(parents=True, exist_ok=True)
+
+        with patch.object(block, "get_directory", side_effect=fake_get_directory):
+            result = _resolve_matlab_repo_path(block, work)
+
+        assert result == stale_target
+        assert not (stale_target / "stale.txt").exists()
+
+    def test_unsupported_type_raises(self, tmp_path):
+        with pytest.raises(TypeError, match="Unsupported matlab_repo type"):
+            _resolve_matlab_repo_path(123, tmp_path)
+
+
+class TestLoadMatlabRepoBlock:
+    def test_returns_block_from_first_matching_type(self):
+        fake_block = MagicMock(spec=GitHubRepository)
+        with patch.object(GitHubRepository, "load", return_value=fake_block):
+            result = _load_matlab_repo_block("my-block")
+
+        assert result is fake_block
+
+    def test_falls_through_to_next_type_on_failure(self):
+        fake_block = MagicMock(spec=LocalFileSystem)
+        with (
+            patch.object(
+                GitHubRepository, "load", side_effect=ValueError("no such block")
+            ),
+            patch.object(LocalFileSystem, "load", return_value=fake_block),
+        ):
+            result = _load_matlab_repo_block("my-block")
+
+        assert result is fake_block
+
+    def test_returns_none_when_no_type_matches(self):
+        with (
+            patch.object(GitHubRepository, "load", side_effect=ValueError("nope")),
+            patch.object(LocalFileSystem, "load", side_effect=ValueError("nope")),
+        ):
+            result = _load_matlab_repo_block("missing-block")
+
+        assert result is None
+
+
+class TestCalibrateFlowDateHandling:
+    def test_coerces_plain_date_objects_to_datetime(self):
+        with patch(
+            "prefect_server.performCalibration.calibrate",
+            return_value=[Path("layer.json")],
+        ) as mock_calibrate:
+            calibrate_flow.fn(
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 1, 2),
+                configuration=GradiometryConfig(),
+            )
+
+        kwargs = mock_calibrate.call_args.kwargs
+        assert kwargs["start_date"] == datetime(2025, 1, 1)
+        assert kwargs["end_date"] == datetime(2025, 1, 2)
+
+    def test_raises_when_end_date_before_start_date(self):
+        with pytest.raises(ValueError, match="cannot be before start date"):
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 5),
+                end_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(),
+            )
+
+    def test_raises_runtime_error_when_no_layers_generated(self):
+        with patch(
+            "prefect_server.performCalibration.calibrate",
+            return_value=[],
+        ):
+            with pytest.raises(RuntimeError, match="No calibration layers"):
+                calibrate_flow.fn(
+                    start_date=datetime(2025, 1, 1),
+                    configuration=GradiometryConfig(),
+                )
+
+    def test_returns_all_paths_when_multiple_layers_generated(self):
+        paths = [Path("layer1.json"), Path("layer2.json")]
+        with patch(
+            "prefect_server.performCalibration.calibrate",
+            return_value=paths,
+        ):
+            result = calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(),
+            )
+
+        assert result == paths
 
 
 class TestCalibrateFlowScripted:

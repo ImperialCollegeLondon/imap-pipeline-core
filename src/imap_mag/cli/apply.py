@@ -218,7 +218,7 @@ def _apply_for_date(
 ):
     """Apply calibration layers for a single date."""
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.calibration)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.apply)
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)

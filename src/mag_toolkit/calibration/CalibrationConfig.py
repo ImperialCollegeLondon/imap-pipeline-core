@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from pathlib import Path
+from typing import Annotated
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
@@ -11,6 +12,10 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 
 
 class CalibrationConfig(BaseModel):
+    cleanup_temp_files_after_run: Annotated[
+        bool, Field(default=True, json_schema_extra={"position": 99})
+    ] = True
+
     @classmethod
     @abstractmethod
     def get_method(cls) -> CalibrationMethod:
@@ -29,12 +34,6 @@ class CalibrationConfig(BaseModel):
             if subclass.get_method() == method:
                 return subclass
         raise ValueError(f"No subclass found for method {method}")
-
-
-class EmptyCalibrationConfig(CalibrationConfig):
-    @classmethod
-    def get_method(cls) -> CalibrationMethod:
-        return CalibrationMethod.NOOP
 
 
 class GradiometryConfig(CalibrationConfig):

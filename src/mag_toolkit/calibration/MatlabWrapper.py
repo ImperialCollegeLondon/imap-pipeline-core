@@ -1,5 +1,8 @@
+import ctypes
+import ctypes.util
 import logging
 import os
+import signal
 import subprocess
 from pathlib import Path
 from shutil import which
@@ -12,6 +15,48 @@ _MATLAB_LOCAL_PATH = "src/matlab"
 # Tracks whether the MATLAB path has already been set up in this process.
 # ``savepath`` persists the path to disk, so setup only needs to run once.
 _matlab_path_initialized = False
+
+
+def _set_parent_death_signal_linux() -> None:
+    """Configure the child process to receive a signal when parent dies.
+
+    Linux-only: sets ``PR_SET_PDEATHSIG`` so the MATLAB child receives
+    ``SIGKILL`` if this Python process exits unexpectedly (including SIGKILL).
+    """
+    if os.name != "posix":
+        return
+
+    libc_name = ctypes.util.find_library("c")
+    if libc_name is None:
+        return
+
+    libc = ctypes.CDLL(libc_name, use_errno=True)
+    pr_set_pdeathsig = 1
+    if libc.prctl(pr_set_pdeathsig, signal.SIGKILL) != 0:
+        err = ctypes.get_errno()
+        raise OSError(err, "prctl(PR_SET_PDEATHSIG) failed")
+
+
+def _terminate_process_group(process: subprocess.Popen, timeout: float = 10.0) -> None:
+    """Terminate the MATLAB process group, escalating to SIGKILL if required."""
+    if process.poll() is not None:
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+        process.wait(timeout=timeout)
+        return
+    except ProcessLookupError:
+        return
+    except subprocess.TimeoutExpired:
+        logger.warning("MATLAB did not terminate after SIGTERM; sending SIGKILL")
+
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+
+    process.wait()
 
 
 def _build_path_setup_prefix() -> str:
@@ -75,7 +120,7 @@ def call_matlab(
     else:
         batch_command = command
 
-    cmd = [MATLAB_COMMAND, "-nodesktop", "-batch", batch_command]
+    cmd = [MATLAB_COMMAND, "-nodesktop", "-nojvm", "-batch", batch_command]
 
     # Always unset DISPLAY so MATLAB does not attempt to open plot windows.
     env = os.environ.copy()
@@ -91,16 +136,50 @@ def call_matlab(
         text=True,
         cwd=str(cwd) if cwd is not None else None,
         env=env,
+        start_new_session=True,
+        preexec_fn=_set_parent_death_signal_linux if os.name == "posix" else None,
     )
 
-    while (line := p.stdout.readline()) != "":  # type: ignore
-        line = line.rstrip()
-        logger.info(line)
+    try:
+        while (line := p.stdout.readline()) != "":  # type: ignore
+            line = line.rstrip()
+            log_method = logger.info
+            if line.startswith("INFO: "):
+                line = line[len("INFO: ") :]
+            elif line.startswith("WARN: "):
+                line = line[len("WARN: ") :]
+                log_method = logger.warning
+            elif line.startswith("ERROR: "):
+                line = line[len("ERROR: ") :]
+                log_method = logger.error
+            elif line.startswith("DEBUG: "):
+                line = line[len("DEBUG: ") :]
+                log_method = logger.debug
+            elif line.startswith("CRITICAL: "):
+                line = line[len("CRITICAL: ") :]
+                log_method = logger.critical
 
-    p.wait(timeout=timeout)
+            if line:
+                log_method(line)
 
-    logger.info(f"MATLAB process finished with return code {p.returncode}")
+        p.wait(timeout=timeout)
+    except (subprocess.TimeoutExpired, KeyboardInterrupt):
+        logger.warning("Stopping MATLAB process group after interruption/timeout")
+        _terminate_process_group(p)
+        raise
+    except Exception:
+        logger.exception(
+            "Unexpected error while waiting for MATLAB; terminating process"
+        )
+        _terminate_process_group(p)
+        raise
+    finally:
+        if p.returncode is None:
+            logger.warning("MATLAB process did not exit cleanly; terminating process")
+            _terminate_process_group(p)
 
     if p.returncode != 0:
         logger.error(f"MATLAB command failed with return code {p.returncode}")
         raise RuntimeError(f"MATLAB command failed with return code {p.returncode}")
+
+    logger.info(f"MATLAB process finished with return code {p.returncode}")

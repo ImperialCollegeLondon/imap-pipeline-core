@@ -1,7 +1,7 @@
 import logging
 import re
 import shutil
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -23,7 +23,6 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
-    EmptyCalibrationConfig,
     GradiometryConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
@@ -159,9 +158,13 @@ def _resolve_matlab_repo_path(
     if isinstance(matlab_repo, str):
         block = _load_matlab_repo_block(matlab_repo)
         if block is None:
-            raise ValueError(
-                f"Could not load a MATLAB repository block named '{matlab_repo}'."
-            )
+            repo_path = Path(matlab_repo)
+            if not repo_path.is_dir():
+                raise ValueError(
+                    f"Could not load a MATLAB repository block named '{matlab_repo}' or resolve it as a local path."
+                )
+            logger.info(f"Using local MATLAB calibration repository at {repo_path}")
+            return repo_path
     else:
         block = matlab_repo
 
@@ -260,18 +263,56 @@ def generate_calibrate_and_apply_flow_run_name() -> str:
     flow_run_name=generate_calibration_flow_run_name,
 )
 def calibrate_flow(
-    start_date: datetime,
-    configuration: PrefectScriptedL2CalibrationConfig
-    | SetQualityAndNaNConfig
-    | GradiometryConfig
-    | EmptyCalibrationConfig,
-    end_date: datetime | None = None,
+    start_date: Annotated[
+        date,
+        Field(
+            json_schema_extra={
+                "title": "Start date / single day",
+                "description": "Starting content date of file(s) to be calibrated. If end date is not specified, only this day will be calibrated.",
+                "position": 1,
+            }
+        ),
+    ],
+    end_date: Annotated[
+        date | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "Ending content date of file(s) to be calibrated. If not specified, only the start date will be calibrated.",
+                "position": 2,
+            }
+        ),
+    ] = None,
+    configuration: Annotated[
+        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig,
+        Field(
+            json_schema_extra={
+                "title": "Calibration Type Configuration",
+                "description": "Configuration to be used for the seslected calibration method.",
+                "position": 3,
+            }
+        ),
+    ] = PrefectScriptedL2CalibrationConfig(
+        calibration_matrix_version=9,
+        input_json_file="+calibration/calibration/[CAL_FILE_HERE].json",
+        matlab_repo="src/matlab/calibration",
+    ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
 ) -> list[Path] | list[FlowRun]:
+
+    if isinstance(start_date, date) and not isinstance(start_date, datetime):
+        start_date = datetime.combine(start_date, datetime.min.time())
+    if isinstance(end_date, date) and not isinstance(end_date, datetime):
+        end_date = datetime.combine(end_date, datetime.min.time())
+
+    if end_date and end_date < start_date:
+        raise ValueError(
+            f"End date {end_date} cannot be before start date {start_date}."
+        )
 
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -290,6 +331,15 @@ def calibrate_flow(
     paths = _run_calibration(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
+
+    if len(paths) == 0:
+        raise RuntimeError(
+            f"No calibration layers were generated for {start_date} to {end_date}."
+        )
+
+    if len(paths) > 1:
+        logger.info(f"Calibration complete - {len(paths)} layers generated.")
+
     return paths
 
 
@@ -301,8 +351,7 @@ def calibrate_flow(
 def calibrate_and_apply_flow(
     configuration: PrefectScriptedL2CalibrationConfig
     | SetQualityAndNaNConfig
-    | GradiometryConfig
-    | EmptyCalibrationConfig,
+    | GradiometryConfig,
     start_date: datetime,
     end_date: datetime | None = None,
     mode: ScienceMode = ScienceMode.Normal,
@@ -345,10 +394,18 @@ def calibrate_and_apply_flow(
         save_mode=save_mode,
         mode=mode,
     )
+    return None
 
 
 def _run_calibration(
-    configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+    configuration,
+    start_date,
+    end_date,
+    mode,
+    sensor,
+    save_mode,
+    metakernel,
+    cleanup_temp_files_after_run: bool = True,
 ):
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
@@ -378,6 +435,7 @@ def _run_calibration(
         configuration=configuration.model_dump_json() if configuration else None,
         save_mode=save_mode,
         metakernel=metakernel,
+        cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
     )
 
     return cal_layer_paths
