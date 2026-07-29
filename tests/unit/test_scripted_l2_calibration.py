@@ -157,6 +157,7 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
     metadata_path, data_path = job.run_calibration(_handler(7), config)
+    job.cleanup()
 
     assert (
         metadata_path
@@ -296,6 +297,7 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
+    job.cleanup()
 
     sparse_root = work_folder / SPARSE_DATASTORE_FOLDER_NAME
     # MATLAB was pointed at the sparse copy, which held the copied SPICE files...

@@ -5,6 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
+#data_store:  '/mnt/box/IMAP Flight Data/Flight Data'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
@@ -86,7 +87,7 @@ apply:
 calibrate:
     work_sub_folder: 'calibrate_{date}_{mode}'
     # where do layer folder get published to? If null, they are published to the data_store
-    output_folder_override: .work/output
+    output_folder_override: null
     scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
     scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
     # Files copied into the sparse datastore (LOCAL_WORK_FOLDER_COPY mode). Paths are
