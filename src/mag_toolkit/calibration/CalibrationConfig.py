@@ -67,7 +67,7 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
                     "If true, the calculated spin-plane offsets are written to the "
                     "work folder and published to calibration/calculated_offsets in "
                     "the datastore (upversioned when the content differs). Only "
-                    "norm-mode / SPINOPTIMISE configurations actually produce offsets."
+                    "SPINOPTIMISE configurations actually produce offsets."
                 ),
             },
         ),
