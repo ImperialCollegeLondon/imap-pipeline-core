@@ -24,6 +24,7 @@ from imap_mag.io import (
 )
 from imap_mag.io.file import (
     AncillaryPathHandler,
+    CalculatedOffsetsPathHandler,
     CalibrationLayerPathHandler,
     HKBinaryPathHandler,
     HKDecodedPathHandler,
@@ -70,6 +71,54 @@ def check_inserted_file(
     assert file.creation_date == datetime.fromtimestamp(test_file.stat().st_ctime)
     assert file.deletion_date is None
     assert file.software_version == __version__
+
+
+def test_DBIndexedDatastoreFileManager_indexes_calculated_offsets(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """A calculated-offsets CSV is indexed into the database with correct metadata."""
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "offsets_src.csv", "offset content"
+    )
+    path_handler = CalculatedOffsetsPathHandler(
+        sensor="mago",
+        offset_type="spin_plane",
+        content_date=datetime(2026, 1, 14),
+        version=24,
+    )
+
+    # Nothing pre-existing in the database -> treated as a new version.
+    mock_database.get_files.return_value = []
+
+    # The inner (mock) manager "writes" the file at its full datastore path.
+    test_file = Path(tempfile.gettempdir()) / path_handler.get_full_path()
+    test_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def add_side_effect(src, handler):
+        create_test_file(test_file, "offset content")
+        return (test_file, handler)
+
+    mock_datastore_manager.add_file.side_effect = add_side_effect
+
+    captured: dict = {}
+    mock_database.upsert_file.side_effect = lambda file: captured.update(file=file)
+
+    database_manager.add_file(original_file, path_handler)
+
+    indexed = captured["file"]
+    assert indexed.name == "imap_mag_mago-spin-plane-offsets_20260114_v024.csv"
+    assert indexed.version == 24
+    assert indexed.version_major == 0
+    assert indexed.hash == hashlib.md5(b"offset content").hexdigest()
+    assert indexed.content_date == datetime(2026, 1, 14)
+    assert "calibration/calculated_offsets/spin_plane" in indexed.path.replace(
+        "\\", "/"
+    )
 
 
 def test_DBIndexedDatastoreFileManager_writes_to_database(

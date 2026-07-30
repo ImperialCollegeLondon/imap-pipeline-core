@@ -5,6 +5,7 @@ from pathlib import Path
 
 from imap_mag.config import AppSettings
 from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
 from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationJobParameters
@@ -30,6 +31,11 @@ USER_CONFIG_FILENAME = "imap_mag_scripted_l2_file_path_config.json"
 # Folder (inside the work folder) that holds the sparse datastore copy when using
 # DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY.
 SPARSE_DATASTORE_FOLDER_NAME = "sparse_datastore"
+
+# Folder (inside the work folder) MATLAB writes the calculated spin-plane offsets to
+# when write_offsets is enabled. Mirrors the calibration/calculated_offsets datastore
+# layout: one CSV per sensor per day under each OFFSET_TYPES sub-folder.
+OFFSETS_FOLDER_NAME = "offsets"
 
 # Relative path (within the MATLAB repo) of the script we invoke. Used to fail fast
 # if the acquired repo does not actually contain the expected entry point.
@@ -72,6 +78,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         self.name = CalibrationMethod.SCRIPTED_L2_CALIBRATION
         self.app_settings = app_settings
         self.metakernel = metakernel
+        # Calculated spin-plane offset CSVs written to the work folder by the last
+        # run (empty unless write_offsets was enabled and MATLAB produced offsets).
+        self.written_offset_files: list[Path] = []
 
     @staticmethod
     def _work_folder_context(
@@ -130,6 +139,13 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path = self._write_user_config(matlab_datastore)
         self._paths_needing_cleanup.append(user_config_path)
 
+        # MATLAB writes offsets into pre-existing sub-folders, so create them upfront.
+        if config.write_offsets:
+            for offset_type in OFFSET_TYPES:
+                (self.work_folder / OFFSETS_FOLDER_NAME / offset_type).mkdir(
+                    parents=True, exist_ok=True
+                )
+
         command = self._build_matlab_command(
             date=date,
             calibration_matrix_version=config.calibration_matrix_version,
@@ -140,6 +156,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             matlab_mode=str(mode.value),
             output_layer_filename=output_layer_filename,
             output_data_filename=output_data_filename,
+            write_offsets=config.write_offsets,
         )
 
         call_matlab(
@@ -148,6 +165,8 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             include_project_paths=False,
             timeout=self._timeout_seconds(mode),
         )
+
+        self.written_offset_files = self._collect_offset_files(config.write_offsets)
 
         calfile = self.work_folder / cal_handler.get_filename()
         datafile = (
@@ -164,6 +183,29 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             )
 
         return calfile, datafile
+
+    def _collect_offset_files(self, write_offsets: bool) -> list[Path]:
+        """Return the calculated spin-plane offset CSVs MATLAB wrote to the work folder.
+
+        One CSV per sensor per day is expected under each offsets sub-folder. Only
+        SPINOPTIMISE (norm-mode) configurations actually produce offsets, so an empty
+        result when ``write_offsets`` is set is a warning rather than an error.
+        """
+        if not write_offsets:
+            return []
+
+        offsets_root = self.work_folder / OFFSETS_FOLDER_NAME
+        offset_files: list[Path] = []
+        for offset_type in OFFSET_TYPES:
+            offset_files.extend(sorted((offsets_root / offset_type).glob("*.csv")))
+
+        if not offset_files:
+            logger.warning(
+                f"write_offsets was requested but MATLAB produced no offset CSVs in "
+                f"{offsets_root}. The configuration may not be a SPINOPTIMISE one."
+            )
+
+        return offset_files
 
     def _timeout_seconds(self, mode: ScienceMode) -> int:
         """MATLAB timeout for a single day of the given mode.
@@ -249,8 +291,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
 
         ``sharepoint_flight_data`` and ``spice_metakernal_root`` point at the
         datastore root MATLAB should read (the real datastore, or the sparse copy),
-        while the three output folders map to the work folder so MATLAB writes there
-        rather than into the datastore.
+        while the output folders map to the work folder so MATLAB writes there
+        rather than into the datastore. ``output_offsets_folder`` is where the
+        (optional) calculated spin-plane offset CSVs are written.
         """
         datastore_path = Path(matlab_datastore).resolve()
         work_folder_path = str(self.work_folder.resolve())
@@ -261,6 +304,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             "l2_pre_calibration_outputs": work_folder_path,
             "report_folder": str(datastore_path / "calibration" / "reports"),
             "output_layers_folder": work_folder_path,
+            "output_offsets_folder": str(
+                (self.work_folder / OFFSETS_FOLDER_NAME).resolve()
+            ),
         }
 
         user_config_path = self.work_folder / USER_CONFIG_FILENAME
@@ -284,6 +330,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         matlab_mode: str,
         output_layer_filename: str,
         output_data_filename: str,
+        write_offsets: bool = False,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -302,8 +349,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 imap-pipeline-core controls the major/minor versioned name.
             output_data_filename: Bare filename the companion layer-data CSV must be
                 written as (paired with ``output_layer_filename``).
+            write_offsets: Whether MATLAB should write the calculated spin-plane
+                offset CSVs into ``output_offsets_folder`` (norm/SPINOPTIMISE only).
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
+        write_offsets_expr = "true" if write_offsets else "false"
 
         return (
             "calibration.scripts.calibrate_l2_offsets("
@@ -316,5 +366,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'modes=["{matlab_mode}"], '
             f'output_layer_filename="{output_layer_filename}", '
             f'output_data_filename="{output_data_filename}", '
+            f"write_offsets={write_offsets_expr}, "
             "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
         )

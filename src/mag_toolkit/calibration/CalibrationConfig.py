@@ -58,6 +58,20 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
     input_json_file: str
     datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY
     matlab_repo: str
+    write_offsets: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Write offsets",
+                "description": (
+                    "If true, the calculated spin-plane offsets are written to the "
+                    "work folder and published to calibration/calculated_offsets in "
+                    "the datastore (upversioned when the content differs). Only "
+                    "norm-mode / SPINOPTIMISE configurations actually produce offsets."
+                ),
+            },
+        ),
+    ] = False
 
     @classmethod
     def get_method(cls) -> CalibrationMethod:

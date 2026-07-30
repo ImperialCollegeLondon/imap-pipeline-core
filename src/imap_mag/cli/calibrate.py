@@ -15,7 +15,10 @@ from imap_mag.config import (
 )
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file import (
+    CalculatedOffsetsPathHandler,
+    CalibrationLayerPathHandler,
+)
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJob,
@@ -276,8 +279,46 @@ def _calibrate_for_date(
         data_path, path_handler=calibration_handler.get_equivalent_data_handler()
     )
 
+    # Publish any calculated spin-plane offsets the calibration wrote to the work
+    # folder, comparing against the datastore and upversioning when they differ.
+    _publish_calculated_offsets(
+        getattr(calibrator, "written_offset_files", []),
+        outputManager,
+        FileFinder(settings_for_output.data_store),
+    )
+
     logger.info(
         f"Calibration complete for {start_date.strftime('%Y-%m-%d')} ({mode.value}) written to {output_calibration_path!s}."
     )
 
     return output_calibration_path
+
+
+def _publish_calculated_offsets(
+    offset_files: list[Path],
+    output_manager,
+    offsets_finder: FileFinder,
+) -> None:
+    """Publish calculated spin-plane offset CSVs to the datastore.
+
+    Each file is versioned relative to the latest existing offsets for the same
+    sensor/date/offset-type: ``add_file`` reuses that version when the content is
+    identical (hash match) and upversions when it differs, indexing the result in
+    the database when the output manager is database-backed.
+    """
+    for offset_file in offset_files:
+        offset_handler = CalculatedOffsetsPathHandler.from_work_folder_file(offset_file)
+
+        latest = offsets_finder.find_latest_version_by_handler(
+            offset_handler, throw_if_not_found=False
+        )
+        if latest is not None:
+            existing = CalculatedOffsetsPathHandler.from_filename(latest.name)
+            offset_handler.version = existing.version if existing else 1
+        else:
+            offset_handler.version = 1
+
+        (published_offset_path, _) = output_manager.add_file(
+            offset_file, path_handler=offset_handler
+        )
+        logger.info(f"Published calculated offsets to {published_offset_path!s}.")
