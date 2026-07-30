@@ -38,10 +38,18 @@ class TestCalculatedOffsetsPathHandler:
             == "calibration/calculated_offsets/spin_optimised"
         )
 
-    def test_filename(self):
+    def test_filename_spin_plane(self):
         assert (
-            _handler(sensor="magi", version=3).get_filename()
+            _handler(sensor="magi", offset_type=SPIN_PLANE, version=3).get_filename()
             == "imap_mag_magi-spin-plane-offsets_20260114_v003.csv"
+        )
+
+    def test_filename_spin_optimised(self):
+        assert (
+            _handler(
+                sensor="magi", offset_type=SPIN_OPTIMISED, version=3
+            ).get_filename()
+            == "imap_mag_magi-spin-plane-optimised-offsets_20260114_v003.csv"
         )
 
     def test_full_path(self):
@@ -50,11 +58,13 @@ class TestCalculatedOffsetsPathHandler:
             "imap_mag_mago-spin-plane-offsets_20260114_v024.csv"
         )
 
-    def test_filename_and_folder_identical_across_offset_types(self):
-        # Both folders hold identically-named files; only the folder differs.
+    def test_filename_is_unique_across_offset_types(self):
+        # The two products have distinct names as well as distinct folders.
         plane = _handler(offset_type=SPIN_PLANE)
         optimised = _handler(offset_type=SPIN_OPTIMISED)
-        assert plane.get_filename() == optimised.get_filename()
+        assert plane.get_filename() != optimised.get_filename()
+        assert "optimised" in optimised.get_filename()
+        assert "optimised" not in plane.get_filename()
         assert plane.get_folder_structure() != optimised.get_folder_structure()
 
     def test_supports_sequencing_and_bumps_version(self):
@@ -77,7 +87,7 @@ class TestCalculatedOffsetsPathHandler:
             pattern.search("imap_mag_mago-spin-plane-offsets_20260115_v024.csv") is None
         )
 
-    def test_from_filename_roundtrip(self):
+    def test_from_filename_roundtrip_spin_plane(self):
         handler = CalculatedOffsetsPathHandler.from_filename(
             "imap_mag_magi-spin-plane-offsets_20260114_v007.csv"
         )
@@ -85,8 +95,17 @@ class TestCalculatedOffsetsPathHandler:
         assert handler.sensor == "magi"
         assert handler.content_date == DATE
         assert handler.version == 7
-        # offset_type is unknowable from the name alone.
-        assert handler.offset_type is None
+        # The descriptor identifies the offset type.
+        assert handler.offset_type == SPIN_PLANE
+
+    def test_from_filename_roundtrip_spin_optimised(self):
+        handler = CalculatedOffsetsPathHandler.from_filename(
+            "imap_mag_mago-spin-plane-optimised-offsets_20260114_v007.csv"
+        )
+        assert handler is not None
+        assert handler.sensor == "mago"
+        assert handler.offset_type == SPIN_OPTIMISED
+        assert handler.version == 7
 
     def test_from_filename_rejects_unrelated_names(self):
         assert CalculatedOffsetsPathHandler.from_filename("something_else.csv") is None
@@ -97,11 +116,11 @@ class TestCalculatedOffsetsPathHandler:
             is None
         )
 
-    def test_from_work_folder_file_infers_offset_type_from_parent(self, tmp_path):
+    def test_from_work_folder_file_optimised(self, tmp_path):
         f = (
             tmp_path
             / SPIN_OPTIMISED
-            / "imap_mag_mago-spin-plane-offsets_20260114_v000.csv"
+            / "imap_mag_mago-spin-plane-optimised-offsets_20260114_v000.csv"
         )
         f.parent.mkdir(parents=True)
         f.write_text("data")
@@ -113,6 +132,18 @@ class TestCalculatedOffsetsPathHandler:
         assert handler.get_folder_structure() == (
             "calibration/calculated_offsets/spin_optimised"
         )
+
+    def test_from_work_folder_file_rejects_folder_name_mismatch(self, tmp_path):
+        # A spin_plane-named file sitting in the spin_optimised folder is rejected.
+        f = (
+            tmp_path
+            / SPIN_OPTIMISED
+            / "imap_mag_mago-spin-plane-offsets_20260114_v000.csv"
+        )
+        f.parent.mkdir(parents=True)
+        f.write_text("data")
+        with pytest.raises(ValueError, match="implies offset type"):
+            CalculatedOffsetsPathHandler.from_work_folder_file(f)
 
     def test_from_work_folder_file_rejects_bad_folder(self, tmp_path):
         f = tmp_path / "wrong" / "imap_mag_mago-spin-plane-offsets_20260114_v000.csv"

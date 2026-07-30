@@ -99,19 +99,22 @@ def _write_work_offsets(
     """Simulate MATLAB writing the four spin-plane offset CSVs into the work folder.
 
     One CSV per sensor (mago/magi) per offset type (spin_plane/spin_optimised);
-    content is tagged so tests can force identical vs changed content.
+    the per-type file name is derived from the path handler so it matches production.
+    Content is tagged so tests can force identical vs changed content.
     """
+    from imap_mag.io.file import CalculatedOffsetsPathHandler
     from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
 
     for offset_type in OFFSET_TYPES:
         folder = work_folder / OFFSETS_FOLDER_NAME / offset_type
         folder.mkdir(parents=True, exist_ok=True)
         for sensor in ("mago", "magi"):
-            name = (
-                f"imap_mag_{sensor}-spin-plane-offsets_"
-                f"{date.strftime('%Y%m%d')}_v000.csv"
+            handler = CalculatedOffsetsPathHandler(
+                sensor=sensor, offset_type=offset_type, content_date=date, version=0
             )
-            (folder / name).write_text(f"offsets,{sensor},{offset_type},{tag}\n")
+            (folder / handler.get_filename()).write_text(
+                f"offsets,{sensor},{offset_type},{tag}\n"
+            )
 
 
 def test_requires_matlab_repo_path(tmp_path):
@@ -560,12 +563,12 @@ def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> 
 
 
 def _offsets_path(datastore: Path, offset_type: str, sensor: str, version: int) -> Path:
-    return (
-        datastore
-        / "calibration/calculated_offsets"
-        / offset_type
-        / f"imap_mag_{sensor}-spin-plane-offsets_20260130_v{version:03d}.csv"
+    from imap_mag.io.file import CalculatedOffsetsPathHandler
+
+    handler = CalculatedOffsetsPathHandler(
+        sensor=sensor, offset_type=offset_type, content_date=DATE, version=version
     )
+    return handler.get_full_path(datastore)
 
 
 def test_scripted_calibrate_cli_publishes_offsets(
@@ -578,6 +581,16 @@ def test_scripted_calibrate_cli_publishes_offsets(
     for offset_type in ("spin_plane", "spin_optimised"):
         for sensor in ("mago", "magi"):
             assert _offsets_path(temp_datastore, offset_type, sensor, 1).exists()
+
+    # Pin the exact (unique) file names for each product.
+    base = temp_datastore / "calibration/calculated_offsets"
+    assert (
+        base / "spin_plane/imap_mag_mago-spin-plane-offsets_20260130_v001.csv"
+    ).exists()
+    assert (
+        base
+        / "spin_optimised/imap_mag_mago-spin-plane-optimised-offsets_20260130_v001.csv"
+    ).exists()
 
 
 def test_scripted_calibrate_cli_upversions_changed_offsets(
