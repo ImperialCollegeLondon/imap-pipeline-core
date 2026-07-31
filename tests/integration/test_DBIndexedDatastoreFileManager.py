@@ -321,11 +321,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -472,11 +468,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -561,11 +553,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
