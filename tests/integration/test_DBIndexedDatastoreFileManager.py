@@ -321,11 +321,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -472,11 +468,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -561,11 +553,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -1186,6 +1174,70 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
 
     # Verify: version is bumped past both v1 (legacy) and v2 (new format) to v3.
     assert path_handler.version == 3
+    assert len(captured_files) == 1
+    assert captured_files[0].version == 3
+
+
+def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_one_not_first_gap(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """Version assignment must use max(existing) + 1, not the first gap.
+
+    If v002 is the only active record (v001 never existed or was deleted), the
+    next version must be 003, not 001.
+    """
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_science_gap", "new science content"
+    )
+    path_handler = SciencePathHandler(
+        level="l2-pre",
+        descriptor="norm-srf",
+        content_date=datetime(2026, 1, 16),
+        version=1,
+        version_major=1,
+        has_major_version=True,
+        extension="cdf",
+    )
+
+    # Only v002 is in the DB; v001 was never written (or was deleted).
+    folder = "science/mag/l2-pre/2026/01"
+    mock_database.get_files.return_value = [
+        File(
+            name="imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            path=f"{folder}/imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            descriptor="imap_mag_l2-pre_norm-srf",
+            version=2,
+            version_major=1,
+            hash="existing_hash_v002",
+            size=100,
+            content_date=datetime(2026, 1, 16),
+            software_version=__version__,
+        ),
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "test_science_gap.cdf"
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "new science content"),
+        path_handler,
+    )
+
+    captured_files: list[File] = []
+    mock_database.upsert_file.side_effect = lambda f: captured_files.append(f)
+
+    # Exercise.
+    database_manager.add_file(original_file, path_handler)
+
+    # Verify: version must be max+1 = 3, not the first gap (1).
+    assert path_handler.version == 3, (
+        f"Expected version 3 (max+1 of existing version 2) but got {path_handler.version}. "
+        "Version assignment must be monotonically increasing, not first-gap."
+    )
     assert len(captured_files) == 1
     assert captured_files[0].version == 3
 
