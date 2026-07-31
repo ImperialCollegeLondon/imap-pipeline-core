@@ -305,14 +305,18 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 path_handler.set_sequence(matching_files[0].version)
             return True
 
-        # Find the next available version slot
+        # Assign max+1 rather than the first available slot so version numbers are
+        # monotonically increasing even when earlier versions have been deleted or
+        # never existed (e.g. existing versions {2} → next is 3, not 1).
         existing_versions: set[int] = set(file.version for file in database_files)
 
-        while path_handler.get_sequence() in existing_versions:
-            current_path = path_handler.get_full_path(Path(""))
-            logger.debug(
-                f"File {current_path} already exists in database and is different. Increasing version to {path_handler.get_sequence() + 1}."
-            )
-            path_handler.increase_sequence()
+        if existing_versions:
+            next_version = max(existing_versions) + 1
+            if path_handler.get_sequence() < next_version:
+                logger.debug(
+                    f"Existing versions {sorted(existing_versions)} found in database. "
+                    f"Assigning next version {next_version} (max + 1)."
+                )
+                path_handler.set_sequence(next_version)
 
         return False
