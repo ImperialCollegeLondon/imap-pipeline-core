@@ -16,6 +16,10 @@ from imap_mag.config import (
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.io.FilePathHandlerSelector import (
+    FilePathHandlerSelector,
+)
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJob,
@@ -35,6 +39,45 @@ logger = logging.getLogger(__name__)
 app.command()(apply.apply)
 
 
+def _validate_version_number_override(
+    override: tuple[int, int] | None,
+) -> tuple[int, int] | None:
+    """Validate a (major, minor) version override tuple.
+
+    Each element must be a non-negative whole integer with major <= 999 and
+    minor <= 9999, mirroring the range checks MATLAB applies to output_version.
+
+    Args:
+        override: A (major, minor) pair, or None to use default versioning.
+
+    Returns:
+        The validated pair, or None.
+
+    Raises:
+        ValueError: If any element is a bool, non-integer, negative, or out of range.
+    """
+    if override is None:
+        return None
+
+    major, minor = override
+    for val, name, max_val in [
+        (major, "major", 999),
+        (minor, "minor", 9999),
+    ]:
+        if isinstance(val, bool):
+            raise ValueError(f"Version {name} must be an integer, not bool.")
+        if not isinstance(val, int):
+            raise ValueError(
+                f"Version {name} must be an integer, got {type(val).__name__}."
+            )
+        if val < 0:
+            raise ValueError(f"Version {name} must be non-negative, got {val}.")
+        if val > max_val:
+            raise ValueError(f"Version {name} must be at most {max_val}, got {val}.")
+
+    return (major, minor)
+
+
 def gradiometry(
     start_date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
     mode: Annotated[
@@ -48,7 +91,7 @@ def gradiometry(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
-) -> Path:
+) -> list[Path]:
     """
     Run gradiometry calibration.
     """
@@ -115,6 +158,15 @@ def calibrate(
             "If False, temporary files are retained in the work folder for inspection.",
         ),
     ] = True,
+    version_number_override: Annotated[
+        tuple[int, int] | None,
+        typer.Option(
+            "--version-number-override",
+            help="Force a specific (major, minor) version number for output layers "
+            "instead of auto-incrementing. Existing layers at that version are "
+            "overwritten. Provide as two integers, e.g. --version-number-override 1 5.",
+        ),
+    ] = None,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -140,8 +192,9 @@ def calibrate(
             save_mode=save_mode,
             metakernel=metakernel,
             cleanup_temp_files_after_run=cleanup_temp_files_after_run,
+            version_number_override=version_number_override,
         )
-        results.append(result)
+        results.extend(result)
         current += timedelta(days=1)
     return results
 
@@ -155,7 +208,8 @@ def _calibrate_for_date(
     save_mode: SaveMode,
     metakernel: Path | None = None,
     cleanup_temp_files_after_run: bool = True,
-) -> Path:
+    version_number_override: tuple[int, int] | None = None,
+) -> list[Path]:
     """Run calibration for a single date."""
     if method == CalibrationMethod.NOOP:
         # NOOP is retained only as the internal descriptor for the zero-offset layer
@@ -164,6 +218,9 @@ def _calibrate_for_date(
             "The 'noop' calibration method is not runnable. It exists only for the "
             "internal zero-offset layer. Choose a real calibration method."
         )
+
+    version_number_override = _validate_version_number_override(version_number_override)
+
     app_settings = AppSettings()  # type: ignore
     # Use the dedicated calibrate command config so each run gets its own uniquely
     # named work folder (based on the date + mode being calibrated).
@@ -239,45 +296,121 @@ def _calibrate_for_date(
     outputManager = DatastoreFileManager.CreateByMode(
         settings_for_output, use_database=save_mode == SaveMode.LocalAndDatabase
     )
-    calibration_handler = CalibrationLayerPathHandler(
-        descriptor=f"{method.short_name}-{mode.value}",
-        content_date=start_date,
-        version_major=app_settings.version_major,
-    )
+
+    if version_number_override is not None:
+        major, minor = version_number_override
+        logger.warning(
+            f"Version number override active: forcing output to v{major:03d}.{minor:04d}. "
+            "Existing layers at this version may be overwritten."
+        )
+        calibration_handler = CalibrationLayerPathHandler(
+            descriptor=f"{method.short_name}-{mode.value}",
+            content_date=start_date,
+            version_major=major,
+            version=minor,
+            has_major_version=True,
+        )
+        calibration_handler.allow_overwrite = True
+    else:
+        calibration_handler = CalibrationLayerPathHandler(
+            descriptor=f"{method.short_name}-{mode.value}",
+            content_date=start_date,
+            version_major=app_settings.version_major,
+        )
 
     try:
-        metadata_path, data_path = calibrator.run_calibration(
-            calibration_handler, calibration_configuration
+        returned = list(
+            calibrator.run_calibration(calibration_handler, calibration_configuration)
         )
     finally:
         calibrator.cleanup()
 
-    # verify that the generated work-folder pair is internally consistent
-    layer = CalibrationLayer.from_file(metadata_path, load_contents=False)
-    if not layer.metadata.data_filename or not data_path.exists():
-        raise FileNotFoundError(
-            f"Calibration layer file at {metadata_path!s} has data file {layer.metadata.data_filename!s} that was not found"
+    if not returned:
+        raise ValueError("Calibration produced no files to save.")
+
+    # Resolve a path handler for every returned file. The selector raises
+    # NoProviderFoundError for any file it cannot recognise, so an unhandled
+    # file type surfaces immediately rather than being silently dropped.
+    file_handlers: dict[Path, object] = {}
+    for path in returned:
+        handler = FilePathHandlerSelector.find_by_path(path)
+        if version_number_override is not None and isinstance(
+            handler, VersionedPathHandler
+        ):
+            handler.allow_overwrite = True
+        file_handlers[path] = handler
+
+    consumed: set[Path] = set()
+    saved_layer_paths: list[Path] = []
+
+    # Process JSON calibration-layer files first so co-versioning is preserved:
+    # adding the JSON bumps its handler's version, and the CSV is then saved with
+    # the bumped handler — both land on the same version number.
+    for path in returned:
+        handler = file_handlers[path]
+        if not isinstance(handler, CalibrationLayerPathHandler):
+            continue
+        if handler.extension != "json":
+            continue
+
+        layer = CalibrationLayer.from_file(path, load_contents=False)
+        if not layer.metadata.data_filename:
+            raise FileNotFoundError(
+                f"Calibration layer file at {path!s} has no data_filename in its metadata."
+            )
+
+        companion_path = next(
+            (p for p in returned if p.name == layer.metadata.data_filename.name),
+            None,
         )
-    if data_path.name != layer.metadata.data_filename.name:
-        raise ValueError(
-            f"Calibration layer metadata file {metadata_path!s} specifies data file {layer.metadata.data_filename!s} but actual data file is {data_path!s}."
+        if companion_path is None or not companion_path.exists():
+            raise FileNotFoundError(
+                f"Calibration layer file at {path!s} has data file "
+                f"{layer.metadata.data_filename!s} that was not found among the "
+                "calibration outputs."
+            )
+        if companion_path.name != layer.metadata.data_filename.name:
+            raise ValueError(
+                f"Calibration layer metadata file {path!s} specifies data file "
+                f"{layer.metadata.data_filename!s} but matched data file is "
+                f"{companion_path!s}."
+            )
+
+        # Enforce pipeline metadata (ensures hash is correct).
+        layer.save_calibration_layer(path, createDirectory=False, save_contents=False)
+
+        (saved_json, _) = outputManager.add_file(path, path_handler=handler)
+        saved_layer_paths.append(saved_json)
+        consumed.add(path)
+
+        # Save the companion CSV using the handler derived from the JSON handler
+        # after add_file may have bumped its version — preserving co-versioning.
+        outputManager.add_file(
+            companion_path,
+            path_handler=handler.get_equivalent_data_handler(),
         )
+        consumed.add(companion_path)
 
-    # Enforce pipeline metadata, ensures hash is correct as MATLAB cal may not do it
-    layer.save_calibration_layer(
-        metadata_path, createDirectory=False, save_contents=False
-    )
-
-    (output_calibration_path, _) = outputManager.add_file(
-        metadata_path, path_handler=calibration_handler
-    )
-
-    outputManager.add_file(
-        data_path, path_handler=calibration_handler.get_equivalent_data_handler()
-    )
+    # Save any remaining files (extra products beyond the layer pair).
+    for path in returned:
+        if path in consumed:
+            continue
+        handler = file_handlers[path]
+        # Re-save if this is an additional JSON layer (keeps metadata consistent).
+        if (
+            isinstance(handler, CalibrationLayerPathHandler)
+            and handler.extension == "json"
+        ):
+            extra_layer = CalibrationLayer.from_file(path, load_contents=False)
+            extra_layer.save_calibration_layer(
+                path, createDirectory=False, save_contents=False
+            )
+        outputManager.add_file(path, path_handler=handler)
+        consumed.add(path)
 
     logger.info(
-        f"Calibration complete for {start_date.strftime('%Y-%m-%d')} ({mode.value}) written to {output_calibration_path!s}."
+        f"Calibration complete for {start_date.strftime('%Y-%m-%d')} ({mode.value}): "
+        f"{len(saved_layer_paths)} layer(s) written to datastore."
     )
 
-    return output_calibration_path
+    return saved_layer_paths

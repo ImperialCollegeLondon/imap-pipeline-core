@@ -13,6 +13,10 @@ class VersionedPathHandler(SequenceablePathHandler):
 
     version: int = 1
     version_major: int = 0
+    # When True the datastore managers skip version up-versioning and overwrite any
+    # existing file at this exact version. Only set for the user version override; the
+    # normal operating default keeps auto-versioning and overwrite protection.
+    allow_overwrite: bool = False
 
     def get_sequence(self) -> int:
         return self.version

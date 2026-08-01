@@ -336,6 +336,7 @@ def calibrate_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
+    version_number_override: tuple[int, int] | None = None,
 ) -> list[Path] | list[FlowRun]:
 
     if isinstance(start_date, date) and not isinstance(start_date, datetime):
@@ -359,11 +360,19 @@ def calibrate_flow(
                 "sensor": sensor,
                 "save_mode": save_mode,
                 "metakernel": metakernel,
+                "version_number_override": version_number_override,
             },
         )
 
     paths = _run_calibration(
-        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+        configuration,
+        start_date,
+        end_date,
+        mode,
+        sensor,
+        save_mode,
+        metakernel,
+        version_number_override=version_number_override,
     )
 
     if len(paths) == 0:
@@ -395,6 +404,7 @@ def calibrate_and_apply_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
+    version_number_override: tuple[int, int] | None = None,
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -409,11 +419,19 @@ def calibrate_and_apply_flow(
                 "L2_output_type": L2_output_type,
                 "save_mode": save_mode,
                 "metakernel": metakernel,
+                "version_number_override": version_number_override,
             },
         )
 
     cal_layer_paths = _run_calibration(
-        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+        configuration,
+        start_date,
+        end_date,
+        mode,
+        sensor,
+        save_mode,
+        metakernel,
+        version_number_override=version_number_override,
     )
 
     layer = CalibrationLayer.from_file(cal_layer_paths[0])
@@ -440,6 +458,7 @@ def _run_calibration(
     save_mode,
     metakernel,
     cleanup_temp_files_after_run: bool = True,
+    version_number_override: tuple[int, int] | None = None,
 ):
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
@@ -470,6 +489,7 @@ def _run_calibration(
         save_mode=save_mode,
         metakernel=metakernel,
         cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
+        version_number_override=version_number_override,
     )
 
     return cal_layer_paths

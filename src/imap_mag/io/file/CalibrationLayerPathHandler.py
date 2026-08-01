@@ -76,6 +76,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         )
         handler.version_major = self.version_major
         handler.has_major_version = self.has_major_version
+        # Keep the companion CSV in lock-step with the JSON when overwriting.
+        handler.allow_overwrite = self.allow_overwrite
         return handler
 
     @classmethod

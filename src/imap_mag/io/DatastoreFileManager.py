@@ -124,6 +124,20 @@ class DatastoreFileManager(IDatastoreFileManager):
         else:
             assert isinstance(path_handler, SequenceablePathHandler)
 
+        # Version override: skip up-versioning and overwrite the exact version in place.
+        if getattr(path_handler, "allow_overwrite", False):
+            if not destination_file.exists():
+                return False
+            orig_identity = path_handler.get_content_identity(original_file)
+            dest_identity = path_handler.get_content_identity(destination_file)
+            if orig_identity == dest_identity:
+                return True
+            logger.warning(
+                f"Version override active: overwriting existing file {destination_file} "
+                f"at version {path_handler.get_sequence()} with different content."
+            )
+            return False
+
         while True:
             if destination_file.exists():
                 orig_identity = path_handler.get_content_identity(original_file)

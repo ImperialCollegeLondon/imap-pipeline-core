@@ -1,6 +1,7 @@
 import logging
 import shutil
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
@@ -124,5 +125,5 @@ class CalibrationJob(ABC):
     @abstractmethod
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
-    ) -> tuple[Path, Path]:
+    ) -> Sequence[Path]:
         """Calibration that generates a calibration layer."""
