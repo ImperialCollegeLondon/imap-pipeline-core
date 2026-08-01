@@ -28,6 +28,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extension: str = "json"
     version_major: int = 1
     has_major_version: bool = True
+    data_extension: str = "csv"  # extension for the companion data file (csv or arrow)
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
@@ -72,11 +73,11 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             extra_descriptor="-data",
             content_date=self.content_date,
             version=self.version,
-            extension="csv",
+            extension=self.data_extension,
         )
         handler.version_major = self.version_major
         handler.has_major_version = self.has_major_version
-        # Keep the companion CSV in lock-step with the JSON when overwriting.
+        # Keep the companion data file in lock-step with the JSON when overwriting.
         handler.allow_overwrite = self.allow_overwrite
         return handler
 

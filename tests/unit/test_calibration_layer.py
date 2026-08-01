@@ -423,6 +423,126 @@ class TestValuesFromCsvEmpty:
         assert df.empty
 
 
+class TestCalibrationLayerWriteToArrow:
+    def test_write_to_arrow_creates_file(self, tmp_path):
+        layer = _make_layer_with_contents()
+        output_file = tmp_path / "output.arrow"
+        layer._write_to_arrow(output_file)
+        assert output_file.exists()
+
+    def test_write_to_arrow_creates_directory_when_requested(self, tmp_path):
+        layer = _make_layer_with_contents()
+        output_file = tmp_path / "subdir" / "output.arrow"
+        layer._write_to_arrow(output_file, createDirectory=True)
+        assert output_file.exists()
+
+    def test_write_to_arrow_raises_when_contents_none(self, tmp_path):
+        layer = _make_layer_with_contents()
+        layer._contents = None
+        with pytest.raises(ValueError, match="No contents loaded"):
+            layer._write_to_arrow(tmp_path / "output.arrow")
+
+    def test_write_to_arrow_file_is_readable_as_feather(self, tmp_path):
+        import pyarrow.feather as feather
+
+        layer = _make_layer_with_contents()
+        output_file = tmp_path / "output.arrow"
+        layer._write_to_arrow(output_file)
+        df = feather.read_feather(output_file)
+        assert "offset_x" in df.columns
+        assert len(df) == 2
+
+
+class TestCalibrationLayerFromArrow:
+    def test_values_from_arrow_returns_dataframe(self, tmp_path):
+        layer = _make_layer_with_contents()
+        arrow_file = tmp_path / "layer.arrow"
+        layer._write_to_arrow(arrow_file)
+        df = CalibrationLayer._values_from_arrow(arrow_file)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+
+    def test_values_from_arrow_has_correct_columns(self, tmp_path):
+        layer = _make_layer_with_contents()
+        arrow_file = tmp_path / "layer.arrow"
+        layer._write_to_arrow(arrow_file)
+        df = CalibrationLayer._values_from_arrow(arrow_file)
+        assert CONSTANTS.CSV_VARS.EPOCH in df.columns
+        assert CONSTANTS.CSV_VARS.OFFSET_X in df.columns
+
+    def test_values_from_arrow_normalises_utc_epoch(self, tmp_path):
+        import pyarrow as pa
+        import pyarrow.feather as feather
+
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                    ["2025-01-01T00:00:00", "2025-01-02T00:00:00"], utc=True
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.0, 1.0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [0.0, 2.0],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.0, 3.0],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [0.0, 0.0],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [0, 0],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0, 0],
+            }
+        )
+        arrow_file = tmp_path / "tz_layer.arrow"
+        feather.write_feather(
+            pa.Table.from_pandas(df, preserve_index=False), arrow_file
+        )
+        result = CalibrationLayer._values_from_arrow(arrow_file)
+        assert result[CONSTANTS.CSV_VARS.EPOCH].dt.tz is None
+
+    def test_values_from_arrow_raises_on_nan_quality_column(self, tmp_path):
+        import pyarrow as pa
+        import pyarrow.feather as feather
+
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(["2025-01-01T00:00:00"]),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [float("nan")],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+            }
+        )
+        arrow_file = tmp_path / "bad_layer.arrow"
+        feather.write_feather(
+            pa.Table.from_pandas(df, preserve_index=False), arrow_file
+        )
+        with pytest.raises(ValueError, match="NaN/blank values"):
+            CalibrationLayer._values_from_arrow(arrow_file)
+
+    def test_from_arrow_round_trips_contents(self, tmp_path):
+        layer = _make_layer_with_contents()
+        arrow_file = tmp_path / "layer.arrow"
+        layer._write_to_arrow(arrow_file)
+        loaded = CalibrationLayer._from_arrow(arrow_file)
+        assert loaded._contents is not None
+        assert len(loaded._contents) == 2
+        assert loaded._contents[CONSTANTS.CSV_VARS.OFFSET_X].iloc[1] == pytest.approx(
+            1.0
+        )
+
+    def test_load_data_file_dispatches_to_arrow_reader(self, tmp_path):
+        layer = _make_layer_with_contents()
+        arrow_file = tmp_path / "layer.arrow"
+        layer._write_to_arrow(arrow_file)
+        fresh = _make_layer_with_contents()
+        fresh._contents = None
+        fresh._load_data_file(arrow_file)
+        assert fresh._contents is not None
+
+    def test_write_to_file_dispatches_arrow_on_arrow_extension(self, tmp_path):
+        layer = _make_layer_with_contents()
+        output_file = tmp_path / "output.arrow"
+        layer.writeToFile(output_file)
+        assert output_file.exists()
+
+
 class TestScienceLayerWriteToCsv:
     def test_write_to_csv_raises_when_contents_none(self, tmp_path):
 

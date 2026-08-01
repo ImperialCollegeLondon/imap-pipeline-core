@@ -86,6 +86,11 @@ class Layer(BaseModel, ABC):
     @abstractmethod
     def _write_to_csv(self, filepath: Path, createDirectory=False) -> Path: ...
 
+    def _write_to_arrow(self, filepath: Path, createDirectory=False) -> Path:
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support writing Arrow format."
+        )
+
     def getWriteable(self):
         json = self.model_dump_json()
 
@@ -108,5 +113,7 @@ class Layer(BaseModel, ABC):
             return self._write_to_cdf(filepath, createDirectory=createDirectory)
         elif filepath.suffix == ".csv":
             return self._write_to_csv(filepath, createDirectory=createDirectory)
+        elif filepath.suffix == ".arrow":
+            return self._write_to_arrow(filepath, createDirectory=createDirectory)
         else:
             return self._write_to_json(filepath, createDirectory=createDirectory)

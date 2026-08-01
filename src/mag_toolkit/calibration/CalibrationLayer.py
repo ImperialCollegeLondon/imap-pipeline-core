@@ -46,6 +46,32 @@ class CalibrationLayer(Layer):
         )
         return filepath
 
+    def _write_to_arrow(self, filepath: Path, createDirectory=False):
+        if self._contents is None:
+            raise ValueError("No contents loaded to write to Arrow file.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        import pyarrow as pa
+        import pyarrow.feather as feather
+
+        logger.info(f"Writing calibration layer Arrow data to {filepath!s}.")
+
+        # Normalise the epoch column to tz-naive datetime64[ns] before writing so
+        # that pyarrow stores it as timestamp[ns] (no timezone annotation).  This
+        # keeps round-trip precision consistent: no tz info is injected on write
+        # and no tz_convert is needed on read.
+        df = self._contents
+        if CONSTANTS.CSV_VARS.EPOCH in df.columns:
+            col = df[CONSTANTS.CSV_VARS.EPOCH]
+            if hasattr(col, "dt") and getattr(col.dt, "tz", None) is not None:
+                df = df.copy()
+                df[CONSTANTS.CSV_VARS.EPOCH] = col.dt.tz_convert(None)
+
+        table = pa.Table.from_pandas(df, preserve_index=False)
+        feather.write_feather(table, filepath)
+        return filepath
+
     def get_epochs(self) -> pd.Series:
         """Get the epochs from the calibration layer contents."""
         self.load_contents()
@@ -233,7 +259,10 @@ class CalibrationLayer(Layer):
                 f"Existing calibration values will be overwritten with data in {path!s}."
             )
 
-        self._contents = self._values_from_csv(path)
+        if path.suffix == ".arrow":
+            self._contents = self._values_from_arrow(path)
+        else:
+            self._contents = self._values_from_csv(path)
         return self
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
@@ -252,7 +281,10 @@ class CalibrationLayer(Layer):
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
             if save_contents:
-                self._write_to_csv(data_file_path, createDirectory)
+                if data_file_path.suffix == ".arrow":
+                    self._write_to_arrow(data_file_path, createDirectory)
+                else:
+                    self._write_to_csv(data_file_path, createDirectory)
 
         data_file_path = filepath.parent / self.metadata.data_filename
         if self.metadata.data_hash is None and data_file_path.exists():
@@ -274,8 +306,45 @@ class CalibrationLayer(Layer):
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
         if path.suffix == ".csv":
             return cls._from_csv(path)
+        elif path.suffix == ".arrow":
+            return cls._from_arrow(path)
         else:
             return super().from_file(path, load_contents)
+
+    @classmethod
+    def _values_from_arrow(cls, path: Path) -> pd.DataFrame:
+        import pyarrow.feather as feather
+
+        df = feather.read_feather(path)
+        if df.columns.empty:
+            raise ValueError("Arrow file is empty or does not contain valid data")
+
+        # Normalise the epoch column to timezone-naive datetime64 to keep parity
+        # with CSV parsing. Arrow timestamps from Python carry UTC; MATLAB's
+        # arrow.table() stores the time column as strings.
+        if CONSTANTS.CSV_VARS.EPOCH in df.columns:
+            col = df[CONSTANTS.CSV_VARS.EPOCH]
+            try:
+                if col.dt.tz is not None:
+                    df[CONSTANTS.CSV_VARS.EPOCH] = col.dt.tz_convert(None)
+            except AttributeError:
+                # String column (MATLAB-written): parse to datetime64, no tz.
+                df[CONSTANTS.CSV_VARS.EPOCH] = pd.to_datetime(
+                    df[CONSTANTS.CSV_VARS.EPOCH]
+                )
+
+        for col in [
+            CONSTANTS.CSV_VARS.QUALITY_FLAG,
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK,
+        ]:
+            if col in df.columns and df[col].isna().any():
+                raise ValueError(
+                    f"Layer file '{path.name}' contains NaN/blank values in column '{col}'. "
+                    f"Use 0 for no-op, a positive integer to set bits, "
+                    f"or a negative integer to clear bits."
+                )
+
+        return df
 
     @classmethod
     def _values_from_csv(cls, path: Path) -> pd.DataFrame:
@@ -299,6 +368,50 @@ class CalibrationLayer(Layer):
                 )
 
         return df
+
+    @classmethod
+    def _from_arrow(cls, path: Path) -> "CalibrationLayer":
+        df = cls._values_from_arrow(path)
+
+        validity = (
+            Validity(
+                start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
+                end=df[CONSTANTS.CSV_VARS.EPOCH].iloc[-1],
+            )
+            if not df.empty
+            else Validity(start=np.datetime64("NaT"), end=np.datetime64("NaT"))
+        )
+
+        calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
+
+        method: CalibrationMethod = (
+            CalibrationMethod.from_string(calibration_metadata_handler.descriptor)
+            if (
+                calibration_metadata_handler and calibration_metadata_handler.descriptor
+            )
+            else CalibrationMethod.NOOP
+        )
+
+        instance = cls(
+            id="",
+            mission=Mission.IMAP,
+            validity=validity,
+            sensor=Sensor.MAGO,
+            version=0,
+            metadata=CalibrationMetadata(
+                dependencies=[],
+                science=[],
+                data_filename=path,
+                creation_timestamp=np.datetime64("now"),
+            ),
+            value_type=ValueType.VECTOR
+            if not df.empty
+            else ValueType.BOUNDARY_CHANGES_ONLY,
+            method=method,
+        )
+        instance._contents = df
+        instance._set_content_date_from_filepath(path)
+        return instance
 
     @classmethod
     def _from_csv(cls, path: Path):

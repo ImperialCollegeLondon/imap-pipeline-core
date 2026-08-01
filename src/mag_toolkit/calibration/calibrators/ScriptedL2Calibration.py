@@ -95,7 +95,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         return {}
 
     def run_calibration(
-        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+        self,
+        cal_handler: CalibrationLayerPathHandler,
+        config: CalibrationConfig,
     ) -> list[Path]:
         if not isinstance(config, ScriptedL2CalibrationConfig):
             raise TypeError(
@@ -154,6 +156,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             input_json_file=config.input_json_file,
             user_config_path=user_config_path,
             matlab_mode=str(mode.value),
+            data_format=cal_handler.data_extension,
         )
 
         call_matlab(
@@ -294,6 +297,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         input_json_file: str,
         user_config_path: Path,
         matlab_mode: str,
+        data_format: str = "csv",
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -310,6 +314,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 input configuration JSON.
             user_config_path: Path to the generated MATLAB user/env file-path config.
             matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
+            data_format: Companion data file format, either ``"csv"`` (default) or
+                ``"arrow"``. Passed to MATLAB so it writes the layer data file in
+                the requested format.
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
 
@@ -323,5 +330,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
             f"output_version=[{output_version_major} {output_version_minor}], "
+            f'data_format="{data_format}", '
             "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
         )

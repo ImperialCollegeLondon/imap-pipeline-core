@@ -96,6 +96,17 @@ class CalibrationMethod(Enum):
         raise ValueError(f"Unknown calibration method: {name}")
 
 
+class LayerDataFormat(StrEnum):
+    """Data format for the companion data file of a calibration layer.
+
+    CSV: comma-separated values (default, human-readable).
+    ARROW: Apache Arrow IPC / Feather v2 format (compact binary, cross-language).
+    """
+
+    CSV = "csv"
+    ARROW = "arrow"
+
+
 class DatastoreAccessMode(StrEnum):
     """How a calibration job that shells out to MATLAB accesses the datastore.
 

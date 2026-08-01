@@ -137,6 +137,21 @@ RUN mkdir -p /opt/cdf && chown ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/cdf && \
     rm matlab_cdf_lin64.tar.gz && \
     mv matlab_cdf*_patch-64 matlab_cdf_patch
 
+# Apache Arrow MATLAB interface. The setup-matlab CI action and the full
+# mathworks/matlab Docker image do not place the +arrow package on the
+# MATLAB search path automatically; installing it explicitly here makes
+# arrow.table, arrow.array, and arrow.io.feather.Writer available at
+# runtime without any per-script path setup.
+# Pre-compiled MLTBX from apache/arrow GitHub releases (R2025b build; forward-compatible to R2026a).
+# The MLTBX is a renamed ZIP; extracting it places +arrow at the top level.
+RUN mkdir -p /opt/matlab-arrow && \
+    wget -q -O /tmp/matlab-arrow.mltbx \
+      https://github.com/apache/arrow/releases/download/apache-arrow-25.0.0/matlab-arrow-25.0.0.mltbx && \
+    python3 -c "import zipfile; zipfile.ZipFile('/tmp/matlab-arrow.mltbx').extractall('/opt/matlab-arrow')" && \
+    rm /tmp/matlab-arrow.mltbx && \
+    test -d /opt/matlab-arrow/fsroot/+arrow && \
+    chown -R ${IMAP_USERNAME}:${IMAP_USERNAME} /opt/matlab-arrow
+
 WORKDIR /app
 USER ${IMAP_USERNAME}
 
@@ -152,7 +167,7 @@ ENV PATH="$PATH:/home/${IMAP_USERNAME}/.local/bin:/opt/matlab/${MATLAB_VERSION}/
 
 # MATLAB adds every entry on MATLABPATH to its search path at startup, regardless of
 # where MATLAB itself is installed
-ENV MATLABPATH="/opt/naif/mice/lib:/opt/naif/mice/src/mice:/opt/cdf/matlab_cdf_patch"
+ENV MATLABPATH="/opt/naif/mice/lib:/opt/naif/mice/src/mice:/opt/cdf/matlab_cdf_patch:/opt/matlab-arrow/fsroot"
 
 # Now the imap-mag CLI is available on the path and
 # the 3.x python package for imap-mag is intalled at /home/${IMAP_USERNAME}/.local/bin

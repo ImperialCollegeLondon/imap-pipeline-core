@@ -30,6 +30,7 @@ from mag_toolkit.calibration import (
     Sensor,
     SetQualityAndNaNCalibrationJob,
 )
+from mag_toolkit.calibration.CalibrationDefinitions import LayerDataFormat
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
 app = typer.Typer()
@@ -91,6 +92,12 @@ def gradiometry(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    layer_data_format: Annotated[
+        LayerDataFormat,
+        typer.Option(
+            help="Format of the calibration layer data file. 'csv' (default) produces a human-readable CSV; 'arrow' produces an Apache Arrow IPC binary file readable by both Python and MATLAB."
+        ),
+    ] = LayerDataFormat.CSV,
 ) -> list[Path]:
     """
     Run gradiometry calibration.
@@ -106,6 +113,7 @@ def gradiometry(
         sensor=Sensor.MAGO,
         configuration=configuration.model_dump_json(),
         save_mode=save_mode,
+        layer_data_format=layer_data_format,
     )
 
 
@@ -167,6 +175,12 @@ def calibrate(
             "overwritten. Provide as two integers, e.g. --version-number-override 1 5.",
         ),
     ] = None,
+    layer_data_format: Annotated[
+        LayerDataFormat,
+        typer.Option(
+            help="Format of the calibration layer data file. 'csv' (default) produces a human-readable CSV; 'arrow' produces an Apache Arrow IPC binary file readable by both Python and MATLAB."
+        ),
+    ] = LayerDataFormat.CSV,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -193,6 +207,7 @@ def calibrate(
             metakernel=metakernel,
             cleanup_temp_files_after_run=cleanup_temp_files_after_run,
             version_number_override=version_number_override,
+            layer_data_format=layer_data_format,
         )
         results.extend(result)
         current += timedelta(days=1)
@@ -209,6 +224,7 @@ def _calibrate_for_date(
     metakernel: Path | None = None,
     cleanup_temp_files_after_run: bool = True,
     version_number_override: tuple[int, int] | None = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.CSV,
 ) -> list[Path]:
     """Run calibration for a single date."""
     if method == CalibrationMethod.NOOP:
@@ -309,6 +325,7 @@ def _calibrate_for_date(
             version_major=major,
             version=minor,
             has_major_version=True,
+            data_extension=layer_data_format.value,
         )
         calibration_handler.allow_overwrite = True
     else:
@@ -316,6 +333,7 @@ def _calibrate_for_date(
             descriptor=f"{method.short_name}-{mode.value}",
             content_date=start_date,
             version_major=app_settings.version_major,
+            data_extension=layer_data_format.value,
         )
 
     try:

@@ -364,12 +364,22 @@ def cleanup_workfolder_after_apply(
     if workRotationFile:
         files_to_cleanup.append(workRotationFile)
 
-    # add the .csv version of all layer files to the cleanup list as well
+    # add the companion data file (CSV or Arrow) for each JSON layer to the cleanup list
     for layer_file in workLayers:
         if layer_file.suffix == ".json":
-            corresponding_csv = layer_file.with_suffix(".csv")
-            if corresponding_csv.exists():
-                files_to_cleanup.append(corresponding_csv)
+            try:
+                from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+                cal = CalibrationLayer.from_file(layer_file, load_contents=False)
+                if cal.metadata.data_filename:
+                    companion = layer_file.parent / cal.metadata.data_filename.name
+                    if companion.exists():
+                        files_to_cleanup.append(companion)
+            except Exception:
+                for ext in [".csv", ".arrow"]:
+                    companion = layer_file.with_suffix(ext)
+                    if companion.exists():
+                        files_to_cleanup.append(companion)
 
     work_folder_resolved = app_settings.work_folder.resolve()
     for temp_file in files_to_cleanup:

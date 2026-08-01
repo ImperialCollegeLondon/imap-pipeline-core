@@ -105,6 +105,17 @@ Recurring review feedback — follow these to avoid the same corrections:
 - Document **all** arguments when you touch a function's signature/docstring, not only the new ones.
 - Use generic example values/URLs in tests (e.g. `example-org/example-repo`), not real or overly specific ones.
 
+### MATLAB Docker image (deploy/MATLAB-Dockerfile)
+
+- The `mathworks/matlab:R*` base image does **not** place external MATLAB packages (Arrow, MICE, CDF) on `MATLABPATH` automatically. Every external package must be explicitly installed and its directory added to `ENV MATLABPATH`.
+- Apache Arrow MATLAB interface: pre-compiled `.mltbx` files are available from the `apache/arrow` GitHub releases page (`https://github.com/apache/arrow/releases`). Download with `wget`, extract with `python3 -c "import zipfile; zipfile.ZipFile(...).extractall(...)"` (no `unzip` needed), and add the extraction directory to `MATLABPATH`. The `.mltbx` is a ZIP with an internal `fsroot/` subdirectory that contains `+arrow` directly — so the correct `MATLABPATH` entry is `<extraction_root>/fsroot` (e.g. `/opt/matlab-arrow/fsroot`). Use the release built against the closest MATLAB version (e.g. Arrow 21.0.0 for R2025a, Arrow 25.0.0 for R2025b/R2026a). The old `mathworks/matlab-arrow` GitHub repo is gone (404).
+- The runtime stage already has `git` installed; place Arrow and any other `git clone` installs after the CDF block, before `WORKDIR /app USER ${IMAP_USERNAME}`.
+- When adding a new external MATLAB package, always update both the `RUN git clone ...` (or equivalent) step **and** the `ENV MATLABPATH` line in the same change so the two never get out of sync.
+
+### GitHub Actions workflow files
+
+- Modifying `.github/workflows/*.yml` requires the `workflow` OAuth scope. Without it, both local `git add` (blocked by the auto-mode classifier) and the `push_files` MCP tool (404) will silently fail. When a workflow file change is needed, show the user the exact diff and ask them to commit and push it themselves if the scope is unavailable.
+
 ## Testing
 
 - Tests in `tests/` directory, one `test_*.py` file per source file
