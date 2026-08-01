@@ -31,6 +31,12 @@ USER_CONFIG_FILENAME = "imap_mag_scripted_l2_file_path_config.json"
 # DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY.
 SPARSE_DATASTORE_FOLDER_NAME = "sparse_datastore"
 
+# Subfolder of the work folder where MATLAB writes its output files. Using a
+# dedicated subfolder keeps outputs separate from the user-config JSON and the
+# sparse datastore, and lets run_calibration collect exactly what MATLAB produced
+# by scanning this one directory (no filename prediction needed).
+OUTPUT_SUBFOLDER_NAME = "outputs"
+
 # Relative path (within the MATLAB repo) of the script we invoke. Used to fail fast
 # if the acquired repo does not actually contain the expected entry point.
 MATLAB_SCRIPT_RELATIVE_PATH = (
@@ -90,7 +96,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
 
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
-    ) -> tuple[Path, Path]:
+    ) -> list[Path]:
         if not isinstance(config, ScriptedL2CalibrationConfig):
             raise TypeError(
                 "ScriptedL2CalibrationJob requires a ScriptedL2CalibrationConfig, "
@@ -104,14 +110,22 @@ class ScriptedL2CalibrationJob(CalibrationJob):
 
         date = self.calibration_job_parameters.date
         mode = self.calibration_job_parameters.mode
-        output_data_version = cal_handler.version
 
-        # imap-pipeline-core owns the layer file naming (it decides the major/minor
-        # version). Pass the exact layer JSON and companion CSV file names to MATLAB
-        # so the files it writes match what this job then looks for in the work folder.
-        # MATLAB falls back to its own default names when these are not provided.
-        output_layer_filename = cal_handler.get_filename()
-        output_data_filename = cal_handler.get_equivalent_data_handler().get_filename()
+        # Pass the (major, minor) version pair to MATLAB so it owns filename construction.
+        # MATLAB builds names like imap_mag_manual-<mode>-layer_<YYYYMMDD>_v<major>.<minor>.json
+        # using these values, which CalibrationLayerPathHandler.from_filename can parse back.
+        output_version_major = cal_handler.version_major
+        output_version_minor = cal_handler.version
+
+        # Use a dedicated output subfolder so MATLAB writes only its products there.
+        # Recreate it empty on each run to prevent stale outputs from a previous
+        # cleanup_temp_files_after_run=False run leaking into the returned file list.
+        output_dir = self.work_folder / OUTPUT_SUBFOLDER_NAME
+        if output_dir.exists():
+            import shutil as _shutil
+
+            _shutil.rmtree(output_dir)
+        output_dir.mkdir(parents=True)
 
         metakernel_filename = self._resolve_metakernel(date)
 
@@ -127,19 +141,19 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         else:
             matlab_datastore = self.data_store
 
-        user_config_path = self._write_user_config(matlab_datastore)
+        user_config_path = self._write_user_config(matlab_datastore, output_dir)
         self._paths_needing_cleanup.append(user_config_path)
 
         command = self._build_matlab_command(
             date=date,
             calibration_matrix_version=config.calibration_matrix_version,
             metakernel_filename=metakernel_filename,
-            output_data_version=output_data_version,
+            output_data_version=output_version_minor,
+            output_version_major=output_version_major,
+            output_version_minor=output_version_minor,
             input_json_file=config.input_json_file,
             user_config_path=user_config_path,
             matlab_mode=str(mode.value),
-            output_layer_filename=output_layer_filename,
-            output_data_filename=output_data_filename,
         )
 
         call_matlab(
@@ -149,21 +163,13 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             timeout=self._timeout_seconds(mode),
         )
 
-        calfile = self.work_folder / cal_handler.get_filename()
-        datafile = (
-            self.work_folder / cal_handler.get_equivalent_data_handler().get_filename()
-        )
-
-        if not calfile.exists():
+        produced = sorted(p for p in output_dir.rglob("*") if p.is_file())
+        if not produced:
             raise FileNotFoundError(
-                f"Calibration layer file {calfile} was not created by the MATLAB calibration."
-            )
-        if not datafile.exists():
-            raise FileNotFoundError(
-                f"Calibration data file {datafile} was not created by the MATLAB calibration."
+                f"MATLAB calibration produced no output files in {output_dir}."
             )
 
-        return calfile, datafile
+        return produced
 
     def _timeout_seconds(self, mode: ScienceMode) -> int:
         """MATLAB timeout for a single day of the given mode.
@@ -244,23 +250,27 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         logger.info(f"Generated and published metakernel {filename} to {mk_path}")
         return filename
 
-    def _write_user_config(self, matlab_datastore: Path) -> Path:
+    def _write_user_config(self, matlab_datastore: Path, output_dir: Path) -> Path:
         """Write the MATLAB user/env file-path config JSON to the work folder.
 
         ``sharepoint_flight_data`` and ``spice_metakernal_root`` point at the
-        datastore root MATLAB should read (the real datastore, or the sparse copy),
-        while the three output folders map to the work folder so MATLAB writes there
-        rather than into the datastore.
+        datastore root MATLAB should read (the real datastore, or the sparse copy).
+        Both output folders (``output_layers_folder`` and ``l2_pre_calibration_outputs``)
+        map to the dedicated output subfolder so MATLAB writes only its products there.
+
+        Args:
+            matlab_datastore: Root of the datastore MATLAB should read from.
+            output_dir: Dedicated output subfolder where MATLAB writes its products.
         """
         datastore_path = Path(matlab_datastore).resolve()
-        work_folder_path = str(self.work_folder.resolve())
+        output_dir_path = str(output_dir.resolve())
 
         config = {
             "sharepoint_flight_data": str(datastore_path),
             "spice_metakernal_root": str(datastore_path),
-            "l2_pre_calibration_outputs": work_folder_path,
+            "l2_pre_calibration_outputs": output_dir_path,
             "report_folder": str(datastore_path / "calibration" / "reports"),
-            "output_layers_folder": work_folder_path,
+            "output_layers_folder": output_dir_path,
         }
 
         user_config_path = self.work_folder / USER_CONFIG_FILENAME
@@ -279,11 +289,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         calibration_matrix_version: int,
         metakernel_filename: str,
         output_data_version: int,
+        output_version_major: int,
+        output_version_minor: int,
         input_json_file: str,
         user_config_path: Path,
         matlab_mode: str,
-        output_layer_filename: str,
-        output_data_filename: str,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -294,14 +304,12 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 furnish (looked up under ``{datastore}/spice/mk/``).
             output_data_version: Data-product (minor) version for the L2-pre CDF and
                 diagnostic report file names MATLAB produces.
+            output_version_major: Major version number for MATLAB layer file naming.
+            output_version_minor: Minor version number for MATLAB layer file naming.
             input_json_file: Path (relative to the MATLAB repo) of the calibration
                 input configuration JSON.
             user_config_path: Path to the generated MATLAB user/env file-path config.
             matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
-            output_layer_filename: Bare filename the layer JSON must be written as, so
-                imap-pipeline-core controls the major/minor versioned name.
-            output_data_filename: Bare filename the companion layer-data CSV must be
-                written as (paired with ``output_layer_filename``).
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
 
@@ -314,7 +322,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
-            f'output_layer_filename="{output_layer_filename}", '
-            f'output_data_filename="{output_data_filename}", '
+            f"output_version=[{output_version_major} {output_version_minor}], "
             "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
         )

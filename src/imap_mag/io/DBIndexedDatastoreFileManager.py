@@ -305,6 +305,34 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 path_handler.set_sequence(matching_files[0].version)
             return True
 
+        # Version override: keep the forced version (no max+1 walk). Resolve any
+        # unique-constraint conflict by soft-deleting active DB records that share
+        # the same minor version but a different path — those represent the file
+        # being overwritten at the operator-supplied version.
+        if getattr(path_handler, "allow_overwrite", False):
+            forced_minor = path_handler.get_sequence()
+            new_destination = path_handler.get_full_path(self.__settings.data_store)
+            conflicting = [
+                f
+                for f in database_files
+                if f.version == forced_minor
+                and f.path
+                != File.get_datastore_relative_path(
+                    new_destination, self.__settings, warn=False
+                )
+            ]
+            for conflict in conflicting:
+                conflict_path = conflict.get_full_path(self.__settings)
+                logger.warning(
+                    f"Version override: soft-deleting conflicting DB record for "
+                    f"{conflict.path} (same minor version {forced_minor})."
+                )
+                conflict.set_deleted()
+                self.__database.upsert_file(conflict)
+                if conflict_path.exists():
+                    conflict_path.unlink()
+            return False
+
         # Assign max+1 rather than the first available slot so version numbers are
         # monotonically increasing even when earlier versions have been deleted or
         # never existed (e.g. existing versions {2} → next is 3, not 1).

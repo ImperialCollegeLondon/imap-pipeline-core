@@ -378,6 +378,42 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
     assert csv_result.read_bytes() == work_csv.read_bytes()
 
 
+def test_allow_overwrite_replaces_same_version(temp_folder_path):
+    """allow_overwrite=True writes new content at the exact requested version."""
+    date = datetime(2026, 1, 16)
+
+    store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
+    store_dir.mkdir(parents=True)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 3, seed=0)
+    existing_json = store_dir / "imap_mag_quality-norm-layer_20260116_v001.0003.json"
+    import hashlib
+
+    original_digest = hashlib.md5(existing_json.read_bytes()).hexdigest()
+
+    work_dir = temp_folder_path / "work"
+    work_dir.mkdir()
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 3, seed=99
+    )
+
+    manager = _manager(temp_folder_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=3
+    )
+    handler.allow_overwrite = True
+
+    (result_path, _) = manager.add_file(work_json, handler)
+
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0003.json"
+    # Content replaced — hash differs because the seed (and thus timestamp+hash) changed.
+    new_digest = hashlib.md5(result_path.read_bytes()).hexdigest()
+    assert new_digest != original_digest
+    # No v001.0004 should have been created.
+    assert not (
+        store_dir / "imap_mag_quality-norm-layer_20260116_v001.0004.json"
+    ).exists()
+
+
 # ── Disk space threshold checks ───────────────────────────────────────────────
 
 

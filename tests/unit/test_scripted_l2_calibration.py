@@ -24,6 +24,7 @@ from mag_toolkit.calibration.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
 )
 from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
+    OUTPUT_SUBFOLDER_NAME,
     SPARSE_DATASTORE_FOLDER_NAME,
     USER_CONFIG_FILENAME,
     ScriptedL2CalibrationJob,
@@ -152,22 +153,25 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
         captured["command"] = command
         captured["kwargs"] = kwargs
         assert (work_folder / USER_CONFIG_FILENAME).exists()
-        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 7)
+        write_calibration_layer_pair(
+            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 7
+        )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    metadata_path, data_path = job.run_calibration(_handler(7), config)
+    returned = job.run_calibration(_handler(7), config)
     job.cleanup()
 
+    output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
+    assert len(returned) == 2
     assert (
-        metadata_path
-        == work_folder / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
-    )
+        output_dir / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
+    ) in returned
     assert (
-        data_path
-        == work_folder / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
-    )
-    assert metadata_path.exists() and data_path.exists()
+        output_dir / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
+    ) in returned
+    for p in returned:
+        assert p.exists()
 
     command = captured["command"]
     assert command.startswith("calibration.scripts.calibrate_l2_offsets(")
@@ -179,15 +183,8 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     assert 'modes=["norm"]' in command
     assert "publish_to_sharepoint=false" in command
     assert "display_plots=false" in command
-    # imap-pipeline-core dictates the versioned layer/data file names to MATLAB.
-    assert (
-        'output_layer_filename="imap_mag_manual-norm-layer_20260130_v001.0007.json"'
-        in command
-    )
-    assert (
-        'output_data_filename="imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"'
-        in command
-    )
+    # MATLAB owns filename construction via the output_version keyword arg.
+    assert "output_version=[1 7]" in command
 
     # Invoked from the repo root, no project path preamble.
     assert captured["kwargs"]["cwd"] == job.matlab_repo_path
@@ -220,7 +217,9 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["kwargs"] = kwargs
-        write_calibration_layer_pair(job.work_folder, "manual-burst", DATE, 1)
+        write_calibration_layer_pair(
+            job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-burst", DATE, 1
+        )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(
@@ -249,19 +248,22 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
         captured_config.update(
             json.loads((work_folder / USER_CONFIG_FILENAME).read_text())
         )
-        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        write_calibration_layer_pair(
+            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
+        )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
 
+    output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured_config["sharepoint_flight_data"] == str(datastore.resolve())
     assert captured_config["spice_metakernal_root"] == str(datastore.resolve())
-    assert captured_config["l2_pre_calibration_outputs"] == str(work_folder.resolve())
+    assert captured_config["l2_pre_calibration_outputs"] == str(output_dir.resolve())
     assert (
         captured_config["report_folder"]
         == str(datastore.resolve()) + "/calibration/reports"
     )
-    assert captured_config["output_layers_folder"] == str(work_folder.resolve())
+    assert captured_config["output_layers_folder"] == str(output_dir.resolve())
 
 
 def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
@@ -293,7 +295,9 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
         captured["kernel_copied"] = (
             sparse_root / "spice" / "lsk" / "naif0012.tls"
         ).exists()
-        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        write_calibration_layer_pair(
+            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
+        )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
@@ -329,7 +333,7 @@ def test_missing_output_layer_raises(tmp_path, monkeypatch):
         matlab_repo=str(job.matlab_repo_path),
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
-    with pytest.raises(FileNotFoundError, match="was not created"):
+    with pytest.raises(FileNotFoundError, match="produced no output files"):
         job.run_calibration(_handler(1), config)
 
 
@@ -363,7 +367,9 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["command"] = command
-        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        write_calibration_layer_pair(
+            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
+        )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
@@ -421,7 +427,7 @@ def test_scripted_calibrate_cli_publishes_layer(
 
     def mock_call_matlab(command, **kwargs):
         assert "calibrate_l2_offsets" in command
-        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        write_calibration_layer_pair(work_folder / "outputs", "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
@@ -448,3 +454,61 @@ def test_scripted_calibrate_cli_publishes_layer(
         temp_datastore
         / "calibration/layers/2026/01/imap_mag_manual-norm-layer-data_20260130_v001.0001.csv"
     ).exists()
+
+
+def test_run_calibration_returns_all_produced_files(tmp_path, monkeypatch):
+    """All files MATLAB writes to the output subfolder are returned as a list."""
+    job = _make_job(tmp_path)
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
+        matlab_repo=str(job.matlab_repo_path),
+    )
+
+    def mock_call_matlab(command, **kwargs):
+        output_dir = job.work_folder / OUTPUT_SUBFOLDER_NAME
+        write_calibration_layer_pair(output_dir, "manual-norm", DATE, 1)
+        (output_dir / "extra_report.pdf").write_bytes(b"report data")
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+
+    returned = job.run_calibration(_handler(1), config)
+
+    assert len(returned) == 3
+    assert any(p.suffix == ".json" for p in returned)
+    assert any(p.suffix == ".csv" for p in returned)
+    assert any(p.name == "extra_report.pdf" for p in returned)
+    assert all(p.exists() for p in returned)
+
+
+def test_run_calibration_passes_override_version(tmp_path, monkeypatch):
+    """output_version in the MATLAB command reflects the handler's major and minor version."""
+    job = _make_job(tmp_path)
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
+        matlab_repo=str(job.matlab_repo_path),
+    )
+
+    captured = {}
+
+    def mock_call_matlab(command, **kwargs):
+        captured["command"] = command
+        write_calibration_layer_pair(
+            job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 5
+        )
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+
+    handler = CalibrationLayerPathHandler(
+        descriptor="manual-norm",
+        content_date=DATE,
+        version_major=2,
+        version=5,
+        has_major_version=True,
+    )
+    job.run_calibration(handler, config)
+
+    assert "output_version=[2 5]" in captured["command"]
