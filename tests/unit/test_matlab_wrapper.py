@@ -9,6 +9,7 @@ import pytest
 
 import mag_toolkit.calibration.MatlabWrapper as matlab_wrapper
 from mag_toolkit.calibration.MatlabWrapper import (
+    _get_display_wrapper,
     call_matlab,
     get_matlab_command,
 )
@@ -82,6 +83,32 @@ class TestSetupMatlabPathPrefix:
         assert "src/matlab" in prefix
         assert "addpath" in prefix
         assert "savepath" in prefix
+
+
+class TestGetDisplayWrapper:
+    def test_returns_xvfb_run_on_posix_when_available(self):
+        with (
+            patch("mag_toolkit.calibration.MatlabWrapper.os.name", "posix"),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.which",
+                return_value="/usr/bin/xvfb-run",
+            ),
+        ):
+            result = _get_display_wrapper()
+        assert result == ["xvfb-run", "--auto-servernum"]
+
+    def test_returns_empty_on_posix_when_xvfb_not_found(self):
+        with (
+            patch("mag_toolkit.calibration.MatlabWrapper.os.name", "posix"),
+            patch("mag_toolkit.calibration.MatlabWrapper.which", return_value=None),
+        ):
+            result = _get_display_wrapper()
+        assert result == []
+
+    def test_returns_empty_on_non_posix(self):
+        with patch("mag_toolkit.calibration.MatlabWrapper.os.name", "nt"):
+            result = _get_display_wrapper()
+        assert result == []
 
 
 class TestCallMatlab:
@@ -191,7 +218,7 @@ class TestCallMatlabExternalRepo:
         assert kwargs["cwd"] == str(tmp_path)
 
     def test_always_unsets_display(self):
-        """DISPLAY is removed from the MATLAB environment on every call."""
+        """DISPLAY is removed from the environment passed to the subprocess."""
         mock_process = _make_mock_process(returncode=0)
 
         with (
@@ -209,6 +236,54 @@ class TestCallMatlabExternalRepo:
 
         kwargs = mock_popen.call_args.kwargs
         assert "DISPLAY" not in kwargs["env"]
+
+    def test_command_prefixed_with_xvfb_run_when_available(self):
+        """xvfb-run --auto-servernum is prepended to the MATLAB command when present."""
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper._get_display_wrapper",
+                return_value=["xvfb-run", "--auto-servernum"],
+            ),
+        ):
+            call_matlab("run()", include_project_paths=False)
+
+        cmd = mock_popen.call_args[0][0]
+        assert cmd[0] == "xvfb-run"
+        assert cmd[1] == "--auto-servernum"
+        assert cmd[2] == "matlab"
+
+    def test_command_not_prefixed_when_xvfb_unavailable(self):
+        """No xvfb-run prefix when _get_display_wrapper returns empty."""
+        mock_process = _make_mock_process(returncode=0)
+
+        with (
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.subprocess.Popen",
+                return_value=mock_process,
+            ) as mock_popen,
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper.get_matlab_command",
+                return_value="matlab",
+            ),
+            patch(
+                "mag_toolkit.calibration.MatlabWrapper._get_display_wrapper",
+                return_value=[],
+            ),
+        ):
+            call_matlab("run()", include_project_paths=False)
+
+        cmd = mock_popen.call_args[0][0]
+        assert cmd[0] == "matlab"
 
     def test_default_call_has_no_cwd(self):
         mock_process = _make_mock_process(returncode=0)
