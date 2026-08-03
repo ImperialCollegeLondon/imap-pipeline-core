@@ -79,6 +79,21 @@ def get_matlab_command():
         return "matlab"
 
 
+def _get_display_wrapper() -> list[str]:
+    """Return an xvfb-run prefix if available, otherwise an empty list.
+
+    MATLAB's graphics subsystem needs some X11 infrastructure even in batch
+    mode when generating figures for report files.  ``xvfb-run`` spins up an
+    ephemeral virtual framebuffer for each invocation so MATLAB can render
+    off-screen without a physical display.  When ``xvfb-run`` is absent (e.g.
+    on a developer machine) the prefix is omitted and the caller falls back to
+    the previous behaviour of running MATLAB directly.
+    """
+    if os.name == "posix" and which("xvfb-run") is not None:
+        return ["xvfb-run", "--auto-servernum"]
+    return []
+
+
 def call_matlab(
     command,
     timeout=60 * 5,
@@ -94,8 +109,10 @@ def call_matlab(
     (it is persisted via ``savepath``), and self-contained external MATLAB projects
     pass ``include_project_paths=False`` to opt out entirely.
 
-    ``DISPLAY`` is always removed from the environment so MATLAB never tries to
-    open plot windows.
+    ``DISPLAY`` is always removed from the environment passed to the subprocess.
+    When ``xvfb-run`` is available it wraps the MATLAB command and sets its own
+    isolated ``DISPLAY`` for the child process, allowing MATLAB to render figures
+    off-screen without a physical display.
 
     Args:
         command: The MATLAB command to run inside ``matlab -batch``.
@@ -120,9 +137,18 @@ def call_matlab(
     else:
         batch_command = command
 
-    cmd = [MATLAB_COMMAND, "-nodesktop", "-nojvm", "-batch", batch_command]
+    display_wrapper = _get_display_wrapper()
+    cmd = [
+        *display_wrapper,
+        MATLAB_COMMAND,
+        "-nodesktop",
+        "-nojvm",
+        "-batch",
+        batch_command,
+    ]
 
-    # Always unset DISPLAY so MATLAB does not attempt to open plot windows.
+    # Remove DISPLAY so the host display never leaks into the subprocess.
+    # xvfb-run (when present) sets its own isolated DISPLAY for MATLAB.
     env = os.environ.copy()
     env.pop("DISPLAY", None)
 
