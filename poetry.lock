@@ -3431,20 +3431,21 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-docker"
-version = "0.7.1"
+version = "0.7.3"
 description = "Prefect integrations for interacting with Docker."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect_docker-0.7.1-py3-none-any.whl", hash = "sha256:b4fe1760c12206d3eaec2826d63acb1235bd41756921eb0c6b5feeb20b157e37"},
-    {file = "prefect_docker-0.7.1.tar.gz", hash = "sha256:7d5053bcc049d56b5498ca4629c9b08b31d96f5387e1eb34f510ec322d5aad89"},
+    {file = "prefect_docker-0.7.3-py3-none-any.whl", hash = "sha256:6c0106e0c8284b72ee54ee65ccd4efa3c4ca3205d8b5c65d647d30423aefa968"},
+    {file = "prefect_docker-0.7.3.tar.gz", hash = "sha256:be9e826343e0128f8d4a35ec6411e3af7866474bedb0c493ad150c2c503c7e13"},
 ]
 
 [package.dependencies]
 docker = ">=6.1.1"
 exceptiongroup = "*"
-prefect = ">=3.3.5"
+prefect = ">=3.7.1"
+python-on-whales = ">=0.81"
 
 [[package]]
 name = "prefect-github"
@@ -4252,6 +4253,22 @@ files = [
 
 [package.extras]
 dev = ["black", "build", "freezegun", "mdx_truly_sane_lists", "mike", "mkdocs", "mkdocs-awesome-pages-plugin", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-material (>=8.5)", "mkdocstrings[python]", "msgspec ; implementation_name != \"pypy\"", "mypy", "orjson ; implementation_name != \"pypy\"", "pylint", "pytest", "tzdata", "validate-pyproject[all]"]
+
+[[package]]
+name = "python-on-whales"
+version = "0.81.0"
+description = "A Docker client for Python, designed to be fun and intuitive!"
+optional = false
+python-versions = "<4,>=3.8"
+groups = ["main"]
+files = [
+    {file = "python_on_whales-0.81.0-py3-none-any.whl", hash = "sha256:6d5f81f56d0f95fd311a7cce29a01a1a60841074e4936000dc5f2dc9a7ffafac"},
+    {file = "python_on_whales-0.81.0.tar.gz", hash = "sha256:bb6172014e3fe949f908092748bddf34df758cb92c2c3d0536b75bf236abce1b"},
+]
+
+[package.dependencies]
+pydantic = ">=2.1.dev0,<3"
+typing-extensions = "*"
 
 [[package]]
 name = "python-slugify"
@@ -5779,4 +5796,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "e12a55b44b29ed247521111282dd8f71f205d6eac9dcf6bacb9cf76e53a17beb"
+content-hash = "b58892ea5cb439b1d17da376b4400677f63d868f75a7b4e473348dcbbfcf06a3"
