@@ -105,14 +105,14 @@ files = [
 
 [[package]]
 name = "apprise"
-version = "1.10.0"
+version = "1.12.0"
 description = "Push Notifications that work with just about every platform!"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "apprise-1.10.0-py3-none-any.whl", hash = "sha256:e685303d3568bb7a057d6ddeafd27ee12fff183ca36483ad4bacc0b9b4efa82c"},
-    {file = "apprise-1.10.0.tar.gz", hash = "sha256:b768f32d99e45ed5f4c3eef1f67903e803c97f97ba61a531a5d0a45d40df90a8"},
+    {file = "apprise-1.12.0-py3-none-any.whl", hash = "sha256:28edabfec5a9d5dbcd9aa28bdfd8928ecb68764e40214b6e648eab6d974b5a93"},
+    {file = "apprise-1.12.0.tar.gz", hash = "sha256:ffe9860d99cbde05fd156c610d4bcb49d953200c4ed3cb2db001ed50722fc142"},
 ]
 
 [package.dependencies]
@@ -125,7 +125,7 @@ requests-oauthlib = "*"
 tzdata = {version = "*", markers = "platform_system == \"Windows\""}
 
 [package.extras]
-all-plugins = ["PGPy", "cryptography", "gntp", "hidapi", "paho-mqtt (!=2.0.*)", "slixmpp (>=1.10.0)", "smpplib"]
+all-plugins = ["PGPy", "cryptography", "gntp", "hidapi", "paho-mqtt (>=2.1.0)", "slixmpp (>=1.16.0)", "smpplib"]
 dev = ["babel", "coverage", "mock", "pytest", "pytest-cov", "pytest-mock", "ruff (==0.15.8)", "tox", "validate-pyproject"]
 windows = ["pywin32", "tzdata"]
 
@@ -5784,4 +5784,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "531d9bec7734c916a469106fd73634e0b3a2b6ba5e08d5f140363411a68aea5e"
+content-hash = "3cde5ee3a7ac4d51b7db0eb7ea98189daec6eb14e3e4c8c66ca0f085c12c08e6"
