@@ -13,6 +13,7 @@ from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
     PrefectScriptedL2CalibrationConfig,
+    _configuration_for_deployment,
     _days_in_range,
     _github_repo_name,
     _load_matlab_repo_block,
@@ -435,6 +436,167 @@ class TestSplitByDay:
 
         mock_run_deployment.assert_not_called()
         mock_apply.assert_called_once()
+
+
+class TestConfigurationForDeployment:
+    """_configuration_for_deployment replaces block objects with $ref references."""
+
+    def test_non_scripted_config_returned_unchanged(self):
+        config = GradiometryConfig()
+        assert _configuration_for_deployment(config) is config
+
+    def test_scripted_config_without_block_returned_unchanged(self):
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo="my-block-name",
+        )
+        result = _configuration_for_deployment(config)
+        assert result is config
+
+    def test_scripted_config_with_block_but_no_doc_id_returned_unchanged(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+        )
+        result = _configuration_for_deployment(config)
+        assert result is config
+
+    def test_github_block_with_doc_id_replaced_by_ref(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        block._block_document_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+        )
+
+        result = _configuration_for_deployment(config)
+
+        assert isinstance(result, dict)
+        assert result["matlab_repo"] == {
+            "$ref": {"block_document_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+        }
+
+    def test_local_filesystem_block_with_doc_id_replaced_by_ref(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        block = LocalFileSystem(basepath=str(repo))
+        block._block_document_id = "11111111-2222-3333-4444-555555555555"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+        )
+
+        result = _configuration_for_deployment(config)
+
+        assert isinstance(result, dict)
+        assert result["matlab_repo"] == {
+            "$ref": {"block_document_id": "11111111-2222-3333-4444-555555555555"}
+        }
+
+    def test_ref_dict_contains_other_config_fields(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        block._block_document_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=7,
+            input_json_file="my-input.json",
+            matlab_repo=block,
+        )
+
+        result = _configuration_for_deployment(config)
+
+        assert isinstance(result, dict)
+        assert result["calibration_matrix_version"] == 7
+        assert result["input_json_file"] == "my-input.json"
+
+
+class TestSplitByDayWithGithubBlock:
+    """split_by_day passes $ref block references, not serialised block objects."""
+
+    def _make_flow_run(self, name):
+        fake = MagicMock()
+        fake.name = name
+        return fake
+
+    def test_calibrate_flow_passes_ref_for_github_block(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        block._block_document_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=9,
+            input_json_file="input.json",
+            matlab_repo=block,
+        )
+
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                return_value=self._make_flow_run("child"),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.calibrate"),
+        ):
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 2),
+                configuration=config,
+                split_by_day=True,
+            )
+
+        assert mock_run_deployment.call_count == 2
+        for call in mock_run_deployment.call_args_list:
+            configuration_param = call.kwargs["parameters"]["configuration"]
+            assert isinstance(configuration_param, dict), (
+                "configuration must be a dict (not a Pydantic model) so Prefect "
+                "can resolve the $ref block reference in the child run"
+            )
+            assert configuration_param["matlab_repo"] == {
+                "$ref": {"block_document_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+            }
+
+    def test_calibrate_and_apply_flow_passes_ref_for_github_block(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        block._block_document_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config = PrefectScriptedL2CalibrationConfig(
+            calibration_matrix_version=9,
+            input_json_file="input.json",
+            matlab_repo=block,
+        )
+
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                return_value=self._make_flow_run("child"),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.calibrate"),
+            patch("prefect_server.performCalibration.apply"),
+        ):
+            calibrate_and_apply_flow.fn(
+                configuration=config,
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 2),
+                split_by_day=True,
+            )
+
+        assert mock_run_deployment.call_count == 2
+        for call in mock_run_deployment.call_args_list:
+            configuration_param = call.kwargs["parameters"]["configuration"]
+            assert isinstance(configuration_param, dict)
+            assert configuration_param["matlab_repo"] == {
+                "$ref": {"block_document_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+            }
 
 
 class TestGithubRepoName:
