@@ -99,8 +99,12 @@ def call_matlab(
     timeout=60 * 5,
     cwd: Path | str | None = None,
     include_project_paths: bool = True,
-):
+) -> list[str]:
     """Run a MATLAB batch command, folding project path setup into the first call.
+
+    Returns the ans= output lines from MATLAB as a list of strings.
+    If function output is a single string, the list will contain one string with quotes stripped.
+    If function output is a 1d cell array, the list will contain one string with the array as a whole string.
 
     When ``include_project_paths`` is True and the imap-mag project paths have not
     yet been set up in this process, the ``addpath``/``savepath`` preamble is
@@ -166,6 +170,8 @@ def call_matlab(
         preexec_fn=_set_parent_death_signal_linux if os.name == "posix" else None,
     )
 
+    answer_lines: list[str] = []
+    started_answering = False
     try:
         while (line := p.stdout.readline()) != "":  # type: ignore
             line = line.rstrip()
@@ -185,8 +191,15 @@ def call_matlab(
                 line = line[len("CRITICAL: ") :]
                 log_method = logger.critical
 
+            if started_answering:
+                answer_lines.append(line)
+                log_method = logger.debug
+
             if line:
                 log_method(line)
+
+            if line.startswith("ans ="):
+                started_answering = True  # next lines are collected
 
         p.wait(timeout=timeout)
     except (subprocess.TimeoutExpired, KeyboardInterrupt):
@@ -208,4 +221,18 @@ def call_matlab(
         logger.error(f"MATLAB command failed with return code {p.returncode}")
         raise RuntimeError(f"MATLAB command failed with return code {p.returncode}")
 
+    answer_lines = [
+        line.strip().strip('"') for line in answer_lines if line.strip()
+    ]  # remove empty lines and whitespace
+
+    if len(answer_lines) > 0:
+        logger.info(
+            "Result from MATLAB command: ("
+            + str(len(answer_lines))
+            + " line(s))\n"
+            + "\n".join(answer_lines)
+        )
+
     logger.info(f"MATLAB process finished with return code {p.returncode}")
+
+    return answer_lines

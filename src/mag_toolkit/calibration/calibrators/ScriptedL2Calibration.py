@@ -269,6 +269,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             "l2_pre_calibration_outputs": output_dir_path,
             "report_folder": str(datastore_path / "calibration" / "reports"),
             "output_layers_folder": output_dir_path,
+            "output_offsets_folder": output_dir_path,
         }
 
         user_config_path = self.work_folder / USER_CONFIG_FILENAME
