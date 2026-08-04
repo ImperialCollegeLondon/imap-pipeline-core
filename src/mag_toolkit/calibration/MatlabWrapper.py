@@ -191,15 +191,18 @@ def call_matlab(
                 line = line[len("CRITICAL: ") :]
                 log_method = logger.critical
 
-            if started_answering:
+            # Capture the MATLAB output after the first "ans =" line, which is the start of the function's return value.
+            # only log these lines to debug since they are logged anyway after the process finishes.
+            if started_answering and line:
                 answer_lines.append(line)
+                log_method = logger.debug
+
+            if line.startswith("ans ="):
+                started_answering = True  # next and later lines are collected
                 log_method = logger.debug
 
             if line:
                 log_method(line)
-
-            if line.startswith("ans ="):
-                started_answering = True  # next lines are collected
 
         p.wait(timeout=timeout)
     except (subprocess.TimeoutExpired, KeyboardInterrupt):
