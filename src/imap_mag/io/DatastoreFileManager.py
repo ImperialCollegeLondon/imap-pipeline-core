@@ -108,7 +108,10 @@ class DatastoreFileManager(IDatastoreFileManager):
         original_file: Path,
         path_handler: IFilePathHandler,
     ) -> bool:
-        """Find a viable version for a file."""
+        """Find a viable version for a file for increasing the version number on the handler until the next available version number has been found.
+
+        Returns True if the file already exists and is the same as the original file, False otherwise.
+        """
 
         destination_file: Path = path_handler.get_full_path(self.location)
 

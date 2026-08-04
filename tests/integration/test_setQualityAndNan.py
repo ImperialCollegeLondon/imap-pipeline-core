@@ -52,8 +52,8 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
 
     config = SetQualityAndNaNConfig(csv_file=str(quality_csv))
 
-    cal_handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+    cal_handler = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
     )
 
@@ -100,8 +100,8 @@ def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_b
     )
     work_folder = tmp_path / "work"
     work_folder.mkdir()
-    handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+    handler = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
     )
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
@@ -131,8 +131,8 @@ def test_calibration_job_splits_across_days(tmp_path):
     params_day1 = CalibrationJobParameters(
         date=datetime(2026, 1, 16), mode=ScienceMode.Normal, sensor=Sensor.MAGO
     )
-    handler_day1 = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+    handler_day1 = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
@@ -151,8 +151,8 @@ def test_calibration_job_splits_across_days(tmp_path):
     params_day2 = CalibrationJobParameters(
         date=datetime(2026, 1, 17), mode=ScienceMode.Normal, sensor=Sensor.MAGO
     )
-    handler_day2 = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+    handler_day2 = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 17),
     )
     job_day2 = SetQualityAndNaNCalibrationJob(params_day2, work_folder2)
@@ -182,8 +182,8 @@ def run_calibration_on_config_file(
     params_day1 = CalibrationJobParameters(
         date=content_date, mode=ScienceMode.Normal, sensor=Sensor.MAGO
     )
-    handler_day1 = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
+    handler_day1 = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=content_date,
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)

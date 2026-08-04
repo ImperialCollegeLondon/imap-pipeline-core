@@ -89,7 +89,7 @@ def _make_job(
 
 def _handler(version: int) -> CalibrationLayerPathHandler:
     return CalibrationLayerPathHandler(
-        descriptor="manual-norm", content_date=DATE, version=version
+        descriptor="manual-norm", content_date=DATE, version=version, version_major=1
     )
 
 
@@ -507,7 +507,7 @@ def test_run_calibration_passes_override_version(tmp_path, monkeypatch):
         content_date=DATE,
         version_major=2,
         version=5,
-        has_major_version=True,
+        _has_major_version=True,
     )
     job.run_calibration(handler, config)
 

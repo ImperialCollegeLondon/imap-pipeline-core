@@ -774,7 +774,7 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     )
 
     path_handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1
+        descriptor="quality-norm", content_date=date, version=1, version_major=1
     )
 
     # Capture source content during the mock call (before cleanup deletes the temp file)

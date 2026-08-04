@@ -11,6 +11,7 @@ from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from pydantic import PrivateAttr
 
 from imap_mag import get_version
+from imap_mag.config import AppSettings
 from imap_mag.io.file import CalibrationLayerPathHandler, IFilePathHandler
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -345,7 +346,9 @@ class CalibrationLayer(Layer):
         return instance
 
     @classmethod
-    def create_zero_offset_layer_from_science(cls, science_layer: ScienceLayer):
+    def create_zero_offset_layer_from_science(
+        cls, science_layer: ScienceLayer, settings: AppSettings = AppSettings()
+    ) -> "CalibrationLayer":
         if not science_layer:
             raise ValueError(
                 "Science layer must be provided to create zero offset layer."
@@ -383,8 +386,10 @@ class CalibrationLayer(Layer):
         )
         datefilename = None
         if content_date:
-            calibration_handler = CalibrationLayerPathHandler(
-                descriptor=CalibrationMethod.NOOP.short_name, content_date=content_date
+            calibration_handler = CalibrationLayerPathHandler.from_method(
+                method=CalibrationMethod.NOOP,
+                content_date=content_date,
+                settings=settings,
             )
             datefilehandler = calibration_handler.get_equivalent_data_handler()
             datefilename = Path(datefilehandler.get_filename())

@@ -312,7 +312,11 @@ def _apply_for_date(
         logger.info(
             "No calibration layers provided, proceeding with apply using only rotation. A temporary zero offset layer will be created."
         )
-        workLayers = [_setup_zero_calibration_layer(work_folder, workScienceFile, date)]
+        workLayers = [
+            _setup_zero_calibration_layer(
+                work_folder, workScienceFile, date, app_settings
+            )
+        ]
 
     (L2_files, offset_file) = applier.apply(
         day_to_process=date,
@@ -387,15 +391,19 @@ def cleanup_workfolder_after_apply(
 
 
 def _setup_zero_calibration_layer(
-    work_folder: Path, workScienceFile: Path, content_date: datetime
+    work_folder: Path,
+    workScienceFile: Path,
+    content_date: datetime,
+    app_settings: AppSettings,
 ) -> Path:
     logger.info(
         "No calibration layers provided, setting up a zero calibration layer for application."
     )
 
-    calibration_handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.NOOP.short_name, content_date=content_date
+    calibration_handler = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.NOOP, content_date=content_date, settings=app_settings
     )
+
     new_layer_file = work_folder / calibration_handler.get_filename()
     if new_layer_file.exists():
         logger.warning(
@@ -405,7 +413,7 @@ def _setup_zero_calibration_layer(
 
     science_layer = ScienceLayer.from_file(workScienceFile, load_contents=True)
     zero_offset_layer = CalibrationLayer.create_zero_offset_layer_from_science(
-        science_layer
+        science_layer, app_settings
     )
     del science_layer
 

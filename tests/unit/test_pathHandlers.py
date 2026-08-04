@@ -166,7 +166,7 @@ def test_calibration_layer_get_equivalent_data_handler():
                 version=2,
                 descriptor="offsets",
                 content_date=datetime(2025, 10, 4),
-                has_major_version=False,
+                _has_major_version=False,
             ),
             "CalibrationLayerPathHandler",
         ),
@@ -517,7 +517,7 @@ def test_science_get_unsequenced_pattern_matches_both_formats():
         ),
         (
             "imap_mag_noop-layer_20250101_v003.json",
-            1,
+            0,
             3,
             False,
         ),
@@ -533,7 +533,7 @@ def test_calibration_layer_from_filename_parses_version_fields(
     assert handler is not None
     assert handler.version_major == expected_version_major
     assert handler.version == expected_version
-    assert handler.has_major_version == expected_has_major_version
+    assert handler._has_major_version == expected_has_major_version
 
 
 def test_calibration_layer_get_filename_with_major_version_produces_new_format():
@@ -543,7 +543,7 @@ def test_calibration_layer_get_filename_with_major_version_produces_new_format()
         content_date=datetime(2025, 1, 1),
         version=5,
         version_major=1,
-        has_major_version=True,
+        _has_major_version=True,
     )
 
     # Exercise and verify.
@@ -557,7 +557,7 @@ def test_calibration_layer_get_filename_without_major_version_produces_legacy_fo
         content_date=datetime(2025, 1, 1),
         version=3,
         version_major=1,
-        has_major_version=False,
+        _has_major_version=False,
     )
 
     # Exercise and verify.
