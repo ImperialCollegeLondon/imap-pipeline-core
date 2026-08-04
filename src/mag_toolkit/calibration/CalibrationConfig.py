@@ -58,6 +58,7 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
     input_json_file: str
     datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY
     matlab_repo: str
+    produce_report: bool = False
 
     @classmethod
     def get_method(cls) -> CalibrationMethod:

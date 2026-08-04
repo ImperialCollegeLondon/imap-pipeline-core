@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
@@ -126,9 +125,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         cls,
         method: CalibrationMethod,
         content_date: datetime,
+        settings: "AppSettings",  # type: ignore  # noqa: F821
         mode: ScienceMode | None = None,
         version_number_override: tuple[int, int] | None = None,
-        settings: AppSettings = AppSettings(),
     ) -> "CalibrationLayerPathHandler":
 
         major_version = (

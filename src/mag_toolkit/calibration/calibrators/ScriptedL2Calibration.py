@@ -111,12 +111,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         date = self.calibration_job_parameters.date
         mode = self.calibration_job_parameters.mode
 
-        # Pass the (major, minor) version pair to MATLAB so it owns filename construction.
-        # MATLAB builds names like imap_mag_manual-<mode>-layer_<YYYYMMDD>_v<major>.<minor>.json
-        # using these values, which CalibrationLayerPathHandler.from_filename can parse back.
-        output_version_major = cal_handler.version_major
-        output_version_minor = cal_handler.version
-
         # Use a dedicated output subfolder so MATLAB writes only its products there.
         # Recreate it empty on each run to prevent stale outputs from a previous
         # cleanup_temp_files_after_run=False run leaking into the returned file list.
@@ -131,7 +125,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
 
         # Decide which datastore MATLAB will read from, building a sparse local copy
         # in the work folder if requested.
-        sparse_datastore: Path | None = None
         if config.datastore_access_mode == DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY:
             sparse_datastore = self._build_sparse_datastore(
                 date, mode, metakernel_filename, config.calibration_matrix_version
@@ -139,6 +132,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             matlab_datastore = sparse_datastore
             self._paths_needing_cleanup.append(sparse_datastore)
         else:
+            assert self.data_store is not None
             matlab_datastore = self.data_store
 
         user_config_path = self._write_user_config(matlab_datastore, output_dir)
@@ -148,12 +142,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             date=date,
             calibration_matrix_version=config.calibration_matrix_version,
             metakernel_filename=metakernel_filename,
-            output_data_version=output_version_minor,
-            output_version_major=output_version_major,
-            output_version_minor=output_version_minor,
+            output_data_version=(cal_handler.version_major, cal_handler.version),
             input_json_file=config.input_json_file,
             user_config_path=user_config_path,
             matlab_mode=str(mode.value),
+            produce_report=config.produce_report,
         )
 
         call_matlab(
@@ -164,6 +157,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         )
 
         produced = sorted(p for p in output_dir.rglob("*") if p.is_file())
+
+        logger.info(
+            f"MATLAB calibration produced {len(produced)} output files in {output_dir}"
+        )
+
         if not produced:
             raise FileNotFoundError(
                 f"MATLAB calibration produced no output files in {output_dir}."
@@ -288,12 +286,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         date: datetime,
         calibration_matrix_version: int,
         metakernel_filename: str,
-        output_data_version: int,
-        output_version_major: int,
-        output_version_minor: int,
+        output_data_version: tuple[int, int],
         input_json_file: str,
         user_config_path: Path,
         matlab_mode: str,
+        produce_report: bool,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -302,10 +299,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             calibration_matrix_version: Version of the calibration matrices to load.
             metakernel_filename: Bare filename of the SPICE metakernel MATLAB should
                 furnish (looked up under ``{datastore}/spice/mk/``).
-            output_data_version: Data-product (minor) version for the L2-pre CDF and
-                diagnostic report file names MATLAB produces.
-            output_version_major: Major version number for MATLAB layer file naming.
-            output_version_minor: Minor version number for MATLAB layer file naming.
+            output_data_version: Tuple of (major, minor) version numbers for MATLAB layer file naming.
             input_json_file: Path (relative to the MATLAB repo) of the calibration
                 input configuration JSON.
             user_config_path: Path to the generated MATLAB user/env file-path config.
@@ -318,10 +312,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f"{date_expr}, {date_expr}, "
             f"{calibration_matrix_version}, "
             f'"{metakernel_filename}", '
-            f"{output_data_version}, "
+            f"[{output_data_version[0]}, {output_data_version[1]}], "
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
-            f"output_version=[{output_version_major} {output_version_minor}], "
-            "publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false)"
+            f"publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false,produce_report={'true' if produce_report else 'false'})"
         )

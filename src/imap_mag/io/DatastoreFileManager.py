@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from imap_mag.db.Database import Database
-from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 from imap_mag.util.diskSpace import check_disk_space
 

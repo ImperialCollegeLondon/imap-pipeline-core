@@ -9,20 +9,20 @@ import pytest
 
 from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import calibrate
-from imap_mag.config import SaveMode
+from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io.file.CalibrationLayerPathHandler import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
     CalibrationMethod,
     Sensor,
-    SetQualityAndNaNCalibrationJob,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
     SetQualityAndNaNConfig,
 )
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
+from mag_toolkit.calibration.calibrators import SetQualityAndNaNCalibrationJob
 from tests.util.database import test_database  # noqa: F401
 from tests.util.miscellaneous import open_cdf
 
@@ -55,6 +55,7 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     cal_handler = CalibrationLayerPathHandler.from_method(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
+        settings=AppSettings(),
     )
 
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
@@ -103,6 +104,7 @@ def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_b
     handler = CalibrationLayerPathHandler.from_method(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
+        settings=AppSettings(),
     )
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
 
@@ -134,6 +136,7 @@ def test_calibration_job_splits_across_days(tmp_path):
     handler_day1 = CalibrationLayerPathHandler.from_method(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
+        settings=AppSettings(),
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
     _, datafile1 = job_day1.run_calibration(handler_day1, config)
@@ -154,6 +157,7 @@ def test_calibration_job_splits_across_days(tmp_path):
     handler_day2 = CalibrationLayerPathHandler.from_method(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 17),
+        settings=AppSettings(),
     )
     job_day2 = SetQualityAndNaNCalibrationJob(params_day2, work_folder2)
     _, datafile2 = job_day2.run_calibration(handler_day2, config)
@@ -185,6 +189,7 @@ def run_calibration_on_config_file(
     handler_day1 = CalibrationLayerPathHandler.from_method(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=content_date,
+        settings=AppSettings(),
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
     json_file, datafile1 = job_day1.run_calibration(handler_day1, config)

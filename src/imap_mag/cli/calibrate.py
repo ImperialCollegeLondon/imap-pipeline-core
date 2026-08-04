@@ -23,15 +23,17 @@ from imap_mag.io.FilePathHandlerSelector import (
 )
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
-    CalibrationJob,
     CalibrationJobParameters,
     CalibrationMethod,
-    GradiometerCalibrationJob,
-    ScriptedL2CalibrationJob,
     Sensor,
-    SetQualityAndNaNCalibrationJob,
 )
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+from mag_toolkit.calibration.calibrators import (
+    CalibrationJob,
+    GradiometerCalibrationJob,
+    ScriptedL2CalibrationJob,
+    SetQualityAndNaNCalibrationJob,
+)
 
 app = typer.Typer()
 

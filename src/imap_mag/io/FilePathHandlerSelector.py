@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, overload
 
 from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
+from imap_mag.io.file.CalculatedOffsetsPathHandler import CalculatedOffsetsPathHandler
 from imap_mag.io.file.CalibrationLayerPathHandler import (
     CalibrationLayerPathHandler,
 )
@@ -51,6 +52,7 @@ class FilePathHandlerSelector:
         # Providers to try in alphabetical order.
         provider_to_try: list[type[IFilePathHandler]] = [
             AncillaryPathHandler,
+            CalculatedOffsetsPathHandler,
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,
             HKDecodedPathHandler,
