@@ -141,6 +141,40 @@ def _load_matlab_repo_block(
     return None
 
 
+def _configuration_for_deployment(
+    configuration: "PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig",
+) -> "dict | SetQualityAndNaNConfig | GradiometryConfig":
+    """Prepare configuration for passing to ``run_deployment``.
+
+    For ``PrefectScriptedL2CalibrationConfig``, any block stored in ``matlab_repo``
+    is replaced with a ``{"$ref": {"block_document_id": "..."}}`` reference so that
+    the child flow run re-loads the block from the block store (including its
+    credentials) rather than receiving a plain-dict serialisation that drops them.
+
+    Non-``PrefectScriptedL2CalibrationConfig`` configurations are returned unchanged.
+
+    Args:
+        configuration: The calibration configuration to prepare.
+
+    Returns:
+        A deployment-safe representation of the configuration.
+    """
+    if not isinstance(configuration, PrefectScriptedL2CalibrationConfig):
+        return configuration
+
+    matlab_repo = configuration.matlab_repo
+    if isinstance(matlab_repo, (GitHubRepository, LocalFileSystem)):
+        block_doc_id = getattr(matlab_repo, "_block_document_id", None)
+        if block_doc_id:
+            config_dict = configuration.model_dump()
+            config_dict["matlab_repo"] = {
+                "$ref": {"block_document_id": str(block_doc_id)}
+            }
+            return config_dict
+
+    return configuration
+
+
 def _resolve_matlab_repo_path(
     matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
     work_folder: Path,
@@ -320,7 +354,7 @@ def calibrate_flow(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE}",
             days=days,
             base_parameters={
-                "configuration": configuration,
+                "configuration": _configuration_for_deployment(configuration),
                 "mode": mode,
                 "sensor": sensor,
                 "save_mode": save_mode,
@@ -368,7 +402,7 @@ def calibrate_and_apply_flow(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY}",
             days=days,
             base_parameters={
-                "configuration": configuration,
+                "configuration": _configuration_for_deployment(configuration),
                 "mode": mode,
                 "sensor": sensor,
                 "offset_file_output_type": offset_file_output_type,
