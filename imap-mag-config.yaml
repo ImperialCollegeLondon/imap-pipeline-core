@@ -117,7 +117,7 @@ calibrate:
             - pattern: 'calibration/calculated_offsets/kepko/*'
             - pattern: 'calibration/calculated_offsets/leinweber/*'
             - pattern: 'calibration/calculated_offsets/spin_axis/*'
-            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
+            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-optimised-offsets_%Y%m%d_v{sequence}.csv*'
               days_before: 1
               days_after: 1
               get_previous_if_empty: true
