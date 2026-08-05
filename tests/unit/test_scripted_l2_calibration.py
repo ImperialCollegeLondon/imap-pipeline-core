@@ -178,13 +178,11 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
     assert "datetime(2026,1,30), datetime(2026,1,30)" in command
     assert ", 8, " in command
     assert '"metakernel.txt"' in command
-    assert ", 7, " in command
+    assert ", [1, 7], " in command
     assert '"+calibration/calibration/input_v002.json"' in command
     assert 'modes=["norm"]' in command
     assert "publish_to_sharepoint=false" in command
     assert "display_plots=false" in command
-    # MATLAB owns filename construction via the output_version keyword arg.
-    assert "output_version=[1 7]" in command
 
     # Invoked from the repo root, no project path preamble.
     assert captured["kwargs"]["cwd"] == job.matlab_repo_path
@@ -511,4 +509,4 @@ def test_run_calibration_passes_override_version(tmp_path, monkeypatch):
     )
     job.run_calibration(handler, config)
 
-    assert "output_version=[2 5]" in captured["command"]
+    assert ", [2, 5]," in captured["command"]
