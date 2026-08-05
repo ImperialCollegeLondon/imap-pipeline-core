@@ -692,7 +692,7 @@ def _metakernel_builder(
                     "file_intervals_j2000": f.file_meta["file_intervals_j2000"],
                     "timestamp": f.file_meta["timestamp"],
                 }
-                for f in files
+                for f in latest_files
                 if f.file_meta
                 and (
                     f.file_meta.get(SPICE_FILE_META_FIELD_KERNAL_TYPE)

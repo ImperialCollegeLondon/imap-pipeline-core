@@ -815,3 +815,172 @@ class TestMetaKernelMinimumGapTime:
         # Note: The exact behavior depends on implementation
         # This test verifies the min_gap_time parameter is used
         assert mk.minimum_gap_time_to_ignore == min_gap
+
+
+class TestCalculateGapsRegressionPreGapFile:
+    """Regression tests for _calculate_gaps with files entirely before the requested range.
+
+    Bug: when a file's last interval ends before gap_start, the `or i == len - 1`
+    forced search_window_end = gap_end, producing an invalid sub-gap tuple where
+    start > end.  _check_file() then incorrectly added the file to the metakernel.
+    """
+
+    def test_calculate_gaps_file_entirely_before_range_returns_original_gap(self):
+        """File whose every interval ends before gap_start must not shrink the gap."""
+        # Simulate a DPS CK file covering Jan 9-15 (24 short daily intervals).
+        # Requested range is March 15-17 — entirely after all file coverage.
+        gap_start = 826_887_669
+        gap_end = 826_981_269
+
+        jan9_start = 820_627_269
+        jan15_end = 821_743_274
+
+        # Build 24 short intervals similar to real DPS kernel hourly segments
+        file_intervals = [
+            [jan9_start + i * 46_800, jan9_start + i * 46_800 + 43_200]
+            for i in range(24)
+        ]
+        # Last interval ends at jan15_end-ish, well before gap_start
+        file_intervals[-1][1] = jan15_end
+
+        gaps = MetaKernel._calculate_gaps(file_intervals, gap_start, gap_end)
+
+        # The file has no overlap with the requested range; the gap must be returned
+        # unchanged as a single tuple covering the full requested range.
+        assert gaps == [(gap_start, gap_end)]
+
+    def test_load_spice_excludes_file_entirely_before_requested_range(self):
+        """A kernel entirely before the requested range must not appear in the MK."""
+        gap_start = 826_887_669
+        gap_end = 826_981_269
+
+        mk = MetaKernel(gap_start, gap_end, ["pointing_attitude_category"])
+
+        jan9_start = 820_627_269
+        jan15_end = 821_743_274
+
+        file_intervals = [
+            [jan9_start + i * 46_800, jan9_start + i * 46_800 + 43_200]
+            for i in range(24)
+        ]
+        file_intervals[-1][1] = jan15_end
+
+        old_dps_file = [
+            {
+                "file_name": "spice/ck/imap_dps_2026_009_2026_015_001.ah.bc",
+                "file_intervals_j2000": file_intervals,
+                "timestamp": 1_758_000_000.0,
+            }
+        ]
+
+        mk.load_spice(
+            old_dps_file, "pointing_attitude_category", "file_intervals_j2000"
+        )
+
+        loaded = mk.return_spice_files_in_order(detailed=False)
+        assert loaded == [], (
+            "DPS kernel entirely before the requested time range was incorrectly "
+            "included in the metakernel"
+        )
+
+    def test_load_spice_includes_file_overlapping_requested_range(self):
+        """A kernel that overlaps the requested range must be included."""
+        gap_start = 826_887_669
+        gap_end = 826_981_269
+
+        mk = MetaKernel(gap_start, gap_end, ["pointing_attitude_category"])
+
+        # File covers the day before up to the end of the requested range
+        file_intervals = [[826_800_000, 826_981_269]]
+
+        current_dps_file = [
+            {
+                "file_name": "spice/ck/imap_dps_2026_095_2026_097_001.ah.bc",
+                "file_intervals_j2000": file_intervals,
+                "timestamp": 1_760_000_000.0,
+            }
+        ]
+
+        mk.load_spice(
+            current_dps_file, "pointing_attitude_category", "file_intervals_j2000"
+        )
+
+        loaded = mk.return_spice_files_in_order(detailed=False)
+        assert len(loaded) == 1
+        assert "imap_dps_2026_095_2026_097_001.ah.bc" in loaded[0]
+
+
+class TestMetakernelBuilderLatestFilesRegression:
+    """Regression tests for the files vs latest_files bug in _metakernel_builder.
+
+    Bug: the per-type loop used `files` (all raw DB entries) instead of
+    `latest_files` (version-deduplicated, time-filtered).  This meant superseded
+    old-version files were still passed to MetaKernel.load_spice(), compounding the
+    _calculate_gaps bug and causing out-of-range files to be included in the MK.
+    """
+
+    @patch("imap_mag.cli.fetch.spice.TimeConversion.datetime_to_j2000")
+    @patch("imap_mag.cli.fetch.spice.spiceypy.furnsh")
+    def test_old_version_file_not_included_when_newer_version_exists(
+        self,
+        mock_furnsh,
+        mock_datetime_to_j2000,
+    ):
+        """Superseded (older-version) files must not be passed to MetaKernel."""
+        # J2000 values: March 15 2026 = ~826887669, March 17 2026 = ~827060469
+        march15_j2000 = 826_887_669
+        march17_j2000 = 827_060_469
+        mock_datetime_to_j2000.side_effect = lambda dt: (
+            march15_j2000 if dt and dt.month == 3 and dt.day == 15 else march17_j2000
+        )
+
+        start_time = datetime(2026, 3, 15)
+        end_time = datetime(2026, 3, 17)
+
+        # Old version: DPS kernel covering Jan 9-15 (entirely before our range).
+        # If `files` is used instead of `latest_files`, this gets passed to
+        # MetaKernel and the _calculate_gaps bug includes it incorrectly.
+        old_version_file = File(
+            path="spice/ck/imap_dps_2026_009_2026_015_001.ah.bc",
+            file_meta={
+                "file_root": "imap_dps_.ah.bc",
+                "kernel_type": "pointing_attitude",
+                "version": "1",
+                "file_intervals_j2000": [
+                    [820_627_269 + i * 46_800, 820_627_269 + i * 46_800 + 43_200]
+                    for i in range(24)
+                ],
+                "timestamp": 1_758_000_000.0,
+                "min_date_datetime": "2026-01-09, 00:00:00",
+                "max_date_datetime": "2026-01-15, 23:59:59",
+            },
+            last_modified_date=datetime(2026, 1, 16, tzinfo=UTC),
+        )
+        # New version: DPS kernel covering March 15-17 (overlaps our range).
+        new_version_file = File(
+            path="spice/ck/imap_dps_2026_074_2026_076_001.ah.bc",
+            file_meta={
+                "file_root": "imap_dps_.ah.bc",
+                "kernel_type": "pointing_attitude",
+                "version": "2",
+                "file_intervals_j2000": [[march15_j2000, march17_j2000]],
+                "timestamp": 1_760_000_000.0,
+                "min_date_datetime": "2026-03-15, 00:00:00",
+                "max_date_datetime": "2026-03-17, 23:59:59",
+            },
+            last_modified_date=datetime(2026, 3, 18, tzinfo=UTC),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mk = _metakernel_builder(
+                start_time=start_time,
+                end_time=end_time,
+                files=[old_version_file, new_version_file],
+                spice_folder=Path(tmpdir),
+            )
+
+        loaded = mk.return_spice_files_in_order(detailed=False)
+        # Only the new-version file covering March 15-17 should be present
+        assert len(loaded) == 1
+        assert "imap_dps_2026_074_2026_076_001.ah.bc" in loaded[0]
+        assert "imap_dps_2026_009_2026_015_001.ah.bc" not in loaded[0]
