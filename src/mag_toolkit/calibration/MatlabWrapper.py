@@ -191,14 +191,15 @@ def call_matlab(
                 line = line[len("CRITICAL: ") :]
                 log_method = logger.critical
 
-            # Capture the MATLAB output after the first "ans =" line, which is the start of the function's return value.
-            # only log these lines to debug since they are logged anyway after the process finishes.
+            # Capture the MATLAB output after the "ans =" line, which is (probably) the start of the function's return value.
+            # If we see more than one `ans =` lines, we will discard all but the last one, which is probably the return value of the function.
             if started_answering and line:
                 answer_lines.append(line)
                 log_method = logger.debug
 
             if line.startswith("ans ="):
                 started_answering = True  # next and later lines are collected
+                answer_lines = []  # reset answer lines to only capture the last ans = output
                 log_method = logger.debug
 
             if line:
