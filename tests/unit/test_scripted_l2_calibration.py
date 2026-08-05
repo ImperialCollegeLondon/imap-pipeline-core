@@ -24,7 +24,7 @@ from mag_toolkit.calibration.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
 )
 from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
-    OUTPUT_SUBFOLDER_NAME,
+    OFFSETS_FOLDER_NAME,
     SPARSE_DATASTORE_FOLDER_NAME,
     USER_CONFIG_FILENAME,
     ScriptedL2CalibrationJob,
@@ -89,8 +89,32 @@ def _make_job(
 
 def _handler(version: int) -> CalibrationLayerPathHandler:
     return CalibrationLayerPathHandler(
-        descriptor="manual-norm", content_date=DATE, version=version, version_major=1
+        descriptor="manual-norm", content_date=DATE, version=version
     )
+
+
+def _write_work_offsets(
+    work_folder: Path, date: datetime = DATE, tag: str = "a"
+) -> None:
+    """Simulate MATLAB writing the four spin-plane offset CSVs into the work folder.
+
+    One CSV per sensor (mago/magi) per offset type (spin_plane/spin_optimised);
+    the per-type file name is derived from the path handler so it matches production.
+    Content is tagged so tests can force identical vs changed content.
+    """
+    from imap_mag.io.file import CalculatedOffsetsPathHandler
+    from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
+
+    for offset_type in OFFSET_TYPES:
+        folder = work_folder / OFFSETS_FOLDER_NAME / offset_type
+        folder.mkdir(parents=True, exist_ok=True)
+        for sensor in ("mago", "magi"):
+            handler = CalculatedOffsetsPathHandler(
+                sensor=sensor, offset_type=offset_type, content_date=date, version=0
+            )
+            (folder / handler.get_filename()).write_text(
+                f"offsets,{sensor},{offset_type},{tag}\n"
+            )
 
 
 def test_requires_matlab_repo_path(tmp_path):
@@ -153,36 +177,42 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
         captured["command"] = command
         captured["kwargs"] = kwargs
         assert (work_folder / USER_CONFIG_FILENAME).exists()
-        write_calibration_layer_pair(
-            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 7
-        )
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 7)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    returned = job.run_calibration(_handler(7), config)
+    metadata_path, data_path = job.run_calibration(_handler(7), config)
     job.cleanup()
 
-    output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
-    assert len(returned) == 2
     assert (
-        output_dir / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
-    ) in returned
+        metadata_path
+        == work_folder / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
+    )
     assert (
-        output_dir / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
-    ) in returned
-    for p in returned:
-        assert p.exists()
+        data_path
+        == work_folder / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
+    )
+    assert metadata_path.exists() and data_path.exists()
 
     command = captured["command"]
     assert command.startswith("calibration.scripts.calibrate_l2_offsets(")
     assert "datetime(2026,1,30), datetime(2026,1,30)" in command
     assert ", 8, " in command
     assert '"metakernel.txt"' in command
-    assert ", [1, 7], " in command
+    assert ", 7, " in command
     assert '"+calibration/calibration/input_v002.json"' in command
     assert 'modes=["norm"]' in command
     assert "publish_to_sharepoint=false" in command
     assert "display_plots=false" in command
+    # imap-pipeline-core dictates the versioned layer/data file names to MATLAB.
+    assert (
+        'output_layer_filename="imap_mag_manual-norm-layer_20260130_v001.0007.json"'
+        in command
+    )
+    assert (
+        'output_data_filename="imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"'
+        in command
+    )
 
     # Invoked from the repo root, no project path preamble.
     assert captured["kwargs"]["cwd"] == job.matlab_repo_path
@@ -215,9 +245,7 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["kwargs"] = kwargs
-        write_calibration_layer_pair(
-            job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-burst", DATE, 1
-        )
+        write_calibration_layer_pair(job.work_folder, "manual-burst", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(
@@ -246,22 +274,19 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
         captured_config.update(
             json.loads((work_folder / USER_CONFIG_FILENAME).read_text())
         )
-        write_calibration_layer_pair(
-            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
-        )
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
 
-    output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured_config["sharepoint_flight_data"] == str(datastore.resolve())
     assert captured_config["spice_metakernal_root"] == str(datastore.resolve())
-    assert captured_config["l2_pre_calibration_outputs"] == str(output_dir.resolve())
+    assert captured_config["l2_pre_calibration_outputs"] == str(work_folder.resolve())
     assert (
         captured_config["report_folder"]
         == str(datastore.resolve()) + "/calibration/reports"
     )
-    assert captured_config["output_layers_folder"] == str(output_dir.resolve())
+    assert captured_config["output_layers_folder"] == str(work_folder.resolve())
 
 
 def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
@@ -293,9 +318,7 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
         captured["kernel_copied"] = (
             sparse_root / "spice" / "lsk" / "naif0012.tls"
         ).exists()
-        write_calibration_layer_pair(
-            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
-        )
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
@@ -331,7 +354,7 @@ def test_missing_output_layer_raises(tmp_path, monkeypatch):
         matlab_repo=str(job.matlab_repo_path),
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
-    with pytest.raises(FileNotFoundError, match="produced no output files"):
+    with pytest.raises(FileNotFoundError, match="was not created"):
         job.run_calibration(_handler(1), config)
 
 
@@ -365,9 +388,7 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["command"] = command
-        write_calibration_layer_pair(
-            work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
-        )
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
     job.run_calibration(_handler(1), config)
@@ -425,7 +446,7 @@ def test_scripted_calibrate_cli_publishes_layer(
 
     def mock_call_matlab(command, **kwargs):
         assert "calibrate_l2_offsets" in command
-        write_calibration_layer_pair(work_folder / "outputs", "manual-norm", DATE, 1)
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
@@ -454,39 +475,52 @@ def test_scripted_calibrate_cli_publishes_layer(
     ).exists()
 
 
-def test_run_calibration_returns_all_produced_files(tmp_path, monkeypatch):
-    """All files MATLAB writes to the output subfolder are returned as a list."""
+def test_write_offsets_threads_flag_config_and_collects_files(tmp_path, monkeypatch):
+    """With write_offsets set: MATLAB gets the flag + folder, and CSVs are collected."""
     job = _make_job(tmp_path)
+    work_folder = job.work_folder
     config = ScriptedL2CalibrationConfig(
         calibration_matrix_version=8,
         input_json_file="input.json",
-        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
         matlab_repo=str(job.matlab_repo_path),
+        write_offsets=True,
     )
 
+    captured = {}
+
     def mock_call_matlab(command, **kwargs):
-        output_dir = job.work_folder / OUTPUT_SUBFOLDER_NAME
-        write_calibration_layer_pair(output_dir, "manual-norm", DATE, 1)
-        (output_dir / "extra_report.pdf").write_bytes(b"report data")
+        captured["command"] = command
+        captured["config"] = json.loads(
+            (work_folder / USER_CONFIG_FILENAME).read_text()
+        )
+        # The offsets sub-folders must already exist for MATLAB to write into.
+        assert (work_folder / OFFSETS_FOLDER_NAME / "spin_plane").is_dir()
+        assert (work_folder / OFFSETS_FOLDER_NAME / "spin_optimised").is_dir()
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        _write_work_offsets(work_folder)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+    job.run_calibration(_handler(1), config)
 
-    returned = job.run_calibration(_handler(1), config)
+    assert "write_offsets=true" in captured["command"]
+    assert captured["config"]["output_offsets_folder"] == str(
+        (work_folder / OFFSETS_FOLDER_NAME).resolve()
+    )
+    # Four offsets collected: mago/magi x spin_plane/spin_optimised.
+    assert len(job.written_offset_files) == 4
+    assert {f.parent.name for f in job.written_offset_files} == {
+        "spin_plane",
+        "spin_optimised",
+    }
 
-    assert len(returned) == 3
-    assert any(p.suffix == ".json" for p in returned)
-    assert any(p.suffix == ".csv" for p in returned)
-    assert any(p.name == "extra_report.pdf" for p in returned)
-    assert all(p.exists() for p in returned)
 
-
-def test_run_calibration_passes_override_version(tmp_path, monkeypatch):
-    """output_version in the MATLAB command reflects the handler's major and minor version."""
+def test_write_offsets_defaults_off(tmp_path, monkeypatch):
+    """Without the flag, MATLAB is told write_offsets=false and nothing is collected."""
     job = _make_job(tmp_path)
+    work_folder = job.work_folder
     config = ScriptedL2CalibrationConfig(
         calibration_matrix_version=8,
         input_json_file="input.json",
-        datastore_access_mode=DatastoreAccessMode.READ_DIRECTLY,
         matlab_repo=str(job.matlab_repo_path),
     )
 
@@ -494,19 +528,106 @@ def test_run_calibration_passes_override_version(tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["command"] = command
-        write_calibration_layer_pair(
-            job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 5
-        )
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+    job.run_calibration(_handler(1), config)
+
+    assert "write_offsets=false" in captured["command"]
+    assert job.written_offset_files == []
+
+
+def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> None:
+    """Run the calibrate() CLI for the scripted-L2 method with offsets enabled."""
+
+    def mock_call_matlab(command, **kwargs):
+        write_calibration_layer_pair(work_folder, "manual-norm", DATE, 1)
+        _write_work_offsets(work_folder, tag=tag)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    handler = CalibrationLayerPathHandler(
-        descriptor="manual-norm",
-        content_date=DATE,
-        version_major=2,
-        version=5,
-        _has_major_version=True,
+    repo = _make_matlab_repo(work_folder.parent / f"repo_{tag}")
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="+calibration/calibration/input_v002.json",
+        matlab_repo=str(repo),
+        write_offsets=True,
     )
-    job.run_calibration(handler, config)
+    calibrate(
+        start_date=DATE,
+        method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+        mode=ScienceMode.Normal,
+        configuration=config.model_dump_json(),
+        metakernel=Path("metakernel.txt"),
+    )
 
-    assert ", [2, 5]," in captured["command"]
+
+def _offsets_path(datastore: Path, offset_type: str, sensor: str, version: int) -> Path:
+    from imap_mag.io.file import CalculatedOffsetsPathHandler
+
+    handler = CalculatedOffsetsPathHandler(
+        sensor=sensor, offset_type=offset_type, content_date=DATE, version=version
+    )
+    return handler.get_full_path(datastore)
+
+
+def test_scripted_calibrate_cli_publishes_offsets(
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
+):
+    """First run publishes the four offset CSVs at v001 in the datastore."""
+    work_folder = dynamic_work_folder / "calibrate_20260130_norm"
+    _run_scripted_cli_with_offsets(monkeypatch, work_folder, tag="a")
+
+    for offset_type in ("spin_plane", "spin_optimised"):
+        for sensor in ("mago", "magi"):
+            assert _offsets_path(temp_datastore, offset_type, sensor, 1).exists()
+
+    # Pin the exact (unique) file names for each product.
+    base = temp_datastore / "calibration/calculated_offsets"
+    assert (
+        base / "spin_plane/imap_mag_mago-spin-plane-offsets_20260130_v001.csv"
+    ).exists()
+    assert (
+        base
+        / "spin_optimised/imap_mag_mago-spin-plane-optimised-offsets_20260130_v001.csv"
+    ).exists()
+
+
+def test_scripted_calibrate_cli_upversions_changed_offsets(
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
+):
+    """Different content vs the latest datastore offsets is written as a new version."""
+    # Seed the datastore with a v001 that differs from what the run will produce.
+    for offset_type in ("spin_plane", "spin_optimised"):
+        for sensor in ("mago", "magi"):
+            existing = _offsets_path(temp_datastore, offset_type, sensor, 1)
+            existing.parent.mkdir(parents=True, exist_ok=True)
+            existing.write_text("pre-existing different content\n")
+
+    work_folder = dynamic_work_folder / "calibrate_20260130_norm"
+    _run_scripted_cli_with_offsets(monkeypatch, work_folder, tag="new")
+
+    for offset_type in ("spin_plane", "spin_optimised"):
+        for sensor in ("mago", "magi"):
+            assert _offsets_path(temp_datastore, offset_type, sensor, 1).exists()
+            assert _offsets_path(temp_datastore, offset_type, sensor, 2).exists()
+
+
+def test_scripted_calibrate_cli_reuses_identical_offsets(
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
+):
+    """Identical content to the latest datastore offsets does not create a new version."""
+    # Seed the datastore v001 with byte-identical content to what the run produces.
+    for offset_type in ("spin_plane", "spin_optimised"):
+        for sensor in ("mago", "magi"):
+            existing = _offsets_path(temp_datastore, offset_type, sensor, 1)
+            existing.parent.mkdir(parents=True, exist_ok=True)
+            existing.write_text(f"offsets,{sensor},{offset_type},same\n")
+
+    work_folder = dynamic_work_folder / "calibrate_20260130_norm"
+    _run_scripted_cli_with_offsets(monkeypatch, work_folder, tag="same")
+
+    for offset_type in ("spin_plane", "spin_optimised"):
+        for sensor in ("mago", "magi"):
+            assert _offsets_path(temp_datastore, offset_type, sensor, 1).exists()
+            assert not _offsets_path(temp_datastore, offset_type, sensor, 2).exists()
