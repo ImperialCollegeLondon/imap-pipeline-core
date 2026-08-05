@@ -49,10 +49,13 @@ class FilePathHandlerSelector:
     ) -> IFilePathHandler | None:
         """Find a suitable path handler for the given filepath."""
 
-        # Providers to try in alphabetical order.
+        # Providers to try: more-specific handlers first so they are not shadowed
+        # by broader ones. CalculatedOffsetsPathHandler is more specific than
+        # AncillaryPathHandler (it also checks the parent folder name), so it
+        # must be tried first.
         provider_to_try: list[type[IFilePathHandler]] = [
-            AncillaryPathHandler,
             CalculatedOffsetsPathHandler,
+            AncillaryPathHandler,
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,
             HKDecodedPathHandler,

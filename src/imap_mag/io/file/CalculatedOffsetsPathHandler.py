@@ -98,12 +98,16 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
         (``spin-plane-optimised-offsets`` -> ``spin_optimised``, ``spin-plane-offsets``
         -> ``spin_plane``).
         """
+
+        if isinstance(filename, str):
+            filename = Path(filename)
+
         # Match the more specific (optimised) descriptor first.
         descriptors = "|".join(re.escape(d) for d in _OFFSET_TYPE_BY_DESCRIPTOR)
         match = re.match(
             rf"imap_mag_(?P<sensor>mago|magi)-(?P<descr>{descriptors})_"
             r"(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
-            Path(filename).name,
+            filename.name,
         )
         logger.debug(
             f"Filename {filename} matches {match.groupdict(0) if match else 'nothing'} with calculated-offsets regex."
@@ -112,38 +116,22 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
         if match is None:
             return None
 
+        offset_type_from_folder = filename.parent.name
+        if offset_type_from_folder not in OFFSET_TYPES:
+            return None
+
+        offset_type = _OFFSET_TYPE_BY_DESCRIPTOR[match["descr"]]
+
+        if offset_type != offset_type_from_folder:
+            raise ValueError(
+                f"Offsets file {filename} name implies offset type "
+                f"'{offset_type}' but it sits in the '{offset_type_from_folder}' folder."
+            )
+
         return cls(
             sensor=match["sensor"],
-            offset_type=_OFFSET_TYPE_BY_DESCRIPTOR[match["descr"]],
+            offset_type=offset_type,
             content_date=datetime.strptime(match["date"], "%Y%m%d"),
             version=int(match["version"]),
             extension=match["ext"],
         )
-
-    @classmethod
-    def from_work_folder_file(cls, file: Path) -> "CalculatedOffsetsPathHandler":
-        """Build a handler for a MATLAB-produced offsets CSV in the work folder.
-
-        The offset type is derived from the file name; the immediate parent folder
-        (``spin_plane`` / ``spin_optimised``) is cross-checked against it as a guard
-        against a misplaced file.
-        """
-        handler = cls.from_filename(file.name)
-        if handler is None:
-            raise ValueError(
-                f"'{file.name}' is not a recognised calculated-offsets file name."
-            )
-
-        folder = file.parent.name
-        if folder not in OFFSET_TYPES:
-            raise ValueError(
-                f"Offsets file {file} must live in one of {OFFSET_TYPES} folders, "
-                f"got '{folder}'."
-            )
-        if handler.offset_type != folder:
-            raise ValueError(
-                f"Offsets file {file} name implies offset type "
-                f"'{handler.offset_type}' but it sits in the '{folder}' folder."
-            )
-
-        return handler
