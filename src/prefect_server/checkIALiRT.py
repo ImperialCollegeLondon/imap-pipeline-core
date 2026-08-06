@@ -9,7 +9,8 @@ from prefect.runtime import flow_run
 from prefect.states import Completed, Failed
 from pydantic import Field
 
-from imap_mag.check import IALiRTAnomaly, SeverityLevel
+from imap_mag.check.IALiRTAnomaly import IALiRTAnomaly
+from imap_mag.check.SeverityLevel import SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt
 from imap_mag.db import Database
 from imap_mag.util import CONSTANTS, DatetimeProvider

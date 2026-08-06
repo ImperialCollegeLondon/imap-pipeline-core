@@ -17,7 +17,7 @@ from imap_mag.process import FileProcessor, dispatch
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag process solo_L2_mag-rtn-ll-internal_20240210_V00.cdf --save-mode localanddatabase
+# E.g., imap-mag process somefile.cdf --save-mode localanddatabase
 def process(
     files: Annotated[
         list[Path],

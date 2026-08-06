@@ -329,7 +329,7 @@ def calibrate_flow(
     ] = PrefectScriptedL2CalibrationConfig(
         calibration_matrix_version=9,
         input_json_file="+calibration/calibration/[CAL_FILE_HERE].json",
-        matlab_repo="src/matlab/calibration",
+        matlab_repo="/app/matlab/calibration",
     ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,

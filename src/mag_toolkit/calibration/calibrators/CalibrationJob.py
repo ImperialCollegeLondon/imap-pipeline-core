@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 import logging
 import shutil
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
-from imap_mag.io.file import CalibrationLayerPathHandler
-from imap_mag.io.FileFinder import FileFinder
 from mag_toolkit.calibration.CalibrationConfig import CalibrationConfig
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
+
+if TYPE_CHECKING:
+    from imap_mag.io.file import CalibrationLayerPathHandler
+    from imap_mag.io.FileFinder import FileFinder
 
 logger = logging.getLogger(__name__)
 
@@ -124,5 +130,5 @@ class CalibrationJob(ABC):
     @abstractmethod
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
-    ) -> tuple[Path, Path]:
+    ) -> Sequence[Path]:
         """Calibration that generates a calibration layer."""

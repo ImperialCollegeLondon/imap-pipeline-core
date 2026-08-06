@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.util import ScienceMode
+from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +18,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     Path handler for calibration layers.
     Designed to handle the special internal case of calibration layers that do not obey exact SPDF conventions.
     E.g filemnames like
-        imap_mag_noop-norm-layer_20251017_v001.csv
-        imap_mag_noop-norm-layer-data_20251017_v001.csv
+        imap_mag_noop-norm-layer_20251017_v001.0001.csv
+        imap_mag_noop-norm-layer-data_20251017_v001.0001.csv
     """
 
     mission: str = "imap"
@@ -26,8 +28,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
-    version_major: int = 1
-    has_major_version: bool = True
+    _has_major_version: bool = True
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
@@ -46,7 +47,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         super()._check_property_values("file name", ["descriptor", "content_date"])
         assert self.content_date
 
-        if self.has_major_version:
+        if self._has_major_version:
             return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version_major:03d}.{self.version:04d}.{self.extension}"
         else:
             return f"{self.mission}_{self.instrument}_{self.descriptor}-layer{self.extra_descriptor}_{self.content_date.strftime('%Y%m%d')}_v{self.version:03d}.{self.extension}"
@@ -66,6 +67,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             rf"{self.mission}_{self.instrument}_{full_descriptor}_{self.content_date.strftime('%Y%m%d')}_v(?:(?P<major>\d+)\.)?(?P<version>\d+)\.{self.extension}"
         )
 
+    def is_metadata_file(self) -> bool:
+        """Determine if this handler represents a metadata JSON file (true) or a data csv/cdf/arrow type file (false)."""
+        return self.extra_descriptor != "-data"
+
     def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":
         handler = CalibrationLayerPathHandler(
             descriptor=self.descriptor,
@@ -73,9 +78,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             content_date=self.content_date,
             version=self.version,
             extension="csv",
+            version_major=self.version_major,
+            _has_major_version=self._has_major_version,
+            versioning_mode=self.versioning_mode,
         )
-        handler.version_major = self.version_major
-        handler.has_major_version = self.has_major_version
         return handler
 
     @classmethod
@@ -100,7 +106,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             has_major_version = True
         else:
             # Legacy format: _vNNN.ext
-            version_major = 1
+            version_major = 0
             version = int(match["major_or_minor"])
             has_major_version = False
 
@@ -110,8 +116,36 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             content_date=datetime.strptime(match["date"], "%Y%m%d"),
             version=version,
             version_major=version_major,
-            has_major_version=has_major_version,
+            _has_major_version=has_major_version,
             extension=match["ext"],
+        )
+
+    @classmethod
+    def from_method(
+        cls,
+        method: CalibrationMethod,
+        content_date: datetime,
+        settings: "AppSettings",  # type: ignore  # noqa: F821
+        mode: ScienceMode | None = None,
+        version_number_override: tuple[int, int] | None = None,
+    ) -> "CalibrationLayerPathHandler":
+
+        major_version = (
+            version_number_override[0]
+            if version_number_override
+            else settings.version_major
+        )
+
+        return CalibrationLayerPathHandler(
+            descriptor=f"{method.short_name}-{mode.value}"
+            if mode is not None
+            else method.short_name,
+            content_date=content_date,
+            version_major=major_version,
+            version=version_number_override[1] if version_number_override else 1,
+            versioning_mode=VersionedPathHandler.VersionMode.USER_OVERRIDE
+            if version_number_override
+            else VersionedPathHandler.VersionMode.MAX_VERSION_PLUS_ONE,
         )
 
     def increase_sequence(self) -> None:

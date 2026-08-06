@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from imap_mag.cli.apply import apply
+from imap_mag.config import AppSettings
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration import CalibrationLayer, ScienceLayer
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
@@ -44,7 +45,9 @@ def _set_science_cdf_fill_value(path: Path, row_index: int):
 
 def _create_noop_layer(science_cdf_path: Path, output_folder: Path, name: str = "noop"):
     science_layer = ScienceLayer.from_file(science_cdf_path, load_contents=True)
-    zero_layer = CalibrationLayer.create_zero_offset_layer_from_science(science_layer)
+    zero_layer = CalibrationLayer.create_zero_offset_layer_from_science(
+        science_layer, AppSettings()
+    )
 
     layer_json = output_folder / f"imap_mag_{name}-norm-layer_20260116_v001.json"
     zero_layer.writeToFile(layer_json)

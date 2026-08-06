@@ -11,6 +11,33 @@ from tests.util.miscellaneous import (
 )
 
 
+def test_gradiometry_returns_list(
+    monkeypatch,
+    temp_datastore,
+    dynamic_work_folder,
+):
+    """gradiometry() returns a list of Path objects (not a single Path or tuple)."""
+
+    def mock_call_matlab(command):
+        write_calibration_layer_pair(
+            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
+            "gradiometer-norm",
+            datetime(2026, 9, 30),
+            1,
+        )
+
+    monkeypatch.setattr(
+        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
+        mock_call_matlab,
+    )
+
+    result = gradiometry(start_date=datetime(2026, 9, 30))
+
+    assert isinstance(result, list)
+    assert len(result) >= 1
+    assert all(isinstance(p, Path) for p in result)
+
+
 def _cal_work_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
     """The calibrate command's dynamic work folder (base/calibrate_{date}_{mode})."""
     return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}"
