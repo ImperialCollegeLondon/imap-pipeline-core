@@ -25,7 +25,8 @@ metakernel_file_types:
     - ephemeris_reconstructed
 
 sdc: &sdc_creds
-    url_base: "https://api.dev.imap-mission.com"
+    #url_base: "https://api.dev.imap-mission.com"
+    url_base: "https://api.imap-mission.com"
     auth_code:
 
 # Command specific configuration:
@@ -41,7 +42,8 @@ fetch_binary:
 
 fetch_ialirt:
     api:
-        url_base: "https://ialirt.dev.imap-mission.com"
+        #url_base: "https://ialirt.dev.imap-mission.com"
+        url_base: "https://ialirt.imap-mission.com"
         auth_code:
     work_sub_folder:
     publish_to_data_store: true

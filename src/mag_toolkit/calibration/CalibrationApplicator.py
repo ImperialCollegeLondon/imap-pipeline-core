@@ -11,6 +11,7 @@ import spiceypy
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
 from imap_processing.mag.l2.mag_l2_data import ValidFrames
+from xarray import Dataset
 
 from imap_mag.config import AppSettings
 from imap_mag.util import ScienceMode
@@ -114,6 +115,8 @@ class CalibrationApplicator:
             )
 
         science_handler = SciencePathHandler.from_filename(dataFile.name)
+        # resolve datafile to an absolute path to ensure it exists in the datastore
+        dataFile = dataFile.resolve()
         if not dataFile.exists() or not science_handler:
             raise ValueError(
                 f"Input science file does not exist or could not be parsed: {dataFile}"
@@ -134,6 +137,7 @@ class CalibrationApplicator:
             outputOffsetsFile,
             science=science,
         )
+        created_offsets_filepath = created_offsets_filepath.resolve()
 
         del science
 
@@ -188,6 +192,8 @@ class CalibrationApplicator:
         logger.info(f"furnishing spice metakernel at {resolved_mk_path}")
 
         original_cwd = Path.cwd()
+        science_data: Dataset | None = None
+        created_offsets_data: Dataset | None = None
         try:
             os.chdir(self.app_settings.data_store)
             spiceypy.kclear()

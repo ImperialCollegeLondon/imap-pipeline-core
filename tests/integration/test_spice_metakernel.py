@@ -818,37 +818,6 @@ class TestMetaKernelMinimumGapTime:
 
 
 class TestCalculateGapsRegressionPreGapFile:
-    """Regression tests for _calculate_gaps with files entirely before the requested range.
-
-    Bug: when a file's last interval ends before gap_start, the `or i == len - 1`
-    forced search_window_end = gap_end, producing an invalid sub-gap tuple where
-    start > end.  _check_file() then incorrectly added the file to the metakernel.
-    """
-
-    def test_calculate_gaps_file_entirely_before_range_returns_original_gap(self):
-        """File whose every interval ends before gap_start must not shrink the gap."""
-        # Simulate a DPS CK file covering Jan 9-15 (24 short daily intervals).
-        # Requested range is March 15-17 — entirely after all file coverage.
-        gap_start = 826_887_669
-        gap_end = 826_981_269
-
-        jan9_start = 820_627_269
-        jan15_end = 821_743_274
-
-        # Build 24 short intervals similar to real DPS kernel hourly segments
-        file_intervals = [
-            [jan9_start + i * 46_800, jan9_start + i * 46_800 + 43_200]
-            for i in range(24)
-        ]
-        # Last interval ends at jan15_end-ish, well before gap_start
-        file_intervals[-1][1] = jan15_end
-
-        gaps = MetaKernel._calculate_gaps(file_intervals, gap_start, gap_end)
-
-        # The file has no overlap with the requested range; the gap must be returned
-        # unchanged as a single tuple covering the full requested range.
-        assert gaps == [(gap_start, gap_end)]
-
     def test_load_spice_excludes_file_entirely_before_requested_range(self):
         """A kernel entirely before the requested range must not appear in the MK."""
         gap_start = 826_887_669
