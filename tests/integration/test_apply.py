@@ -447,3 +447,50 @@ def test_apply_output_l2_uses_major_version_format_when_version_major_is_1(
         f"Expected L2 file {output_l2_file.name!r} in _vMMM.mmmm format when "
         "version_major=1 is configured, but it was not found in the datastore."
     )
+
+
+def test_apply_data_store_is_cwd_when_spice_kernels_are_accessed(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """data_store must remain the CWD throughout the SPICE computation.
+
+    CalibrationApplicator furnishes SPICE kernels with relative paths such as
+    ``spice/spk/...`` after ``os.chdir(data_store)``.  SPICE stores these
+    relative paths and re-opens the files on demand (a "logical unit reconnect").
+    If the CWD is restored before ``mag_l2.mag_l2()`` completes, the reconnect
+    of large production SPK kernels fails with SpiceFILEOPENFAIL — the exact
+    error seen in production with files such as
+    ``spice/spk/imap_recon_20250925_20260720_v01.bsp``.
+
+    Regression test for the premature ``os.chdir(original_cwd)`` inside the
+    ``try`` block immediately after ``furnsh`` in
+    ``CalibrationApplicator._apply_day()``.
+    """
+    import imap_processing.mag.l2.mag_l2 as mag_l2_module
+
+    cwd_when_called: list[Path] = []
+    original_fn = mag_l2_module.mag_l2
+
+    def capture_cwd_and_run(*args, **kwargs):
+        cwd_when_called.append(Path.cwd())
+        return original_fn(*args, **kwargs)
+
+    with patch("imap_processing.mag.l2.mag_l2.mag_l2", side_effect=capture_cwd_and_run):
+        apply(
+            layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+            input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+            start_date=datetime(2026, 1, 16),
+        )
+
+    assert cwd_when_called, "mag_l2.mag_l2 was never called"
+    expected = temp_datastore.resolve()
+    actual = cwd_when_called[0].resolve()
+    assert actual == expected, (
+        f"CWD when mag_l2.mag_l2 ran was {actual!r} but expected the "
+        f"data_store path {expected!r}.  SPICE keeps relative kernel paths "
+        f"(e.g. spice/spk/imap_recon_*.bsp) and reconnects them against the "
+        f"active CWD; if CWD changes before the computation finishes the "
+        f"reconnect fails with SpiceFILEOPENFAIL on large production kernels."
+    )

@@ -192,7 +192,12 @@ class CalibrationApplicator:
             os.chdir(self.app_settings.data_store)
             spiceypy.kclear()
             spiceypy.furnsh(str(resolved_mk_path))
-            os.chdir(original_cwd)
+            # Do NOT restore CWD here.  The metakernel uses relative kernel paths
+            # (e.g. spice/spk/...) resolved against data_store.  SPICE's DAF
+            # handle manager closes and re-opens kernel files on demand using
+            # those stored relative paths.  If CWD changes before mag_l2 runs,
+            # large production SPK reconnects fail with SpiceFILEOPENFAIL.
+            # The finally block below performs the restore after computation ends.
             logger.info("Kernels furnished. Loading data ready for L2 file generation")
             science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
             created_offsets_data = cdf_to_xarray(
