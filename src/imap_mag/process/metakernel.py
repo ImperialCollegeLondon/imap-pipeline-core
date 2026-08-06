@@ -394,26 +394,23 @@ seconds since J2000.
             if file_interval_start <= gap_start and file_interval_end >= gap_end:
                 return []  # Return here, no gaps to needed to fill
 
-            # Calculate and append gaps to the list.
-            # Clamp both boundaries to (gap_start, gap_end) and skip the sub-gap
-            # if it collapses to zero or negative width.  Without the clamp, a file
-            # whose last interval ends before gap_start can produce an invalid tuple
-            # (gap_start, file_interval_start) where start > end, causing _check_file
-            # to incorrectly include the file in the metakernel.
+            # Calculate and append gaps to the list
             if file_interval_start > search_window_start:
                 # <----------- search window --------....
                 #       <----- file coverage --------....
-                start = max(search_window_start, gap_start)
-                end = file_interval_start
-                if start < end:
-                    sub_gaps.extend([(start, end)])  # Gaps before interval
+                if search_window_start < gap_start:
+                    start = gap_start
+                else:
+                    start = search_window_start
+                sub_gaps.extend([(start, file_interval_start)])  # Gaps before interval
             if file_interval_end < search_window_end:
                 # ....--- search window --------------->
                 # ....-- file coverage -------->
-                start = max(file_interval_end, gap_start)
-                end = min(search_window_end, gap_end)
-                if start < end:
-                    sub_gaps.extend([(start, end)])  # Gaps after interval
+                if search_window_end > gap_end:
+                    end = gap_end
+                else:
+                    end = search_window_end
+                sub_gaps.extend([(file_interval_end, end)])  # Gaps after interval
 
         return sub_gaps
 
