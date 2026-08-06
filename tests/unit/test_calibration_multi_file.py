@@ -15,6 +15,9 @@ from imap_mag.io.FilePathHandlerSelector import NoProviderFoundError
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod
 from mag_toolkit.calibration.CalibrationConfig import ScriptedL2CalibrationConfig
+from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
+    OUTPUT_SUBFOLDER_NAME,
+)
 from tests.util.miscellaneous import write_calibration_layer_pair
 
 MODULE_CALL_MATLAB = (
@@ -42,7 +45,7 @@ def test_saves_all_returned_files(
     work_folder = dynamic_work_folder / "calibrate_20260130_norm"
 
     def mock_call_matlab(command, **kwargs):
-        outputs = work_folder / "outputs"
+        outputs = work_folder / OUTPUT_SUBFOLDER_NAME
         write_calibration_layer_pair(outputs, "manual-norm", DATE, 1)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
@@ -109,7 +112,7 @@ def test_unhandled_file_raises(
     work_folder = dynamic_work_folder / "calibrate_20260130_norm"
 
     def mock_call_matlab(command, **kwargs):
-        outputs = work_folder / "outputs"
+        outputs = work_folder / OUTPUT_SUBFOLDER_NAME
         # Write only an unrecognised file type (no JSON/CSV pair)
         (outputs / "unknown_output.xyz").write_bytes(b"data")
 

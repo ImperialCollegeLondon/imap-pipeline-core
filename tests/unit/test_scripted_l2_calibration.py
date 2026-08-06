@@ -11,7 +11,8 @@ import pytest
 
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import AppSettings, GradiometryConfig
-from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file import CalculatedOffsetsPathHandler, CalibrationLayerPathHandler
+from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -23,6 +24,7 @@ from mag_toolkit.calibration import (
 from mag_toolkit.calibration.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
 )
+from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
     OUTPUT_SUBFOLDER_NAME,
     SPARSE_DATASTORE_FOLDER_NAME,
@@ -103,9 +105,6 @@ def _write_work_offsets(
     the per-type file name is derived from the path handler so it matches production.
     Content is tagged so tests can force identical vs changed content.
     """
-    from imap_mag.io.file import CalculatedOffsetsPathHandler
-    from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
-
     for offset_type in OFFSET_TYPES:
         folder = output_dir / offset_type
         folder.mkdir(parents=True, exist_ok=True)
@@ -425,8 +424,6 @@ def test_python_preserves_matlab_supplied_data_hash(tmp_path):
     in the pipeline (``save_calibration_layer``) must keep MATLAB's value rather than
     overwrite it from the CSV on disk.
     """
-    from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
-
     json_path, _ = write_calibration_layer_pair(tmp_path, "manual-norm", DATE, 1)
     matlab_hash = "deadbeefdeadbeefdeadbeefdeadbeef"
     layer = CalibrationLayer.from_file(json_path, load_contents=False)
@@ -477,10 +474,7 @@ def test_scripted_calibrate_cli_publishes_layer(
     ).exists()
 
 
-def test_write_offsets_threads_flag_config_and_collects_files(tmp_path, monkeypatch):
-    """MATLAB writes offsets into the output dir and they are returned alongside layer files."""
-    from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
-
+def test_run_calibration_collects_files_in_offset_directories(tmp_path, monkeypatch):
     job = _make_job(tmp_path)
     work_folder = job.work_folder
     config = ScriptedL2CalibrationConfig(
@@ -510,6 +504,15 @@ def test_write_offsets_threads_flag_config_and_collects_files(tmp_path, monkeypa
     assert {f.parent.name for f in items if f.parent.name in OFFSET_TYPES} == set(
         OFFSET_TYPES
     )
+    expected = {
+        "outputs/imap_mag_manual-norm-layer-data_20260130_v001.0001.csv",
+        "outputs/imap_mag_manual-norm-layer_20260130_v001.0001.json",
+        "outputs/spin_optimised/imap_mag_magi-spin-plane-optimised-offsets_20260130_v001.csv",
+        "outputs/spin_optimised/imap_mag_mago-spin-plane-optimised-offsets_20260130_v001.csv",
+        "outputs/spin_plane/imap_mag_magi-spin-plane-offsets_20260130_v001.csv",
+        "outputs/spin_plane/imap_mag_mago-spin-plane-offsets_20260130_v001.csv",
+    }
+    assert {str(f.relative_to(work_folder)) for f in items} == expected
 
 
 def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> None:
@@ -538,8 +541,6 @@ def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> 
 
 
 def _offsets_path(datastore: Path, offset_type: str, sensor: str, version: int) -> Path:
-    from imap_mag.io.file import CalculatedOffsetsPathHandler
-
     handler = CalculatedOffsetsPathHandler(
         sensor=sensor, offset_type=offset_type, content_date=DATE, version=version
     )
