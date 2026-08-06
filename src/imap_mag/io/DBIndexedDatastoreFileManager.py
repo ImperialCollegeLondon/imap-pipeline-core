@@ -171,11 +171,22 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         if existing_files:
             file_record = existing_files[0]
+            new_meta = path_handler.get_metadata() or {}
+            file_record.file_meta = {
+                **(file_record.file_meta or {}),
+                **new_meta,
+            }
             if file_record.deletion_date is not None:
                 logger.info(f"Restoring deleted database record for {relative_path}.")
                 file_record.deletion_date = None
                 self.__database.save(file_record)
                 return IndexResult.RESTORED
+            elif new_meta:
+                logger.info(
+                    f"Updating metadata for {relative_path} in database with new metadata: {new_meta}"
+                )
+                self.__database.save(file_record)
+                return IndexResult.SKIPPED
             else:
                 logger.debug(
                     f"File {relative_path} already indexed in database. Skipping."
