@@ -131,3 +131,29 @@ class TestScriptedL2CalibrationConfig:
         assert config.calibration_matrix_version == 9
         assert config.input_json_file == "+calibration/calibration/input_v009.json"
         assert config.matlab_repo == "/path/to/matlab/repo"
+
+    def test_create_offsets_defaults_to_none(self):
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=9,
+            input_json_file="input.json",
+            matlab_repo="/path/to/matlab/repo",
+        )
+        assert config.create_offsets is None
+
+    def test_create_offsets_can_be_set_true(self):
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=9,
+            input_json_file="input.json",
+            matlab_repo="/path/to/matlab/repo",
+            create_offsets=True,
+        )
+        assert config.create_offsets is True
+
+    def test_create_offsets_can_be_set_false(self):
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=9,
+            input_json_file="input.json",
+            matlab_repo="/path/to/matlab/repo",
+            create_offsets=False,
+        )
+        assert config.create_offsets is False

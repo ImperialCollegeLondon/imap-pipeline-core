@@ -143,6 +143,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path = self._write_user_config(matlab_datastore, output_dir)
         self._paths_needing_cleanup.append(user_config_path)
 
+        create_offsets = config.create_offsets
+        if create_offsets is None:
+            # automatic: produce offsets for normal mode, skip for burst
+            create_offsets = mode != ScienceMode.Burst
+
         command = self._build_matlab_command(
             date=date,
             calibration_matrix_version=config.calibration_matrix_version,
@@ -152,6 +157,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             user_config_path=user_config_path,
             matlab_mode=str(mode.value),
             produce_report=config.produce_report,
+            create_offsets=create_offsets,
         )
 
         call_matlab(
@@ -304,6 +310,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path: Path,
         matlab_mode: str,
         produce_report: bool,
+        create_offsets: bool,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -312,13 +319,17 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             calibration_matrix_version: Version of the calibration matrices to load.
             metakernel_filename: Bare filename of the SPICE metakernel MATLAB should
                 furnish (looked up under ``{datastore}/spice/mk/``).
-            output_data_version: Tuple of (major, minor) version numbers for MATLAB layer file naming.
+            output_data_version: Tuple of (major, minor) version numbers for MATLAB
+                layer file naming.
             input_json_file: Path (relative to the MATLAB repo) of the calibration
                 input configuration JSON.
             user_config_path: Path to the generated MATLAB user/env file-path config.
             matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
+            produce_report: Whether the MATLAB script should produce a calibration report.
+            create_offsets: Whether the MATLAB script should create offset files.
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
+        bool_str = {True: "true", False: "false"}
 
         return (
             "calibration.scripts.calibrate_l2_offsets("
@@ -329,5 +340,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f'"{input_json_file}", '
             f'"{user_config_path.resolve()!s}", '
             f'modes=["{matlab_mode}"], '
-            f"publish_to_sharepoint=false,display_plots=false,spice_transform_and_write=false,produce_report={'true' if produce_report else 'false'})"
+            f"publish_to_sharepoint=false,"
+            f"display_plots=false,"
+            f"spice_transform_and_write=false,"
+            f"produce_report={bool_str[produce_report]},"
+            f"create_offsets={bool_str[create_offsets]})"
         )

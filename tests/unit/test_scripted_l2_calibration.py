@@ -609,3 +609,74 @@ def test_scripted_calibrate_cli_reuses_identical_offsets(
         for sensor in ("mago", "magi"):
             assert _offsets_path(temp_datastore, offset_type, sensor, 1).exists()
             assert not _offsets_path(temp_datastore, offset_type, sensor, 2).exists()
+
+
+class TestCreateOffsets:
+    """create_offsets flag: automatic default and explicit override."""
+
+    def _run_and_capture_command(
+        self, tmp_path, monkeypatch, mode: ScienceMode, create_offsets=None
+    ) -> str:
+        """Run the scripted-L2 job for the given mode and return the captured MATLAB command."""
+        datastore = _make_app_settings(tmp_path)
+        repo = _make_matlab_repo(tmp_path)
+        app_settings = AppSettings(data_store=datastore, work_folder=tmp_path / "work")
+        params = CalibrationJobParameters(date=DATE, mode=mode, sensor=Sensor.MAGO)
+        job = ScriptedL2CalibrationJob(
+            params, app_settings, matlab_repo_path=repo, metakernel="metakernel.txt"
+        )
+        job.setup(datastore)
+
+        kwargs = {}
+        if create_offsets is not None:
+            kwargs["create_offsets"] = create_offsets
+
+        config = ScriptedL2CalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=str(job.matlab_repo_path),
+            **kwargs,
+        )
+
+        captured = {}
+
+        def mock_call_matlab(command, **kw):
+            captured["command"] = command
+            write_calibration_layer_pair(
+                job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
+            )
+
+        monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+        handler = CalibrationLayerPathHandler(
+            descriptor="manual-norm", content_date=DATE, version=1
+        )
+        job.run_calibration(handler, config)
+        return captured["command"]
+
+    def test_automatic_norm_mode_enables_create_offsets(self, tmp_path, monkeypatch):
+        """With create_offsets=None (automatic), normal mode passes create_offsets=true."""
+        command = self._run_and_capture_command(
+            tmp_path, monkeypatch, ScienceMode.Normal
+        )
+        assert "create_offsets=true" in command
+
+    def test_automatic_burst_mode_disables_create_offsets(self, tmp_path, monkeypatch):
+        """With create_offsets=None (automatic), burst mode passes create_offsets=false."""
+        command = self._run_and_capture_command(
+            tmp_path, monkeypatch, ScienceMode.Burst
+        )
+        assert "create_offsets=false" in command
+
+    def test_explicit_true_overrides_burst_default(self, tmp_path, monkeypatch):
+        """An explicit create_offsets=True forces create_offsets=true even for burst mode."""
+        command = self._run_and_capture_command(
+            tmp_path, monkeypatch, ScienceMode.Burst, create_offsets=True
+        )
+        assert "create_offsets=true" in command
+
+    def test_explicit_false_overrides_norm_default(self, tmp_path, monkeypatch):
+        """An explicit create_offsets=False forces create_offsets=false even for normal mode."""
+        command = self._run_and_capture_command(
+            tmp_path, monkeypatch, ScienceMode.Normal, create_offsets=False
+        )
+        assert "create_offsets=false" in command
