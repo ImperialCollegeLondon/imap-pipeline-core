@@ -12,6 +12,7 @@ from imap_mag.config import (
     CalibrationConfig,
     GradiometryConfig,
     SaveMode,
+    ScriptedL2CalibrationConfig,
 )
 from imap_mag.db.Database import Database
 from imap_mag.io import DatastoreFileManager, FileFinder, IDatastoreFileManager
@@ -104,20 +105,19 @@ def _save_calibration_outputs(
     # file type surfaces immediately rather than being silently dropped.
     for path in returned:
         handler: IFilePathHandler = FilePathHandlerSelector.find_by_path(path)
-        if version_number_override is not None and isinstance(
-            handler, VersionedPathHandler
-        ):
-            handler.versioning_mode = VersionedPathHandler.VersionMode.USER_OVERRIDE
-            if (handler.version_major, handler.version) != version_number_override:
-                raise ValueError(
-                    f"Version number override {version_number_override} does not match the version {handler.version_major, handler.version} for discovered output file {path}."
-                )
 
         if isinstance(handler, CalibrationLayerPathHandler):
             if not handler.is_metadata_file():
                 # Companion data file for a calibration layer; skip it for now and
                 # handle it when the JSON layer is processed.
                 continue
+
+            if version_number_override is not None:
+                handler.versioning_mode = VersionedPathHandler.VersionMode.USER_OVERRIDE
+                if (handler.version_major, handler.version) != version_number_override:
+                    raise ValueError(
+                        f"Version number override {version_number_override} does not match the version {handler.version_major, handler.version} for discovered output file {path}."
+                    )
 
             file_handlers.append((True, path, handler))
         else:
@@ -367,10 +367,15 @@ def _calibrate_for_date(
                 calibration_job_parameters, work_folder, datastore_finder
             )
         case CalibrationMethod.SCRIPTED_L2_CALIBRATION:
+            assert isinstance(calibration_configuration, ScriptedL2CalibrationConfig)
+            matlab_repo_path = Path(calibration_configuration.matlab_repo)
+            if not matlab_repo_path.exists():
+                raise ValueError(f"MATLAB repo path {matlab_repo_path} does not exist.")
+
             calibrator = ScriptedL2CalibrationJob(
                 calibration_job_parameters,
                 app_settings,
-                matlab_repo_path=calibration_configuration.matlab_repo,
+                matlab_repo_path=matlab_repo_path,
                 metakernel=metakernel,
             )
         case _:

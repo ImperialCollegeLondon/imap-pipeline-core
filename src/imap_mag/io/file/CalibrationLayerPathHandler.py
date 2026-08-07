@@ -29,6 +29,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
     _has_major_version: bool = True
+    original_filename_or_path: str | Path | None = (
+        None  # original construction filename
+    )
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
@@ -118,6 +121,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             version_major=version_major,
             _has_major_version=has_major_version,
             extension=match["ext"],
+            original_filename_or_path=filename,
         )
 
     @classmethod

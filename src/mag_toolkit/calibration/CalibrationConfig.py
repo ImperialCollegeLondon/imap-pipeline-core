@@ -68,7 +68,7 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
     produce_report: bool = False
     version_number_override: Annotated[
         ScienceFileVersionConfig | None, Field(default=None)
-    ]
+    ] = None
 
     @classmethod
     def get_method(cls) -> CalibrationMethod:

@@ -17,6 +17,8 @@ from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate
 from imap_mag.config import SaveMode
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.io.file import CalibrationLayerPathHandler
+from imap_mag.io.file.SPICEPathHandler import METAKERNEL_FILENAME_PREFIX
 from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
@@ -363,13 +365,15 @@ def calibrate_flow(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
 
-    if len(paths) == 0:
+    json_paths = [path for path in paths if path.suffix.lower() == ".json"]
+
+    if len(json_paths) == 0:
         raise RuntimeError(
             f"No calibration layers were generated for {start_date} to {end_date}."
         )
 
-    if len(paths) > 1:
-        logger.info(f"Calibration complete - {len(paths)} layers generated.")
+    if len(json_paths) > 1:
+        logger.info(f"Calibration complete - {len(json_paths)} layers generated.")
 
     return paths
 
@@ -421,6 +425,11 @@ def calibrate_and_apply_flow(
     split_by_day: SplitByDay = False,
     offset_file_output_type: FileType = FileType.CDF,
     L2_output_type: FileType = FileType.CDF,
+    rotation_calibration_file_name: str | None = None,
+    reference_frames: list[ReferenceFrame] | None = [
+        ReferenceFrame.GSE,
+        ReferenceFrame.SRF,
+    ],
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -438,14 +447,33 @@ def calibrate_and_apply_flow(
             },
         )
 
-    cal_layer_paths = _run_calibration(
+    output_files = _run_calibration(
         configuration, start_date, end_date, mode, sensor, save_mode, metakernel
     )
 
-    layer = CalibrationLayer.from_file(cal_layer_paths[0])
+    layer_path_handlers: list[CalibrationLayerPathHandler | None] = [
+        CalibrationLayerPathHandler.from_filename(path) for path in output_files
+    ]
+    layer_metadata_files: list[Path] = [
+        layer.original_filename_or_path
+        for layer in layer_path_handlers
+        if layer is not None and layer.is_metadata_file()
+    ]
+    if metakernel is None:
+        metakernel_paths = [
+            path
+            for path in output_files
+            if path.suffix.lower() == ".tm"
+            and path.name.startswith(METAKERNEL_FILENAME_PREFIX)
+        ]
+        if len(metakernel_paths) == 1:
+            # just one metakernel so we can reuse it for apply
+            metakernel = metakernel_paths[0]
+
+    layer = CalibrationLayer.from_file(layer_metadata_files[0], load_contents=False)
     science_input = layer.metadata.science[0]
     apply(
-        layers=[cal_layer_path.name for cal_layer_path in cal_layer_paths],
+        layers=[str(layer) for layer in layer_metadata_files],
         start_date=datetime.fromordinal(start_date.toordinal()).replace(tzinfo=None),
         end_date=datetime.fromordinal(end_date.toordinal()).replace(tzinfo=None)
         if end_date
@@ -455,6 +483,11 @@ def calibrate_and_apply_flow(
         l2_output_type=L2_output_type.value,
         save_mode=save_mode,
         mode=mode,
+        spice_metakernel=metakernel,
+        reference_frames=reference_frames or [],
+        rotation=Path(rotation_calibration_file_name)
+        if rotation_calibration_file_name
+        else None,
     )
     return None
 
@@ -467,8 +500,7 @@ def _run_calibration(
     sensor,
     save_mode,
     metakernel,
-    cleanup_temp_files_after_run: bool = True,
-):
+) -> list[Path]:
     version_number_override = None
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
@@ -497,7 +529,7 @@ def _run_calibration(
             else None
         )
 
-    cal_layer_paths: list[Path] = calibrate(
+    output_file_paths: list[Path] = calibrate(
         start_date=datetime.combine(start_date, datetime.min.time()).replace(
             tzinfo=None
         )
@@ -516,7 +548,7 @@ def _run_calibration(
         version_number_override=version_number_override,
     )
 
-    return cal_layer_paths
+    return output_file_paths
 
 
 @flow(

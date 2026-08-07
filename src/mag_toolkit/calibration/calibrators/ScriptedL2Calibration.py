@@ -115,11 +115,16 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         # Recreate it empty on each run to prevent stale outputs from a previous
         # cleanup_temp_files_after_run=False run leaking into the returned file list.
         output_dir = self.work_folder / OUTPUT_SUBFOLDER_NAME
-        if output_dir.exists():
+        if output_dir.exists() and not len(list(output_dir.iterdir())) == 0:
             import shutil as _shutil
 
+            logger.warning(
+                f"Output directory {output_dir} already exists and is not empty; "
+                "removing it to ensure a clean output folder for this run."
+            )
+
             _shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         metakernel_filename = self._resolve_metakernel(date)
 
@@ -166,6 +171,10 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             raise FileNotFoundError(
                 f"MATLAB calibration produced no output files in {output_dir}."
             )
+
+        produced.append(
+            Path(metakernel_filename)
+        )  # include the metakernel in the returned list so apply can reuse it
 
         return produced
 
@@ -246,6 +255,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 f"Generated metakernel '{filename}' was not published to {mk_path}."
             )
         logger.info(f"Generated and published metakernel {filename} to {mk_path}")
+        self.metakernel = filename
         return filename
 
     def _write_user_config(self, matlab_datastore: Path, output_dir: Path) -> Path:
