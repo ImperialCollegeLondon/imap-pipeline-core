@@ -444,6 +444,8 @@ def calibrate_and_apply_flow(
                 "L2_output_type": L2_output_type,
                 "save_mode": save_mode,
                 "metakernel": metakernel,
+                "rotation_calibration_file_name": rotation_calibration_file_name,
+                "reference_frames": reference_frames,
             },
         )
 
