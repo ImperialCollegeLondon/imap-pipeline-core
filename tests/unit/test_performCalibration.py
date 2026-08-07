@@ -215,23 +215,16 @@ class TestPerformCalibrationFlowNames:
             "prefect_server.performCalibration.AppSettings",
             return_value=mock_settings,
         ):
-            with pytest.raises(ValueError, match="matlab_repo is required"):
+            with pytest.raises(
+                ValueError,
+                match="Could not load a MATLAB repository block named 'not found' or resolve it as a local path",
+            ):
                 calibrate_and_apply_flow.fn(
                     start_date=datetime(2026, 1, 30),
                     configuration=PrefectScriptedL2CalibrationConfig(
                         calibration_matrix_version=8,
                         input_json_file="input.json",
-                        matlab_repo=None,
-                        datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
-                    ),
-                )
-            with pytest.raises(ValueError, match="matlab_repo is required"):
-                calibrate_and_apply_flow.fn(
-                    start_date=datetime(2026, 1, 30),
-                    configuration=PrefectScriptedL2CalibrationConfig(
-                        calibration_matrix_version=8,
-                        input_json_file="input.json",
-                        matlab_repo="",
+                        matlab_repo="not found",
                         datastore_access_mode=DatastoreAccessMode.LOCAL_WORK_FOLDER_COPY,
                     ),
                 )
@@ -617,9 +610,6 @@ class TestGithubRepoName:
 
 
 class TestResolveMatlabRepoPath:
-    def test_none_returns_none(self, tmp_path):
-        assert _resolve_matlab_repo_path(None, tmp_path) is None
-
     def test_local_filesystem_block(self, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -735,7 +725,7 @@ class TestLoadMatlabRepoBlock:
 
 
 class TestCalibrateFlowDateHandling:
-    def test_coerces_plain_date_objects_to_datetime(self):
+    def test_ensures_plain_date_objects_passed_as_dates(self):
         with patch(
             "prefect_server.performCalibration.calibrate",
             return_value=[Path("layer.json")],
@@ -791,7 +781,7 @@ class TestCalibrateFlowScripted:
             "prefect_server.performCalibration.AppSettings",
             return_value=mock_settings,
         ):
-            with pytest.raises(ValueError, match="matlab_repo is required"):
+            with pytest.raises(TypeError, match="Unsupported matlab_repo type"):
                 calibrate_flow.fn(
                     start_date=datetime(2026, 1, 30),
                     configuration=PrefectScriptedL2CalibrationConfig(

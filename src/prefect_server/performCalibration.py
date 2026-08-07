@@ -30,7 +30,9 @@ from mag_toolkit.calibration.CalibrationConfig import (
 from prefect_server.constants import PREFECT_CONSTANTS
 
 logger = logging.getLogger(__name__)
-
+DEFAULT_INPUT_JSON_FILE = "+calibration/calibration/template.json"
+DEFAULT_MATLAB_REPO_PATH = "/app/matlab/calibration"
+DEFAULT_CALIBRATION_MATRIX_VERSION = 9
 
 # Shared, self-documenting definition of the split_by_day flow parameter so the
 # title/description show up consistently in the Prefect UI for every flow that
@@ -56,7 +58,7 @@ class PrefectScriptedL2CalibrationConfig(ScriptedL2CalibrationConfig):
     matlab_repo: LocalFileSystem | GitHubRepository | str | None = None
 
 
-def _days_in_range(start_date: datetime, end_date: datetime | None) -> list[datetime]:
+def _days_in_range(start_date: date, end_date: date | None) -> list[date]:
     """Return each day (inclusive) in the ``[start_date, end_date]`` range.
 
     A single day is returned when ``end_date`` is ``None`` or equal to ``start_date``.
@@ -69,13 +71,13 @@ def _days_in_range(start_date: datetime, end_date: datetime | None) -> list[date
         One ``datetime`` per day, preserving the time-of-day of ``start_date``.
     """
     effective_end = end_date or start_date
-    num_days = (effective_end.date() - start_date.date()).days + 1
+    num_days = (effective_end - start_date).days + 1
     return [start_date + timedelta(days=i) for i in range(num_days)]
 
 
 def _submit_days_as_deployment_runs(
     deployment_name: str,
-    days: list[datetime],
+    days: list[date],
     base_parameters: dict,
 ) -> list[FlowRun]:
     """Resubmit one deployment flow run per day so a date range fans out across workers.
@@ -108,7 +110,7 @@ def _submit_days_as_deployment_runs(
             timeout=0,  # submit and return immediately; do not wait for the day to finish
         )
         logger.info(
-            f"Submitted {deployment_name} run for {day.date()} as flow run "
+            f"Submitted {deployment_name} run for {day} as flow run "
             f"'{flow_run_result.name}' ({flow_run_result.id})"
         )
         flow_runs.append(flow_run_result)
@@ -185,8 +187,8 @@ def _resolve_matlab_repo_path(
     a GitHubRepository block (pulled into a subfolder of the work folder named after
     the repo), or None. Raises if a provided repo cannot be found or pulled.
     """
-    if not matlab_repo:
-        return None
+    if not matlab_repo and Path(DEFAULT_MATLAB_REPO_PATH).exists():
+        return Path(DEFAULT_MATLAB_REPO_PATH)
 
     block: LocalFileSystem | GitHubRepository | None = None
     if isinstance(matlab_repo, str):
@@ -327,9 +329,9 @@ def calibrate_flow(
             }
         ),
     ] = PrefectScriptedL2CalibrationConfig(
-        calibration_matrix_version=9,
-        input_json_file="+calibration/calibration/[CAL_FILE_HERE].json",
-        matlab_repo="/app/matlab/calibration",
+        calibration_matrix_version=DEFAULT_CALIBRATION_MATRIX_VERSION,
+        input_json_file=DEFAULT_INPUT_JSON_FILE,
+        matlab_repo=DEFAULT_MATLAB_REPO_PATH,
     ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
@@ -337,11 +339,6 @@ def calibrate_flow(
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
 ) -> list[Path] | list[FlowRun]:
-
-    if isinstance(start_date, date) and not isinstance(start_date, datetime):
-        start_date = datetime.combine(start_date, datetime.min.time())
-    if isinstance(end_date, date) and not isinstance(end_date, datetime):
-        end_date = datetime.combine(end_date, datetime.min.time())
 
     if end_date and end_date < start_date:
         raise ValueError(
@@ -383,18 +380,47 @@ def calibrate_flow(
     flow_run_name=generate_calibrate_and_apply_flow_run_name,
 )
 def calibrate_and_apply_flow(
-    configuration: PrefectScriptedL2CalibrationConfig
-    | SetQualityAndNaNConfig
-    | GradiometryConfig,
-    start_date: datetime,
-    end_date: datetime | None = None,
+    start_date: Annotated[
+        date,
+        Field(
+            json_schema_extra={
+                "title": "Start date / single day",
+                "description": "Starting content date of file(s) to be calibrated. If end date is not specified, only this day will be calibrated.",
+                "position": 1,
+            }
+        ),
+    ],
+    end_date: Annotated[
+        date | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "Ending content date of file(s) to be calibrated. If not specified, only the start date will be calibrated.",
+                "position": 2,
+            }
+        ),
+    ] = None,
+    configuration: Annotated[
+        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig,
+        Field(
+            json_schema_extra={
+                "title": "Calibration Type Configuration",
+                "description": "Configuration to be used for the seslected calibration method.",
+                "position": 3,
+            }
+        ),
+    ] = PrefectScriptedL2CalibrationConfig(
+        calibration_matrix_version=DEFAULT_CALIBRATION_MATRIX_VERSION,
+        input_json_file=DEFAULT_INPUT_JSON_FILE,
+        matlab_repo=DEFAULT_MATLAB_REPO_PATH,
+    ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,
-    offset_file_output_type: FileType = FileType.CDF,
-    L2_output_type: FileType = FileType.CDF,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
+    offset_file_output_type: FileType = FileType.CDF,
+    L2_output_type: FileType = FileType.CDF,
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -420,8 +446,10 @@ def calibrate_and_apply_flow(
     science_input = layer.metadata.science[0]
     apply(
         layers=[cal_layer_path.name for cal_layer_path in cal_layer_paths],
-        start_date=start_date.replace(tzinfo=None),
-        end_date=end_date.replace(tzinfo=None) if end_date else None,
+        start_date=datetime.fromordinal(start_date.toordinal()).replace(tzinfo=None),
+        end_date=datetime.fromordinal(end_date.toordinal()).replace(tzinfo=None)
+        if end_date
+        else None,
         input=science_input,
         offset_file_output_type=offset_file_output_type.value,
         l2_output_type=L2_output_type.value,
@@ -433,14 +461,15 @@ def calibrate_and_apply_flow(
 
 def _run_calibration(
     configuration,
-    start_date,
-    end_date,
+    start_date: date,
+    end_date: date | None,
     mode,
     sensor,
     save_mode,
     metakernel,
     cleanup_temp_files_after_run: bool = True,
 ):
+    version_number_override = None
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
         # Pull/resolve the MATLAB code into the (stable) base work folder so it is
@@ -459,10 +488,24 @@ def _run_calibration(
         configuration = configuration.model_copy(
             update={"matlab_repo": str(matlab_repo_path)}
         )
+        version_number_override = (
+            (
+                configuration.version_number_override.major,
+                configuration.version_number_override.minor,
+            )
+            if configuration.version_number_override
+            else None
+        )
 
     cal_layer_paths: list[Path] = calibrate(
-        start_date=start_date.replace(tzinfo=None),
-        end_date=end_date.replace(tzinfo=None) if end_date else None,
+        start_date=datetime.combine(start_date, datetime.min.time()).replace(
+            tzinfo=None
+        )
+        if start_date
+        else None,
+        end_date=datetime.combine(end_date, datetime.min.time()).replace(tzinfo=None)
+        if end_date
+        else None,
         method=configuration.get_method(),
         mode=mode,
         sensor=sensor,
@@ -470,6 +513,7 @@ def _run_calibration(
         save_mode=save_mode,
         metakernel=metakernel,
         cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
+        version_number_override=version_number_override,
     )
 
     return cal_layer_paths
@@ -482,8 +526,26 @@ def _run_calibration(
 )
 def apply_flow(
     layers: list[str],
-    start_date: datetime,
-    end_date: datetime | None = None,
+    start_date: Annotated[
+        date,
+        Field(
+            json_schema_extra={
+                "title": "Start date / single day",
+                "description": "Starting content date of file(s) to be calibrated. If end date is not specified, only this day will be calibrated.",
+                "position": 1,
+            }
+        ),
+    ],
+    end_date: Annotated[
+        date | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "Ending content date of file(s) to be calibrated. If not specified, only the start date will be calibrated.",
+                "position": 2,
+            }
+        ),
+    ] = None,
     mode: ScienceMode | None = None,
     science_input_file: str | None = None,
     offset_file_output_type: FileType = FileType.CDF,
@@ -517,8 +579,10 @@ def apply_flow(
 
     apply(
         layers,
-        start_date=start_date.replace(tzinfo=None),
-        end_date=end_date.replace(tzinfo=None) if end_date else None,
+        start_date=datetime.fromordinal(start_date.toordinal()).replace(tzinfo=None),
+        end_date=datetime.fromordinal(end_date.toordinal()).replace(tzinfo=None)
+        if end_date
+        else None,
         mode=mode,
         input=science_input_file,
         offset_file_output_type=offset_file_output_type.value,
@@ -528,5 +592,7 @@ def apply_flow(
         if rotation_calibration_file_name
         else None,
         spice_metakernel=spice_metakernel,
-        reference_frames=reference_frames,
+        reference_frames=reference_frames or [],
     )
+
+    return None

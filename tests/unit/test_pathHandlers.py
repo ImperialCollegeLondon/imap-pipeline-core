@@ -454,6 +454,43 @@ def test_science_from_filename_parses_version_fields(
     assert handler.has_major_version == expected_has_major_version
 
 
+def test_science_from_filename_with_file_id_adds_default_extension():
+    handler = SciencePathHandler.from_filename(
+        "imap_mag_l1c_norm-mago_20260501_v002.0003"
+    )
+
+    assert handler is not None
+    assert handler.level == "l1c"
+    assert handler.descriptor == "norm-mago"
+    assert handler.content_date == datetime(2026, 5, 1)
+    assert handler.version == 3
+    assert handler.version_major == 2
+    assert handler.has_major_version is True
+    assert handler.get_filename() == "imap_mag_l1c_norm-mago_20260501_v002.0003.cdf"
+    assert handler.get_full_path() == Path(
+        "science/mag/l1c/2026/05/imap_mag_l1c_norm-mago_20260501_v002.0003.cdf"
+    )
+
+
+def test_science_from_filename_with_file_name_():
+    handler = SciencePathHandler.from_filename(
+        "imap_mag_l1c_norm-mago_20260501_v004.0003.cdf"
+    )
+
+    assert handler is not None
+    assert handler.level == "l1c"
+    assert handler.descriptor == "norm-mago"
+    assert handler.content_date == datetime(2026, 5, 1)
+    assert handler.version == 3
+    assert handler.version_major == 4
+    assert handler.has_major_version is True
+    assert handler.extension == "cdf"
+    assert handler.get_filename() == "imap_mag_l1c_norm-mago_20260501_v004.0003.cdf"
+    assert handler.get_full_path() == Path(
+        "science/mag/l1c/2026/05/imap_mag_l1c_norm-mago_20260501_v004.0003.cdf"
+    )
+
+
 def test_science_get_filename_with_major_version_produces_new_format():
     # Set up.
     handler = SciencePathHandler(

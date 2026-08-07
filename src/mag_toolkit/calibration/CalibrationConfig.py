@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
@@ -53,12 +54,21 @@ class SetQualityAndNaNConfig(CalibrationConfig):
         return CalibrationMethod.SET_QUALITY_AND_NAN
 
 
+@dataclass
+class ScienceFileVersionConfig:
+    major: int
+    minor: int
+
+
 class ScriptedL2CalibrationConfig(CalibrationConfig):
     calibration_matrix_version: int
     input_json_file: str
     datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY
     matlab_repo: str
     produce_report: bool = False
+    version_number_override: Annotated[
+        ScienceFileVersionConfig | None, Field(default=None)
+    ]
 
     @classmethod
     def get_method(cls) -> CalibrationMethod:

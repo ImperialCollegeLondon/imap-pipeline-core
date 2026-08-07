@@ -21,6 +21,8 @@ class SciencePathHandler(StandardSPDFPathHandler):
 
     version_is_locked: bool = False
 
+    extension: str | None = "cdf"
+
     def get_mode(self) -> ScienceMode:
         return (
             ScienceMode.Burst
@@ -67,7 +69,7 @@ class SciencePathHandler(StandardSPDFPathHandler):
         cls, filename: str | Path, version_is_locked: bool = False
     ) -> "SciencePathHandler | None":
         match = re.match(
-            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<major_or_minor>\d+)(?:\.(?P<minor>\d+))?\.(?P<ext>\w+)",
+            r"imap_mag_(?P<level>l\d[a-zA-Z]?(?:-pre)?)_(?P<descr>(?:norm|burst)[^_]*)_(?P<date>\d{8})_v(?P<major_or_minor>\d+)(?:\.(?P<minor>\d+))?\.?(?P<ext>[A-Za-z][A-Za-z0-9]*)?$",
             Path(filename).name,
         )
         logger.debug(
@@ -95,6 +97,6 @@ class SciencePathHandler(StandardSPDFPathHandler):
             version=version,
             version_major=version_major,
             has_major_version=has_major_version,
-            extension=match["ext"],
+            extension=match["ext"] if match["ext"] is not None else cls.extension,
             version_is_locked=version_is_locked,
         )
