@@ -14,6 +14,7 @@ from mag_toolkit.calibration.CalibrationConfig import (
 )
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
+    CreateOffsets,
     DatastoreAccessMode,
 )
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
@@ -143,8 +144,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path = self._write_user_config(matlab_datastore, output_dir)
         self._paths_needing_cleanup.append(user_config_path)
 
-        create_offsets = config.create_offsets
-        if create_offsets is None:
+        if config.create_offsets == CreateOffsets.YES:
+            create_offsets = True
+        elif config.create_offsets == CreateOffsets.NO:
+            create_offsets = False
+        else:
             # automatic: produce offsets for normal mode, skip for burst
             create_offsets = mode != ScienceMode.Burst
 

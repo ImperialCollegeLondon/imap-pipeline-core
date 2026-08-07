@@ -3,6 +3,7 @@
 import pytest
 import yaml
 
+from mag_toolkit.calibration import CreateOffsets
 from mag_toolkit.calibration.CalibrationConfig import (
     CalibrationConfig,
     GradiometryConfig,
@@ -132,28 +133,28 @@ class TestScriptedL2CalibrationConfig:
         assert config.input_json_file == "+calibration/calibration/input_v009.json"
         assert config.matlab_repo == "/path/to/matlab/repo"
 
-    def test_create_offsets_defaults_to_none(self):
+    def test_create_offsets_defaults_to_automatic(self):
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=9,
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
         )
-        assert config.create_offsets is None
+        assert config.create_offsets == CreateOffsets.AUTOMATIC
 
-    def test_create_offsets_can_be_set_true(self):
+    def test_create_offsets_can_be_set_yes(self):
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=9,
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
-            create_offsets=True,
+            create_offsets=CreateOffsets.YES,
         )
-        assert config.create_offsets is True
+        assert config.create_offsets == CreateOffsets.YES
 
-    def test_create_offsets_can_be_set_false(self):
+    def test_create_offsets_can_be_set_no(self):
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=9,
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
-            create_offsets=False,
+            create_offsets=CreateOffsets.NO,
         )
-        assert config.create_offsets is False
+        assert config.create_offsets == CreateOffsets.NO

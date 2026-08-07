@@ -110,6 +110,19 @@ class DatastoreAccessMode(StrEnum):
     LOCAL_WORK_FOLDER_COPY = "local_work_folder_copy"
 
 
+class CreateOffsets(StrEnum):
+    """Whether the MATLAB calibration script should produce offset files.
+
+    AUTOMATIC: produce offsets for normal mode, skip for burst mode (default).
+    YES: always produce offsets regardless of mode.
+    NO: never produce offsets regardless of mode.
+    """
+
+    AUTOMATIC = "automatic"
+    YES = "yes"
+    NO = "no"
+
+
 class Sensor(StrEnum):
     MAGO = "MAGo"
     MAGI = "MAGi"
