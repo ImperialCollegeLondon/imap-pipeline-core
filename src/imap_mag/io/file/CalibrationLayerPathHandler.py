@@ -1,6 +1,6 @@
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
@@ -29,9 +29,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
     _has_major_version: bool = True
-    original_filename_or_path: str | Path | None = (
-        None  # original construction filename
-    )
+    original_filename_or_path: str | Path | None = field(compare=False, default=None)
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 

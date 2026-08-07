@@ -24,6 +24,7 @@ class CalibrationJob(ABC):
     calibration_job_parameters: CalibrationJobParameters
     work_folder: Path
     _paths_needing_cleanup: list[Path]
+    _ancillary_files_created: list[Path]
 
     def __init__(
         self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
@@ -32,6 +33,7 @@ class CalibrationJob(ABC):
         self.calibration_job_parameters = calibration_job_parameters
         self.work_folder = work_folder
         self._paths_needing_cleanup = []
+        self._ancillary_files_created = []
 
     def set_file(self, file_key, filepath):
         """
@@ -107,6 +109,8 @@ class CalibrationJob(ABC):
                 )
                 self.set_file(key, work_file)
 
+        self._ancillary_files_created = []  # reset the list of ancillary files created for this run
+
     def cleanup(self):
 
         if not self.calibration_job_parameters.cleanup_temp_files_after_run:
@@ -132,3 +136,9 @@ class CalibrationJob(ABC):
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
     ) -> Sequence[Path]:
         """Calibration that generates a calibration layer."""
+
+    def get_ancillary_files(self) -> Sequence[Path]:
+        """
+        Get the list of ancillary files created during the calibration job.
+        :return: A list of paths to ancillary files."""
+        return self._ancillary_files_created

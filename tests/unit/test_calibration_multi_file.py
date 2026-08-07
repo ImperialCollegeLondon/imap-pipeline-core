@@ -64,6 +64,8 @@ def test_saves_all_returned_files(
         metakernel=Path("mk.txt"),
     )
 
+    results = [f for f in results if "mk.txt" not in str(f)]
+
     assert len(results) == 1
     layers_dir = temp_datastore / "calibration/layers/2026/01"
     assert (layers_dir / "imap_mag_manual-norm-layer_20260130_v001.0001.json").exists()

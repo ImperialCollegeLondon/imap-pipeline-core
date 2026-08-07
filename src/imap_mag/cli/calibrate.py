@@ -290,7 +290,12 @@ def calibrate(
             cleanup_temp_files_after_run=cleanup_temp_files_after_run,
             version_number_override=version_number_override,
         )
-        results.extend(result)
+        if result:
+            results.extend(result)
+        else:
+            logger.warning(
+                f"No calibration outputs produced for {current.strftime('%Y-%m-%d')}."
+            )
         current += timedelta(days=1)
     return results
 
@@ -413,8 +418,15 @@ def _calibrate_for_date(
     finally:
         calibrator.cleanup()
 
-    return _save_calibration_outputs(
-        returned=returned,
-        outputManager=outputManager,
-        version_number_override=version_number_override,
+    ancillaries = list(calibrator.get_ancillary_files())
+
+    returning = (
+        _save_calibration_outputs(
+            returned=returned,
+            outputManager=outputManager,
+            version_number_override=version_number_override,
+        )
+        + ancillaries
     )
+
+    return returning

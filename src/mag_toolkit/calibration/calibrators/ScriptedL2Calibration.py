@@ -172,9 +172,10 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 f"MATLAB calibration produced no output files in {output_dir}."
             )
 
-        produced.append(
-            Path(metakernel_filename)
-        )  # include the metakernel in the returned list so apply can reuse it
+        if self.metakernel:
+            self._ancillary_files_created.append(
+                Path(self.metakernel)
+            )  # include the metakernel in the returned list so apply can reuse it
 
         return produced
 
@@ -229,6 +230,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                     "It must exist in the spice/mk folder of the datastore."
                 )
             logger.info(f"Using provided metakernel {filename} from {mk_path}")
+            self.metakernel = mk_path
             return filename
 
         logger.info(
@@ -255,7 +257,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
                 f"Generated metakernel '{filename}' was not published to {mk_path}."
             )
         logger.info(f"Generated and published metakernel {filename} to {mk_path}")
-        self.metakernel = filename
+        self.metakernel = mk_path
         return filename
 
     def _write_user_config(self, matlab_datastore: Path, output_dir: Path) -> Path:

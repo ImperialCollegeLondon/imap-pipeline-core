@@ -463,6 +463,8 @@ def test_scripted_calibrate_cli_publishes_layer(
         metakernel=Path("metakernel.txt"),
     )
 
+    results = [f for f in results if not "metakernel.txt" not in str(f)]
+
     assert len(results) == 1
     assert (
         temp_datastore

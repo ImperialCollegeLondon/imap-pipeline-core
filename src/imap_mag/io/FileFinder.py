@@ -152,6 +152,15 @@ class FileFinder:
             if "*" in layer or "?" in layer:
                 fnmatch_pattern = layer
 
+            match_by_path = Path(layer)
+            if (
+                match_by_path.exists()
+                and match_by_path.is_file()
+                and CalibrationLayerPathHandler.from_filename(match_by_path) is not None
+            ):
+                resolved.append(layer)
+                continue
+
             all_matching_files_with_version: list[tuple[str, int]] = (
                 self.__find_files_and_sequences(
                     handler,

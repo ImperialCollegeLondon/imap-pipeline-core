@@ -146,7 +146,9 @@ class TestPerformCalibrationFlowNames:
         with (
             patch(
                 "prefect_server.performCalibration.calibrate",
-                return_value=[Path("layer.json")],
+                return_value=[
+                    Path("imap_mag_gradiometry-norm-layer_20260101_v002.0002.json")
+                ],
             ) as mock_calibrate,
             patch(
                 "prefect_server.performCalibration.CalibrationLayer.from_file",
@@ -189,7 +191,9 @@ class TestPerformCalibrationFlowNames:
             ),
             patch(
                 "prefect_server.performCalibration.calibrate",
-                return_value=[Path("layer.json")],
+                return_value=[
+                    Path("imap_mag_manual-norm-layer_20260130_v002.0002.json")
+                ],
             ) as mock_calibrate,
             patch(
                 "prefect_server.performCalibration.CalibrationLayer.from_file",
@@ -233,7 +237,7 @@ class TestPerformCalibrationFlowNames:
 class TestPerformCalibrationFlows:
     def test_calibrate_flow_calls_calibrate(self):
         with patch("prefect_server.performCalibration.calibrate") as mock_calibrate:
-            mock_calibrate.return_value = ["some_layer.json"]
+            mock_calibrate.return_value = [Path("some_layer.json")]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 configuration=GradiometryConfig(
