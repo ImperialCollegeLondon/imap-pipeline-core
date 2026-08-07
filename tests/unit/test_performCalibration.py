@@ -392,6 +392,39 @@ class TestSplitByDay:
             == f"{PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_AND_APPLY}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY}"
         )
 
+    def test_calibrate_and_apply_flow_split_by_day_forwards_rotation_and_frames(self):
+        """split_by_day must forward rotation_calibration_file_name and reference_frames to each child run."""
+        from imap_mag.util import ReferenceFrame
+
+        with (
+            patch(
+                "prefect_server.performCalibration.run_deployment",
+                return_value=self._make_flow_run("child"),
+            ) as mock_run_deployment,
+            patch("prefect_server.performCalibration.calibrate"),
+            patch("prefect_server.performCalibration.apply"),
+        ):
+            calibrate_and_apply_flow.fn(
+                configuration=GradiometryConfig(),
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 2),
+                split_by_day=True,
+                rotation_calibration_file_name="imap_mag_l2-calibration_20260101_v003.cdf",
+                reference_frames=[ReferenceFrame.SRF, ReferenceFrame.GSE],
+            )
+
+        assert mock_run_deployment.call_count == 2
+        for call in mock_run_deployment.call_args_list:
+            params = call.kwargs["parameters"]
+            assert (
+                params["rotation_calibration_file_name"]
+                == "imap_mag_l2-calibration_20260101_v003.cdf"
+            )
+            assert params["reference_frames"] == [
+                ReferenceFrame.SRF,
+                ReferenceFrame.GSE,
+            ]
+
     def test_apply_flow_splits_range(self):
         with (
             patch(
