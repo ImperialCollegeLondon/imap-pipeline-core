@@ -144,13 +144,13 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path = self._write_user_config(matlab_datastore, output_dir)
         self._paths_needing_cleanup.append(user_config_path)
 
-        if config.create_offsets == CreateOffsets.YES:
-            create_offsets = True
-        elif config.create_offsets == CreateOffsets.NO:
-            create_offsets = False
+        if config.write_offsets == CreateOffsets.ALWAYS:
+            write_offsets = True
+        elif config.write_offsets == CreateOffsets.NEVER:
+            write_offsets = False
         else:
             # automatic: produce offsets for normal mode, skip for burst
-            create_offsets = mode != ScienceMode.Burst
+            write_offsets = mode != ScienceMode.Burst
 
         command = self._build_matlab_command(
             date=date,
@@ -161,7 +161,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             user_config_path=user_config_path,
             matlab_mode=str(mode.value),
             produce_report=config.produce_report,
-            create_offsets=create_offsets,
+            write_offsets=write_offsets,
         )
 
         call_matlab(
@@ -314,7 +314,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         user_config_path: Path,
         matlab_mode: str,
         produce_report: bool,
-        create_offsets: bool,
+        write_offsets: bool,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -330,7 +330,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             user_config_path: Path to the generated MATLAB user/env file-path config.
             matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
             produce_report: Whether the MATLAB script should produce a calibration report.
-            create_offsets: Whether the MATLAB script should create offset files.
+            write_offsets: Whether the MATLAB script should create offset files.
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
         bool_str = {True: "true", False: "false"}
@@ -348,5 +348,5 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f"display_plots=false,"
             f"spice_transform_and_write=false,"
             f"produce_report={bool_str[produce_report]},"
-            f"create_offsets={bool_str[create_offsets]})"
+            f"write_offsets={bool_str[write_offsets]})"
         )

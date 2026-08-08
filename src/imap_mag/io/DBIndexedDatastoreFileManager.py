@@ -304,9 +304,27 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             f for f in database_files if f.hash == identity_hash
         ]
 
-        assert len(matching_files) <= 1, (
-            "There should be at most one file with the same content identity in the database."
-        )
+        if len(matching_files) > 1:
+            # Multiple records share the same content identity. This can happen when
+            # the database was populated before the single-identity invariant was
+            # enforced, or when two runs with different major versions happened to
+            # produce identical CSV data - perhaps the user used override to create a
+            # new version with an identical hash.  Pick the record whose version_major matches
+            # the handler's current major version, falling back to the highest version
+            # overall, so we reuse the most relevant existing file.
+            duplicate_count = len(matching_files)
+            current_major = getattr(path_handler, "version_major", 0)
+            same_major = [f for f in matching_files if f.version_major == current_major]
+            matching_files = sorted(
+                same_major if same_major else matching_files,
+                key=lambda f: (f.version_major, f.version),
+                reverse=True,
+            )
+            logger.warning(
+                f"Found {duplicate_count} records with identical content identity for "
+                f"{original_file.name}. "
+                f"Reusing version {matching_files[0].version_major}.{matching_files[0].version}."
+            )
 
         if matching_files:
             if path_handler.get_sequence() != matching_files[0].version:

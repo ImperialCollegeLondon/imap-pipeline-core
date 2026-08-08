@@ -139,22 +139,22 @@ class TestScriptedL2CalibrationConfig:
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
         )
-        assert config.create_offsets == CreateOffsets.AUTOMATIC
+        assert config.write_offsets == CreateOffsets.AUTOMATIC
 
     def test_create_offsets_can_be_set_yes(self):
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=9,
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
-            create_offsets=CreateOffsets.YES,
+            write_offsets=CreateOffsets.ALWAYS,
         )
-        assert config.create_offsets == CreateOffsets.YES
+        assert config.write_offsets == CreateOffsets.ALWAYS
 
     def test_create_offsets_can_be_set_no(self):
         config = ScriptedL2CalibrationConfig(
             calibration_matrix_version=9,
             input_json_file="input.json",
             matlab_repo="/path/to/matlab/repo",
-            create_offsets=CreateOffsets.NO,
+            write_offsets=CreateOffsets.NEVER,
         )
-        assert config.create_offsets == CreateOffsets.NO
+        assert config.write_offsets == CreateOffsets.NEVER
