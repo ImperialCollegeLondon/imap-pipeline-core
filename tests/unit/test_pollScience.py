@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from imap_mag.config import DatastoreSaveOption
 from imap_mag.util import ScienceLevel, ScienceMode
 from prefect_server.pollScience import (
     _download_batch_of_science,
@@ -362,3 +363,126 @@ class TestPollScienceFlowGenerateName:
             name = generate_flow_run_name()
 
         assert "01-06-2025" in name
+
+
+class TestDownloadBatchOverwriteOption:
+    """Tests that overwrite_option is forwarded from _download_batch_of_science to fetch_science."""
+
+    def _call_batch(self, overwrite_option: DatastoreSaveOption, mock_fetch):
+        return _download_batch_of_science(
+            level=MagicMock(),
+            reference_frames=None,
+            modes=None,
+            start_date=datetime(2025, 1, 1),
+            end_date=datetime(2025, 1, 31),
+            logger=MagicMock(),
+            database=MagicMock(),
+            use_database=False,
+            use_ingestion_date=False,
+            progress_item_id="TEST_L1C",
+            packet_start_timestamp=datetime(2025, 1, 1),
+            batch_size=10,
+            skip_items_count=0,
+            overwrite_option=overwrite_option,
+        )
+
+    def test_blocked_option_is_forwarded_to_fetch_science(self):
+        with patch(
+            "prefect_server.pollScience.fetch_science", return_value={}
+        ) as mock_fetch:
+            self._call_batch(DatastoreSaveOption.FILE_OVERWRITES_BLOCKED, mock_fetch)
+
+        _, kwargs = mock_fetch.call_args
+        assert kwargs["overwrite_option"] == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED
+
+    def test_allowed_option_is_forwarded_to_fetch_science(self):
+        with patch(
+            "prefect_server.pollScience.fetch_science", return_value={}
+        ) as mock_fetch:
+            self._call_batch(DatastoreSaveOption.FILE_OVERWRITES_ALLOWED, mock_fetch)
+
+        _, kwargs = mock_fetch.call_args
+        assert kwargs["overwrite_option"] == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED
+
+
+class TestPollScienceFlowOverwriteOption:
+    """Tests that poll_science_flow accepts overwrite_option and passes it through."""
+
+    def _make_mocks(self):
+        mock_logger = MagicMock()
+        mock_dm = MagicMock()
+        mock_dm.get_dates_for_download.return_value = (
+            datetime(2025, 1, 1),
+            datetime(2025, 1, 31),
+        )
+        return mock_logger, mock_dm
+
+    @pytest.mark.asyncio
+    async def test_blocked_is_the_default_overwrite_option(self):
+        mock_logger, mock_dm = self._make_mocks()
+
+        with (
+            patch(
+                "prefect_server.pollScience.try_get_prefect_logger",
+                return_value=mock_logger,
+            ),
+            patch("prefect_server.pollScience.Database", return_value=MagicMock()),
+            patch(
+                "prefect_server.pollScience.get_secret_or_env_var", return_value="code"
+            ),
+            patch(
+                "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
+            ),
+            patch(
+                "prefect_server.pollScience._download_batch_of_science",
+                return_value={},
+            ) as mock_batch,
+            patch("asyncio.sleep"),
+        ):
+            await poll_science_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 31),
+            )
+
+        _, kwargs = mock_batch.call_args
+        assert kwargs.get(
+            "overwrite_option", ...
+        ) == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED or (
+            # positional call: overwrite_option is the last positional arg (index 14)
+            mock_batch.call_args.args
+            and mock_batch.call_args.args[-1]
+            == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED
+        )
+
+    @pytest.mark.asyncio
+    async def test_allowed_overwrite_option_is_forwarded(self):
+        mock_logger, mock_dm = self._make_mocks()
+
+        with (
+            patch(
+                "prefect_server.pollScience.try_get_prefect_logger",
+                return_value=mock_logger,
+            ),
+            patch("prefect_server.pollScience.Database", return_value=MagicMock()),
+            patch(
+                "prefect_server.pollScience.get_secret_or_env_var", return_value="code"
+            ),
+            patch(
+                "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
+            ),
+            patch(
+                "prefect_server.pollScience._download_batch_of_science",
+                return_value={},
+            ) as mock_batch,
+            patch("asyncio.sleep"),
+        ):
+            await poll_science_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                end_date=datetime(2025, 1, 31),
+                overwrite_option=DatastoreSaveOption.FILE_OVERWRITES_ALLOWED,
+            )
+
+        # Verify the allowed option was forwarded positionally (last positional arg)
+        assert (
+            mock_batch.call_args.args[-1] == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED
+        )

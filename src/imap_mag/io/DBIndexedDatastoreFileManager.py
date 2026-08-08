@@ -328,11 +328,21 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         if matching_files:
             if path_handler.get_sequence() != matching_files[0].version:
-                logger.info(
-                    f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
-                )
-                path_handler.set_sequence(matching_files[0].version)
-            return True
+                if getattr(path_handler, "allow_overwrite", False):
+                    logger.warning(
+                        f"File with same content as {original_file.name} already exists in database "
+                        f"at version {matching_files[0].version}. Proceeding to save at downloaded "
+                        f"version {path_handler.get_sequence()} as overwrite is allowed."
+                    )
+                    # Fall through to the allow_overwrite block — save at the downloaded version.
+                else:
+                    logger.info(
+                        f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                    )
+                    path_handler.set_sequence(matching_files[0].version)
+                    return True
+            else:
+                return True
 
         # Version override: keep the forced version (no max+1 walk). Resolve any
         # unique-constraint conflict by soft-deleting active DB records that share
