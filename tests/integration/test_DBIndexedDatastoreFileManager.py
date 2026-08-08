@@ -733,6 +733,102 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
     reason="Test containers (used by test database) does not work on Windows",
 )
+def test_calibration_layer_db_dedup_multiple_records_same_hash_handled_gracefully(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    temp_folder_path,
+) -> None:
+    """Two DB records with identical hash (pre-deduplication state) must not assert-fail.
+
+    The invariant that at most one record per content identity exists can be
+    violated by records created before the deduplication logic was introduced.
+    The code must handle this gracefully, log a warning, and reuse the record
+    that best matches the handler's current version_major.
+    """
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+
+    date = datetime(2026, 1, 16)
+    csv_content = (
+        "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask"
+    )
+    work_json, work_csv = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, csv_content
+    )
+    csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
+
+    # Pre-populate DB with TWO records sharing the same hash — simulates the
+    # state left by code that ran before the deduplication invariant existed.
+    test_database.upsert_files(
+        [
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v001.0001.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v001.0001.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                version_major=1,
+                hash=csv_hash,
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 12, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
+                software_version=__version__,
+            ),
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v002.0001.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v002.0001.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                version_major=2,
+                hash=csv_hash,
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 13, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 13, 0, 0),
+                software_version=__version__,
+            ),
+        ]
+    )
+
+    dest_json = (
+        Path(tempfile.gettempdir())
+        / "imap_mag_quality-norm-layer_20260116_v002.0001.json"
+    )
+
+    path_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1, version_major=2
+    )
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(
+            dest_json,
+            json.dumps(
+                {
+                    "metadata": {
+                        "data_filename": "imap_mag_quality-norm-layer-data_20260116_v002.0001.csv"
+                    }
+                }
+            ),
+        ),
+        path_handler,
+    )
+
+    # Must not raise AssertionError
+    (_, _) = database_manager.add_file(work_json, path_handler)
+
+    # Should reuse v002.0001 (matching version_major=2), no new record
+    assert path_handler.version == 1
+    assert path_handler.version_major == 2
+    db_files = test_database.get_files()
+    assert len(db_files) == 2  # the two pre-existing records, no new one added
+    assert "records with identical content identity" in capture_cli_logs.text
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
 def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     mock_datastore_manager: mock.Mock,
     test_database,  # noqa: F811
