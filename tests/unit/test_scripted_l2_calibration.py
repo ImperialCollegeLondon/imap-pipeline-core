@@ -613,14 +613,14 @@ def test_scripted_calibrate_cli_reuses_identical_offsets(
 
 
 class TestCreateOffsets:
-    """create_offsets flag: automatic default and explicit override."""
+    """write_offsets flag: automatic default and explicit override."""
 
     def _run_and_capture_command(
         self,
         tmp_path,
         monkeypatch,
         mode: ScienceMode,
-        create_offsets: CreateOffsets = CreateOffsets.AUTOMATIC,
+        write_offsets: CreateOffsets = CreateOffsets.AUTOMATIC,
     ) -> str:
         """Run the scripted-L2 job for the given mode and return the captured MATLAB command."""
         datastore = _make_app_settings(tmp_path)
@@ -636,7 +636,7 @@ class TestCreateOffsets:
             calibration_matrix_version=8,
             input_json_file="input.json",
             matlab_repo=str(job.matlab_repo_path),
-            write_offsets=create_offsets,
+            write_offsets=write_offsets,
         )
 
         captured = {}
@@ -654,30 +654,30 @@ class TestCreateOffsets:
         job.run_calibration(handler, config)
         return captured["command"]
 
-    def test_automatic_norm_mode_enables_create_offsets(self, tmp_path, monkeypatch):
-        """Automatic mode passes create_offsets=true for normal mode."""
+    def test_automatic_norm_mode_enables_write_offsets(self, tmp_path, monkeypatch):
+        """Automatic mode passes write_offsets=true for normal mode."""
         command = self._run_and_capture_command(
             tmp_path, monkeypatch, ScienceMode.Normal, CreateOffsets.AUTOMATIC
         )
-        assert "create_offsets=true" in command
+        assert "write_offsets=true" in command
 
-    def test_automatic_burst_mode_disables_create_offsets(self, tmp_path, monkeypatch):
-        """Automatic mode passes create_offsets=false for burst mode."""
+    def test_automatic_burst_mode_disables_write_offsets(self, tmp_path, monkeypatch):
+        """Automatic mode passes write_offsets=false for burst mode."""
         command = self._run_and_capture_command(
             tmp_path, monkeypatch, ScienceMode.Burst, CreateOffsets.AUTOMATIC
         )
-        assert "create_offsets=false" in command
+        assert "write_offsets=false" in command
 
     def test_yes_overrides_burst_default(self, tmp_path, monkeypatch):
-        """CreateOffsets.YES forces create_offsets=true even for burst mode."""
+        """CreateOffsets.YES forces write_offsets=true even for burst mode."""
         command = self._run_and_capture_command(
             tmp_path, monkeypatch, ScienceMode.Burst, CreateOffsets.ALWAYS
         )
-        assert "create_offsets=true" in command
+        assert "write_offsets=true" in command
 
     def test_no_overrides_norm_default(self, tmp_path, monkeypatch):
-        """CreateOffsets.NO forces create_offsets=false even for normal mode."""
+        """CreateOffsets.NO forces write_offsets=false even for normal mode."""
         command = self._run_and_capture_command(
             tmp_path, monkeypatch, ScienceMode.Normal, CreateOffsets.NEVER
         )
-        assert "create_offsets=false" in command
+        assert "write_offsets=false" in command
