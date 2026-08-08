@@ -126,7 +126,8 @@ def fetch_science(
         if overwrite_option == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED:
             for path_handler in downloaded_science.values():
                 path_handler.allow_overwrite = True
-                path_handler.version_is_locked = False
+                # version_is_locked deliberately kept True — SDC science file versions must
+                # never be reassigned, only the file bytes are overwritten in place.
 
         datastore_manager = DatastoreFileManager.CreateByMode(
             app_settings,
