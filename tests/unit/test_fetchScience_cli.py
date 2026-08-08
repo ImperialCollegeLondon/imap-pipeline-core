@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from imap_db.model import File
 from imap_mag.cli.fetch.science import fetch_science
 from imap_mag.config import AppSettings, DatastoreSaveOption, FetchMode
 from imap_mag.io import DatastoreFileManager, DBIndexedDatastoreFileManager
@@ -250,12 +251,17 @@ class TestFetchScienceOverwriteOption:
         # The path must contain the expected folder structure so the DB filter passes.
         content_hash = hashlib.md5(new_content).hexdigest()
         folder_structure = handler.get_folder_structure()
-        db_record_at_wrong_version = MagicMock(
-            hash=content_hash,
+        db_record_at_wrong_version = File(
+            name="imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
+            path=f"{folder_structure}/imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
+            descriptor="norm-magi",
             version=99,
             version_major=self._VERSION_MAJOR,
-            path=f"{folder_structure}/imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
+            hash=content_hash,
+            size=len(new_content),
+            content_date=self._DATE,
             deletion_date=None,
+            software_version="0.0.0",
         )
 
         mock_fetch = MagicMock()
