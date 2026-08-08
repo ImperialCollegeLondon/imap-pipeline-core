@@ -229,14 +229,14 @@ class TestFetchScienceOverwriteOption:
         assert result[output_file].version_is_locked is True
         db_manager._DBIndexedDatastoreFileManager__database.upsert_file.assert_called_once()
 
-    def test_allowed_with_db_rejects_version_reassignment_even_for_same_hash(
+    def test_allowed_with_db_hash_match_at_different_version_saves_at_downloaded_version(
         self, dynamic_work_folder, clean_datastore
     ):
-        """FILE_OVERWRITES_ALLOWED + version_is_locked blocks silent version reassignment.
+        """FILE_OVERWRITES_ALLOWED saves at the SDC-assigned version even when the DB
+        holds the same content at a different version.
 
-        If the DB already holds the same content (same hash) at a *different* version,
-        the handler's version_is_locked=True must prevent set_sequence() from silently
-        adopting that version — the SDC-assigned version is authoritative.
+        The same-content-different-version DB record is a pre-existing anomaly that
+        should generate a warning but must not redirect the save to a different version.
         """
         self._create_existing_file_in_datastore(
             clean_datastore, content="original content"
@@ -247,11 +247,10 @@ class TestFetchScienceOverwriteOption:
         )
         handler = self._make_downloaded_handler()
 
-        # DB has the same hash as the new file but at a DIFFERENT version (99 vs 0).
-        # The path must contain the expected folder structure so the DB filter passes.
+        # DB already holds the same content hash but at version 99, not the downloaded version 0.
         content_hash = hashlib.md5(new_content).hexdigest()
         folder_structure = handler.get_folder_structure()
-        db_record_at_wrong_version = File(
+        db_record_at_different_version = File(
             name="imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
             path=f"{folder_structure}/imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
             descriptor="norm-magi",
@@ -268,7 +267,7 @@ class TestFetchScienceOverwriteOption:
         mock_fetch.download_science.return_value = {downloaded_file: handler}
 
         mock_db = MagicMock()
-        mock_db.get_files.return_value = [db_record_at_wrong_version]
+        mock_db.get_files.return_value = [db_record_at_different_version]
         real_dsm = DatastoreFileManager(AppSettings())  # type: ignore
         db_manager = DBIndexedDatastoreFileManager(
             real_dsm,
@@ -284,11 +283,18 @@ class TestFetchScienceOverwriteOption:
                 "imap_mag.cli.fetch.science.DatastoreFileManager.CreateByMode",
                 return_value=db_manager,
             ),
-            pytest.raises(ValueError, match="cannot be changed"),
         ):
-            fetch_science(
+            result = fetch_science(
                 start_date=self._DATE,
                 end_date=self._DATE,
                 fetch_mode=FetchMode.DownloadAndUpdateProgress,
                 overwrite_option=DatastoreSaveOption.FILE_OVERWRITES_ALLOWED,
             )
+
+        assert len(result) == 1
+        output_file = next(iter(result.keys()))
+        assert output_file.read_text() == "updated content"
+        # Version stays at the SDC-assigned value, not the DB record's version 99.
+        assert result[output_file].version == self._VERSION
+        assert result[output_file].version_is_locked is True
+        mock_db.upsert_file.assert_called_once()
