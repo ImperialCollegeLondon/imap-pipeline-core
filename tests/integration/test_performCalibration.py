@@ -3,7 +3,10 @@ from unittest.mock import patch
 
 from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
+from mag_toolkit.calibration.CalibrationConfig import (
+    GradiometryConfig,
+    ScienceFileVersionConfig,
+)
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -87,7 +90,7 @@ def test_apply_flow_l2_version_override(
         start_date=datetime(2026, 1, 16),
         mode=ScienceMode.Normal,
         save_mode=SaveMode.LocalOnly,
-        l2_version_override=(3, 9),
+        l2_version_override=ScienceFileVersionConfig(major=3, minor=9),
     )
 
     l2_dir = temp_datastore / "science/mag/l2-pre/2026/01"
@@ -125,7 +128,7 @@ def test_calibrate_and_apply_flow_with_version_overrides(
             mode=ScienceMode.Normal,
             save_mode=SaveMode.LocalOnly,
             offset_version_override=4,
-            l2_version_override=(2, 8),
+            l2_version_override=ScienceFileVersionConfig(major=2, minor=8),
         )
 
     offsets_dir = temp_datastore / "science-ancillary/l2-offsets/2026/01"

@@ -26,6 +26,7 @@ from mag_toolkit.calibration import (
 )
 from mag_toolkit.calibration.CalibrationConfig import (
     GradiometryConfig,
+    ScienceFileVersionConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
 )
@@ -440,12 +441,13 @@ def calibrate_and_apply_flow(
         ),
     ] = None,
     l2_version_override: Annotated[
-        tuple[int, int] | None,
+        ScienceFileVersionConfig | None,
         Field(
+            default=None,
             json_schema_extra={
                 "title": "L2 science file version override",
                 "description": "Force a specific (major, minor) version for output L2-pre science CDF files instead of auto-incrementing. Existing files at that version are overwritten.",
-            }
+            },
         ),
     ] = None,
 ) -> list[FlowRun] | None:
@@ -511,7 +513,9 @@ def calibrate_and_apply_flow(
         if rotation_calibration_file_name
         else None,
         offset_version_override=offset_version_override,
-        l2_version_override=l2_version_override,
+        l2_version_override=(l2_version_override.major, l2_version_override.minor)
+        if l2_version_override is not None
+        else None,
     )
     return None
 
@@ -624,12 +628,13 @@ def apply_flow(
         ),
     ] = None,
     l2_version_override: Annotated[
-        tuple[int, int] | None,
+        ScienceFileVersionConfig | None,
         Field(
+            default=None,
             json_schema_extra={
                 "title": "L2 science file version override",
                 "description": "Force a specific (major, minor) version for output L2-pre science CDF files instead of auto-incrementing. Existing files at that version are overwritten.",
-            }
+            },
         ),
     ] = None,
 ) -> list[FlowRun] | None:
@@ -670,7 +675,9 @@ def apply_flow(
         spice_metakernel=spice_metakernel,
         reference_frames=reference_frames or [],
         offset_version_override=offset_version_override,
-        l2_version_override=l2_version_override,
+        l2_version_override=(l2_version_override.major, l2_version_override.minor)
+        if l2_version_override is not None
+        else None,
     )
 
     return None
