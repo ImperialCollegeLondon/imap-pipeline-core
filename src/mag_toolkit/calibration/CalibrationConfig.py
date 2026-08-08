@@ -67,7 +67,7 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
     datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY
     matlab_repo: str
     produce_report: bool = False
-    create_offsets: CreateOffsets = CreateOffsets.AUTOMATIC
+    write_offsets: CreateOffsets = CreateOffsets.AUTOMATIC
     version_number_override: Annotated[
         ScienceFileVersionConfig | None, Field(default=None)
     ] = None

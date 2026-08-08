@@ -636,7 +636,7 @@ class TestCreateOffsets:
             calibration_matrix_version=8,
             input_json_file="input.json",
             matlab_repo=str(job.matlab_repo_path),
-            create_offsets=create_offsets,
+            write_offsets=create_offsets,
         )
 
         captured = {}
@@ -671,13 +671,13 @@ class TestCreateOffsets:
     def test_yes_overrides_burst_default(self, tmp_path, monkeypatch):
         """CreateOffsets.YES forces create_offsets=true even for burst mode."""
         command = self._run_and_capture_command(
-            tmp_path, monkeypatch, ScienceMode.Burst, CreateOffsets.YES
+            tmp_path, monkeypatch, ScienceMode.Burst, CreateOffsets.ALWAYS
         )
         assert "create_offsets=true" in command
 
     def test_no_overrides_norm_default(self, tmp_path, monkeypatch):
         """CreateOffsets.NO forces create_offsets=false even for normal mode."""
         command = self._run_and_capture_command(
-            tmp_path, monkeypatch, ScienceMode.Normal, CreateOffsets.NO
+            tmp_path, monkeypatch, ScienceMode.Normal, CreateOffsets.NEVER
         )
         assert "create_offsets=false" in command

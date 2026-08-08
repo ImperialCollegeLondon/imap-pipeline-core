@@ -119,8 +119,8 @@ class CreateOffsets(StrEnum):
     """
 
     AUTOMATIC = "automatic"
-    YES = "yes"
-    NO = "no"
+    ALWAYS = "yes"
+    NEVER = "no"
 
 
 class Sensor(StrEnum):
