@@ -1,5 +1,6 @@
 """Tests for fetch science CLI command."""
 
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -152,6 +153,9 @@ class TestFetchScienceOverwriteOption:
         output_file = next(iter(result.keys()))
         assert output_file.read_text() == "updated content"
         assert result[output_file].version == self._VERSION
+        # version_is_locked must remain True even in ALLOWED mode — the version
+        # number is authoritative from SDC and must never change.
+        assert result[output_file].version_is_locked is True
 
     # ── Database-used (DownloadAndUpdateProgress) tests ─────────────────────
 
@@ -220,4 +224,65 @@ class TestFetchScienceOverwriteOption:
         output_file = next(iter(result.keys()))
         assert output_file.read_text() == "updated content"
         assert result[output_file].version == self._VERSION
+        # version_is_locked must remain True even in ALLOWED mode.
+        assert result[output_file].version_is_locked is True
         db_manager._DBIndexedDatastoreFileManager__database.upsert_file.assert_called_once()
+
+    def test_allowed_with_db_rejects_version_reassignment_even_for_same_hash(
+        self, dynamic_work_folder, clean_datastore
+    ):
+        """FILE_OVERWRITES_ALLOWED + version_is_locked blocks silent version reassignment.
+
+        If the DB already holds the same content (same hash) at a *different* version,
+        the handler's version_is_locked=True must prevent set_sequence() from silently
+        adopting that version — the SDC-assigned version is authoritative.
+        """
+        self._create_existing_file_in_datastore(
+            clean_datastore, content="original content"
+        )
+        new_content = b"updated content"
+        downloaded_file = self._make_downloaded_file(
+            dynamic_work_folder, content=new_content.decode()
+        )
+        handler = self._make_downloaded_handler()
+
+        # DB has the same hash as the new file but at a DIFFERENT version (99 vs 0).
+        # The path must contain the expected folder structure so the DB filter passes.
+        content_hash = hashlib.md5(new_content).hexdigest()
+        folder_structure = handler.get_folder_structure()
+        db_record_at_wrong_version = MagicMock(
+            hash=content_hash,
+            version=99,
+            version_major=self._VERSION_MAJOR,
+            path=f"{folder_structure}/imap_mag_l1c_norm-magi_20250502_v001.0099.cdf",
+            deletion_date=None,
+        )
+
+        mock_fetch = MagicMock()
+        mock_fetch.download_science.return_value = {downloaded_file: handler}
+
+        mock_db = MagicMock()
+        mock_db.get_files.return_value = [db_record_at_wrong_version]
+        real_dsm = DatastoreFileManager(AppSettings())  # type: ignore
+        db_manager = DBIndexedDatastoreFileManager(
+            real_dsm,
+            database=mock_db,
+            settings=AppSettings(),  # type: ignore
+        )
+
+        with (
+            patch("imap_mag.cli.fetch.science.SDCDataAccess"),
+            patch("imap_mag.cli.fetch.science.FetchScience", return_value=mock_fetch),
+            patch("imap_mag.cli.fetch.science.initialiseLoggingForCommand"),
+            patch(
+                "imap_mag.cli.fetch.science.DatastoreFileManager.CreateByMode",
+                return_value=db_manager,
+            ),
+            pytest.raises(ValueError, match="cannot be changed"),
+        ):
+            fetch_science(
+                start_date=self._DATE,
+                end_date=self._DATE,
+                fetch_mode=FetchMode.DownloadAndUpdateProgress,
+                overwrite_option=DatastoreSaveOption.FILE_OVERWRITES_ALLOWED,
+            )
