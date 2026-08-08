@@ -270,6 +270,7 @@ class TestFromFilenameAdvanced:
 
 class TestParseMetakernelKernels:
     def test_strips_symbol_prefix(self, tmp_path):
+        """Legacy $KERNELS/ format: strip the $SYMBOL/ prefix."""
         mk = tmp_path / "mk.txt"
         mk.write_text(
             "KERNELS_TO_LOAD = ( '$KERNELS/lsk/naif0012.tls',\n"
@@ -277,6 +278,21 @@ class TestParseMetakernelKernels:
         )
         kernels = SPICEPathHandler.parse_metakernel_kernels(mk)
         assert kernels == ["lsk/naif0012.tls", "spk/de440.bsp"]
+
+    def test_strips_leading_spice_segment_from_plain_paths(self, tmp_path):
+        """Production format: plain paths relative to the datastore root lose the leading spice/ segment."""
+        mk = tmp_path / "mk.txt"
+        mk.write_text(
+            "KERNELS_TO_LOAD = (\n"
+            "  'spice/ck/imap_dps_2026_001_2026_010_001.ah.bc'\n"
+            "  'spice/lsk/naif0012.tls'\n"
+            ")\n"
+        )
+        kernels = SPICEPathHandler.parse_metakernel_kernels(mk)
+        assert kernels == [
+            "ck/imap_dps_2026_001_2026_010_001.ah.bc",
+            "lsk/naif0012.tls",
+        ]
 
     def test_no_kernels_to_load_block_returns_empty(self, tmp_path):
         mk = tmp_path / "mk.txt"

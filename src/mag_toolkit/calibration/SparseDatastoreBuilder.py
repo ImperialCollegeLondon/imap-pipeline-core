@@ -165,13 +165,13 @@ class SparseDatastoreBuilder:
         files = 0
         total_bytes = 0
         for kernel_relative in SPICEPathHandler.parse_metakernel_kernels(source_mk):
-            # kernel_relative is a path relative to the datastore root
-            # (e.g. "spice/ck/imap_dps_..."), so we join it directly onto the
-            # datastore root — not onto datastore/"spice" — to avoid a double
-            # "spice/spice/..." segment.
-            source_kernel = self.source_datastore / kernel_relative
+            # parse_metakernel_kernels always returns paths relative to the
+            # datastore's "spice" folder, so prepend it here.
+            source_kernel = self.source_datastore / "spice" / kernel_relative
             if source_kernel.exists():
-                size = self._copy_file(source_kernel, target_root / kernel_relative)
+                size = self._copy_file(
+                    source_kernel, target_root / "spice" / kernel_relative
+                )
                 if size:
                     files += 1
                     total_bytes += size
