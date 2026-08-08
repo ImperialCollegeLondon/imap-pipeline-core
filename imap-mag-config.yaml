@@ -120,8 +120,8 @@ calibrate:
             - pattern: 'calibration/calculated_offsets/leinweber/*'
             - pattern: 'calibration/calculated_offsets/spin_axis/*'
             - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-optimised-offsets_%Y%m%d_v{sequence}.csv*'
-              days_before: 1
-              days_after: 1
+              days_before: 2
+              days_after: 2
               get_previous_if_empty: true
               highest_sequence_only: true
             - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
