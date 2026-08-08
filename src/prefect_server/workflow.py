@@ -387,8 +387,8 @@ async def adeploy_flows(local_debug: bool = False):
     )
 
     matlab_shared_job_variables = shared_job_variables.copy()
-    matlab_shared_job_variables["mem_limit"] = "4g"
-    matlab_shared_job_variables["memswap_limit"] = "4g"
+    matlab_shared_job_variables["mem_limit"] = "12g"
+    matlab_shared_job_variables["memswap_limit"] = "16g"
 
     calibration_deployable = calibrate_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE,
@@ -410,7 +410,7 @@ async def adeploy_flows(local_debug: bool = False):
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY,
-        job_variables=apply_shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
