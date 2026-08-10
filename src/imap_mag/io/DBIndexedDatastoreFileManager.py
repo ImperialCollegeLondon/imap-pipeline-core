@@ -328,7 +328,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         if matching_files:
             if path_handler.get_sequence() != matching_files[0].version:
-                if getattr(path_handler, "allow_overwrite", False):
+                if path_handler.allow_overwrite:
                     logger.warning(
                         f"File with same content as {original_file.name} already exists in database "
                         f"at version {matching_files[0].version}. Proceeding to save at downloaded "
@@ -348,7 +348,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # unique-constraint conflict by soft-deleting active DB records that share
         # the same minor version but a different path — those represent the file
         # being overwritten at the operator-supplied version.
-        if getattr(path_handler, "allow_overwrite", False):
+        if path_handler.allow_overwrite:
             forced_minor = path_handler.get_sequence()
             new_destination = path_handler.get_full_path(self.__settings.data_store)
             conflicting = [

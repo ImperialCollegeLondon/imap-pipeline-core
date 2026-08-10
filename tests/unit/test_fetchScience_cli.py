@@ -88,14 +88,14 @@ class TestFetchScienceOverwriteOption:
 
     def _db_backed_manager(
         self, settings: AppSettings
-    ) -> DBIndexedDatastoreFileManager:
-        """Return a DBIndexedDatastoreFileManager using a mock database."""
+    ) -> tuple[DBIndexedDatastoreFileManager, MagicMock]:
+        """Return a DBIndexedDatastoreFileManager and its mock database."""
         mock_db = MagicMock()
         mock_db.get_files.return_value = []
         real_dsm = DatastoreFileManager(settings)
         return DBIndexedDatastoreFileManager(
             real_dsm, database=mock_db, settings=settings
-        )
+        ), mock_db
 
     # ── No-database (DownloadOnly) tests ────────────────────────────────────
 
@@ -177,7 +177,7 @@ class TestFetchScienceOverwriteOption:
             patch("imap_mag.cli.fetch.science.initialiseLoggingForCommand"),
             patch(
                 "imap_mag.cli.fetch.science.DatastoreFileManager.CreateByMode",
-                return_value=self._db_backed_manager(AppSettings()),  # type: ignore
+                return_value=self._db_backed_manager(AppSettings())[0],  # type: ignore
             ),
             pytest.raises(ValueError, match="cannot be changed"),
         ):
@@ -203,7 +203,7 @@ class TestFetchScienceOverwriteOption:
         mock_fetch = MagicMock()
         mock_fetch.download_science.return_value = {downloaded_file: handler}
 
-        db_manager = self._db_backed_manager(AppSettings())  # type: ignore
+        db_manager, mock_db = self._db_backed_manager(AppSettings())  # type: ignore
 
         with (
             patch("imap_mag.cli.fetch.science.SDCDataAccess"),
@@ -227,7 +227,7 @@ class TestFetchScienceOverwriteOption:
         assert result[output_file].version == self._VERSION
         # version_is_locked must remain True even in ALLOWED mode.
         assert result[output_file].version_is_locked is True
-        db_manager._DBIndexedDatastoreFileManager__database.upsert_file.assert_called_once()
+        mock_db.upsert_file.assert_called_once()
 
     def test_allowed_with_db_hash_match_at_different_version_saves_at_downloaded_version(
         self, dynamic_work_folder, clean_datastore

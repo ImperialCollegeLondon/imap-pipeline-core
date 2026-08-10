@@ -445,14 +445,7 @@ class TestPollScienceFlowOverwriteOption:
             )
 
         _, kwargs = mock_batch.call_args
-        assert kwargs.get(
-            "overwrite_option", ...
-        ) == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED or (
-            # positional call: overwrite_option is the last positional arg (index 14)
-            mock_batch.call_args.args
-            and mock_batch.call_args.args[-1]
-            == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED
-        )
+        assert kwargs["overwrite_option"] == DatastoreSaveOption.FILE_OVERWRITES_BLOCKED
 
     @pytest.mark.asyncio
     async def test_allowed_overwrite_option_is_forwarded(self):
@@ -482,7 +475,5 @@ class TestPollScienceFlowOverwriteOption:
                 overwrite_option=DatastoreSaveOption.FILE_OVERWRITES_ALLOWED,
             )
 
-        # Verify the allowed option was forwarded positionally (last positional arg)
-        assert (
-            mock_batch.call_args.args[-1] == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED
-        )
+        _, kwargs = mock_batch.call_args
+        assert kwargs["overwrite_option"] == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED

@@ -129,7 +129,7 @@ class DatastoreFileManager(IDatastoreFileManager):
             assert isinstance(path_handler, SequenceablePathHandler)
 
         # Version override: skip up-versioning and overwrite the exact version in place.
-        if getattr(path_handler, "allow_overwrite", False):
+        if path_handler.allow_overwrite:
             if not destination_file.exists():
                 return False
             orig_identity = path_handler.get_content_identity(original_file)
