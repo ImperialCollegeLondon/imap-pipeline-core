@@ -26,6 +26,7 @@ from mag_toolkit.calibration import (
 )
 from mag_toolkit.calibration.CalibrationConfig import (
     GradiometryConfig,
+    ScienceFileVersionConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
 )
@@ -430,6 +431,25 @@ def calibrate_and_apply_flow(
         ReferenceFrame.GSE,
         ReferenceFrame.SRF,
     ],
+    offset_version_override: Annotated[
+        int | None,
+        Field(
+            json_schema_extra={
+                "title": "Offset file version override",
+                "description": "Force a specific version number (1-999) for the output offset file instead of auto-incrementing. Existing file at that version is overwritten.",
+            }
+        ),
+    ] = None,
+    l2_version_override: Annotated[
+        ScienceFileVersionConfig | None,
+        Field(
+            default=None,
+            json_schema_extra={
+                "title": "L2 science file version override",
+                "description": "Force a specific (major, minor) version for output L2-pre science CDF files instead of auto-incrementing. Existing files at that version are overwritten.",
+            },
+        ),
+    ] = None,
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -446,6 +466,8 @@ def calibrate_and_apply_flow(
                 "metakernel": metakernel,
                 "rotation_calibration_file_name": rotation_calibration_file_name,
                 "reference_frames": reference_frames,
+                "offset_version_override": offset_version_override,
+                "l2_version_override": l2_version_override,
             },
         )
 
@@ -490,6 +512,10 @@ def calibrate_and_apply_flow(
         rotation=Path(rotation_calibration_file_name)
         if rotation_calibration_file_name
         else None,
+        offset_version_override=offset_version_override,
+        l2_version_override=(l2_version_override.major, l2_version_override.minor)
+        if l2_version_override is not None
+        else None,
     )
     return None
 
@@ -503,7 +529,7 @@ def _run_calibration(
     save_mode,
     metakernel,
 ) -> list[Path]:
-    version_number_override = None
+    layer_file_version_number_override = None
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
         # Pull/resolve the MATLAB code into the (stable) base work folder so it is
@@ -522,12 +548,12 @@ def _run_calibration(
         configuration = configuration.model_copy(
             update={"matlab_repo": str(matlab_repo_path)}
         )
-        version_number_override = (
+        layer_file_version_number_override = (
             (
-                configuration.version_number_override.major,
-                configuration.version_number_override.minor,
+                configuration.layer_version_number_override.major,
+                configuration.layer_version_number_override.minor,
             )
-            if configuration.version_number_override
+            if configuration.layer_version_number_override
             else None
         )
 
@@ -547,7 +573,7 @@ def _run_calibration(
         save_mode=save_mode,
         metakernel=metakernel,
         cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
-        version_number_override=version_number_override,
+        version_number_override=layer_file_version_number_override,
     )
 
     return output_file_paths
@@ -592,6 +618,25 @@ def apply_flow(
         ReferenceFrame.SRF,
     ],
     split_by_day: SplitByDay = False,
+    offset_version_override: Annotated[
+        int | None,
+        Field(
+            json_schema_extra={
+                "title": "Offset file version override",
+                "description": "Force a specific version number (1-999) for the output offset file instead of auto-incrementing. Existing file at that version is overwritten.",
+            }
+        ),
+    ] = None,
+    l2_version_override: Annotated[
+        ScienceFileVersionConfig | None,
+        Field(
+            default=None,
+            json_schema_extra={
+                "title": "L2 science file version override",
+                "description": "Force a specific (major, minor) version for output L2-pre science CDF files instead of auto-incrementing. Existing files at that version are overwritten.",
+            },
+        ),
+    ] = None,
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -608,6 +653,8 @@ def apply_flow(
                 "rotation_calibration_file_name": rotation_calibration_file_name,
                 "spice_metakernel": spice_metakernel,
                 "reference_frames": reference_frames,
+                "offset_version_override": offset_version_override,
+                "l2_version_override": l2_version_override,
             },
         )
 
@@ -627,6 +674,10 @@ def apply_flow(
         else None,
         spice_metakernel=spice_metakernel,
         reference_frames=reference_frames or [],
+        offset_version_override=offset_version_override,
+        l2_version_override=(l2_version_override.major, l2_version_override.minor)
+        if l2_version_override is not None
+        else None,
     )
 
     return None
