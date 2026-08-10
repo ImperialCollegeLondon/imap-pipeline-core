@@ -529,7 +529,7 @@ def _run_calibration(
     save_mode,
     metakernel,
 ) -> list[Path]:
-    version_number_override = None
+    layer_file_version_number_override = None
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
         app_settings = AppSettings()  # type: ignore
         # Pull/resolve the MATLAB code into the (stable) base work folder so it is
@@ -548,12 +548,12 @@ def _run_calibration(
         configuration = configuration.model_copy(
             update={"matlab_repo": str(matlab_repo_path)}
         )
-        version_number_override = (
+        layer_file_version_number_override = (
             (
-                configuration.version_number_override.major,
-                configuration.version_number_override.minor,
+                configuration.layer_version_number_override.major,
+                configuration.layer_version_number_override.minor,
             )
-            if configuration.version_number_override
+            if configuration.layer_version_number_override
             else None
         )
 
@@ -573,7 +573,7 @@ def _run_calibration(
         save_mode=save_mode,
         metakernel=metakernel,
         cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
-        version_number_override=version_number_override,
+        version_number_override=layer_file_version_number_override,
     )
 
     return output_file_paths

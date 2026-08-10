@@ -68,7 +68,7 @@ class ScriptedL2CalibrationConfig(CalibrationConfig):
     matlab_repo: str
     produce_report: bool = False
     write_offsets: CreateOffsets = CreateOffsets.AUTOMATIC
-    version_number_override: Annotated[
+    layer_version_number_override: Annotated[
         ScienceFileVersionConfig | None, Field(default=None)
     ] = None
 
