@@ -14,6 +14,8 @@ class SequenceablePathHandler(IFilePathHandler):
     some sort of sequencing (e.g., versioning or part numbers).
     """
 
+    allow_overwrite: bool = False
+
     def supports_sequencing(self) -> bool:
         """Denotes whether this path handler supports sequence-like indexes."""
         return True
@@ -27,6 +29,10 @@ class SequenceablePathHandler(IFilePathHandler):
     def set_sequence(self, sequence: int) -> None:
         """Set the sequence count."""
         pass
+
+    def can_change_sequence(self) -> bool:
+        """Check if the sequence count can be changed with set_sequence or increase_sequence."""
+        return True
 
     @abc.abstractmethod
     def increase_sequence(self) -> None:

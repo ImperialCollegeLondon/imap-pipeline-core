@@ -53,7 +53,7 @@ class PublishFileToDatastoreStage(Stage):
                 f"Could not determine content date for file {file_path}, cannot publish to datastore"
             )
 
-        saved_path, _ = self.datastore_manager.add_file(file_path, path_handler)
+        saved_path, _, _ = self.datastore_manager.add_file(file_path, path_handler)
 
         self.files_saved += 1
         await self.publish_next(FileRecord(saved_path, content_date), context, **kwargs)

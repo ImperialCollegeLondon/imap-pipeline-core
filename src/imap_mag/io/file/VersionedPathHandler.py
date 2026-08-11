@@ -33,6 +33,9 @@ class VersionedPathHandler(SequenceablePathHandler):
     def get_sequence(self) -> int:
         return self.version
 
+    def can_change_sequence(self) -> bool:
+        return self.supports_sequencing()
+
     def set_sequence(self, sequence: int) -> None:
         if not self.supports_sequencing():
             raise ValueError("This file does not support changing version/sequence. ")

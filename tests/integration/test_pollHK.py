@@ -369,7 +369,7 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
 
     if force_database_update:
         assert (
-            "Database cannot be updated without forcing ERT. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ERT. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
             in capture_cli_logs.text
         )
 

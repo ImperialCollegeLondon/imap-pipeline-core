@@ -6,6 +6,7 @@ from imap_mag.config.CalibrationCommandConfig import (
     SparseDatastorePattern,
 )
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.config.DatastoreSaveOption import DatastoreSaveOption
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
@@ -24,6 +25,7 @@ __all__ = [
     "CalibrationCommandConfig",
     "CalibrationConfig",
     "CommandConfig",
+    "DatastoreSaveOption",
     "FetchBinaryConfig",
     "FetchMode",
     "FetchScienceConfig",
