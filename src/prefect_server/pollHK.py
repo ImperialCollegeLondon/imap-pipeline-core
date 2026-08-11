@@ -122,7 +122,7 @@ async def poll_hk_flow(
 
     if force_database_update and not force_ert:
         logger.warning(
-            "Database cannot be updated without forcing ERT. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ERT. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
         )
 
     # If this is an automated flow run, use the database to figure out what to download,

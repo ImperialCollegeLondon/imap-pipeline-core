@@ -310,7 +310,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
 
     if force_database_update:
         assert (
-            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
             in capture_cli_logs.text
         )
 

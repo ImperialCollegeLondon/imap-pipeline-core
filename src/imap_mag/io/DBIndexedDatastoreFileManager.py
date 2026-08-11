@@ -358,7 +358,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                     path_handler.set_sequence(matching_files[0].version)
                     return IDENTICAL_FILE_ALREADY_EXISTS
             else:
-                logger.info(
+                logger.debug(
                     f"File with same content and version as {original_file.name} already in database. Reusing."
                 )
                 return IDENTICAL_FILE_ALREADY_EXISTS

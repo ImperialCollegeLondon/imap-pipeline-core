@@ -173,7 +173,7 @@ class TestPollScienceFlowUnit:
             )
 
         mock_logger.warning.assert_any_call(
-            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
         )
 
     @pytest.mark.asyncio
