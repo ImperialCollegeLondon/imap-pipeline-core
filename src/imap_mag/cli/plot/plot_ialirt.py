@@ -119,7 +119,7 @@ def plot_ialirt(
         )
 
         for file, path_handler in generated_figure.items():
-            (output_file, output_handler) = datastore_manager.add_file(
+            (output_file, output_handler, _) = datastore_manager.add_file(
                 file, path_handler
             )
             ialirt_file_and_handler[output_file] = output_handler

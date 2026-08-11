@@ -318,7 +318,9 @@ def fetch_spice(
 
         handler.add_metadata(file_metadata)
         if output_manager is not None:
-            (output_file, output_handler) = output_manager.add_file(file_path, handler)
+            (output_file, output_handler, _) = output_manager.add_file(
+                file_path, handler
+            )
             output_spice.append((output_file, output_handler, file_metadata))
         else:
             output_spice.append((file_path, handler, file_metadata))
@@ -555,7 +557,7 @@ def publish_spice_kernel(
             f"Downloaded SPICE file {kernal_file_path} could not be parsed into SPICEPathHandler"
         )
 
-    (output_file, _) = output_manager.add_file(kernal_file_path, handler)
+    (output_file, _, _) = output_manager.add_file(kernal_file_path, handler)
 
     return output_file
 

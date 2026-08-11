@@ -95,6 +95,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     mock_database.upsert_file.side_effect = lambda file: check_inserted_file(
@@ -102,7 +103,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -153,10 +154,11 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -229,10 +231,11 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         matched_path_handler,
+        False,
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -280,6 +283,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     mock_database.get_files.side_effect = [
@@ -311,7 +315,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -354,6 +358,7 @@ def test_DBIndexedDatastoreFileManager_errors_when_destination_file_is_not_found
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         test_file,
         path_handler,
+        False,
     )
 
     # Exercise and verify.
@@ -383,6 +388,7 @@ def test_DBIndexedDatastoreFileManager_errors_database_error(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     mock_database.upsert_file.side_effect = ArithmeticError("Database error")
@@ -426,6 +432,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     test_database.upsert_files(
@@ -458,7 +465,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -511,6 +518,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     test_database.upsert_files(
@@ -543,7 +551,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -595,6 +603,7 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     # Exercise
@@ -718,10 +727,11 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
             ),
         ),
         path_handler,
+        False,
     )
 
     # Exercise
-    (_, _) = database_manager.add_file(work_json, path_handler)
+    database_manager.add_file(work_json, path_handler)
 
     # Verify: deduplication happened — no new DB record
     assert path_handler.version == 1
@@ -812,10 +822,11 @@ def test_calibration_layer_db_dedup_multiple_records_same_hash_handled_gracefull
             ),
         ),
         path_handler,
+        False,
     )
 
     # Must not raise AssertionError
-    (_, _) = database_manager.add_file(work_json, path_handler)
+    database_manager.add_file(work_json, path_handler)
 
     # Should reuse v002.0001 (matching version_major=2), no new record
     assert path_handler.version == 1
@@ -878,11 +889,11 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
 
     def capture_add_file(
         source: Path, handler
-    ) -> tuple[Path, CalibrationLayerPathHandler]:
+    ) -> tuple[Path, CalibrationLayerPathHandler, bool]:
         captured_contents.append(json.loads(source.read_text()))
         dest = Path(tempfile.gettempdir()) / f"layer_v{handler.version:03d}.json"
         dest.write_bytes(source.read_bytes())
-        return dest, handler
+        return dest, handler, False
 
     mock_datastore_manager.add_file.side_effect = capture_add_file
 
@@ -985,6 +996,7 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
             ),
         ),
         path_handler,
+        False,
     )
 
     # Exercise
@@ -1029,10 +1041,10 @@ def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
 
     modified_timestamp = datetime(2025, 5, 3, 12, 34, 56).timestamp()
 
-    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler]:
+    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler, bool]:
         created_file = create_test_file(test_file, "some content")
         os.utime(created_file, (modified_timestamp, modified_timestamp))
-        return created_file, path_handler
+        return created_file, path_handler, False
 
     mock_datastore_manager.add_file.side_effect = add_file_side_effect
 
@@ -1091,7 +1103,7 @@ def test_DBIndexedDatastoreFileManager_add_file_with_deleted_file_to_real_postgr
     test_database.upsert_files([existing_file_record])
 
     # Exercise.
-    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+    (actual_file, _, _) = database_manager.add_file(new_file, path_handler)
 
     # assert only one file record exists and it is not deleted, with last modified updated to now
     database_files = test_database.get_files()
@@ -1147,7 +1159,7 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     test_database.upsert_files([existing_file_record])
 
     # Exercise.
-    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+    (actual_file, _, _) = database_manager.add_file(new_file, path_handler)
 
     # assert only one file record exists and it is not deleted, with last modified updated to now
     database_files = test_database.get_files()
@@ -1189,6 +1201,7 @@ def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "science content vmaj"),
         path_handler,
+        False,
     )
     mock_database.get_files.return_value = []
 
@@ -1260,6 +1273,7 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "new science content"),
         path_handler,
+        False,
     )
 
     captured_files: list[File] = []
@@ -1321,6 +1335,7 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "new science content"),
         path_handler,
+        False,
     )
 
     captured_files: list[File] = []

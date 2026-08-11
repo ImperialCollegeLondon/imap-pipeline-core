@@ -53,7 +53,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             self.__database = database
 
-    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
+    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
         # Determine the version: reuse an existing one if content is identical,
         # otherwise advance to the next available slot.
         skip_database_insertion: bool = self.__get_next_available_version(
@@ -70,12 +70,12 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             actual_source = original_file
 
-        (destination_file, path_handler) = self.__file_manager.add_file(
+        (destination_file, path_handler, overwritten) = self.__file_manager.add_file(
             actual_source, path_handler
         )
 
         # Add file to database
-        if skip_database_insertion:
+        if skip_database_insertion and not overwritten:
             logger.info(
                 f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
@@ -90,7 +90,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 destination_file.unlink()
                 raise e
 
-        return (destination_file, path_handler)
+        return (destination_file, path_handler, overwritten)
 
     def archive_file(
         self,
@@ -348,6 +348,9 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # unique-constraint conflict by soft-deleting active DB records that share
         # the same minor version but a different path — those represent the file
         # being overwritten at the operator-supplied version.
+        # in normal operations this should never happen because paths are well
+        # defined and a match by version+descriptor would have the same path and
+        # so would not be soft deleted, it would just update the existing file record.
         if path_handler.allow_overwrite:
             forced_minor = path_handler.get_sequence()
             new_destination = path_handler.get_full_path(self.__settings.data_store)

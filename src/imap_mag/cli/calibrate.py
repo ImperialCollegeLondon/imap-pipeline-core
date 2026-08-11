@@ -160,7 +160,7 @@ def _save_calibration_outputs(
                 path, createDirectory=False, save_contents=False
             )
 
-        destination, _ = outputManager.add_file(path, path_handler=handler)
+        destination, _, _ = outputManager.add_file(path, path_handler=handler)
         saved_file_paths.append(destination)
 
         if companion_path:

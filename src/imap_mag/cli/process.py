@@ -82,7 +82,7 @@ def process(
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     for processed_file, path_handler in processed_files.items():
-        (copied_file, path_handler) = datastore_manager.add_file(
+        (copied_file, path_handler, _) = datastore_manager.add_file(
             processed_file, path_handler
         )
 
