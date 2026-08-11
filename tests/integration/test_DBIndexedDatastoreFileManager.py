@@ -325,7 +325,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     assert (
-        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -475,7 +475,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     assert (
-        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -561,7 +561,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     assert (
-        "Existing versions [1, 2] found in database. Assigning next version 3 (max + 1)."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text

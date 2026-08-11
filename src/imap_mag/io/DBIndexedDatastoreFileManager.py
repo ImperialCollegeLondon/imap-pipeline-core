@@ -288,15 +288,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
     ) -> bool:
         """Find a viable version for a file, returning True if the file already exists unchanged."""
 
+        IDENTICAL_FILE_ALREADY_EXISTS = True
+        FILE_IS_NEW = False
+
         if not path_handler.supports_sequencing():
             logger.debug(
                 "Versioning not supported. File may be overwritten if it already exists and is different."
             )
-            return False
+            return FILE_IS_NEW
         else:
             assert isinstance(path_handler, SequenceablePathHandler)
 
         database_files: list[File] = self.__get_matching_database_files(path_handler)
+
+        if not database_files:
+            logger.debug(
+                f"No existing files found in database for {original_file.name}. Proceeding to add as new."
+            )
+            return FILE_IS_NEW
 
         # Check whether an existing version has the same content identity
         identity_hash: str = path_handler.get_content_identity(original_file)
@@ -320,7 +329,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 key=lambda f: (f.version_major, f.version),
                 reverse=True,
             )
-            logger.warning(
+            logger.info(
                 f"Found {duplicate_count} records with identical content identity for "
                 f"{original_file.name}. "
                 f"Reusing version {matching_files[0].version_major}.{matching_files[0].version}."
@@ -335,14 +344,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                         f"version {path_handler.get_sequence()} as overwrite is allowed."
                     )
                     # Fall through to the allow_overwrite block — save at the downloaded version.
+                elif not path_handler.can_change_sequence():
+                    logger.warning(
+                        f"File with same content as {original_file.name} already exists in database "
+                        f"at version {matching_files[0].version}. This should not happen for supposedly unique files! "
+                        f"Proceeding to save at downloaded version {path_handler.get_sequence()} as this is a locked science file."
+                    )
+                    # Fall through to the other options below
                 else:
                     logger.info(
-                        f"File with same content as {original_file.name} already exists in database at version {matching_files[0].version}. Reusing."
+                        f"File with same content as {original_file.name} already exists in database at different version {matching_files[0].version}. Reusing that version."
                     )
                     path_handler.set_sequence(matching_files[0].version)
-                    return True
+                    return IDENTICAL_FILE_ALREADY_EXISTS
             else:
-                return True
+                logger.info(
+                    f"File with same content and version as {original_file.name} already in database. Reusing."
+                )
+                return IDENTICAL_FILE_ALREADY_EXISTS
 
         # Version override: keep the forced version (no max+1 walk). Resolve any
         # unique-constraint conflict by soft-deleting active DB records that share
@@ -373,20 +392,32 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 self.__database.upsert_file(conflict)
                 if conflict_path.exists():
                     conflict_path.unlink()
-            return False
+            return FILE_IS_NEW
 
         # Assign max+1 rather than the first available slot so version numbers are
         # monotonically increasing even when earlier versions have been deleted or
         # never existed (e.g. existing versions {2} → next is 3, not 1).
         existing_versions: set[int] = set(file.version for file in database_files)
+        next_version = max(existing_versions) + 1
 
-        if existing_versions:
-            next_version = max(existing_versions) + 1
-            if path_handler.get_sequence() < next_version:
-                logger.debug(
-                    f"Existing versions {sorted(existing_versions)} found in database. "
-                    f"Assigning next version {next_version} (max + 1)."
-                )
-                path_handler.set_sequence(next_version)
+        if path_handler.get_sequence() >= next_version:
+            return FILE_IS_NEW
 
-        return False
+        if (
+            path_handler.get_sequence() < next_version
+            and path_handler.can_change_sequence()
+        ):
+            logger.info(
+                f"Existing versions {sorted(existing_versions)} found in database. "
+                f"Assigning next available version {next_version} (max + 1)."
+            )
+
+            path_handler.set_sequence(next_version)
+            return FILE_IS_NEW
+
+        raise ValueError(
+            f"Cannot proceed with adding file {original_file.name}."
+            f"Existing version(s) {sorted(existing_versions)} found in database with "
+            "different content which cannot be overwritten without allow_overwrite "
+            "option and we are not allowed to re-version this type of file"
+        )

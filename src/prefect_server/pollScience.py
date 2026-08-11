@@ -101,9 +101,9 @@ def _download_batch_of_science(
             checked_timestamp=packet_start_timestamp,
             latest_timestamp=latest_ingestion_date,
         )
-        logger.info(f"Database updated for {progress_item_id}.")
+        logger.info(f"Database workflow progress updated for {progress_item_id}.")
     else:
-        logger.info(f"Database not updated for {progress_item_id}.")
+        logger.info(f"Database workflow progress not updated for {progress_item_id}.")
 
     return downloaded_science
 

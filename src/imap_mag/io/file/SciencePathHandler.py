@@ -56,6 +56,9 @@ class SciencePathHandler(StandardSPDFPathHandler):
 
         super().set_sequence(sequence)
 
+    def can_change_sequence(self) -> bool:
+        return not self.version_is_locked and super().can_change_sequence()
+
     def increase_sequence(self) -> None:
         if self.version_is_locked:
             raise ValueError(

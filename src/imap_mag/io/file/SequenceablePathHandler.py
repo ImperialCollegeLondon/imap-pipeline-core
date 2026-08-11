@@ -30,6 +30,10 @@ class SequenceablePathHandler(IFilePathHandler):
         """Set the sequence count."""
         pass
 
+    def can_change_sequence(self) -> bool:
+        """Check if the sequence count can be changed with set_sequence or increase_sequence."""
+        return True
+
     @abc.abstractmethod
     def increase_sequence(self) -> None:
         """Increase the sequence count by 1."""

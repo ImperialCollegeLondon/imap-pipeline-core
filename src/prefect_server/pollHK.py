@@ -189,6 +189,8 @@ async def poll_hk_flow(
                 latest_timestamp=latest_ert_timestamp,
             )
         else:
-            logger.info(f"Database not updated for {progress_item_id}.")
+            logger.info(
+                f"Database workflow progress not updated for {progress_item_id}."
+            )
 
     logger.info("---------- Finished ----------")
