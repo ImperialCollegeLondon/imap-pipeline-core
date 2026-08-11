@@ -48,6 +48,7 @@ packages = [
     { include = "imap_db", from = "src" },
     { include = "mag_toolkit", from = "src" },
     { include = "prefect_server", from = "src" },
+    { include = "calibration_generation", from = "src" },
 ]
 
 [dependency-groups]
@@ -71,6 +72,7 @@ dev = [
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
 imap-mag = 'imap_mag.main:app'
 imap-db = 'imap_db.main:app'
+imap-cal-gen = 'calibration_generation.main:app'
 
 [tool.pytest.ini_options]
 pythonpath = [

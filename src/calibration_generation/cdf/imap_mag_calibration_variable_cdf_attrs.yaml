@@ -1,0 +1,132 @@
+# Variable attributes for the MAG calibration products.
+#
+# VALIDMIN and VALIDMAX are deliberately absent for the character variables
+# (axis, sensor), where ISTP does not define them.
+axis:
+    CATDESC: The axis of the magnetometer sensor
+    FIELDNAM: axis
+    LABLAXIS: axis
+    FILLVAL: " "
+    FORMAT: A1
+    UNITS: " "
+    VAR_TYPE: support_data
+
+sensor:
+    CATDESC: The magnetometer sensor
+    VAR_NOTES: MAGo is the outboard sensor furthest along the boom, MAGi is the inboard sensor closest to the spacecraft
+    FIELDNAM: sensor
+    LABLAXIS: sensor
+    FILLVAL: " "
+    FORMAT: A4
+    UNITS: " "
+    VAR_TYPE: support_data
+
+range:
+    CATDESC: The operating ranges of the magnetometer
+    FIELDNAM: range
+    LABLAXIS: range
+    FILLVAL: -2147483648
+    FORMAT: I1
+    VALIDMIN: 0
+    VALIDMAX: 3
+    UNITS: " "
+    VAR_TYPE: support_data
+
+valid_start_datetime:
+    CATDESC: The start time of the validity of this calibration file
+    FIELDNAM: valid_start_datetime
+    FILLVAL: -9223372036854775808
+    FORMAT: I19
+    VALIDMIN: -9223372036854775808
+    VALIDMAX: 9223372036854775807
+    UNITS: ns
+    VAR_TYPE: metadata
+
+gradiometer_factor:
+    CATDESC: The number to multiply by the delta between the MAGo and MAGi vectors. This value will then be subtracted from the MAGo vector.
+    FIELDNAM: gradiometer_factor
+    LABLAXIS: gradiometer factor
+    FILLVAL: -1.0e+31
+    FORMAT: F12.9
+    VALIDMIN: -1
+    VALIDMAX: 1
+    UNITS: " "
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+
+spin_average_application_factor:
+    CATDESC: The amount of the the spin average offset to subtract from the data in the spin plane.
+    FIELDNAM: spin_average_application_factor
+    LABLAXIS: spin average factor
+    FILLVAL: -1.0e+31
+    FORMAT: F12.9
+    VALIDMIN: -1
+    VALIDMAX: 1
+    UNITS: " "
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+
+number_of_spins:
+    CATDESC: The number of spins to be averaged across to acquire the spin average values
+    FIELDNAM: number_of_spins
+    LABLAXIS: number of spins
+    FILLVAL: 4294967295
+    FORMAT: I5
+    VALIDMIN: 1
+    VALIDMAX: 65535
+    UNITS: " "
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+
+quality_flag_threshold:
+    CATDESC: The threshold delta between MAGo and MAGi over which to indicate through the quality flag that low quality data is present
+    FIELDNAM: quality_flag_threshold
+    LABLAXIS: quality flag threshold
+    FILLVAL: -1.0e+31
+    FORMAT: F12.3
+    VALIDMIN: 0
+    VALIDMAX: 65535
+    UNITS: nT
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+
+offsets:
+    CATDESC: Offsets to be added to each sensor at each range. The offsets are in the orthogonal reference frame (ORF)
+    FIELDNAM: offsets
+    LABLAXIS: offsets
+    FILLVAL: -1.0e+31
+    FORMAT: F12.4
+    VALIDMIN: -65535
+    VALIDMAX: 65535
+    UNITS: nT
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+    DEPEND_0: sensor
+    DEPEND_1: range
+    DEPEND_2: axis
+
+URFTOORFO:
+    CATDESC: Frame transform from the unit reference frame (URF) to the orthogonal reference frame (ORF) for MAGo
+    FIELDNAM: URFTOORFO
+    LABLAXIS: URF to ORF MAGo
+    FILLVAL: -1.0e+31
+    FORMAT: F12.9
+    VALIDMIN: -2
+    VALIDMAX: 2
+    UNITS: " "
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+    DEPEND_0: range
+
+URFTOORFI:
+    CATDESC: Frame transform from the unit reference frame (URF) to the orthogonal reference frame (ORF) for MAGi
+    FIELDNAM: URFTOORFI
+    LABLAXIS: URF to ORF MAGi
+    FILLVAL: -1.0e+31
+    FORMAT: F12.9
+    VALIDMIN: -2
+    VALIDMAX: 2
+    UNITS: " "
+    DISPLAY_TYPE: no_plot
+    VAR_TYPE: data
+    DEPEND_0: range

@@ -58,6 +58,11 @@ poetry run ruff format                  # Format code
   - `calibration/calibrators/` - Calibrator implementations
   - `MatlabWrapper.py` - MATLAB integration for calibration
 
+- **calibration_generation/** - `imap-cal-gen` CLI for hand-building L2, L1d and
+  I-ALiRT calibration CDFs, and checking their contents
+  - `cdf/` - MAG calibration CDF attribute layers, applied on top of the
+    IMAP-wide defaults from `imap_processing`
+
 - **prefect_server/** - Prefect workflow orchestration
   - `workflow.py` - Flow deployment and scheduling
   - `poll*.py` - Data polling flows (HK, Science, I-ALiRT)

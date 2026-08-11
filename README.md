@@ -186,6 +186,73 @@ export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
 ```
 
+### Generating Calibration Files
+
+`imap-cal-gen` is a standalone CLI for hand-building the L2, L1d and I-ALiRT
+calibration files that the pipeline consumes. Anything not given on the command
+line is asked for, so the examples below that leave out an option will prompt
+for it. Options with a standard value arrive at the prompt with it filled in,
+so pressing enter accepts it:
+
+| Option | Default |
+| --- | --- |
+| `--matrices` | `latest` (the highest matrix version the tool knows about) |
+| `--gradiometer-factor` (I-ALiRT only) | `0.41475` |
+| `--spin-average-factor` | `1.0` |
+| `--number-of-spins` | `240` |
+| `--quality-flag-threshold` | `0.0` |
+
+Each command then shows what it is about to write and asks to confirm; pass
+`--yes` to skip that in scripts, or `--dry-run` to see the summary without
+writing anything.
+
+```bash
+# Frame transform matrices only. --matrices takes identity, latest, v1, v8 or
+# v9, and is asked for if omitted, defaulting to latest.
+imap-cal-gen l2 --version 1 --valid-start-date 2026-01-02 --matrices latest
+
+# Offsets can be given inline, one vector in nT per sensor...
+imap-cal-gen l1d --version 1 --valid-start-date 2026-01-02 \
+    --gradiometer-factor 0.35 --spin-average-factor 1.0 \
+    --number-of-spins 4 --quality-flag-threshold 2.5 \
+    --mago "-11.2,0.4,3.1" --magi "-21.9,1.0,4.2"
+
+# ...per operating range, as four ';' separated vectors in range order...
+imap-cal-gen ialirt --version 1 --valid-start-date 2026-01-02 \
+    --gradiometer-factor 0.35 \
+    --mago "-11.2,0.4,3.1; -11.3,0.4,3.1; -11.4,0.5,3.2; -11.6,0.5,3.2" \
+    --magi "-21.9,1.0,4.2"
+
+# ...from a YAML or JSON file, or as zeros
+imap-cal-gen ialirt --version 1 --valid-start-date 2026-01-02 \
+    --gradiometer-factor 0.35 --offsets-file offsets.yaml
+imap-cal-gen ialirt --version 1 --valid-start-date 2026-01-02 \
+    --gradiometer-factor 0.35 --zero-offsets
+```
+
+Omitting all of the offset options prompts for one vector per sensor. An
+offsets file holds one vector per sensor, or one vector per range:
+
+```yaml
+MAGo: [-11.2, 0.4, 3.1]
+MAGi:
+  - [-21.9, 1.0, 4.2]
+  - [-21.9, 1.0, 4.2]
+  - [-22.0, 1.1, 4.3]
+  - [-22.2, 1.1, 4.3]
+```
+
+### Verifying Calibration Files
+
+Checks that each file holds the variables its level should, in the right
+shapes, and prints the range 3 matrices for eyeballing. Exits non-zero if any
+file fails.
+
+```bash
+imap-cal-gen verify imap_mag_l2-calibration_20260102_v001.cdf
+imap-cal-gen verify *.cdf
+```
+
 ### Downloading SPICE data from the SDC
 
 ```bash
