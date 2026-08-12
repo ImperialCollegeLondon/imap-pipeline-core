@@ -71,6 +71,12 @@ def fetch_science(
             help="Number of items to skip from the start of the query results. Useful for batching downloads.",
         ),
     ] = 0,
+    version_str_or_latest: Annotated[
+        str | None,
+        typer.Option(
+            help="Version string to download (vMMM.mmmm or the deprecated minor-only vXXX) or 'latest' for the latest version. None means all versions.",
+        ),
+    ] = None,
     overwrite_option: Annotated[
         DatastoreSaveOption,
         typer.Option(
@@ -109,6 +115,7 @@ def fetch_science(
         sensors=sensors,
         max_downloads=max_downloads,
         skip_items_count=skip_items_count,
+        version_str_or_latest=version_str_or_latest,
     )
 
     if not downloaded_science:
