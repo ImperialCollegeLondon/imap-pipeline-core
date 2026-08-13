@@ -76,7 +76,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
     ):
         apply(
             layers=["imap_mag_misaligned-timestamps-norm-layer_20251017_v001.json"],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
@@ -100,7 +100,7 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
     ):
         apply(
             layers=[],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
@@ -135,7 +135,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
     ):
         apply(
             layers=[calibration_layer],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
