@@ -198,6 +198,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "modes": ["norm"],
                     "level": "l1c",
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
             )
@@ -210,6 +211,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "modes": ["burst"],
                     "level": "l1b",
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
             )
@@ -222,6 +224,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "level": "l2",
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
             )
@@ -235,6 +238,7 @@ async def adeploy_flows(local_debug: bool = False):
                     "level": "l1d",
                     "modes": ["norm"],
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D + "_norm_only",
             )
@@ -247,6 +251,7 @@ async def adeploy_flows(local_debug: bool = False):
                     "level": "l1d",
                     "modes": ["burst"],
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D
                 + "_burst_gse_rtn_only",
