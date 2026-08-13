@@ -287,6 +287,7 @@ async def poll_science_flow(
                 BATCH_SIZE,
                 len(downloaded_science),
                 overwrite_option=overwrite_option,
+                version_str_or_latest=version_str_or_latest,
             )
             if items:
                 downloaded_science.extend(items.keys())
