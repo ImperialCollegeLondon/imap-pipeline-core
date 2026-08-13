@@ -72,6 +72,7 @@ def _download_batch_of_science(
     batch_size,
     skip_items_count,
     overwrite_option: DatastoreSaveOption = DatastoreSaveOption.FILE_OVERWRITES_BLOCKED,
+    version_str_or_latest: str | None = None,
 ) -> dict[Path, SciencePathHandler]:
     logger.info(
         f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
@@ -89,6 +90,7 @@ def _download_batch_of_science(
         max_downloads=batch_size,
         skip_items_count=skip_items_count,
         overwrite_option=overwrite_option,
+        version_str_or_latest=version_str_or_latest,
     )
 
     # Update database with latest ingestion date as progress (for science)
@@ -168,6 +170,15 @@ async def poll_science_flow(
             }
         ),
     ] = False,
+    version_str_or_latest: Annotated[
+        str | None,
+        Field(
+            json_schema_extra={
+                "title": "Version string to download",
+                "description": "Leave Blank/None for all versions. String like 'vMMM.mmmm' or 'latest' or the deprecated minor-only 'vXXX'",
+            }
+        ),
+    ] = None,
     force_database_update: Annotated[
         bool,
         Field(

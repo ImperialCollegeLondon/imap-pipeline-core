@@ -41,6 +41,7 @@ def test_fetch_science_no_matching_files(mock_soc: mock.Mock) -> None:
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 2),
         extension="cdf",
+        version=None,
     )
 
     mock_soc.download.assert_not_called()
@@ -82,6 +83,7 @@ def test_fetch_science_result_added_to_output(mock_soc: mock.Mock) -> None:
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
         extension="cdf",
+        version=None,
     )
     mock_soc.download.assert_called_once_with(
         test_file.absolute(),
@@ -171,6 +173,7 @@ def test_fetch_binary_different_start_end_dates(
         start_date=expected_start_date,
         end_date=expected_end_date,
         extension="cdf",
+        version=None,
     )
 
     mock_soc.download.assert_not_called()
@@ -213,6 +216,7 @@ def test_fetch_science_with_ingestion_start_end_date(mock_soc: mock.Mock) -> Non
         ingestion_start_date=datetime(2025, 5, 2),
         ingestion_end_date=datetime(2025, 5, 3),
         extension="cdf",
+        version=None,
     )
     mock_soc.download.assert_called_once_with(
         test_file.absolute(),
@@ -273,6 +277,7 @@ def test_fetch_l2_science_with_both_sensors(
         start_date=datetime(2025, 5, 2),
         end_date=datetime(2025, 5, 3),
         extension="cdf",
+        version=None,
     )
     mock_soc.download.assert_called_once_with(
         test_file.absolute(),
