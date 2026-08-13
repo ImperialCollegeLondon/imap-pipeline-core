@@ -164,6 +164,8 @@ upload:
         - "*ialirt_hk/*"
         - "*quicklook/*"
         - "*spice/*"
+        - "*calibration/calculated_offsets/spin_plane/*"
+        - "*calibration/calculated_offsets/spin_optimised/*"
 
 postgres_upload:
     crump_config_path: imap-db-ingest-config.yaml
