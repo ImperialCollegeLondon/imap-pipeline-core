@@ -13,7 +13,7 @@ import pytest
 
 from imap_mag.cli.calibrate import _validate_version_number_override, calibrate
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, Sensor
+from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat, Sensor
 from tests.util.miscellaneous import write_calibration_layer_pair
 
 MODULE_CALL_MATLAB = (
@@ -81,6 +81,7 @@ def test_override_forces_version_no_upversion(
         sensor=Sensor.MAGO,
         configuration='{"kappa": 0.0, "sc_interference_threshold": 10.0}',
         version_number_override=(1, 1),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     # The override forces v001.0001; v001.0002 must not exist.
@@ -121,6 +122,7 @@ def test_override_overwrites_layer_content(
         sensor=Sensor.MAGO,
         configuration='{"kappa": 0.0, "sc_interference_threshold": 10.0}',
         version_number_override=(1, 5),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     # v005 exists and its content has been replaced (mtime changed).

@@ -15,6 +15,7 @@ from pydantic import Field
 
 from imap_mag.cli.apply import FileType, apply
 from imap_mag.cli.calibrate import Sensor, calibrate
+from imap_mag.cli.convert import convert
 from imap_mag.config import SaveMode
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.io.file import CalibrationLayerPathHandler
@@ -23,6 +24,8 @@ from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationLayer,
     CalibrationMethod,
+    ConversionStrategy,
+    LayerDataFormat,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
     GradiometryConfig,
@@ -341,6 +344,7 @@ def calibrate_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     metakernel: Path | None = None,
     split_by_day: SplitByDay = False,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path] | list[FlowRun]:
 
     if end_date and end_date < start_date:
@@ -359,11 +363,19 @@ def calibrate_flow(
                 "sensor": sensor,
                 "save_mode": save_mode,
                 "metakernel": metakernel,
+                "layer_data_format": layer_data_format,
             },
         )
 
     paths = _run_calibration(
-        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+        configuration,
+        start_date,
+        end_date,
+        mode,
+        sensor,
+        save_mode,
+        metakernel,
+        layer_data_format,
     )
 
     json_paths = [path for path in paths if path.suffix.lower() == ".json"]
@@ -450,6 +462,7 @@ def calibrate_and_apply_flow(
             },
         ),
     ] = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[FlowRun] | None:
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
@@ -468,11 +481,19 @@ def calibrate_and_apply_flow(
                 "reference_frames": reference_frames,
                 "offset_version_override": offset_version_override,
                 "l2_version_override": l2_version_override,
+                "layer_data_format": layer_data_format,
             },
         )
 
     output_files = _run_calibration(
-        configuration, start_date, end_date, mode, sensor, save_mode, metakernel
+        configuration,
+        start_date,
+        end_date,
+        mode,
+        sensor,
+        save_mode,
+        metakernel,
+        layer_data_format,
     )
 
     layer_path_handlers: list[CalibrationLayerPathHandler | None] = [
@@ -528,6 +549,7 @@ def _run_calibration(
     sensor,
     save_mode,
     metakernel,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     layer_file_version_number_override = None
     if type(configuration) is PrefectScriptedL2CalibrationConfig:
@@ -574,6 +596,7 @@ def _run_calibration(
         metakernel=metakernel,
         cleanup_temp_files_after_run=configuration.cleanup_temp_files_after_run,
         version_number_override=layer_file_version_number_override,
+        layer_data_format=layer_data_format,
     )
 
     return output_file_paths
@@ -681,3 +704,71 @@ def apply_flow(
     )
 
     return None
+
+
+def generate_calibrate_convert_flow_run_name() -> str:
+    parameters = flow_run.parameters
+    input_layers: list[str] = parameters["input_layers"]
+    output_layer_data_format: FileType = parameters.get(
+        "output_layer_data_format", FileType.PARQUET
+    )
+
+    layers_str = ",".join(input_layers[:3])
+    if len(input_layers) > 3:
+        layers_str += f"...+{len(input_layers) - 3}"
+
+    return f"Converting-{layers_str}-to-{output_layer_data_format.value}"
+
+
+@flow(
+    name=PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_CONVERT,
+    log_prints=True,
+    flow_run_name=generate_calibrate_convert_flow_run_name,
+)
+def calibrate_convert_flow(
+    input_layers: Annotated[
+        list[str],
+        Field(
+            json_schema_extra={
+                "title": "Input layers",
+                "description": "Calibration layer filenames or glob patterns (e.g. '*noop*') to convert.",
+                "position": 1,
+            }
+        ),
+    ],
+    start_date: Annotated[
+        date | None,
+        Field(
+            json_schema_extra={
+                "title": "Start date",
+                "description": "Restrict conversion to layers on/after this date. If omitted (with end_date), all dates are searched.",
+                "position": 2,
+            }
+        ),
+    ] = None,
+    end_date: Annotated[
+        date | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "Restrict conversion to layers on/before this date (inclusive).",
+                "position": 3,
+            }
+        ),
+    ] = None,
+    mode: ScienceMode | None = None,
+    output_layer_data_format: FileType = FileType.PARQUET,
+    output_layer_versioning_strategy: ConversionStrategy = ConversionStrategy.OVERWRITE,
+    save_mode: SaveMode = SaveMode.LocalAndDatabase,
+) -> list[Path]:
+    return convert(
+        input_layers=input_layers,
+        start_date=datetime.combine(start_date, datetime.min.time())
+        if start_date
+        else None,
+        end_date=datetime.combine(end_date, datetime.min.time()) if end_date else None,
+        mode=mode,
+        output_layer_data_format=output_layer_data_format,
+        output_layer_versioning_strategy=output_layer_versioning_strategy,
+        save_mode=save_mode,
+    )

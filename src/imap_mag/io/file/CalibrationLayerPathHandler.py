@@ -7,7 +7,10 @@ from typing import ClassVar
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CalibrationMethod,
+    LayerDataFormat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
     extension: str = "json"
+    data_extension: str = "parquet"  # extension for the companion data file
     _has_major_version: bool = True
     original_filename_or_path: str | Path | None = field(compare=False, default=None)
 
@@ -69,7 +73,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         )
 
     def is_metadata_file(self) -> bool:
-        """Determine if this handler represents a metadata JSON file (true) or a data csv/cdf/arrow type file (false)."""
+        """Determine if this handler represents a metadata JSON file (true) or a data csv/parquet/cdf type file (false)."""
         return self.extra_descriptor != "-data"
 
     def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":
@@ -78,10 +82,11 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             extra_descriptor="-data",
             content_date=self.content_date,
             version=self.version,
-            extension="csv",
+            extension=self.data_extension,
             version_major=self.version_major,
             _has_major_version=self._has_major_version,
             versioning_mode=self.versioning_mode,
+            allow_overwrite=self.allow_overwrite,
         )
         return handler
 
@@ -130,6 +135,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         settings: "AppSettings",  # type: ignore  # noqa: F821
         mode: ScienceMode | None = None,
         version_number_override: tuple[int, int] | None = None,
+        layer_data_format: LayerDataFormat | None = None,
     ) -> "CalibrationLayerPathHandler":
 
         major_version = (
@@ -148,6 +154,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             versioning_mode=VersionedPathHandler.VersionMode.USER_OVERRIDE
             if version_number_override
             else VersionedPathHandler.VersionMode.MAX_VERSION_PLUS_ONE,
+            data_extension=layer_data_format.value
+            if layer_data_format is not None
+            else "parquet",
         )
 
     def increase_sequence(self) -> None:
@@ -227,12 +236,10 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         When the datastore assigns a version other than what the source file was
         originally generated at (e.g., v001 → v002 because v001 already exists
         with different content), the JSON must reference the correctly-versioned
-        companion CSV.  Returns a temporary file that the caller must delete.
+        companion data file.  Returns a temporary file that the caller must delete.
         """
         if self.extension != "json":
             return source_file
-
-        expected_data_filename = self.get_equivalent_data_handler().get_filename()
 
         from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
@@ -243,6 +250,16 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             if cal_file.metadata.data_filename
             else None
         )
+        if current is None:
+            return source_file
+
+        # Preserve the companion's actual current format (csv/parquet) rather than
+        # self.data_extension, which reflects the *requested* format for new output
+        # and may not match what this existing file was actually saved as.
+        data_handler = self.get_equivalent_data_handler()
+        data_handler.extension = Path(current).suffix.lstrip(".")
+        expected_data_filename = data_handler.get_filename()
+
         if current == expected_data_filename:
             return source_file  # already correct — no rewrite needed
 
@@ -266,12 +283,13 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         """
         if self.extension != "json":
             return False
+        new_companion = self._companion_csv_path(source_file)
         sibling = self.get_equivalent_data_handler()
+        sibling.extension = new_companion.suffix.lstrip(".")
         sibling.set_sequence(version)
         sibling_dest = sibling.get_full_path(datastore)
         if not sibling_dest.exists():
             return False
-        new_companion = self._companion_csv_path(source_file)
         if new_companion.exists():
             return sibling.get_content_identity(
                 new_companion

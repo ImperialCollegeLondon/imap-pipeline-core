@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.cli import apply
+from imap_mag.cli import apply, convert
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import (
     AppSettings,
@@ -26,6 +26,7 @@ from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
     CalibrationMethod,
+    LayerDataFormat,
     Sensor,
 )
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
@@ -41,6 +42,7 @@ app = typer.Typer()
 logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
+app.command(name="convert")(convert.convert)
 
 
 def _validate_version_number_override(
@@ -166,10 +168,13 @@ def _save_calibration_outputs(
         if companion_path:
             # Add the companion data file to the output manager with its equivalent data handler, ensuring both files are saved together and co-versioned.
             # we deliberately did not save the data file with its own handler, as that would cause it to be versioned independently of the JSON layer.
-            outputManager.add_file(
-                companion_path,
-                path_handler=handler.get_equivalent_data_handler(),  # type: ignore
-            )
+            # The handler's own data_extension reflects the *requested* layer_data_format,
+            # which may not match what the calibration job actually produced (e.g. a
+            # scripted-L2 run that only writes csv); use the companion file's real
+            # extension so it is always detected and saved correctly regardless of format.
+            data_handler = handler.get_equivalent_data_handler()  # type: ignore
+            data_handler.extension = companion_path.suffix.lstrip(".")
+            outputManager.add_file(companion_path, path_handler=data_handler)
 
     return saved_file_paths
 
@@ -187,6 +192,10 @@ def gradiometry(
         SaveMode,
         typer.Option(help="Whether to save locally only or to also save to database"),
     ] = SaveMode.LocalOnly,
+    layer_data_format: Annotated[
+        LayerDataFormat,
+        typer.Option(help="Format of the calibration layer's companion data file."),
+    ] = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     """
     Run gradiometry calibration.
@@ -202,6 +211,7 @@ def gradiometry(
         sensor=Sensor.MAGO,
         configuration=configuration.model_dump_json(),
         save_mode=save_mode,
+        layer_data_format=layer_data_format,
     )
 
 
@@ -263,6 +273,10 @@ def calibrate(
             "overwritten. Provide as two integers, e.g. --version-number-override 1 5.",
         ),
     ] = None,
+    layer_data_format: Annotated[
+        LayerDataFormat,
+        typer.Option(help="Format of the calibration layer's companion data file."),
+    ] = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
@@ -289,6 +303,7 @@ def calibrate(
             metakernel=metakernel,
             cleanup_temp_files_after_run=cleanup_temp_files_after_run,
             version_number_override=version_number_override,
+            layer_data_format=layer_data_format,
         )
         if result:
             results.extend(result)
@@ -310,6 +325,7 @@ def _calibrate_for_date(
     metakernel: Path | None = None,
     cleanup_temp_files_after_run: bool = True,
     version_number_override: tuple[int, int] | None = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     """Run calibration for a single date."""
     if method == CalibrationMethod.NOOP:
@@ -409,6 +425,7 @@ def _calibrate_for_date(
         mode=mode,
         version_number_override=version_number_override,
         settings=app_settings,
+        layer_data_format=layer_data_format,
     )
 
     try:

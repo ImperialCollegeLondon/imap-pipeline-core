@@ -105,6 +105,7 @@ class FileType(Enum):
     CSV = "csv"
     CDF = "cdf"
     JSON = "json"
+    PARQUET = "parquet"
 
 
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
@@ -472,12 +473,24 @@ def cleanup_workfolder_after_apply(
     if workRotationFile:
         files_to_cleanup.append(workRotationFile)
 
-    # add the .csv version of all layer files to the cleanup list as well
+    # add the companion data file (CSV or Parquet) for each JSON layer to the cleanup list
     for layer_file in workLayers:
         if layer_file.suffix == ".json":
-            corresponding_csv = layer_file.with_suffix(".csv")
-            if corresponding_csv.exists():
-                files_to_cleanup.append(corresponding_csv)
+            try:
+                cal = CalibrationLayer.from_file(layer_file, load_contents=False)
+                data_filename = cal.metadata.data_filename
+            except Exception:
+                data_filename = None
+
+            if data_filename is not None:
+                companion = layer_file.parent / data_filename.name
+                if companion.exists():
+                    files_to_cleanup.append(companion)
+            else:
+                for ext in (".csv", ".parquet"):
+                    companion = layer_file.with_suffix(ext)
+                    if companion.exists():
+                        files_to_cleanup.append(companion)
 
     work_folder_resolved = app_settings.work_folder.resolve()
     for temp_file in files_to_cleanup:

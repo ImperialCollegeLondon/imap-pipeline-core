@@ -27,6 +27,20 @@ from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 logger = logging.getLogger(__name__)
 
 
+def _format_epoch_as_nanosecond_string(epoch: pd.Series) -> pd.Series:
+    """Format a datetime64[ns] series as ISO 8601 text with a fixed 9-digit
+    (nanosecond) fractional-second part, so text-based formats (CSV) retain the
+    same precision as native binary formats (Parquet)."""
+    sub_second_ns = epoch.dt.microsecond.astype(
+        "int64"
+    ) * 1000 + epoch.dt.nanosecond.astype("int64")
+    return (
+        epoch.dt.strftime("%Y-%m-%dT%H:%M:%S")
+        + "."
+        + sub_second_ns.astype(str).str.zfill(9)
+    )
+
+
 class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: ValueType
@@ -39,11 +53,41 @@ class CalibrationLayer(Layer):
             filepath.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Writing calibration layer CSV to {filepath!s}.")
-        self._contents.to_csv(
+
+        # pandas' to_csv(date_format=...) only supports %f (microseconds), which
+        # would silently truncate any sub-microsecond precision in the epoch
+        # column. Format it manually with a fixed 9-digit (nanosecond) fractional
+        # part instead, so CSV round-trips with the same precision as Parquet.
+        df = self._contents
+        epoch_col = CONSTANTS.CSV_VARS.EPOCH
+        if epoch_col in df.columns:
+            df = df.copy()
+            df[epoch_col] = _format_epoch_as_nanosecond_string(df[epoch_col])
+
+        df.to_csv(
             filepath,
             index=False,
             header=True,
-            date_format="%Y-%m-%dT%H:%M:%S.%f",
+        )
+        return filepath
+
+    def _write_to_parquet(self, filepath: Path, createDirectory=False):
+        if self._contents is None:
+            raise ValueError("No contents loaded to write to Parquet.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Writing calibration layer Parquet data to {filepath!s}.")
+
+        # The epoch column is stored as a native pandas datetime64[ns] column via
+        # pyarrow, which keeps full nanosecond precision losslessly (unlike CSV's
+        # text formatting, which truncates to microseconds). Other numeric columns
+        # are written as their native dtype for the same reason.
+        self._contents.to_parquet(
+            filepath,
+            index=False,
+            engine="pyarrow",
+            compression="zstd",
         )
         return filepath
 
@@ -116,7 +160,7 @@ class CalibrationLayer(Layer):
         if self._contents is None:
             if self._data_path is None:
                 raise ValueError("Calibration layer has no associated path for data.")
-            self._contents = self._values_from_csv(self._data_path)
+            self._load_data_file(self._data_path)
 
         logger.debug("Converting epoch values to raw epoch format for CDF.")
         self._convert_to_raw_epoch()
@@ -234,7 +278,12 @@ class CalibrationLayer(Layer):
                 f"Existing calibration values will be overwritten with data in {path!s}."
             )
 
-        self._contents = self._values_from_csv(path)
+        if path.suffix == ".parquet":
+            self._contents = self._values_from_parquet(path)
+        elif path.suffix == ".cdf":
+            self._contents = self._values_from_cdf(path)
+        else:
+            self._contents = self._values_from_csv(path)
         return self
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
@@ -253,7 +302,10 @@ class CalibrationLayer(Layer):
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
             if save_contents:
-                self._write_to_csv(data_file_path, createDirectory)
+                if data_file_path.suffix == ".parquet":
+                    self._write_to_parquet(data_file_path, createDirectory)
+                else:
+                    self._write_to_csv(data_file_path, createDirectory)
 
         data_file_path = filepath.parent / self.metadata.data_filename
         if self.metadata.data_hash is None and data_file_path.exists():
@@ -275,16 +327,17 @@ class CalibrationLayer(Layer):
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
         if path.suffix == ".csv":
             return cls._from_csv(path)
+        elif path.suffix == ".parquet":
+            return cls._from_parquet(path)
+        elif path.suffix == ".cdf":
+            return cls._from_cdf(path)
         else:
             return super().from_file(path, load_contents)
 
     @classmethod
-    def _values_from_csv(cls, path: Path) -> pd.DataFrame:
-        df = pd.read_csv(
-            path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
-        )
+    def _validate_contents(cls, df: pd.DataFrame, path: Path) -> pd.DataFrame:
         if df.columns.empty:
-            raise ValueError("CSV file is empty or does not contain valid data")
+            raise ValueError(f"Layer data file '{path.name}' is empty or invalid")
 
         # NaN is no longer valid in quality_flag or quality_bitmask columns.
         # Use 0 for no-op, positive to set bits, negative to clear bits.
@@ -302,9 +355,29 @@ class CalibrationLayer(Layer):
         return df
 
     @classmethod
-    def _from_csv(cls, path: Path):
-        df = cls._values_from_csv(path)
+    def _values_from_csv(cls, path: Path) -> pd.DataFrame:
+        df = pd.read_csv(
+            path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
+        )
+        return cls._validate_contents(df, path)
 
+    @classmethod
+    def _values_from_parquet(cls, path: Path) -> pd.DataFrame:
+        df = pd.read_parquet(path, engine="pyarrow")
+
+        # MATLAB writes the epoch column as text (to avoid parquetwrite's native
+        # datetime round-trip truncating to microsecond precision); Python writes
+        # it as a native datetime64[ns] column. Normalise both to datetime64[ns].
+        epoch_col = CONSTANTS.CSV_VARS.EPOCH
+        if epoch_col in df.columns and not pd.api.types.is_datetime64_any_dtype(
+            df[epoch_col]
+        ):
+            df[epoch_col] = pd.to_datetime(df[epoch_col])
+
+        return cls._validate_contents(df, path)
+
+    @classmethod
+    def _build_from_values(cls, df: pd.DataFrame, path: Path) -> "CalibrationLayer":
         validity = (
             Validity(
                 start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
@@ -316,13 +389,19 @@ class CalibrationLayer(Layer):
 
         calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
 
-        method: CalibrationMethod = (
-            CalibrationMethod.from_string(calibration_metadata_handler.descriptor)
-            if (
-                calibration_metadata_handler and calibration_metadata_handler.descriptor
-            )
-            else CalibrationMethod.NOOP
-        )
+        method = CalibrationMethod.NOOP
+        if calibration_metadata_handler and calibration_metadata_handler.descriptor:
+            # descriptor is "{method}" or "{method}-{mode}" (e.g. "quality-norm");
+            # try the full descriptor first, then just the method portion before
+            # the first hyphen, since CalibrationMethod.short_name never itself
+            # contains a hyphen.
+            descriptor = calibration_metadata_handler.descriptor
+            for candidate in (descriptor, descriptor.split("-", 1)[0]):
+                try:
+                    method = CalibrationMethod.from_string(candidate)
+                    break
+                except ValueError:
+                    continue
 
         instance = cls(
             id="",
@@ -344,6 +423,67 @@ class CalibrationLayer(Layer):
         instance._contents = df
         instance._set_content_date_from_filepath(path)
         return instance
+
+    @classmethod
+    def _from_csv(cls, path: Path):
+        return cls._build_from_values(cls._values_from_csv(path), path)
+
+    @classmethod
+    def _from_parquet(cls, path: Path):
+        return cls._build_from_values(cls._values_from_parquet(path), path)
+
+    @classmethod
+    def _values_from_cdf(cls, path: Path) -> pd.DataFrame:
+        logger.info(f"Reading calibration layer CDF data from {path!s}.")
+        dataset = cdf_to_xarray(str(path), to_datetime=False)
+
+        epoch = lib.cdfepoch.to_datetime(dataset[CONSTANTS.CDF_VARS.EPOCH].values)
+        offsets = dataset[CONSTANTS.CDF_VARS.OFFSETS].values
+
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(epoch),
+                CONSTANTS.CSV_VARS.OFFSET_X: offsets[:, 0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: offsets[:, 1],
+                CONSTANTS.CSV_VARS.OFFSET_Z: offsets[:, 2],
+                CONSTANTS.CSV_VARS.TIMEDELTA: dataset[
+                    CONSTANTS.CDF_VARS.TIMEDELTAS
+                ].values,
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: dataset[
+                    CONSTANTS.CDF_VARS.QUALITY_FLAG
+                ].values.astype(int),
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: dataset[
+                    CONSTANTS.CDF_VARS.QUALITY_BITMASK
+                ].values.astype(int),
+            }
+        )
+
+        fill_mask = df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ].isin([CONSTANTS.CDF_FLOAT_FILLVAL])
+        df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ] = df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ].mask(fill_mask, np.nan)
+
+        return cls._validate_contents(df, path)
+
+    @classmethod
+    def _from_cdf(cls, path: Path):
+        return cls._build_from_values(cls._values_from_cdf(path), path)
 
     @classmethod
     def create_zero_offset_layer_from_science(

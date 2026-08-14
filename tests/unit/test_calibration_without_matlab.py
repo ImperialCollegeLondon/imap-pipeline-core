@@ -5,7 +5,7 @@ import pytest
 
 from imap_mag.cli.calibrate import calibrate, gradiometry
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, Sensor
+from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat, Sensor
 from tests.util.miscellaneous import (
     write_calibration_layer_pair,
 )
@@ -31,7 +31,9 @@ def test_gradiometry_returns_list(
         mock_call_matlab,
     )
 
-    result = gradiometry(start_date=datetime(2026, 9, 30))
+    result = gradiometry(
+        start_date=datetime(2026, 9, 30), layer_data_format=LayerDataFormat.CSV
+    )
 
     assert isinstance(result, list)
     assert len(result) >= 1
@@ -78,6 +80,7 @@ def test_gradiometer_calibrator_makes_correct_matlab_call(
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     layer_metadata = (
@@ -128,6 +131,7 @@ def test_gradiometer_calibrator_finds_next_viable_version(
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     # Datastore must have versioned up to v001.0002
@@ -178,6 +182,7 @@ def test_calibration_layer_versioned_together_when_only_json_exists(
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     # Both files must share version v001.0002
@@ -228,6 +233,7 @@ def test_calibration_layer_versioned_together_when_only_csv_exists(
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     # Both files must share version v001.0002

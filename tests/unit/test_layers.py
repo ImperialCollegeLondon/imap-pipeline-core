@@ -235,9 +235,10 @@ def test_calibration_layer_create_zero_offset_from_science():
     assert cl.validity.end == sl.validity.end
     assert cl.sensor == sl.sensor
     assert cl.version == 0
+    # Default layer data format is parquet.
     assert (
         cl.metadata.data_filename is not None
-        and cl.metadata.data_filename.name.endswith(".csv")
+        and cl.metadata.data_filename.name.endswith(".parquet")
     )
     assert cl.metadata.creation_timestamp is not None
     assert cl.value_type == ValueType.VECTOR

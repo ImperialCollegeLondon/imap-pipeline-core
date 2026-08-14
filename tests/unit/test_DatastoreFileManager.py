@@ -304,7 +304,11 @@ def test_calibration_layer_identical_content_deduplicates_to_existing_version(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
+        data_extension="csv",
     )
 
     (result_path, _, _) = manager.add_file(work_json, handler)
@@ -336,7 +340,11 @@ def test_calibration_layer_different_content_bumps_to_v002(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
+        data_extension="csv",
     )
 
     (result_path, _, _) = manager.add_file(work_json, handler)
@@ -367,7 +375,11 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
 
     manager = _manager(temp_folder_path)
     json_handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
+        data_extension="csv",
     )
     manager.add_file(work_json, json_handler)
 
@@ -399,7 +411,11 @@ def test_allow_overwrite_replaces_same_version(temp_folder_path):
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=3, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=3,
+        version_major=1,
+        data_extension="csv",
     )
     handler.versioning_mode = handler.VersionMode.USER_OVERRIDE
 

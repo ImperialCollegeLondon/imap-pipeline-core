@@ -8,7 +8,12 @@ import pytest
 from prefect.filesystems import LocalFileSystem
 from prefect_github import GitHubRepository
 
-from mag_toolkit.calibration import DatastoreAccessMode
+from imap_mag.cli.apply import FileType
+from mag_toolkit.calibration import (
+    ConversionStrategy,
+    DatastoreAccessMode,
+    LayerDataFormat,
+)
 from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.performCalibration import (
@@ -20,6 +25,7 @@ from prefect_server.performCalibration import (
     _resolve_matlab_repo_path,
     apply_flow,
     calibrate_and_apply_flow,
+    calibrate_convert_flow,
     calibrate_flow,
     generate_apply_calibration_flow_run_name,
     generate_calibrate_and_apply_flow_run_name,
@@ -256,6 +262,105 @@ class TestPerformCalibrationFlows:
             )
 
         mock_apply.assert_called_once()
+
+    def test_calibrate_flow_forwards_layer_data_format(self):
+        with patch("prefect_server.performCalibration.calibrate") as mock_calibrate:
+            mock_calibrate.return_value = [Path("some_layer.json")]
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(
+                    kappa=0.1, sc_interference_threshold=0.2
+                ),
+                layer_data_format=LayerDataFormat.CSV,
+            )
+
+        assert mock_calibrate.call_args.kwargs["layer_data_format"] == (
+            LayerDataFormat.CSV
+        )
+
+    def test_calibrate_flow_defaults_layer_data_format_to_parquet(self):
+        with patch("prefect_server.performCalibration.calibrate") as mock_calibrate:
+            mock_calibrate.return_value = [Path("some_layer.json")]
+            calibrate_flow.fn(
+                start_date=datetime(2025, 1, 1),
+                configuration=GradiometryConfig(
+                    kappa=0.1, sc_interference_threshold=0.2
+                ),
+            )
+
+        assert mock_calibrate.call_args.kwargs["layer_data_format"] == (
+            LayerDataFormat.PARQUET
+        )
+
+    def test_calibrate_and_apply_flow_forwards_layer_data_format(self):
+        mock_layer = MagicMock()
+        mock_layer.metadata.science = ["test_science.cdf"]
+
+        with (
+            patch(
+                "prefect_server.performCalibration.calibrate",
+                return_value=[Path("imap_mag_manual-norm-layer_20260130_v001.json")],
+            ) as mock_calibrate,
+            patch(
+                "prefect_server.performCalibration.CalibrationLayer.from_file",
+                return_value=mock_layer,
+            ),
+            patch("prefect_server.performCalibration.apply"),
+        ):
+            calibrate_and_apply_flow.fn(
+                start_date=datetime(2026, 1, 30),
+                configuration=GradiometryConfig(
+                    kappa=0.1, sc_interference_threshold=0.2
+                ),
+                layer_data_format=LayerDataFormat.CSV,
+            )
+
+        assert mock_calibrate.call_args.kwargs["layer_data_format"] == (
+            LayerDataFormat.CSV
+        )
+
+
+class TestCalibrateConvertFlow:
+    def test_is_registered_with_correct_flow_name(self):
+        assert calibrate_convert_flow.name == (
+            PREFECT_CONSTANTS.FLOW_NAMES.CALIBRATE_CONVERT
+        )
+
+    def test_delegates_to_convert_with_expected_arguments(self):
+        with patch(
+            "prefect_server.performCalibration.convert", return_value=[]
+        ) as mock_convert:
+            calibrate_convert_flow.fn(
+                input_layers=["*noop*"],
+                start_date=date(2026, 1, 16),
+                end_date=date(2026, 1, 17),
+                output_layer_data_format=FileType.CSV,
+                output_layer_versioning_strategy=ConversionStrategy.CREATE_NEW_VERSION,
+            )
+
+        mock_convert.assert_called_once()
+        kwargs = mock_convert.call_args.kwargs
+        assert kwargs["input_layers"] == ["*noop*"]
+        assert kwargs["start_date"] == datetime(2026, 1, 16)
+        assert kwargs["end_date"] == datetime(2026, 1, 17)
+        assert kwargs["output_layer_data_format"] == FileType.CSV
+        assert kwargs["output_layer_versioning_strategy"] == (
+            ConversionStrategy.CREATE_NEW_VERSION
+        )
+
+    def test_defaults_output_format_to_parquet(self):
+        with patch(
+            "prefect_server.performCalibration.convert", return_value=[]
+        ) as mock_convert:
+            calibrate_convert_flow.fn(input_layers=["*noop*"])
+
+        kwargs = mock_convert.call_args.kwargs
+        assert kwargs["output_layer_data_format"] == FileType.PARQUET
+        assert kwargs["output_layer_versioning_strategy"] == (
+            ConversionStrategy.OVERWRITE
+        )
+        assert kwargs["start_date"] is None
+        assert kwargs["end_date"] is None
 
 
 class TestDaysInRange:

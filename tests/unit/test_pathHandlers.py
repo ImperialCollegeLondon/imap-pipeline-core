@@ -133,12 +133,13 @@ def test_calibration_layer_get_equivalent_data_handler():
     data_handler = path_handler.get_equivalent_data_handler()
 
     # Verify.
+    # data_extension defaults to "parquet" (the pipeline-wide default layer format).
     assert data_handler == CalibrationLayerPathHandler(
         version=2,
         descriptor="offsets",
         extra_descriptor="-data",
         content_date=datetime(2025, 10, 4),
-        extension="csv",
+        extension="parquet",
     )
 
 

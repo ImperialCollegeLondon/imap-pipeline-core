@@ -204,6 +204,88 @@ class FileFinder:
 
         return resolved
 
+    def find_layers_by_patterns(
+        self,
+        layers: list[str],
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        mode: ScienceMode | None = None,
+        throw_if_not_found: bool = False,
+    ) -> list[str]:
+        """Resolve layer pattern strings to actual layer filenames across an
+        optional date range and optional mode, for use by the calibrate-convert
+        flow (which, unlike ``apply``, may search many days or the whole
+        datastore history at once).
+
+        Each entry in ``layers`` can be an exact filename or a glob pattern
+        (e.g. ``"*noop*"``, ``"*"``). Only top-level layer files (the JSON
+        metadata file, or a standalone CDF layer) are returned - companion
+        CSV/Parquet data files are not layer identifiers in their own right.
+
+        ``start_date``/``end_date``/``mode`` are only applied when provided;
+        omitting all three searches the entire calibration layers datastore.
+        """
+        layers_folder = self._data_store / "calibration" / "layers"
+
+        resolved: list[str] = []
+        for layer in layers:
+            fnmatch_pattern = layer if ("*" in layer or "?" in layer) else None
+
+            match_by_path = Path(layer)
+            if (
+                match_by_path.exists()
+                and match_by_path.is_file()
+                and CalibrationLayerPathHandler.from_filename(match_by_path) is not None
+            ):
+                resolved.append(layer)
+                continue
+
+            candidate_paths: list[Path] = (
+                [p for p in layers_folder.rglob("*") if p.is_file()]
+                if layers_folder.exists()
+                else []
+            )
+
+            candidates: list[tuple[str, int]] = []
+            for path in candidate_paths:
+                handler = CalibrationLayerPathHandler.from_filename(path.name)
+                if handler is None or not handler.is_metadata_file():
+                    continue
+                if fnmatch_pattern is not None:
+                    if not fnmatch.fnmatch(path.name, fnmatch_pattern):
+                        continue
+                elif path.name != layer:
+                    continue
+                if mode is not None and f"{mode.short_name}-layer" not in path.name:
+                    continue
+                if start_date is not None and handler.content_date is not None:
+                    effective_end = end_date or start_date
+                    if not (
+                        start_date.date()
+                        <= handler.content_date.date()
+                        <= effective_end.date()
+                    ):
+                        continue
+                candidates.append((path.name, handler.version))
+
+            if candidates:
+                if fnmatch_pattern is not None:
+                    resolved.extend(
+                        self._keep_highest_version_layers_only(
+                            [name for name, _ in candidates]
+                        )
+                    )
+                else:
+                    candidates.sort(key=lambda x: x[1], reverse=True)
+                    resolved.append(candidates[0][0])
+            elif throw_if_not_found:
+                logger.error(f"No layer files found matching pattern '{layer}'.")
+                raise FileNotFoundError(
+                    f"No layer files found matching pattern '{layer}'."
+                )
+
+        return resolved
+
     @staticmethod
     def _keep_highest_version_layers_only(filenames: list[str]) -> list[str]:
         """Given a list of layer filenames, keep only the highest version per descriptor+date."""

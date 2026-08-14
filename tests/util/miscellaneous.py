@@ -132,15 +132,21 @@ def write_calibration_layer_pair(
         value_type=ValueType.VECTOR,
         method=CalibrationMethod.NOOP,
     )
+    handler = CalibrationLayerPathHandler(
+        descriptor=descriptor,
+        content_date=date,
+        version=version,
+        version_major=1,
+        data_extension="csv",
+    )
+    data_handler = handler.get_equivalent_data_handler()
+    layer.metadata.data_filename = Path(data_handler.get_filename())
     layer._contents = contents
 
-    handler = CalibrationLayerPathHandler(
-        descriptor=descriptor, content_date=date, version=version, version_major=1
-    )
     json_path = folder / handler.get_filename()
     layer.writeToFile(json_path)
 
-    csv_path = folder / handler.get_equivalent_data_handler().get_filename()
+    csv_path = folder / data_handler.get_filename()
     return json_path, csv_path
 
 
