@@ -20,6 +20,7 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     CreateOffsets,
     DatastoreAccessMode,
+    LayerDataFormat,
     Sensor,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
@@ -462,6 +463,7 @@ def test_scripted_calibrate_cli_publishes_layer(
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
         metakernel=Path("metakernel.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     results = [f for f in results if not "metakernel.txt" not in str(f)]
@@ -540,6 +542,7 @@ def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> 
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
         metakernel=Path("metakernel.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
 

@@ -20,7 +20,11 @@ from mag_toolkit.calibration import (
 from mag_toolkit.calibration.CalibrationConfig import (
     SetQualityAndNaNConfig,
 )
-from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, ValueType
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CONSTANTS,
+    LayerDataFormat,
+    ValueType,
+)
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
 from mag_toolkit.calibration.calibrators import SetQualityAndNaNCalibrationJob
 from tests.util.database import test_database  # noqa: F401
@@ -56,6 +60,7 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
@@ -105,6 +110,7 @@ def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_b
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
+        layer_data_format=LayerDataFormat.CSV,
     )
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
 
@@ -137,6 +143,7 @@ def test_calibration_job_splits_across_days(tmp_path):
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
+        layer_data_format=LayerDataFormat.CSV,
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
     _, datafile1 = job_day1.run_calibration(handler_day1, config)
@@ -158,6 +165,7 @@ def test_calibration_job_splits_across_days(tmp_path):
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 17),
         settings=AppSettings(),
+        layer_data_format=LayerDataFormat.CSV,
     )
     job_day2 = SetQualityAndNaNCalibrationJob(params_day2, work_folder2)
     _, datafile2 = job_day2.run_calibration(handler_day2, config)
@@ -190,6 +198,7 @@ def run_calibration_on_config_file(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=content_date,
         settings=AppSettings(),
+        layer_data_format=LayerDataFormat.CSV,
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
     json_file, datafile1 = job_day1.run_calibration(handler_day1, config)
@@ -364,6 +373,7 @@ def test_calibrate_creates_layer_json_and_csv_file(temp_datastore, dynamic_work_
         sensor=Sensor.MAGO,
         configuration=config.model_dump_json(),
         save_mode=SaveMode.LocalOnly,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     layer_files = list(layer_dir.glob("*quality*"))
@@ -837,6 +847,7 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
     handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
+        data_extension="csv",
     )
     config = SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
 
@@ -874,6 +885,7 @@ def test_calibrate_twice_identical_config_deduplicates_to_v001(
             sensor=Sensor.MAGO,
             configuration=config.model_dump_json(),
             save_mode=SaveMode.LocalAndDatabase,
+            layer_data_format=LayerDataFormat.CSV,
         )
 
     v001_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0001.json"
@@ -914,6 +926,7 @@ def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
         sensor=Sensor.MAGO,
         configuration=config_v1.model_dump_json(),
         save_mode=SaveMode.LocalAndDatabase,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     config_v2 = create_temporary_csv_config(
@@ -927,6 +940,7 @@ def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
         sensor=Sensor.MAGO,
         configuration=config_v2.model_dump_json(),
         save_mode=SaveMode.LocalAndDatabase,
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     v002_json = layer_dir / "imap_mag_quality-norm-layer_20260116_v001.0002.json"

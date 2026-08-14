@@ -93,6 +93,7 @@ def _save_calibration_outputs(
     returned: list[Path],
     outputManager: IDatastoreFileManager,
     version_number_override: tuple[int, int] | None = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path]:
 
     if not returned:
@@ -109,6 +110,10 @@ def _save_calibration_outputs(
         handler: IFilePathHandler = FilePathHandlerSelector.find_by_path(path)
 
         if isinstance(handler, CalibrationLayerPathHandler):
+            # from_path/from_filename cannot recover the requested companion
+            # format from the JSON's own filename (it doesn't encode it), so
+            # set it explicitly here to what was actually requested.
+            handler.data_extension = layer_data_format.value
             if not handler.is_metadata_file():
                 # Companion data file for a calibration layer; skip it for now and
                 # handle it when the JSON layer is processed.
@@ -168,12 +173,17 @@ def _save_calibration_outputs(
         if companion_path:
             # Add the companion data file to the output manager with its equivalent data handler, ensuring both files are saved together and co-versioned.
             # we deliberately did not save the data file with its own handler, as that would cause it to be versioned independently of the JSON layer.
-            # The handler's own data_extension reflects the *requested* layer_data_format,
-            # which may not match what the calibration job actually produced (e.g. a
-            # scripted-L2 run that only writes csv); use the companion file's real
-            # extension so it is always detected and saved correctly regardless of format.
+            # The calibration job is expected to honour the requested layer_data_format
+            # exactly; a mismatch means the job did not produce the format it was asked
+            # for, which is a bug worth failing loudly on rather than silently adapting to.
             data_handler = handler.get_equivalent_data_handler()  # type: ignore
-            data_handler.extension = companion_path.suffix.lstrip(".")
+            actual_extension = companion_path.suffix.lstrip(".")
+            if actual_extension != data_handler.extension:
+                raise ValueError(
+                    f"Calibration layer data file {companion_path!s} has extension "
+                    f"'.{actual_extension}' but the requested layer_data_format was "
+                    f"'.{data_handler.extension}'."
+                )
             outputManager.add_file(companion_path, path_handler=data_handler)
 
     return saved_file_paths
@@ -442,6 +452,7 @@ def _calibrate_for_date(
             returned=returned,
             outputManager=outputManager,
             version_number_override=version_number_override,
+            layer_data_format=layer_data_format,
         )
         + ancillaries
     )

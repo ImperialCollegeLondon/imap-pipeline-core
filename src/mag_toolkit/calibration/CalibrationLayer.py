@@ -17,6 +17,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    LayerDataFormat,
     Mission,
     Sensor,
     ValueType,
@@ -60,7 +61,9 @@ class CalibrationLayer(Layer):
         # part instead, so CSV round-trips with the same precision as Parquet.
         df = self._contents
         epoch_col = CONSTANTS.CSV_VARS.EPOCH
-        if epoch_col in df.columns:
+        if epoch_col in df.columns and pd.api.types.is_datetime64_any_dtype(
+            df[epoch_col]
+        ):
             df = df.copy()
             df[epoch_col] = _format_epoch_as_nanosecond_string(df[epoch_col])
 
@@ -323,6 +326,37 @@ class CalibrationLayer(Layer):
         created = super()._write_to_json(filepath, createDirectory)
         return created
 
+    @staticmethod
+    def is_self_contained_format(extension: str) -> bool:
+        """True for formats (currently just CDF) that embed all layer data and
+        metadata into a single file, rather than a JSON + companion data-file pair."""
+        return extension == "cdf"
+
+    def prepare_metadata_for_output_format(
+        self, output_handler: CalibrationLayerPathHandler
+    ) -> Path | None:
+        """Update ``metadata.data_filename``/``data_hash`` to match
+        ``output_handler``'s target format, ready for
+        ``writeToFile(work_folder / output_handler.get_filename())``.
+
+        Clears the companion reference entirely for self-contained formats
+        (CDF); otherwise points it at the equivalent companion data file and
+        clears any stale hash so it is recomputed for the new content.
+
+        Returns the companion data file's filename, or ``None`` for
+        self-contained formats.
+        """
+        if self.is_self_contained_format(output_handler.extension):
+            self.metadata.data_filename = None
+            self.metadata.data_hash = None
+            return None
+
+        data_handler = output_handler.get_equivalent_data_handler()
+        companion_filename = Path(data_handler.get_filename())
+        self.metadata.data_filename = companion_filename
+        self.metadata.data_hash = None
+        return companion_filename
+
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
         if path.suffix == ".csv":
@@ -487,7 +521,10 @@ class CalibrationLayer(Layer):
 
     @classmethod
     def create_zero_offset_layer_from_science(
-        cls, science_layer: ScienceLayer, settings: AppSettings = AppSettings()
+        cls,
+        science_layer: ScienceLayer,
+        settings: AppSettings = AppSettings(),
+        layer_data_format: LayerDataFormat | None = None,
     ) -> "CalibrationLayer":
         if not science_layer:
             raise ValueError(
@@ -530,6 +567,7 @@ class CalibrationLayer(Layer):
                 method=CalibrationMethod.NOOP,
                 content_date=content_date,
                 settings=settings,
+                layer_data_format=layer_data_format,
             )
             datefilehandler = calibration_handler.get_equivalent_data_handler()
             datefilename = Path(datefilehandler.get_filename())

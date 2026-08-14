@@ -653,6 +653,25 @@ class TestValuesFromCsvEmpty:
         df = CalibrationLayer._values_from_csv(csv_file)
         assert df.empty
 
+    def test_write_to_csv_handles_non_datetime_epoch_column(self, tmp_path):
+        """A header-only/empty epoch column has no inferred datetime dtype -
+        writing it must not crash trying to apply nanosecond string formatting."""
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: [],
+                CONSTANTS.CSV_VARS.OFFSET_X: [],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [],
+            }
+        )
+        layer = _make_layer_with_contents(df)
+        output_file = tmp_path / "empty.csv"
+        layer._write_to_csv(output_file)
+        assert output_file.exists()
+
 
 class TestScienceLayerWriteToCsv:
     def test_write_to_csv_raises_when_contents_none(self, tmp_path):

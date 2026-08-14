@@ -71,7 +71,7 @@ def convert(
     Layers are found the same way as ``apply`` (exact filenames or glob patterns),
     optionally restricted to a date range and/or science mode.
 
-    e.g. imap-mag convert --input-layers '*noop*' --output-layer-data-format csv
+    e.g. imap-mag convert --input-layers '*noop*.parquet' --output-layer-data-format csv
     """
     if output_layer_data_format not in _CONVERTIBLE_FORMATS:
         raise typer.BadParameter(
@@ -83,6 +83,11 @@ def convert(
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
+
+    logger.info(
+        f"Converting layers matching {input_layers} to "
+        f"{output_layer_data_format.value} ({output_layer_versioning_strategy.value})."
+    )
 
     datastore_finder = FileFinder(
         app_settings.data_store,
@@ -97,6 +102,7 @@ def convert(
         mode=mode,
         throw_if_not_found=True,
     )
+    logger.info(f"Found {len(resolved_layers)} layer(s) to convert: {resolved_layers}")
 
     outputManager = (
         DatastoreFileManager.CreateByMode(
@@ -105,6 +111,11 @@ def convert(
         if app_settings.convert.publish_to_data_store
         else None
     )
+    if outputManager is None:
+        logger.info(
+            "publish_to_data_store is disabled; converted layers will only be "
+            "written to the work folder."
+        )
 
     converted: list[Path] = []
     for layer_name in resolved_layers:
@@ -134,6 +145,8 @@ def _convert_layer(
     app_settings: AppSettings,
     save_mode: SaveMode,
 ) -> list[Path]:
+    logger.debug(f"Converting layer {layer_name} to {output_layer_data_format.value}.")
+
     source_handler = CalibrationLayerPathHandler.from_filename(layer_name)
     if source_handler is None:
         raise ValueError(f"Could not parse metadata from layer file: {layer_name}")
@@ -147,7 +160,7 @@ def _convert_layer(
 
     old_datastore_paths: list[Path] = [versioned_source_path]
     work_companion_path: Path | None = None
-    if source_handler.extension != FileType.CDF.value:
+    if not CalibrationLayer.is_self_contained_format(source_handler.extension):
         source_peek = CalibrationLayer.from_file(work_source_path, load_contents=False)
         if source_peek.metadata.data_filename:
             companion_versioned_path = (
@@ -180,7 +193,9 @@ def _convert_layer(
         else VersionedPathHandler.VersionMode.MAX_VERSION_PLUS_ONE
     )
 
-    is_cdf_target = output_layer_data_format == FileType.CDF
+    output_is_self_contained = CalibrationLayer.is_self_contained_format(
+        output_layer_data_format.value
+    )
     output_handler = CalibrationLayerPathHandler(
         descriptor=source_handler.descriptor,
         content_date=source_handler.content_date,
@@ -188,7 +203,7 @@ def _convert_layer(
         version=source_handler.version,
         _has_major_version=source_handler._has_major_version,
         versioning_mode=versioning_mode,
-        extension="cdf" if is_cdf_target else "json",
+        extension="cdf" if output_is_self_contained else "json",
         data_extension=output_layer_data_format.value,
         allow_overwrite=is_overwrite,
     )
@@ -197,22 +212,22 @@ def _convert_layer(
     layer.version = output_handler.version
 
     new_primary_path = work_folder / output_handler.get_filename()
-    new_companion_path: Path | None = None
+    companion_filename = layer.prepare_metadata_for_output_format(output_handler)
+    new_companion_path = (
+        work_folder / companion_filename if companion_filename else None
+    )
 
-    if is_cdf_target:
-        layer.metadata.data_filename = None
-        layer.writeToFile(new_primary_path)
-    else:
-        data_handler = output_handler.get_equivalent_data_handler()
-        layer.metadata.data_filename = Path(data_handler.get_filename())
-        layer.metadata.data_hash = None
-        new_companion_path = work_folder / data_handler.get_filename()
-        layer.writeToFile(new_primary_path)
+    logger.debug(
+        f"Writing converted layer {layer_name} to {new_primary_path.name}"
+        + (f" (+ {new_companion_path.name})" if new_companion_path else "")
+    )
+    layer.writeToFile(new_primary_path)
 
+    logger.debug(f"Verifying converted contents of {layer_name} match the original.")
     _verify_matching_contents(
         original_path=work_source_path,
         converted_path=new_primary_path,
-        involves_cdf=source_handler.extension == "cdf" or is_cdf_target,
+        involves_cdf=source_handler.extension == "cdf" or output_is_self_contained,
     )
 
     published: list[Path] = []
@@ -221,18 +236,25 @@ def _convert_layer(
             new_primary_path, path_handler=output_handler
         )
         published.append(destination)
+        logger.info(f"Published converted layer to {destination}.")
         if new_companion_path is not None:
             companion_destination, _, _ = outputManager.add_file(
                 new_companion_path,
                 path_handler=output_handler.get_equivalent_data_handler(),
             )
             published.append(companion_destination)
+            logger.info(
+                f"Published converted companion data to {companion_destination}."
+            )
 
         if is_overwrite:
             for old_path in old_datastore_paths:
                 if old_path not in published and old_path.exists():
                     _delete_old_datastore_file(old_path, app_settings, save_mode)
     else:
+        logger.debug(
+            f"Leaving converted layer for {layer_name} in the work folder only."
+        )
         published = [new_primary_path] + (
             [new_companion_path] if new_companion_path is not None else []
         )

@@ -114,6 +114,7 @@ Recurring review feedback — follow these to avoid the same corrections:
 - Test utilities in `tests/util/` (database fixtures, WireMock, Prefect helpers)
 - Test data in `tests/datastore/`
 - Expect code to be well covered with automated tests and tests should pass before committing
+- `tests/unit` and `tests/integration` are separate suites and a green `tests/unit` run does NOT imply `tests/integration` is green (or vice versa) — for any non-trivial change (new default behaviour, a changed file format, a touched shared helper/handler), run both explicitly: `poetry run pytest tests/unit` and `poetry run pytest tests/integration`. Changing a default (e.g. a new default file format/extension) tends to break assumptions baked into existing integration tests (hardcoded extensions, direct file reads) that unit tests won't catch, since integration tests exercise real CLI/flow entry points end-to-end rather than mocked units.
 
 ## Code Style
 

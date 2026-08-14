@@ -628,7 +628,7 @@ def _write_layer_pair(
     """Write a v{version} JSON+CSV calibration-layer pair and return their paths."""
 
     handler = CalibrationLayerPathHandler(
-        descriptor=descriptor, content_date=date, version=version
+        descriptor=descriptor, content_date=date, version=version, data_extension="csv"
     )
 
     csv_name = handler.get_equivalent_data_handler().get_filename()
