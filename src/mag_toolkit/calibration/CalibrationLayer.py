@@ -298,14 +298,17 @@ class CalibrationLayer(Layer):
     def save_calibration_layer(self, filepath, createDirectory, save_contents=True):
         if self._contents is not None:
             if self.metadata.data_filename is None:
+                # No format was specified for this write; default to parquet.
+                # Callers that care about the companion format should set
+                # metadata.data_filename themselves before calling writeToFile.
                 self.metadata.data_filename = Path(
                     CalibrationLayerPathHandler.from_filename(filepath)
-                    .get_equivalent_data_handler()
+                    .create_new_datafile_handler(LayerDataFormat.PARQUET)
                     .get_filename()
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
             if save_contents:
-                if data_file_path.suffix == ".parquet":
+                if data_file_path.suffix.lstrip(".") == LayerDataFormat.PARQUET.value:
                     self._write_to_parquet(data_file_path, createDirectory)
                 else:
                     self._write_to_csv(data_file_path, createDirectory)
@@ -333,15 +336,19 @@ class CalibrationLayer(Layer):
         return extension == "cdf"
 
     def prepare_metadata_for_output_format(
-        self, output_handler: CalibrationLayerPathHandler
+        self,
+        output_handler: CalibrationLayerPathHandler,
+        layer_data_format: LayerDataFormat | None,
     ) -> Path | None:
         """Update ``metadata.data_filename``/``data_hash`` to match
         ``output_handler``'s target format, ready for
         ``writeToFile(work_folder / output_handler.get_filename())``.
 
         Clears the companion reference entirely for self-contained formats
-        (CDF); otherwise points it at the equivalent companion data file and
-        clears any stale hash so it is recomputed for the new content.
+        (CDF, in which case ``layer_data_format`` is unused and may be
+        ``None``); otherwise ``layer_data_format`` must be provided and is
+        used to build the equivalent companion data file handler, clearing
+        any stale hash so it is recomputed for the new content.
 
         Returns the companion data file's filename, or ``None`` for
         self-contained formats.
@@ -351,11 +358,54 @@ class CalibrationLayer(Layer):
             self.metadata.data_hash = None
             return None
 
-        data_handler = output_handler.get_equivalent_data_handler()
+        assert layer_data_format is not None, (
+            "layer_data_format is required when the output format is not self-contained"
+        )
+        data_handler = output_handler.create_new_datafile_handler(layer_data_format)
         companion_filename = Path(data_handler.get_filename())
         self.metadata.data_filename = companion_filename
         self.metadata.data_hash = None
         return companion_filename
+
+    def update_file_contents_based_on_version(
+        self, handler: CalibrationLayerPathHandler, source_file: Path
+    ) -> Path:
+        """Rewrite this layer's data_filename to match handler's current version,
+        if the datastore assigned a different version than source_file was
+        originally generated at (e.g. v001 -> v002 because v001 already exists
+        with different content).
+
+        Returns source_file unchanged if no rewrite is needed, otherwise a new
+        temporary file the caller must delete.
+        """
+        current = (
+            Path(self.metadata.data_filename).name
+            if self.metadata.data_filename
+            else None
+        )
+        if current is None:
+            return source_file
+
+        # Preserve the companion's actual current format (csv/parquet) rather
+        # than guessing — we are re-versioning an existing file, not creating
+        # a new one, so its format is already fixed.
+        current_format = LayerDataFormat(Path(current).suffix.lstrip("."))
+        expected_data_filename = handler.create_new_datafile_handler(
+            current_format
+        ).get_filename()
+
+        if current == expected_data_filename:
+            return source_file  # already correct — no rewrite needed
+
+        self.metadata.data_filename = Path(expected_data_filename)
+        new_version_path = source_file.parent / handler.get_filename()
+        self.writeToFile(new_version_path)
+
+        logger.debug(
+            f"Rewrote {source_file.name} data_filename from {current!r} to "
+            f"{expected_data_filename!r} in {new_version_path.name}."
+        )
+        return new_version_path
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
@@ -567,9 +617,12 @@ class CalibrationLayer(Layer):
                 method=CalibrationMethod.NOOP,
                 content_date=content_date,
                 settings=settings,
-                layer_data_format=layer_data_format,
             )
-            datefilehandler = calibration_handler.get_equivalent_data_handler()
+            datefilehandler = calibration_handler.create_new_datafile_handler(
+                layer_data_format
+                if layer_data_format is not None
+                else LayerDataFormat.PARQUET
+            )
             datefilename = Path(datefilehandler.get_filename())
 
         metadata = CalibrationMetadata(

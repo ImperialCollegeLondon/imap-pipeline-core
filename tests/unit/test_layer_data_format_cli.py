@@ -41,7 +41,6 @@ def _write_layer_pair_as(folder: Path, descriptor: str, fmt: LayerDataFormat) ->
         content_date=DATE,
         version=1,
         version_major=1,
-        data_extension=fmt.value,
     )
     df = __import__("pandas").DataFrame(
         {
@@ -72,38 +71,32 @@ def _write_layer_pair_as(folder: Path, descriptor: str, fmt: LayerDataFormat) ->
     )
     layer._contents = df
     layer.metadata.data_filename = Path(
-        handler.get_equivalent_data_handler().get_filename()
+        handler.create_new_datafile_handler(fmt).get_filename()
     )
     folder.mkdir(parents=True, exist_ok=True)
     layer.writeToFile(folder / handler.get_filename())
 
 
-class TestFromMethodDataExtension:
-    def test_defaults_to_parquet_when_omitted(self):
-        handler = CalibrationLayerPathHandler.from_method(
+class TestCreateNewDatafileHandler:
+    def _handler(self) -> CalibrationLayerPathHandler:
+        return CalibrationLayerPathHandler.from_method(
             method=CalibrationMethod.GRADIOMETER,
             content_date=DATE,
             settings=AppSettings(),
         )
-        assert handler.data_extension == "parquet"
 
     def test_honours_explicit_csv_format(self):
-        handler = CalibrationLayerPathHandler.from_method(
-            method=CalibrationMethod.GRADIOMETER,
-            content_date=DATE,
-            settings=AppSettings(),
-            layer_data_format=LayerDataFormat.CSV,
+        handler = self._handler()
+        assert (
+            handler.create_new_datafile_handler(LayerDataFormat.CSV).extension == "csv"
         )
-        assert handler.data_extension == "csv"
 
     def test_honours_explicit_parquet_format(self):
-        handler = CalibrationLayerPathHandler.from_method(
-            method=CalibrationMethod.GRADIOMETER,
-            content_date=DATE,
-            settings=AppSettings(),
-            layer_data_format=LayerDataFormat.PARQUET,
+        handler = self._handler()
+        assert (
+            handler.create_new_datafile_handler(LayerDataFormat.PARQUET).extension
+            == "parquet"
         )
-        assert handler.data_extension == "parquet"
 
 
 class TestCalibrateLayerDataFormatEndToEnd:

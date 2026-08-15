@@ -185,7 +185,7 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    returned = job.run_calibration(_handler(7), config)
+    returned = job.run_calibration(_handler(7), config, LayerDataFormat.CSV)
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     json_file = output_dir / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
     csv_file = output_dir / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
@@ -247,6 +247,7 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
             descriptor="manual-burst", content_date=DATE, version=1
         ),
         config,
+        LayerDataFormat.CSV,
     )
     assert captured["kwargs"]["timeout"] == 3600
 
@@ -273,7 +274,7 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured_config["sharepoint_flight_data"] == str(datastore.resolve())
@@ -320,7 +321,7 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
     job.cleanup()
 
     sparse_root = work_folder / SPARSE_DATASTORE_FOLDER_NAME
@@ -342,7 +343,7 @@ def test_missing_metakernel_raises(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match=r"absent\.txt"):
-        job.run_calibration(_handler(1), config)
+        job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
 
 def test_missing_output_layer_raises(tmp_path, monkeypatch):
@@ -354,13 +355,13 @@ def test_missing_output_layer_raises(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match="no output files"):
-        job.run_calibration(_handler(1), config)
+        job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
 
 def test_wrong_config_type_raises(tmp_path):
     job = _make_job(tmp_path)
     with pytest.raises(TypeError, match="ScriptedL2CalibrationConfig"):
-        job.run_calibration(_handler(1), GradiometryConfig())
+        job.run_calibration(_handler(1), GradiometryConfig(), LayerDataFormat.CSV)
 
 
 def test_generates_metakernel_when_none(tmp_path, monkeypatch):
@@ -392,7 +393,7 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     assert f'"{generated_name}"' in captured["command"]
 
@@ -500,7 +501,7 @@ def test_run_calibration_collects_files_in_offset_directories(tmp_path, monkeypa
         _write_work_offsets(output_dir)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    items = job.run_calibration(_handler(1), config)
+    items = job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured["config"]["output_offsets_folder"] == str(output_dir.resolve())
@@ -654,7 +655,7 @@ class TestCreateOffsets:
         handler = CalibrationLayerPathHandler(
             descriptor="manual-norm", content_date=DATE, version=1
         )
-        job.run_calibration(handler, config)
+        job.run_calibration(handler, config, LayerDataFormat.CSV)
         return captured["command"]
 
     def test_automatic_norm_mode_enables_write_offsets(self, tmp_path, monkeypatch):

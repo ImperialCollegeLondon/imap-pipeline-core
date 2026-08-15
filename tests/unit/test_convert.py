@@ -11,7 +11,7 @@ from imap_mag.cli.convert import convert
 from imap_mag.config import AppSettings, ConvertCommandConfig, SaveMode
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import ConversionStrategy
+from mag_toolkit.calibration import ConversionStrategy, LayerDataFormat
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -89,12 +89,11 @@ def _make_layer(
         version=version,
         version_major=version_major,
         extension="cdf" if fmt == FileType.CDF else "json",
-        data_extension=fmt.value,
     )
     primary_path = folder / handler.get_filename()
 
     if fmt != FileType.CDF:
-        data_handler = handler.get_equivalent_data_handler()
+        data_handler = handler.create_new_datafile_handler(LayerDataFormat(fmt.value))
         layer.metadata.data_filename = __import__("pathlib").Path(
             data_handler.get_filename()
         )

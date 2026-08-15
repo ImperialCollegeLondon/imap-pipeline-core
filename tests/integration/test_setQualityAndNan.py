@@ -60,11 +60,10 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
-        layer_data_format=LayerDataFormat.CSV,
     )
 
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
-    calfile, datafile = job.run_calibration(cal_handler, config)
+    calfile, datafile = job.run_calibration(cal_handler, config, LayerDataFormat.CSV)
 
     assert calfile.exists()
     assert datafile.exists()
@@ -110,11 +109,10 @@ def test_run_calibration_writes_epoch_as_full_iso_datetime_when_clipped_to_day_b
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
-        layer_data_format=LayerDataFormat.CSV,
     )
     job = SetQualityAndNaNCalibrationJob(params, work_folder)
 
-    _, datafile = job.run_calibration(handler, config)
+    _, datafile = job.run_calibration(handler, config, LayerDataFormat.CSV)
 
     raw_lines = datafile.read_text().splitlines()
     # Second line is the first data row; its epoch value is the first field
@@ -143,10 +141,9 @@ def test_calibration_job_splits_across_days(tmp_path):
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 16),
         settings=AppSettings(),
-        layer_data_format=LayerDataFormat.CSV,
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
-    _, datafile1 = job_day1.run_calibration(handler_day1, config)
+    _, datafile1 = job_day1.run_calibration(handler_day1, config, LayerDataFormat.CSV)
 
     df1 = pd.read_csv(datafile1, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     # Day 1: window starts at 20:00, no end within day -> 1 change point
@@ -165,10 +162,9 @@ def test_calibration_job_splits_across_days(tmp_path):
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=datetime(2026, 1, 17),
         settings=AppSettings(),
-        layer_data_format=LayerDataFormat.CSV,
     )
     job_day2 = SetQualityAndNaNCalibrationJob(params_day2, work_folder2)
-    _, datafile2 = job_day2.run_calibration(handler_day2, config)
+    _, datafile2 = job_day2.run_calibration(handler_day2, config, LayerDataFormat.CSV)
 
     df2 = pd.read_csv(datafile2, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     # Day 2: window starts at 00:00 (clipped), ends at 06:00 -> 2 change points
@@ -198,10 +194,11 @@ def run_calibration_on_config_file(
         method=CalibrationMethod.SET_QUALITY_AND_NAN,
         content_date=content_date,
         settings=AppSettings(),
-        layer_data_format=LayerDataFormat.CSV,
     )
     job_day1 = SetQualityAndNaNCalibrationJob(params_day1, work_folder)
-    json_file, datafile1 = job_day1.run_calibration(handler_day1, config)
+    json_file, datafile1 = job_day1.run_calibration(
+        handler_day1, config, LayerDataFormat.CSV
+    )
 
     assert json_file.exists()
     assert datafile1.exists()
@@ -264,7 +261,7 @@ def test_run_calibration_raises_for_missing_csv(tmp_path):
     config = SetQualityAndNaNConfig(csv_file="/nonexistent/file.csv")
 
     with pytest.raises(FileNotFoundError, match="File not found"):
-        job.run_calibration(handler, config)
+        job.run_calibration(handler, config, LayerDataFormat.CSV)
 
 
 @pytest.mark.parametrize(
@@ -289,7 +286,7 @@ def test_run_calibration_raises_for_invalid_quality_flag_in_csv(tmp_path, invali
         content_date=datetime(2026, 1, 16),
     )
     with pytest.raises(ValueError, match="quality_flag"):
-        job.run_calibration(handler, config)
+        job.run_calibration(handler, config, LayerDataFormat.CSV)
 
 
 def test_run_calibration_with_no_matching_windows_creates_empty_layer_with_headers(
@@ -847,12 +844,11 @@ def test_quality_calibration_csv_resolved_from_cwd(monkeypatch, tmp_path):
     handler = CalibrationLayerPathHandler(
         descriptor=CalibrationMethod.SET_QUALITY_AND_NAN.short_name,
         content_date=datetime(2026, 1, 16),
-        data_extension="csv",
     )
     config = SetQualityAndNaNConfig(csv_file="my_quality_events.csv")
 
     # Should succeed: resolver finds the file via CWD fallback
-    calfile, datafile = job.run_calibration(handler, config)
+    calfile, datafile = job.run_calibration(handler, config, LayerDataFormat.CSV)
 
     assert calfile.exists()
     assert datafile.exists()

@@ -16,7 +16,7 @@ from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer, ConversionStrategy
-from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, LayerDataFormat
 
 app = typer.Typer()
 
@@ -204,15 +204,24 @@ def _convert_layer(
         _has_major_version=source_handler._has_major_version,
         versioning_mode=versioning_mode,
         extension="cdf" if output_is_self_contained else "json",
-        data_extension=output_layer_data_format.value,
         allow_overwrite=is_overwrite,
+    )
+    # FileType (csv/parquet/cdf, this CLI's output format option) and
+    # LayerDataFormat (csv/parquet, what a companion data file handler needs)
+    # share the same string values for csv/parquet.
+    companion_format = (
+        None
+        if output_is_self_contained
+        else LayerDataFormat(output_layer_data_format.value)
     )
 
     layer.version_major = output_handler.version_major
     layer.version = output_handler.version
 
     new_primary_path = work_folder / output_handler.get_filename()
-    companion_filename = layer.prepare_metadata_for_output_format(output_handler)
+    companion_filename = layer.prepare_metadata_for_output_format(
+        output_handler, companion_format
+    )
     new_companion_path = (
         work_folder / companion_filename if companion_filename else None
     )
@@ -238,9 +247,12 @@ def _convert_layer(
         published.append(destination)
         logger.info(f"Published converted layer to {destination}.")
         if new_companion_path is not None:
+            assert companion_format is not None
             companion_destination, _, _ = outputManager.add_file(
                 new_companion_path,
-                path_handler=output_handler.get_equivalent_data_handler(),
+                path_handler=output_handler.create_new_datafile_handler(
+                    companion_format
+                ),
             )
             published.append(companion_destination)
             logger.info(

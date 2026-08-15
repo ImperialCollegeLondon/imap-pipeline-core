@@ -1,6 +1,7 @@
 """Unit tests for apply CLI command helper functions."""
 
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,6 +24,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    LayerDataFormat,
     Mission,
     Sensor,
     Validity,
@@ -410,7 +412,6 @@ def _make_real_layer(folder, descriptor: str, date: datetime, fmt: FileType):
         content_date=date,
         version=1,
         version_major=1,
-        data_extension=fmt.value,
     )
     df = pd.DataFrame(
         {
@@ -440,7 +441,9 @@ def _make_real_layer(folder, descriptor: str, date: datetime, fmt: FileType):
         method=CalibrationMethod.NOOP,
     )
     layer._contents = df
-    layer.metadata.data_filename = handler.get_equivalent_data_handler().get_filename()
+    layer.metadata.data_filename = Path(
+        handler.create_new_datafile_handler(LayerDataFormat(fmt.value)).get_filename()
+    )
     json_path = folder / handler.get_filename()
     layer.writeToFile(json_path)
     return json_path.name

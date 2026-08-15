@@ -97,6 +97,7 @@ def write_calibration_layer_pair(
     from mag_toolkit.calibration.CalibrationDefinitions import (
         CalibrationMetadata,
         CalibrationMethod,
+        LayerDataFormat,
         Mission,
         Sensor,
         Validity,
@@ -137,9 +138,8 @@ def write_calibration_layer_pair(
         content_date=date,
         version=version,
         version_major=1,
-        data_extension="csv",
     )
-    data_handler = handler.get_equivalent_data_handler()
+    data_handler = handler.create_new_datafile_handler(LayerDataFormat.CSV)
     layer.metadata.data_filename = Path(data_handler.get_filename())
     layer._contents = contents
 

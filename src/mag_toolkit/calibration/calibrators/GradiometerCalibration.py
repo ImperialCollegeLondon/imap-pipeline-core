@@ -10,7 +10,10 @@ from mag_toolkit.calibration.CalibrationConfig import (
     CalibrationConfig,
     GradiometryConfig,
 )
-from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CalibrationMethod,
+    LayerDataFormat,
+)
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
 from .CalibrationJob import CalibrationJob
@@ -62,7 +65,10 @@ class GradiometerCalibrationJob(CalibrationJob):
         return path_handlers
 
     def run_calibration(
-        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+        self,
+        cal_handler: CalibrationLayerPathHandler,
+        config: CalibrationConfig,
+        layer_data_format: LayerDataFormat,
     ) -> tuple[Path, Path]:
         """
         Run the gradiometry calibration.
@@ -71,6 +77,8 @@ class GradiometerCalibrationJob(CalibrationJob):
         :param calfile: The path to the calibration file to be created.
         :param datastore: The path to the data store.
         :param config: Optional configuration for the calibration.
+        :param layer_data_format: Format (csv/parquet) to write the layer's
+            companion data file in.
         :return: The paths to the created calibration metadata and science files."""
 
         dt_as_str = (
@@ -87,7 +95,8 @@ class GradiometerCalibrationJob(CalibrationJob):
 
         calfile = self.work_folder / cal_handler.get_filename()
         datafile = (
-            self.work_folder / cal_handler.get_equivalent_data_handler().get_filename()
+            self.work_folder
+            / cal_handler.create_new_datafile_handler(layer_data_format).get_filename()
         )
 
         logger.info(f"Using datetime {dt_as_str}")

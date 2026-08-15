@@ -110,10 +110,6 @@ def _save_calibration_outputs(
         handler: IFilePathHandler = FilePathHandlerSelector.find_by_path(path)
 
         if isinstance(handler, CalibrationLayerPathHandler):
-            # from_path/from_filename cannot recover the requested companion
-            # format from the JSON's own filename (it doesn't encode it), so
-            # set it explicitly here to what was actually requested.
-            handler.data_extension = layer_data_format.value
             if not handler.is_metadata_file():
                 # Companion data file for a calibration layer; skip it for now and
                 # handle it when the JSON layer is processed.
@@ -176,7 +172,9 @@ def _save_calibration_outputs(
             # The calibration job is expected to honour the requested layer_data_format
             # exactly; a mismatch means the job did not produce the format it was asked
             # for, which is a bug worth failing loudly on rather than silently adapting to.
-            data_handler = handler.get_equivalent_data_handler()  # type: ignore
+            data_handler = handler.create_new_datafile_handler(  # type: ignore
+                layer_data_format
+            )
             actual_extension = companion_path.suffix.lstrip(".")
             if actual_extension != data_handler.extension:
                 raise ValueError(
@@ -435,12 +433,13 @@ def _calibrate_for_date(
         mode=mode,
         version_number_override=version_number_override,
         settings=app_settings,
-        layer_data_format=layer_data_format,
     )
 
     try:
         returned = list(
-            calibrator.run_calibration(calibration_handler, calibration_configuration)
+            calibrator.run_calibration(
+                calibration_handler, calibration_configuration, layer_data_format
+            )
         )
     finally:
         calibrator.cleanup()

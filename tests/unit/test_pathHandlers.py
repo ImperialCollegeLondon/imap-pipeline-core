@@ -16,6 +16,7 @@ from imap_mag.io.file import (
     IALiRTPathHandler,
     SciencePathHandler,
 )
+from mag_toolkit.calibration import LayerDataFormat
 
 
 def test_path_handler_returns_correct_values_for_standard_l2_file():
@@ -121,7 +122,7 @@ def test_ancillary_from_filename_returns_none_if_filename_does_not_match_pattern
     )
 
 
-def test_calibration_layer_get_equivalent_data_handler():
+def test_calibration_layer_create_new_datafile_handler():
     # Set up.
     path_handler = CalibrationLayerPathHandler(
         version=2,
@@ -130,10 +131,9 @@ def test_calibration_layer_get_equivalent_data_handler():
     )
 
     # Exercise.
-    data_handler = path_handler.get_equivalent_data_handler()
+    data_handler = path_handler.create_new_datafile_handler(LayerDataFormat.PARQUET)
 
     # Verify.
-    # data_extension defaults to "parquet" (the pipeline-wide default layer format).
     assert data_handler == CalibrationLayerPathHandler(
         version=2,
         descriptor="offsets",

@@ -45,11 +45,12 @@ def _write_old_layer_pair(
 ) -> tuple[Path, Path]:
     """Write a JSON+CSV pair WITHOUT data_hash (simulating files from the old code)."""
     from imap_mag.io.file import CalibrationLayerPathHandler
+    from mag_toolkit.calibration import LayerDataFormat
 
     handler = CalibrationLayerPathHandler(
         descriptor=descriptor, content_date=date, version=version
     )
-    csv_name = handler.get_equivalent_data_handler().get_filename()
+    csv_name = handler.create_new_datafile_handler(LayerDataFormat.CSV).get_filename()
     csv_path = folder / csv_name
     csv_path.write_text(csv_content)
 

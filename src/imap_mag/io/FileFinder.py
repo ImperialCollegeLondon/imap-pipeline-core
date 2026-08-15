@@ -124,26 +124,6 @@ class FileFinder:
         else:
             return None
 
-    def find_layers_by_date_and_patterns(
-        self,
-        layers: list[str],
-        date: datetime,
-        mode: ScienceMode,
-        throw_if_not_found: bool = False,
-    ) -> list[str]:
-        """Resolve layer pattern strings to actual layer filenames for a single day.
-
-        Thin wrapper around :meth:`find_layers_by_patterns` for callers (like
-        ``apply``) that only ever search one day with a required mode.
-        """
-        return self.find_layers_by_patterns(
-            layers,
-            start_date=date,
-            end_date=date,
-            mode=mode,
-            throw_if_not_found=throw_if_not_found,
-        )
-
     def find_layers_by_patterns(
         self,
         layers: list[str],
@@ -248,16 +228,17 @@ class FileFinder:
         if start_date is None:
             return [p for p in layers_folder.rglob("*") if p.is_file()]
 
-        months: dict[tuple[int, int], None] = {}
-        current = start_date.replace(day=1)
+        # Represent each month as a single "months since year 0" integer so the
+        # range can be walked with plain integer arithmetic (no calendar edge
+        # cases like day-31/leap-year rollover to worry about).
         effective_end = end_date or start_date
-        while current <= effective_end:
-            months[(current.year, current.month)] = None
-            current = (current.replace(day=28) + timedelta(days=4)).replace(day=1)
+        start_month_index = start_date.year * 12 + start_date.month
+        end_month_index = effective_end.year * 12 + effective_end.month
 
         candidate_paths: list[Path] = []
-        for year, month in months:
-            month_folder = layers_folder / f"{year}" / f"{month:02d}"
+        for month_index in range(start_month_index, end_month_index + 1):
+            year, month = divmod(month_index - 1, 12)
+            month_folder = layers_folder / f"{year}" / f"{month + 1:02d}"
             if month_folder.exists():
                 candidate_paths.extend(p for p in month_folder.iterdir() if p.is_file())
         return candidate_paths
