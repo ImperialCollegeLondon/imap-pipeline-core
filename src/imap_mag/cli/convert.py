@@ -168,7 +168,7 @@ def _convert_layer(
     layer = CalibrationLayer.from_file(work_source_path, load_contents=False)
 
     old_datastore_paths: list[Path] = [versioned_source_path]
-    companion_versioned_path = layer.get_datafile_path()
+    companion_versioned_path = layer.get_datafile_path(versioned_source_path)
     if companion_versioned_path is not None:
         fetch_file_for_work(
             companion_versioned_path, work_folder, throw_if_not_found=True

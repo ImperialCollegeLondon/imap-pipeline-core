@@ -328,6 +328,9 @@ class CalibrationLayer(Layer):
             self.metadata.dependencies.append(dependency)
 
         created = super()._write_to_json(filepath, createDirectory)
+
+        self._local_file_path = created
+
         return created
 
     @staticmethod
@@ -351,19 +354,32 @@ class CalibrationLayer(Layer):
             )
         return FileType(Path(self.metadata.data_filename).suffix.lstrip("."))
 
-    def get_datafile_path(self) -> Path | None:
-        if self.metadata.data_filename is None or self.is_self_contained_format(
-            self.get_data_file_type().value
-        ):
+    def get_datafile_path(self, local_metadata_path: Path | None = None) -> Path | None:
+        """Return the path of the companion data file (CSV or Parquet) for a JSON layer, or the layer's own path for a self-contained format (CDF).
+        The path will be relative to the JSON layer's location unless ``local_metadata_path`` is providedwhen it will be relative to that instead.
+        """
+        if self.is_self_contained_format(self.get_data_file_type().value):
+            return (
+                local_metadata_path
+                if local_metadata_path is not None
+                else self._local_file_path
+            )
+
+        if self.metadata.data_filename is None:
             return None
 
-        if self._originally_loaded_from_path is None:
-            raise ValueError("Original path of json file is not available")
+        if local_metadata_path is None and self._local_file_path is None:
+            raise ValueError(
+                "Cannot determine companion data file path: both local_metadata_path and _local_file_path are None."
+            )
 
-        return (
-            self._originally_loaded_from_path.parent
-            / Path(self.metadata.data_filename).name
+        parent_folder = (
+            local_metadata_path.parent
+            if local_metadata_path is not None
+            else self._local_file_path.parent
         )
+
+        return parent_folder / Path(self.metadata.data_filename).name
 
     def prepare_metadata_for_output_format(
         self,
@@ -598,7 +614,7 @@ class CalibrationLayer(Layer):
     @classmethod
     def _from_cdf(cls, path: Path):
         layer = cls._build_from_values(cls._values_from_cdf(path), path)
-        layer._originally_loaded_from_path = path
+        layer._local_file_path = path
         return layer
 
     @classmethod

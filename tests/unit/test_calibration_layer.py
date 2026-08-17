@@ -556,7 +556,7 @@ class TestCalibrationLayerCreateZeroOffsetLayer:
 class TestCalibrationLayerWriteToJson:
     def test_write_to_json_creates_both_json_and_csv(self, tmp_path):
         layer = CalibrationLayer.from_file(LAYER_JSON)
-        assert layer._originally_loaded_from_path == LAYER_JSON
+        assert layer._local_file_path == LAYER_JSON
         json_file = tmp_path / "imap_mag_noop-layer_20251017_v001.json"
         layer._write_to_json(json_file, createDirectory=True)
         assert json_file.exists()

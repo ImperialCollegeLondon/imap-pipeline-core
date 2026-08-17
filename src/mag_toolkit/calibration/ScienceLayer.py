@@ -243,7 +243,7 @@ class ScienceLayer(Layer):
         )
         science_layer._set_content_date_from_filepath(path)
         science_layer._set_data_path(path)
-        science_layer._originally_loaded_from_path = path
+        science_layer._local_file_path = path
         if load_contents and contents is not None:
             science_layer._set_contents(contents)
 

@@ -30,7 +30,7 @@ class Layer(BaseModel, ABC):
     metadata: CalibrationMetadata
     _data_path: Path | None = None
     _contents: pd.DataFrame | None = None
-    _originally_loaded_from_path: Path | None = None
+    _local_file_path: Path | None = None
 
     @classmethod
     def from_file(cls: type[T], path: Path, load_contents=True) -> T:
@@ -42,7 +42,7 @@ class Layer(BaseModel, ABC):
         if model.metadata.data_filename is None:
             raise ValueError("Layer file does not specify a data filename.")
 
-        model._originally_loaded_from_path = path
+        model._local_file_path = path
 
         data_file: Path = path.parent / model.metadata.data_filename.name
 
@@ -107,14 +107,20 @@ class Layer(BaseModel, ABC):
         with open(filepath, "w+") as f:
             f.write(json)
 
+        self._local_file_path = filepath
+
         return filepath
 
     def write_to_file(self, filepath: Path, createDirectory=False) -> Path:
         if filepath.suffix == ".cdf":
-            return self._write_to_cdf(filepath, createDirectory=createDirectory)
+            cdf = self._write_to_cdf(filepath, createDirectory=createDirectory)
+            self._local_file_path = cdf
+            return cdf
         elif filepath.suffix == ".csv":
             return self._write_to_csv(filepath, createDirectory=createDirectory)
         elif filepath.suffix == ".parquet":
             return self._write_to_parquet(filepath, createDirectory=createDirectory)
         else:
-            return self._write_to_json(filepath, createDirectory=createDirectory)
+            json = self._write_to_json(filepath, createDirectory=createDirectory)
+            self._local_file_path = json
+            return json
