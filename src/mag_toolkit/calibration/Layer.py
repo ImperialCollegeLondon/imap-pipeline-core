@@ -30,6 +30,7 @@ class Layer(BaseModel, ABC):
     metadata: CalibrationMetadata
     _data_path: Path | None = None
     _contents: pd.DataFrame | None = None
+    _originally_loaded_from_path: Path | None = None
 
     @classmethod
     def from_file(cls: type[T], path: Path, load_contents=True) -> T:
@@ -40,6 +41,8 @@ class Layer(BaseModel, ABC):
 
         if model.metadata.data_filename is None:
             raise ValueError("Layer file does not specify a data filename.")
+
+        model._originally_loaded_from_path = path
 
         data_file: Path = path.parent / model.metadata.data_filename.name
 
@@ -86,10 +89,8 @@ class Layer(BaseModel, ABC):
     @abstractmethod
     def _write_to_csv(self, filepath: Path, createDirectory=False) -> Path: ...
 
-    def _write_to_parquet(self, filepath: Path, createDirectory=False) -> Path:
-        raise NotImplementedError(
-            f"{type(self).__name__} does not support writing Parquet format."
-        )
+    @abstractmethod
+    def _write_to_parquet(self, filepath: Path, createDirectory=False) -> Path: ...
 
     def getWriteable(self):
         json = self.model_dump_json()

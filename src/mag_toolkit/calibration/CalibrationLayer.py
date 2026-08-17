@@ -351,16 +351,19 @@ class CalibrationLayer(Layer):
             )
         return FileType(Path(self.metadata.data_filename).suffix.lstrip("."))
 
-    def get_companion_path(self, alongside: Path) -> Path | None:
-        """Return this layer's companion data file path, resolved next to
-        ``alongside`` (typically the JSON layer file's own path) — or ``None``
-        for a self-contained layer (e.g. CDF) that has no separate companion.
-        """
+    def get_datafile_path(self) -> Path | None:
         if self.metadata.data_filename is None or self.is_self_contained_format(
             self.get_data_file_type().value
         ):
             return None
-        return alongside.parent / Path(self.metadata.data_filename).name
+
+        if self._originally_loaded_from_path is None:
+            raise ValueError("Original path of json file is not available")
+
+        return (
+            self._originally_loaded_from_path.parent
+            / Path(self.metadata.data_filename).name
+        )
 
     def prepare_metadata_for_output_format(
         self,
@@ -594,7 +597,9 @@ class CalibrationLayer(Layer):
 
     @classmethod
     def _from_cdf(cls, path: Path):
-        return cls._build_from_values(cls._values_from_cdf(path), path)
+        layer = cls._build_from_values(cls._values_from_cdf(path), path)
+        layer._originally_loaded_from_path = path
+        return layer
 
     @classmethod
     def create_zero_offset_layer_from_science(

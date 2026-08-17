@@ -199,7 +199,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
             cal = CalibrationLayer.from_file(alongside, load_contents=False)
-            companion = cal.get_companion_path(alongside)
+            companion = cal.get_datafile_path()
             if companion is not None:
                 return companion
         except Exception:
@@ -233,7 +233,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
                 f"Source file {source_file} does not exist for content identity hashing."
             )
 
-        if source_file.suffix == ".json":
+        if self.is_metadata_file():
             try:
                 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 

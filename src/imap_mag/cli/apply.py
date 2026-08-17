@@ -135,10 +135,11 @@ def _prepare_layers_for_application(
 
         # Get data file
         cal_layer = CalibrationLayer.from_file(versioned_layer_file)
+        datafile = cal_layer.get_datafile_path()
 
-        if cal_layer.metadata.data_filename:
+        if datafile:
             fetch_file_for_work(
-                versioned_layer_file.parent / cal_layer.metadata.data_filename,
+                datafile,
                 appSettings.work_folder,
                 throw_if_not_found=True,
             )
@@ -468,17 +469,17 @@ def cleanup_workfolder_after_apply(
 
     # add the companion data file (CSV or Parquet) for each JSON layer to the cleanup list
     for layer_file in workLayers:
-        if layer_file.suffix == ".json":
+        handler = CalibrationLayerPathHandler.from_filename(layer_file)
+        if handler is not None and handler.is_metadata_file():
             try:
                 cal = CalibrationLayer.from_file(layer_file, load_contents=False)
-                data_filename = cal.metadata.data_filename
+                data_filename = cal.get_datafile_path()
             except Exception:
                 data_filename = None
 
             if data_filename is not None:
-                companion = layer_file.parent / data_filename.name
-                if companion.exists():
-                    files_to_cleanup.append(companion)
+                if data_filename.exists():
+                    files_to_cleanup.append(data_filename)
             else:
                 for ext in (".csv", ".parquet"):
                     companion = layer_file.with_suffix(ext)
