@@ -108,7 +108,7 @@ class Layer(BaseModel, ABC):
 
         return filepath
 
-    def writeToFile(self, filepath: Path, createDirectory=False) -> Path:
+    def write_to_file(self, filepath: Path, createDirectory=False) -> Path:
         if filepath.suffix == ".cdf":
             return self._write_to_cdf(filepath, createDirectory=createDirectory)
         elif filepath.suffix == ".csv":

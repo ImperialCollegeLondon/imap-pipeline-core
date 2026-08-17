@@ -362,7 +362,7 @@ class TestSetupZeroCalibrationLayer:
                 app_settings=AppSettings(),
             )
 
-        mock_zero_layer.writeToFile.assert_called_once()
+        mock_zero_layer.write_to_file.assert_called_once()
         assert result == work_folder / "noop_layer.json"
 
     def test_overwrites_existing_layer_file(self, tmp_path):
@@ -398,7 +398,7 @@ class TestSetupZeroCalibrationLayer:
             )
 
         assert result == existing_file
-        mock_zero_layer.writeToFile.assert_called_once()
+        mock_zero_layer.write_to_file.assert_called_once()
 
 
 def _make_real_layer(folder, descriptor: str, date: datetime, fmt: FileType):
@@ -445,7 +445,7 @@ def _make_real_layer(folder, descriptor: str, date: datetime, fmt: FileType):
         handler.create_new_datafile_handler(LayerDataFormat(fmt.value)).get_filename()
     )
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    layer.write_to_file(json_path)
     return json_path.name
 
 

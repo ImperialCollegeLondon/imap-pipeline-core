@@ -17,6 +17,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    FileType,
     LayerDataFormat,
     Mission,
     Sensor,
@@ -300,7 +301,7 @@ class CalibrationLayer(Layer):
             if self.metadata.data_filename is None:
                 # No format was specified for this write; default to parquet.
                 # Callers that care about the companion format should set
-                # metadata.data_filename themselves before calling writeToFile.
+                # metadata.data_filename themselves before calling write_to_file.
                 self.metadata.data_filename = Path(
                     CalibrationLayerPathHandler.from_filename(filepath)
                     .create_new_datafile_handler(LayerDataFormat.PARQUET)
@@ -335,6 +336,32 @@ class CalibrationLayer(Layer):
         metadata into a single file, rather than a JSON + companion data-file pair."""
         return extension == "cdf"
 
+    def get_data_file_type(self) -> FileType:
+        """Return the format of this layer's actual data: its own file for a
+        self-contained format (e.g. CDF), or the companion csv/parquet file for
+        a paired JSON layer.
+
+        Relies on ``metadata.data_filename`` always pointing at the file that
+        holds the data — the companion for a paired layer, or the layer's own
+        file for a self-contained one (see ``_build_from_values``).
+        """
+        if self.metadata.data_filename is None:
+            raise ValueError(
+                "Layer has no data_filename set; cannot determine its data file type."
+            )
+        return FileType(Path(self.metadata.data_filename).suffix.lstrip("."))
+
+    def get_companion_path(self, alongside: Path) -> Path | None:
+        """Return this layer's companion data file path, resolved next to
+        ``alongside`` (typically the JSON layer file's own path) — or ``None``
+        for a self-contained layer (e.g. CDF) that has no separate companion.
+        """
+        if self.metadata.data_filename is None or self.is_self_contained_format(
+            self.get_data_file_type().value
+        ):
+            return None
+        return alongside.parent / Path(self.metadata.data_filename).name
+
     def prepare_metadata_for_output_format(
         self,
         output_handler: CalibrationLayerPathHandler,
@@ -342,7 +369,7 @@ class CalibrationLayer(Layer):
     ) -> Path | None:
         """Update ``metadata.data_filename``/``data_hash`` to match
         ``output_handler``'s target format, ready for
-        ``writeToFile(work_folder / output_handler.get_filename())``.
+        ``write_to_file(work_folder / output_handler.get_filename())``.
 
         Clears the companion reference entirely for self-contained formats
         (CDF, in which case ``layer_data_format`` is unused and may be
@@ -399,7 +426,7 @@ class CalibrationLayer(Layer):
 
         self.metadata.data_filename = Path(expected_data_filename)
         new_version_path = source_file.parent / handler.get_filename()
-        self.writeToFile(new_version_path)
+        self.write_to_file(new_version_path)
 
         logger.debug(
             f"Rewrote {source_file.name} data_filename from {current!r} to "

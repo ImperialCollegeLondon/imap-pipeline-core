@@ -50,7 +50,7 @@ def _create_noop_layer(science_cdf_path: Path, output_folder: Path, name: str = 
     )
 
     layer_json = output_folder / f"imap_mag_{name}-norm-layer_20260116_v001.json"
-    zero_layer.writeToFile(layer_json)
+    zero_layer.write_to_file(layer_json)
     return layer_json
 
 

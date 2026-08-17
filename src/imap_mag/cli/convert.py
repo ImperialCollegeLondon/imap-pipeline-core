@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 _CONVERTIBLE_FORMATS = (FileType.CSV, FileType.PARQUET, FileType.CDF)
 
 
+# e.g. imap-mag convert --input-layers '*noop*.parquet' --output-layer-data-format csv
 def convert(
     input_layers: Annotated[
         list[str],
@@ -89,10 +90,11 @@ def convert(
         f"{output_layer_data_format.value} ({output_layer_versioning_strategy.value})."
     )
 
+    db = Database() if Database.get_environment_url() else None
     datastore_finder = FileFinder(
         app_settings.data_store,
         work_folder,
-        database=Database() if Database.get_environment_url() else None,
+        database=db,
     )
 
     resolved_layers = datastore_finder.find_layers_by_patterns(
@@ -129,6 +131,7 @@ def convert(
                 outputManager=outputManager,
                 app_settings=app_settings,
                 save_mode=save_mode,
+                db=db,
             )
         )
 
@@ -144,6 +147,7 @@ def _convert_layer(
     outputManager,
     app_settings: AppSettings,
     save_mode: SaveMode,
+    db: Database | None,
 ) -> list[Path]:
     logger.debug(f"Converting layer {layer_name} to {output_layer_data_format.value}.")
 
@@ -158,33 +162,27 @@ def _convert_layer(
         versioned_source_path, work_folder, throw_if_not_found=True
     )
 
+    # Load without contents first: a paired layer's companion must be fetched
+    # into the work folder before its contents can be read, so the companion's
+    # filename needs to come from the metadata before load_contents() below.
+    layer = CalibrationLayer.from_file(work_source_path, load_contents=False)
+
     old_datastore_paths: list[Path] = [versioned_source_path]
-    work_companion_path: Path | None = None
-    if not CalibrationLayer.is_self_contained_format(source_handler.extension):
-        source_peek = CalibrationLayer.from_file(work_source_path, load_contents=False)
-        if source_peek.metadata.data_filename:
-            companion_versioned_path = (
-                versioned_source_path.parent / source_peek.metadata.data_filename.name
-            )
-            work_companion_path = fetch_file_for_work(
-                companion_versioned_path, work_folder, throw_if_not_found=True
-            )
-            old_datastore_paths.append(companion_versioned_path)
+    companion_versioned_path = layer.get_companion_path(versioned_source_path)
+    if companion_versioned_path is not None:
+        fetch_file_for_work(
+            companion_versioned_path, work_folder, throw_if_not_found=True
+        )
+        old_datastore_paths.append(companion_versioned_path)
 
-    source_extension = (
-        work_companion_path.suffix.lstrip(".")
-        if work_companion_path is not None
-        else source_handler.extension
-    )
-
+    layer.load_contents()
+    source_extension = layer.get_data_file_type().value
     if source_extension == output_layer_data_format.value:
         logger.info(
             f"Layer {layer_name} is already in {output_layer_data_format.value} "
             "format; skipping conversion."
         )
         return []
-
-    layer = CalibrationLayer.from_file(work_source_path, load_contents=True)
 
     is_overwrite = output_layer_versioning_strategy == ConversionStrategy.OVERWRITE
     versioning_mode = (
@@ -196,14 +194,9 @@ def _convert_layer(
     output_is_self_contained = CalibrationLayer.is_self_contained_format(
         output_layer_data_format.value
     )
-    output_handler = CalibrationLayerPathHandler(
-        descriptor=source_handler.descriptor,
-        content_date=source_handler.content_date,
-        version_major=source_handler.version_major,
-        version=source_handler.version,
-        _has_major_version=source_handler._has_major_version,
-        versioning_mode=versioning_mode,
+    output_handler = source_handler.with_new_primary_format(
         extension="cdf" if output_is_self_contained else "json",
+        versioning_mode=versioning_mode,
         allow_overwrite=is_overwrite,
     )
     # FileType (csv/parquet/cdf, this CLI's output format option) and
@@ -230,11 +223,12 @@ def _convert_layer(
         f"Writing converted layer {layer_name} to {new_primary_path.name}"
         + (f" (+ {new_companion_path.name})" if new_companion_path else "")
     )
-    layer.writeToFile(new_primary_path)
+    layer.write_to_file(new_primary_path)
 
     logger.debug(f"Verifying converted contents of {layer_name} match the original.")
     _verify_matching_contents(
-        original_path=work_source_path,
+        layer_name=layer_name,
+        original=layer,
         converted_path=new_primary_path,
         involves_cdf=source_handler.extension == "cdf" or output_is_self_contained,
     )
@@ -262,7 +256,7 @@ def _convert_layer(
         if is_overwrite:
             for old_path in old_datastore_paths:
                 if old_path not in published and old_path.exists():
-                    _delete_old_datastore_file(old_path, app_settings, save_mode)
+                    _delete_old_datastore_file(old_path, app_settings, save_mode, db)
     else:
         logger.debug(
             f"Leaving converted layer for {layer_name} in the work folder only."
@@ -275,15 +269,14 @@ def _convert_layer(
 
 
 def _delete_old_datastore_file(
-    path: Path, app_settings: AppSettings, save_mode: SaveMode
+    path: Path, app_settings: AppSettings, save_mode: SaveMode, db: Database | None
 ) -> None:
     """Remove a superseded layer file from the datastore (and soft-delete its DB record)."""
     relative_path = path.relative_to(app_settings.data_store).as_posix()
     logger.info(f"Deleting superseded layer file {relative_path} after conversion.")
     path.unlink()
 
-    if save_mode == SaveMode.LocalAndDatabase and Database.get_environment_url():
-        db = Database()
+    if save_mode == SaveMode.LocalAndDatabase and db is not None:
         for file_record in db.get_files_by_path(relative_path):
             if file_record.deletion_date is None:
                 file_record.set_deleted()
@@ -291,18 +284,19 @@ def _delete_old_datastore_file(
 
 
 def _verify_matching_contents(
-    original_path: Path,
+    layer_name: str,
+    original: CalibrationLayer,
     converted_path: Path,
     involves_cdf: bool,
 ) -> None:
-    """Read back the original and converted layer contents and confirm they match
-    before the converted files are published and the originals removed.
+    """Read back the converted layer contents and confirm they match the already
+    in-memory original contents, before the converted files are published and
+    the originals removed.
 
     CDF stores offsets/timedelta as single-precision (CDF_FLOAT), so a tolerant
     comparison is used whenever CDF is on either side of the conversion; csv/parquet
     conversions must match exactly, since both are lossless for the values involved.
     """
-    original = CalibrationLayer.from_file(original_path, load_contents=True)
     converted = CalibrationLayer.from_file(converted_path, load_contents=True)
 
     original_df = original._contents
@@ -312,7 +306,7 @@ def _verify_matching_contents(
 
     if len(original_df) != len(converted_df):
         raise ValueError(
-            f"Conversion verification failed for {original_path.name}: "
+            f"Conversion verification failed for {layer_name}: "
             f"original has {len(original_df)} rows, converted has {len(converted_df)}."
         )
 
@@ -322,7 +316,7 @@ def _verify_matching_contents(
         == pd.to_datetime(converted_df[epoch]).values
     ).all():
         raise ValueError(
-            f"Conversion verification failed for {original_path.name}: epoch values differ."
+            f"Conversion verification failed for {layer_name}: epoch values differ."
         )
 
     numeric_cols = [
@@ -349,7 +343,7 @@ def _verify_matching_contents(
             matches = np.array_equal(original_values, converted_values, equal_nan=True)
         if not matches:
             raise ValueError(
-                f"Conversion verification failed for {original_path.name}: "
+                f"Conversion verification failed for {layer_name}: "
                 f"column '{col}' values differ after conversion."
             )
 
@@ -360,6 +354,6 @@ def _verify_matching_contents(
             original_df[col].to_numpy(dtype=int), converted_df[col].to_numpy(dtype=int)
         ):
             raise ValueError(
-                f"Conversion verification failed for {original_path.name}: "
+                f"Conversion verification failed for {layer_name}: "
                 f"column '{col}' values differ after conversion."
             )

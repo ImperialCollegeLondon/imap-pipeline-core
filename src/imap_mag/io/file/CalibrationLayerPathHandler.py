@@ -1,6 +1,6 @@
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
@@ -75,6 +75,15 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         """Determine if this handler represents a metadata JSON file (true) or a data csv/parquet/cdf type file (false)."""
         return self.extra_descriptor != "-data"
 
+    def _derived(self, **overrides) -> "CalibrationLayerPathHandler":
+        """Build a new handler by copying this handler's fields and applying
+        overrides. Shared implementation behind every "derive a related handler
+        from this one" helper (companion data file, format-conversion output,
+        sibling existence checks), so the field list only needs to stay in sync
+        with the dataclass in one place.
+        """
+        return replace(self, original_filename_or_path=None, **overrides)
+
     def create_new_datafile_handler(
         self, layer_data_format: LayerDataFormat
     ) -> "CalibrationLayerPathHandler":
@@ -86,18 +95,26 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         companion of an *existing* layer, read its data_filename from a
         CalibrationLayer instance instead (see ``CalibrationLayer.from_file``).
         """
-        handler = CalibrationLayerPathHandler(
-            descriptor=self.descriptor,
-            extra_descriptor="-data",
-            content_date=self.content_date,
-            version=self.version,
-            extension=layer_data_format.value,
-            version_major=self.version_major,
-            _has_major_version=self._has_major_version,
-            versioning_mode=self.versioning_mode,
-            allow_overwrite=self.allow_overwrite,
+        return self._derived(
+            extra_descriptor="-data", extension=layer_data_format.value
         )
-        return handler
+
+    def with_new_primary_format(
+        self,
+        extension: str,
+        versioning_mode: VersionedPathHandler.VersionMode,
+        allow_overwrite: bool,
+    ) -> "CalibrationLayerPathHandler":
+        """Build a handler for this same layer's primary (JSON/CDF) file, but
+        targeting a different extension and versioning strategy — used by
+        calibrate-convert to derive the output-format handler from the handler
+        of the layer being converted.
+        """
+        return self._derived(
+            extension=extension,
+            versioning_mode=versioning_mode,
+            allow_overwrite=allow_overwrite,
+        )
 
     @classmethod
     def from_filename(
@@ -182,8 +199,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
             cal = CalibrationLayer.from_file(alongside, load_contents=False)
-            if cal.metadata.data_filename:
-                return alongside.parent / cal.metadata.data_filename.name
+            companion = cal.get_companion_path(alongside)
+            if companion is not None:
+                return companion
         except Exception:
             pass
         # Last resort when the JSON can't be read to determine the real
@@ -282,16 +300,8 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         # Not creating a new file here, just checking an existing/candidate slot,
         # so build the sibling handler directly with the companion's own extension
         # rather than going through create_new_datafile_handler.
-        sibling = CalibrationLayerPathHandler(
-            descriptor=self.descriptor,
-            extra_descriptor="-data",
-            content_date=self.content_date,
-            version=self.version,
-            extension=new_companion.suffix.lstrip("."),
-            version_major=self.version_major,
-            _has_major_version=self._has_major_version,
-            versioning_mode=self.versioning_mode,
-            allow_overwrite=self.allow_overwrite,
+        sibling = self._derived(
+            extra_descriptor="-data", extension=new_companion.suffix.lstrip(".")
         )
         sibling.set_sequence(version)
         sibling_dest = sibling.get_full_path(datastore)

@@ -74,7 +74,7 @@ def _write_layer_pair_as(folder: Path, descriptor: str, fmt: LayerDataFormat) ->
         handler.create_new_datafile_handler(fmt).get_filename()
     )
     folder.mkdir(parents=True, exist_ok=True)
-    layer.writeToFile(folder / handler.get_filename())
+    layer.write_to_file(folder / handler.get_filename())
 
 
 class TestCreateNewDatafileHandler:

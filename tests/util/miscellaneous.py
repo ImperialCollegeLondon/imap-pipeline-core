@@ -144,7 +144,7 @@ def write_calibration_layer_pair(
     layer._contents = contents
 
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    layer.write_to_file(json_path)
 
     csv_path = folder / data_handler.get_filename()
     return json_path, csv_path

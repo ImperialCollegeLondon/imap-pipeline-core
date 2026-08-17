@@ -98,7 +98,7 @@ def _make_layer(
             data_handler.get_filename()
         )
 
-    layer.writeToFile(primary_path)
+    layer.write_to_file(primary_path)
     return primary_path, df
 
 

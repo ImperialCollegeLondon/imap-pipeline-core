@@ -238,7 +238,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
         layer._contents = df
 
-        layer.writeToFile(calfile)
+        layer.write_to_file(calfile)
 
         if not calfile.exists():
             raise FileNotFoundError(f"Calibration file {calfile} was not created.")

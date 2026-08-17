@@ -657,7 +657,7 @@ def _write_layer_pair(
     )  # directly set contents without reading from file
 
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    layer.write_to_file(json_path)
 
     assert json_path.exists()
     assert csv_path.exists()

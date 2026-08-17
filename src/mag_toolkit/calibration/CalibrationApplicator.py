@@ -81,7 +81,7 @@ class CalibrationApplicator:
             version_major=self.app_settings.version_major,
         )
 
-        cal_filepath = offsets.writeToFile(outputCalibrationFile)
+        cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
         return cal_filepath
 

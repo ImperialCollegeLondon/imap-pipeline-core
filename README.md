@@ -186,6 +186,14 @@ export IMAP_API_KEY=[YOUR_SECRET_HERE!]
 imap-mag publish imap_mag_l2-norm-offsets_20250102_20250102_v001.cdf
 ```
 
+### Convert Calibration Layer File Format
+
+Converts existing calibration layer files between csv, parquet and cdf formats.
+
+```bash
+imap-mag convert --input-layers '*noop*.parquet' --output-layer-data-format csv
+```
+
 ### Downloading SPICE data from the SDC
 
 ```bash

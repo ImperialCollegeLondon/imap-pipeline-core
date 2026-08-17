@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -24,6 +23,7 @@ from mag_toolkit.calibration import (
     CalibrationApplicator,
     CalibrationLayer,
     CalibrationMethod,
+    FileType,
     ScienceLayer,
 )
 
@@ -99,13 +99,6 @@ def _validate_l2_version_override(
         "Existing files at this version may be overwritten."
     )
     return (major, minor)
-
-
-class FileType(Enum):
-    CSV = "csv"
-    CDF = "cdf"
-    JSON = "json"
-    PARQUET = "parquet"
 
 
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
@@ -534,7 +527,7 @@ def _setup_zero_calibration_layer(
     )
     del science_layer
 
-    zero_offset_layer.writeToFile(
+    zero_offset_layer.write_to_file(
         new_layer_file, False
     )  # json and also writes CSV for us automatically
 

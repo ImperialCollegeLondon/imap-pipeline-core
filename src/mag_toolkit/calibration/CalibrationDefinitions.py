@@ -107,6 +107,17 @@ class LayerDataFormat(StrEnum):
     CSV = "csv"
 
 
+class FileType(StrEnum):
+    """File format of a calibration layer's actual data — either a companion
+    csv/parquet file (see ``LayerDataFormat``) or a self-contained CDF/JSON layer.
+    """
+
+    CSV = "csv"
+    CDF = "cdf"
+    JSON = "json"
+    PARQUET = "parquet"
+
+
 class ConversionStrategy(StrEnum):
     """How the calibrate-convert flow handles the versioning of converted layers.
 

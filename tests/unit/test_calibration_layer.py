@@ -163,7 +163,7 @@ class TestCalibrationLayerWriteToParquet:
     def test_write_to_file_dispatches_parquet_on_parquet_extension(self, tmp_path):
         layer = _make_layer_with_contents()
         output_file = tmp_path / "output.parquet"
-        layer.writeToFile(output_file)
+        layer.write_to_file(output_file)
         assert output_file.exists()
 
 
