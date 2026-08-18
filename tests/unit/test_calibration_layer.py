@@ -302,6 +302,75 @@ class TestCalibrationLayerParquetCsvPrecisionParity:
             assert (result[col].to_numpy() == df[col].to_numpy()).all(), col
 
 
+class TestCalibrationLayerCsvMatchesMatlabFormatting:
+    """MATLAB's Layer.write formats every numeric CSV column with
+    ``compose("%.17g", x)``. Python-written CSVs must match byte-for-byte,
+    regardless of the in-memory dtype the values arrived with (e.g. a Parquet
+    round-trip yields a boolean quality_flag and a float64 timedelta, while a
+    native CSV yields int64 for both) - otherwise csv->parquet->csv is not a
+    no-op and identical calibration data hashes differently depending on which
+    format it happened to pass through.
+    """
+
+    def test_csv_bytes_identical_regardless_of_source_dtype(self, tmp_path):
+        native_df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                    ["2026-05-01T00:00:00.500000000"]
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.91836772457236082],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [-5.4894565753314692],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.80467987769037275],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [0],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+            }
+        )
+        # Simulates the dtypes produced by reading back a Parquet file MATLAB
+        # wrote: quality_flag as bool, quality_bitmask as an unsigned int,
+        # timedelta as float - same values, different in-memory types.
+        parquet_sourced_df = native_df.copy()
+        parquet_sourced_df[CONSTANTS.CSV_VARS.QUALITY_FLAG] = parquet_sourced_df[
+            CONSTANTS.CSV_VARS.QUALITY_FLAG
+        ].astype(bool)
+        parquet_sourced_df[CONSTANTS.CSV_VARS.QUALITY_BITMASK] = parquet_sourced_df[
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK
+        ].astype("uint8")
+        parquet_sourced_df[CONSTANTS.CSV_VARS.TIMEDELTA] = parquet_sourced_df[
+            CONSTANTS.CSV_VARS.TIMEDELTA
+        ].astype("float64")
+
+        native_csv = tmp_path / "native.csv"
+        parquet_sourced_csv = tmp_path / "parquet_sourced.csv"
+        _make_layer_with_contents(native_df)._write_to_csv(native_csv)
+        _make_layer_with_contents(parquet_sourced_df)._write_to_csv(parquet_sourced_csv)
+
+        assert native_csv.read_text() == parquet_sourced_csv.read_text()
+
+    def test_offset_columns_use_seventeen_significant_digits(self, tmp_path):
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                    ["2026-05-01T00:00:00.500000000"]
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.91836772457236082],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [-5.4894565753314692],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.80467987769037275],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [0],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+            }
+        )
+        csv_file = tmp_path / "layer.csv"
+        _make_layer_with_contents(df)._write_to_csv(csv_file)
+
+        data_line = csv_file.read_text().splitlines()[1]
+        assert data_line == (
+            "2026-05-01T00:00:00.500000000,0.91836772457236082,"
+            "-5.4894565753314692,0.80467987769037275,0,0,0"
+        )
+
+
 class TestCalibrationLayerFromCdf:
     def test_values_from_cdf_round_trips_offsets_and_epoch(self, tmp_path):
         df = _make_layer_with_contents()._contents

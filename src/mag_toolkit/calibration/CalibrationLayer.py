@@ -43,6 +43,16 @@ def _format_epoch_as_nanosecond_string(epoch: pd.Series) -> pd.Series:
     )
 
 
+def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
+    """Format a numeric series the same way MATLAB's Layer.write does for CSV
+    (``compose("%.17g", x)``), so a Python-written CSV is byte-identical to a
+    MATLAB-written one for the same values, regardless of the in-memory dtype
+    (e.g. a boolean quality_flag read back from Parquet must still render as
+    "0"/"1", not "False"/"True", and integral floats like timedelta as "0",
+    not "0.0")."""
+    return series.map(lambda x: f"{x:.17g}")
+
+
 class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: ValueType
@@ -60,13 +70,22 @@ class CalibrationLayer(Layer):
         # would silently truncate any sub-microsecond precision in the epoch
         # column. Format it manually with a fixed 9-digit (nanosecond) fractional
         # part instead, so CSV round-trips with the same precision as Parquet.
-        df = self._contents
+        df = self._contents.copy()
         epoch_col = CONSTANTS.CSV_VARS.EPOCH
         if epoch_col in df.columns and pd.api.types.is_datetime64_any_dtype(
             df[epoch_col]
         ):
-            df = df.copy()
             df[epoch_col] = _format_epoch_as_nanosecond_string(df[epoch_col])
+
+        # Format every other numeric column the same way MATLAB does, rather than
+        # relying on pandas' default (variable-length, dtype-dependent) float/bool
+        # formatting. Without this, values that are numerically identical but
+        # arrived via a different dtype (e.g. a boolean quality_flag from a
+        # Parquet round-trip vs. an int64 one written natively) produce different
+        # CSV text for the same data.
+        for col in df.columns:
+            if col != epoch_col and pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = _format_numeric_as_matlab_repr(df[col])
 
         df.to_csv(
             filepath,
