@@ -444,6 +444,8 @@ class CalibrationLayer(Layer):
             return source_file  # already correct — no rewrite needed
 
         self.metadata.data_filename = Path(expected_data_filename)
+        self.version = handler.version
+        self.version_major = handler.version_major
         new_version_path = source_file.parent / handler.get_filename()
         self.write_to_file(new_version_path)
 

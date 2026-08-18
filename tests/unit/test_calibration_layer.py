@@ -1,5 +1,6 @@
 """Unit tests for CalibrationLayer and ScienceLayer."""
 
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -18,6 +20,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     ValueType,
 )
 from mag_toolkit.calibration.ScienceLayer import ScienceLayer
+from tests.util.miscellaneous import write_calibration_layer_pair
 
 DATASTORE = Path(__file__).parent.parent / "datastore"
 LAYER_CSV = (
@@ -672,6 +675,53 @@ class TestValuesFromCsvEmpty:
         output_file = tmp_path / "empty.csv"
         layer._write_to_csv(output_file)
         assert output_file.exists()
+
+
+class TestUpdateFileContentsBasedOnVersion:
+    def test_rewrites_version_fields_to_match_handler(self, tmp_path):
+        """When the datastore assigns a different version than the layer was
+        generated at, the rewritten file's version/version_major fields must
+        match the new version - not just its filename and data_filename."""
+        json_path, _ = write_calibration_layer_pair(
+            tmp_path, "manual-norm", datetime(2026, 5, 1), version=1
+        )
+        layer = CalibrationLayer.from_file(json_path, load_contents=False)
+        assert layer.version == 1
+        assert layer.version_major == 1
+
+        new_version_handler = CalibrationLayerPathHandler(
+            descriptor="manual-norm",
+            content_date=datetime(2026, 5, 1),
+            version=3,
+            version_major=1,
+        )
+
+        result_path = layer.update_file_contents_based_on_version(
+            new_version_handler, json_path
+        )
+
+        rewritten = CalibrationLayer.from_file(result_path, load_contents=False)
+        assert rewritten.version == 3
+        assert rewritten.version_major == 1
+
+    def test_returns_source_unchanged_when_version_already_matches(self, tmp_path):
+        json_path, _ = write_calibration_layer_pair(
+            tmp_path, "manual-norm", datetime(2026, 5, 1), version=1
+        )
+        layer = CalibrationLayer.from_file(json_path, load_contents=False)
+
+        same_version_handler = CalibrationLayerPathHandler(
+            descriptor="manual-norm",
+            content_date=datetime(2026, 5, 1),
+            version=1,
+            version_major=1,
+        )
+
+        result_path = layer.update_file_contents_based_on_version(
+            same_version_handler, json_path
+        )
+
+        assert result_path == json_path
 
 
 class TestScienceLayerWriteToCsv:
