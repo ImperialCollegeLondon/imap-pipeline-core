@@ -31,6 +31,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     ValueType,
 )
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+from tests.util.miscellaneous import write_calibration_layer_pair
 
 
 class TestPrepareLayers:
@@ -293,10 +294,9 @@ class TestCleanupWorkfolderAfterApply:
         mock_settings = MagicMock()
         mock_settings.work_folder = work_folder
 
-        json_layer = work_folder / "layer.json"
-        json_layer.write_text("data")
-        csv_layer = work_folder / "layer.csv"
-        csv_layer.write_text("data")
+        json_layer, csv_layer = write_calibration_layer_pair(
+            work_folder, "noop-norm", datetime(2026, 1, 16), version=1
+        )
         offset_file = work_folder / "offsets.cdf"
         offset_file.write_text("data")
         science_file = work_folder / "science.cdf"
