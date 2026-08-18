@@ -328,7 +328,7 @@ def _apply_for_date(
     # Resolve layer patterns to actual filenames
     datastore_finder = FileFinder(app_settings.data_store, app_settings.work_folder)
     resolved_layers = (
-        datastore_finder.find_layers_by_patterns(
+        datastore_finder.find_layers_by_date_and_patterns(
             layers, start_date=date, end_date=date, mode=mode, throw_if_not_found=True
         )
         if layers

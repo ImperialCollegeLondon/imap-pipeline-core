@@ -97,7 +97,7 @@ def convert(
         database=db,
     )
 
-    resolved_layers = datastore_finder.find_layers_by_patterns(
+    resolved_layers = datastore_finder.find_layers_by_date_and_patterns(
         input_layers,
         start_date=start_date,
         end_date=end_date,

@@ -124,7 +124,7 @@ class FileFinder:
         else:
             return None
 
-    def find_layers_by_patterns(
+    def find_layers_by_date_and_patterns(
         self,
         layers: list[str],
         start_date: datetime | None = None,
