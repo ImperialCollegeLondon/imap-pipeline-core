@@ -8,7 +8,7 @@ from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.download.FetchNOAA import FetchNOAA
 from imap_mag.io import FileFinder
 
-NOAA_DATA_PATH = Path(__file__).parent.parent / "datastore" / "noaa"
+NOAA_DATA_PATH = Path(__file__).parent.parent / "test_truth" / "noaa"
 
 
 @pytest.mark.skipif(
