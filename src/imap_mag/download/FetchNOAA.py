@@ -13,6 +13,9 @@ from imap_mag.io.file import IFilePathHandler, NOAAPathHandler
 
 logger = logging.getLogger(__name__)
 
+SPACECRAFTS_TYPES = Literal["SOLAR1", "ACE"]
+INSTRUMENTS_TYPES = Literal["mag", "wind"]
+
 
 class FetchNOAA:
     _DATE_INDEX = "time_tag"
@@ -35,8 +38,8 @@ class FetchNOAA:
 
     def download_csv(
         self,
-        spacecraft: Literal["SOLAR1", "ACE"],
-        instrument: Literal["mag", "wind"],
+        spacecraft: SPACECRAFTS_TYPES,
+        instrument: INSTRUMENTS_TYPES,
     ) -> dict[Path, IFilePathHandler]:
         """Downloads the data from the server and saves it as CSV.
 
@@ -49,7 +52,7 @@ class FetchNOAA:
             A dicitonary of paths and path handlers with the data.
         """
         # The downloaded data would be a list of dictionaries containnig all the
-        # available fiels for the chosen spacecraft and instrument:
+        # available fields for the chosen spacecraft and instrument:
         # [
         #    {
         #     "active": false,
@@ -84,8 +87,8 @@ class FetchNOAA:
 
     def _add_to_files(
         self,
-        spacecraft: Literal["SOLAR1", "ACE"],
-        instrument: Literal["mag", "wind"],
+        spacecraft: SPACECRAFTS_TYPES,
+        instrument: INSTRUMENTS_TYPES,
         data: pd.DataFrame,
     ) -> dict[Path, IFilePathHandler]:
         """Add downloaded data to existing (or new) files."""
