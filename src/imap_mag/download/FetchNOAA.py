@@ -71,8 +71,15 @@ class FetchNOAA:
             )
             return dict()
 
-        process_fn = _process_noaa_mag if instrument == "mag" else _process_noaa_wind
-        downloaded_data = process_fn(pd.DataFrame(downloaded))
+        match instrument:
+            case "mag":
+                downloaded_data = _process_noaa_mag(pd.DataFrame(downloaded))
+            case "wind":
+                downloaded_data = _process_noaa_wind(pd.DataFrame(downloaded))
+            case _:
+                raise ValueError(
+                    f"Invalid instrument: {instrument}. Must be 'mag' or 'wind'."
+                )
         return self._add_to_files(spacecraft, instrument, downloaded_data)
 
     def _add_to_files(
