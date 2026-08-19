@@ -1,5 +1,4 @@
 import os
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -26,10 +25,7 @@ NOAA_DATA_PATH = Path(__file__).parent.parent / "datastore" / "noaa"
     ],
 )
 def test_fetch_rtsw_data(
-    spacecraft,
-    instrument,
-    wiremock_manager,
-    capture_cli_logs,
+    spacecraft, instrument, wiremock_manager, capture_cli_logs, temp_folder_path
 ) -> None:
     # Set up.
     filename = f"rtsw_{instrument}_1m.json"
@@ -40,12 +36,10 @@ def test_fetch_rtsw_data(
     )
 
     # Create FetchNOAA instance.
-    work_folder = Path(tempfile.mkdtemp())
-    datastore_finder = FileFinder(Path(tempfile.mkdtemp()))
     fetch = FetchNOAA(
         data_access=NOAARTSWApiClient(url=wiremock_manager.get_url().rstrip("/")),
-        work_folder=work_folder,
-        datastore_finder=datastore_finder,
+        work_folder=Path(temp_folder_path),
+        datastore_finder=FileFinder(temp_folder_path),
     )
 
     # Download data.
