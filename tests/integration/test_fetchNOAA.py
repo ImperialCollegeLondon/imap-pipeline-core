@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 from pathlib import Path
@@ -35,11 +34,9 @@ def test_fetch_rtsw_data(
     # Set up.
     filename = f"rtsw_{instrument}_1m.json"
     mock_data_path = NOAA_DATA_PATH / filename
-    with open(mock_data_path) as f:
-        response = json.load(f)
-    wiremock_manager.add_string_mapping(
+    wiremock_manager.add_file_mapping(
         f"/{filename}",
-        json.dumps(response),
+        mock_data_path,
     )
 
     # Create FetchNOAA instance.
