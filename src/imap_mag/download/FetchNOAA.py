@@ -48,6 +48,18 @@ class FetchNOAA:
         Returns:
             A dicitonary of paths and path handlers with the data.
         """
+        # The downloaded data would be a list of dictionaries containnig all the
+        # available fiels for the chosen spacecraft and instrument:
+        # [
+        #    {
+        #     "active": false,
+        #     "bx_gsm": 5.66,
+        #     "source": "IMAP",
+        #     "time_tag": "2026-07-23T08:51:03"
+        #     ...
+        #    },
+        # ...
+        # ]
         downloaded: list[dict[str, Any]] = self._data_access.get_data(
             spacecraft=spacecraft,
             instrument=instrument,
