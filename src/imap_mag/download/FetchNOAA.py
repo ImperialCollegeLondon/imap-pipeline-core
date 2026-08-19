@@ -48,18 +48,6 @@ class FetchNOAA:
         Returns:
             A dicitonary of paths and path handlers with the data.
         """
-        if spacecraft not in ("SOLAR1", "ACE"):
-            raise ValueError(
-                "Invalid spacecraft requested. "
-                f"It must be 'SOLAR1' or 'ACE', but '{spacecraft}' found"
-            )
-
-        if instrument not in ("mag", "wind"):
-            raise ValueError(
-                f"Invalid instrument type requested for {spacecraft}. "
-                f"It must be 'mag' or 'wind', but '{instrument}' found"
-            )
-
         downloaded: list[dict[str, Any]] = self._data_access.get_data(
             spacecraft=spacecraft,
             instrument=instrument,
