@@ -17,7 +17,7 @@ from imap_mag.process import FileProcessor, dispatch
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag process solo_L2_mag-rtn-ll-internal_20240210_V00.cdf --save-mode localanddatabase
+# E.g., imap-mag process somefile.cdf --save-mode localanddatabase
 def process(
     files: Annotated[
         list[Path],
@@ -82,7 +82,7 @@ def process(
     copied_files: list[tuple[Path, IFilePathHandler]] = []
 
     for processed_file, path_handler in processed_files.items():
-        (copied_file, path_handler) = datastore_manager.add_file(
+        (copied_file, path_handler, _) = datastore_manager.add_file(
             processed_file, path_handler
         )
 

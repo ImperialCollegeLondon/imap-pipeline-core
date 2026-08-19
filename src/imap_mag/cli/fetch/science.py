@@ -7,7 +7,7 @@ import typer
 
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.client.SDCDataAccess import SDCDataAccess
-from imap_mag.config import AppSettings, FetchMode
+from imap_mag.config import AppSettings, DatastoreSaveOption, FetchMode
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.io import DatastoreFileManager
 from imap_mag.io.file import SciencePathHandler
@@ -71,6 +71,19 @@ def fetch_science(
             help="Number of items to skip from the start of the query results. Useful for batching downloads.",
         ),
     ] = 0,
+    version_str_or_latest: Annotated[
+        str | None,
+        typer.Option(
+            help="Version string to download (vMMM.mmmm or the deprecated minor-only vXXX) or 'latest' for the latest version. None means all versions.",
+        ),
+    ] = None,
+    overwrite_option: Annotated[
+        DatastoreSaveOption,
+        typer.Option(
+            case_sensitive=False,
+            help="Whether to block or allow overwriting an existing datastore file that has the same version but different content.",
+        ),
+    ] = DatastoreSaveOption.FILE_OVERWRITES_BLOCKED,
 ) -> dict[Path, SciencePathHandler]:
     """Download science data from the SDC."""
 
@@ -102,6 +115,7 @@ def fetch_science(
         sensors=sensors,
         max_downloads=max_downloads,
         skip_items_count=skip_items_count,
+        version_str_or_latest=version_str_or_latest,
     )
 
     if not downloaded_science:
@@ -116,13 +130,19 @@ def fetch_science(
     output_science: dict[Path, SciencePathHandler] = dict()
 
     if app_settings.fetch_science.publish_to_data_store:
+        if overwrite_option == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED:
+            for path_handler in downloaded_science.values():
+                path_handler.allow_overwrite = True
+                # version_is_locked deliberately kept True — SDC science file versions must
+                # never be reassigned, only the file bytes are overwritten in place.
+
         datastore_manager = DatastoreFileManager.CreateByMode(
             app_settings,
             use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
         )
 
         for file, path_handler in downloaded_science.items():
-            (output_file, output_handler) = datastore_manager.add_file(
+            (output_file, output_handler, _) = datastore_manager.add_file(
                 file, path_handler
             )
             output_science[output_file] = output_handler

@@ -89,13 +89,17 @@ def plot_ialirt(
         datetime_provider=datetime_provider,
     )
 
-    if len(science_files) == 0 and len(hk_files) == 0:
-        return {}
-
     all_files = science_files + hk_files
-    logger.info(
-        f"Plotting I-ALiRT data from {len(all_files)} files:\n{', '.join(f.as_posix() for f in all_files)}"
-    )
+
+    if len(all_files) == 0:
+        logger.warning(
+            f"No I-ALiRT files found from {start_date} to {end_date}. "
+            "Generating an empty quicklook plot."
+        )
+    else:
+        logger.info(
+            f"Plotting I-ALiRT data from {len(all_files)} files:\n{', '.join(f.as_posix() for f in all_files)}"
+        )
 
     # Generate plots
     generated_figure: dict[Path, IALiRTQuicklookPathHandler] = plot_ialirt_files(
@@ -115,7 +119,7 @@ def plot_ialirt(
         )
 
         for file, path_handler in generated_figure.items():
-            (output_file, output_handler) = datastore_manager.add_file(
+            (output_file, output_handler, _) = datastore_manager.add_file(
                 file, path_handler
             )
             ialirt_file_and_handler[output_file] = output_handler

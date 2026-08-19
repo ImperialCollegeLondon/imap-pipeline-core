@@ -72,6 +72,7 @@ class CalibrationCommandConfig(CommandConfig):
     """
 
     work_sub_folder: str | None = "calibrate_{date}_{mode}"
+    output_folder_override: str | None = None
 
     # Scripted L2 MATLAB timeouts, per day of data processed, by mode.
     scripted_l2_timeout_seconds_per_day_norm: int = 10 * 60

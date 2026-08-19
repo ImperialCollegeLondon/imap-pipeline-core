@@ -18,6 +18,7 @@ from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     SciencePathHandler,
 )
+from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import MAGSensor, ReferenceFrame, ScienceMode
 from mag_toolkit.calibration import (
     CalibrationApplicator,
@@ -27,6 +28,77 @@ from mag_toolkit.calibration import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_offset_version_override(version: int | None) -> int | None:
+    """Validate an integer offset file version override.
+
+    Args:
+        version: The version number to force (1-999), or None for auto-increment.
+
+    Returns:
+        The validated version, or None.
+
+    Raises:
+        ValueError: If the value is a bool, not an integer, or out of range.
+    """
+    if version is None:
+        return None
+    if isinstance(version, bool):
+        raise ValueError("Offset version override must be an integer, not bool.")
+    if not isinstance(version, int):
+        raise ValueError(
+            f"Offset version override must be an integer, got {type(version).__name__}."
+        )
+    if version < 1:
+        raise ValueError(f"Offset version override must be at least 1, got {version}.")
+    if version > 999:
+        raise ValueError(f"Offset version override must be at most 999, got {version}.")
+    logger.warning(
+        f"Offset version override active: forcing offset file to v{version:03d}. "
+        "Existing file at this version may be overwritten."
+    )
+    return version
+
+
+def _validate_l2_version_override(
+    override: tuple[int, int] | None,
+) -> tuple[int, int] | None:
+    """Validate a (major, minor) L2 science file version override tuple.
+
+    Args:
+        override: A (major, minor) pair, or None to use default versioning.
+
+    Returns:
+        The validated pair, or None.
+
+    Raises:
+        ValueError: If any element is a bool, non-integer, negative, or out of range.
+    """
+    if override is None:
+        return None
+
+    major, minor = override
+    for val, name, max_val in [
+        (major, "major", 999),
+        (minor, "minor", 9999),
+    ]:
+        if isinstance(val, bool):
+            raise ValueError(f"L2 version {name} must be an integer, not bool.")
+        if not isinstance(val, int):
+            raise ValueError(
+                f"L2 version {name} must be an integer, got {type(val).__name__}."
+            )
+        if val < 0:
+            raise ValueError(f"L2 version {name} must be non-negative, got {val}.")
+        if val > max_val:
+            raise ValueError(f"L2 version {name} must be at most {max_val}, got {val}.")
+
+    logger.warning(
+        f"L2 version override active: forcing L2-pre science files to v{major:03d}.{minor:04d}. "
+        "Existing files at this version may be overwritten."
+    )
+    return (major, minor)
 
 
 class FileType(Enum):
@@ -166,6 +238,23 @@ def apply(
         ReferenceFrame.RTN,
         ReferenceFrame.DSRF,
     ],
+    offset_version_override: Annotated[
+        int | None,
+        typer.Option(
+            "--offset-version-override",
+            help="Force a specific version number (1-999) for the output offset file "
+            "instead of auto-incrementing. Existing file at that version is overwritten.",
+        ),
+    ] = None,
+    l2_version_override: Annotated[
+        tuple[int, int] | None,
+        typer.Option(
+            "--l2-version-override",
+            help="Force a specific (major, minor) version for output L2-pre science CDF files "
+            "instead of auto-incrementing. Provide as two integers. Existing files at that "
+            "version are overwritten.",
+        ),
+    ] = None,
 ):
     """
     Apply calibration rotation and layers to an input science file.
@@ -200,6 +289,8 @@ def apply(
             save_mode=save_mode,
             spice_metakernel=spice_metakernel,
             reference_frames=reference_frames,
+            offset_version_override=offset_version_override,
+            l2_version_override=l2_version_override,
         )
         current += timedelta(days=1)
 
@@ -215,10 +306,15 @@ def _apply_for_date(
     save_mode: SaveMode,
     spice_metakernel: Path | None,
     reference_frames: list[ReferenceFrame],
+    offset_version_override: int | None = None,
+    l2_version_override: tuple[int, int] | None = None,
 ):
     """Apply calibration layers for a single date."""
+    offset_version_override = _validate_offset_version_override(offset_version_override)
+    l2_version_override = _validate_l2_version_override(l2_version_override)
+
     app_settings = AppSettings()  # type: ignore
-    work_folder = app_settings.setup_work_folder_for_command(app_settings.calibration)
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.apply)
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
@@ -294,7 +390,10 @@ def _apply_for_date(
         descriptor=f"l2-{original_input_handler.get_mode().short_name}-offsets",
         start_date=date,
         end_date=date,
-        version=1,
+        version=offset_version_override if offset_version_override is not None else 1,
+        versioning_mode=VersionedPathHandler.VersionMode.USER_OVERRIDE
+        if offset_version_override is not None
+        else VersionedPathHandler.VersionMode.MAX_VERSION_PLUS_ONE,
         extension=offset_file_output_type,
     )
 
@@ -312,7 +411,11 @@ def _apply_for_date(
         logger.info(
             "No calibration layers provided, proceeding with apply using only rotation. A temporary zero offset layer will be created."
         )
-        workLayers = [_setup_zero_calibration_layer(work_folder, workScienceFile, date)]
+        workLayers = [
+            _setup_zero_calibration_layer(
+                work_folder, workScienceFile, date, app_settings
+            )
+        ]
 
     (L2_files, offset_file) = applier.apply(
         day_to_process=date,
@@ -334,10 +437,15 @@ def _apply_for_date(
             )
             continue
 
-        l2_handler.level = "l2-pre"  # set level to l2-pre for the output file naming, as it's pre-release l2
-        l2_handler.version = 1  # set version to 0 for the output file naming
-        l2_handler.version_major = app_settings.version_major
+        l2_handler.level = "l2-pre"
         l2_handler.has_major_version = True
+        if l2_version_override is not None:
+            l2_handler.version_major = l2_version_override[0]
+            l2_handler.version = l2_version_override[1]
+            l2_handler.versioning_mode = VersionedPathHandler.VersionMode.USER_OVERRIDE
+        else:
+            l2_handler.version = 1
+            l2_handler.version_major = app_settings.version_major
         outputManager.add_file(L2_file, l2_handler)
 
     cleanup_workfolder_after_apply(
@@ -387,15 +495,19 @@ def cleanup_workfolder_after_apply(
 
 
 def _setup_zero_calibration_layer(
-    work_folder: Path, workScienceFile: Path, content_date: datetime
+    work_folder: Path,
+    workScienceFile: Path,
+    content_date: datetime,
+    app_settings: AppSettings,
 ) -> Path:
     logger.info(
         "No calibration layers provided, setting up a zero calibration layer for application."
     )
 
-    calibration_handler = CalibrationLayerPathHandler(
-        descriptor=CalibrationMethod.NOOP.short_name, content_date=content_date
+    calibration_handler = CalibrationLayerPathHandler.from_method(
+        method=CalibrationMethod.NOOP, content_date=content_date, settings=app_settings
     )
+
     new_layer_file = work_folder / calibration_handler.get_filename()
     if new_layer_file.exists():
         logger.warning(
@@ -405,7 +517,7 @@ def _setup_zero_calibration_layer(
 
     science_layer = ScienceLayer.from_file(workScienceFile, load_contents=True)
     zero_offset_layer = CalibrationLayer.create_zero_offset_layer_from_science(
-        science_layer
+        science_layer, app_settings
     )
     del science_layer
 

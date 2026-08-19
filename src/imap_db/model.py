@@ -286,13 +286,15 @@ class WorkflowProgress(Base):
         return self.last_checked_date
 
     def update_progress_timestamp(self, progress_timestamp: datetime):
-        logger.info(
-            f"Updating progress timestamp for {self.item_name} to {progress_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
-        )
-        self.progress_timestamp = progress_timestamp
+        if progress_timestamp != self.progress_timestamp:
+            logger.info(
+                f"Updating progress timestamp for {self.item_name} to {progress_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
+            )
+            self.progress_timestamp = progress_timestamp
 
     def update_last_checked_timestamp(self, last_checked_timestamp: datetime):
-        logger.info(
-            f"Updating last checked timestamp for {self.item_name} to {last_checked_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
-        )
-        self.last_checked_date = last_checked_timestamp
+        if last_checked_timestamp != self.last_checked_date:
+            logger.info(
+                f"Updating last checked timestamp for {self.item_name} to {last_checked_timestamp.strftime('%d/%m/%Y %H:%M:%S')}."
+            )
+            self.last_checked_date = last_checked_timestamp

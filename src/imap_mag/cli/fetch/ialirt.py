@@ -68,7 +68,9 @@ def _publish_files(
 
     result: dict[Path, IALiRTPathHandler] = dict()
     for file, path_handler in downloaded_files.items():
-        (output_file, output_handler) = datastore_manager.add_file(file, path_handler)
+        (output_file, output_handler, _) = datastore_manager.add_file(
+            file, path_handler
+        )
         result[output_file] = output_handler
 
     return result

@@ -14,7 +14,7 @@ from imap_mag.cli.apply import (
     apply,
     cleanup_workfolder_after_apply,
 )
-from imap_mag.config import SaveMode
+from imap_mag.config import AppSettings, SaveMode
 from imap_mag.util import ReferenceFrame
 
 
@@ -344,6 +344,7 @@ class TestSetupZeroCalibrationLayer:
                 work_folder=work_folder,
                 workScienceFile=tmp_path / "science.cdf",
                 content_date=datetime(2025, 10, 17),
+                app_settings=AppSettings(),
             )
 
         mock_zero_layer.writeToFile.assert_called_once()
@@ -378,6 +379,7 @@ class TestSetupZeroCalibrationLayer:
                 work_folder=work_folder,
                 workScienceFile=tmp_path / "science.cdf",
                 content_date=datetime(2025, 10, 17),
+                app_settings=AppSettings(),
             )
 
         assert result == existing_file

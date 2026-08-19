@@ -41,7 +41,9 @@ async def get_secret_block(secret_name: str) -> str:
     return value
 
 
-async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
+async def get_secret_or_env_var(
+    secret_name: str, env_var_name: str, raise_if_missing: bool = True
+) -> str:
     from prefect.context import FlowRunContext, TaskRunContext
 
     in_prefect_flow = (
@@ -63,7 +65,7 @@ async def get_secret_or_env_var(secret_name: str, env_var_name: str) -> str:
     if not auth_code:
         auth_code = os.getenv(env_var_name)
 
-    if not auth_code:
+    if not auth_code and raise_if_missing:
         logger.error(
             f"Environment variable {env_var_name} and secret {secret_name} are both undefined."
         )

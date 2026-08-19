@@ -95,6 +95,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     mock_database.upsert_file.side_effect = lambda file: check_inserted_file(
@@ -102,7 +103,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -153,10 +154,11 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -229,10 +231,11 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         matched_path_handler,
+        False,
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -280,6 +283,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     mock_database.get_files.side_effect = [
@@ -311,7 +315,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -321,11 +325,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -358,6 +358,7 @@ def test_DBIndexedDatastoreFileManager_errors_when_destination_file_is_not_found
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         test_file,
         path_handler,
+        False,
     )
 
     # Exercise and verify.
@@ -387,6 +388,7 @@ def test_DBIndexedDatastoreFileManager_errors_database_error(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         path_handler,
+        False,
     )
 
     mock_database.upsert_file.side_effect = ArithmeticError("Database error")
@@ -430,6 +432,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     test_database.upsert_files(
@@ -462,7 +465,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -472,11 +475,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l0/hsk-pw/2025/05/imap_mag_l0_hsk-pw_20250502_002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -519,6 +518,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     test_database.upsert_files(
@@ -551,7 +551,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     # Exercise.
-    (actual_file, actual_path_handler) = database_manager.add_file(
+    (actual_file, actual_path_handler, _) = database_manager.add_file(
         original_file, path_handler
     )
 
@@ -561,11 +561,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt')} already exists in database and is different. Increasing version to 2."
-        in capture_cli_logs.text
-    )
-    assert (
-        f"File {Path('hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt')} already exists in database and is different. Increasing version to 3."
+        "Existing versions [1, 2] found in database. Assigning next available version 3 (max + 1)."
         in capture_cli_logs.text
     )
     assert f"Upserting {test_file} into database." in capture_cli_logs.text
@@ -607,6 +603,7 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "some content"),
         unique_path_handler,
+        False,
     )
 
     # Exercise
@@ -730,15 +727,113 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
             ),
         ),
         path_handler,
+        False,
     )
 
     # Exercise
-    (_, _) = database_manager.add_file(work_json, path_handler)
+    database_manager.add_file(work_json, path_handler)
 
     # Verify: deduplication happened — no new DB record
     assert path_handler.version == 1
     db_files = test_database.get_files()
     assert len(db_files) == 1  # only the pre-existing v001 record
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Test containers (used by test database) does not work on Windows",
+)
+def test_calibration_layer_db_dedup_multiple_records_same_hash_handled_gracefully(
+    mock_datastore_manager: mock.Mock,
+    test_database,  # noqa: F811
+    capture_cli_logs,
+    temp_folder_path,
+) -> None:
+    """Two DB records with identical hash (pre-deduplication state) must not assert-fail.
+
+    The invariant that at most one record per content identity exists can be
+    violated by records created before the deduplication logic was introduced.
+    The code must handle this gracefully, log a warning, and reuse the record
+    that best matches the handler's current version_major.
+    """
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, test_database
+    )
+
+    date = datetime(2026, 1, 16)
+    csv_content = (
+        "time,offset_x,offset_y,offset_z,timedelta,quality_flag,quality_bitmask"
+    )
+    work_json, work_csv = _write_layer_pair(
+        temp_folder_path, "quality-norm", date, 1, csv_content
+    )
+    csv_hash = hashlib.md5(work_csv.read_bytes()).hexdigest()
+
+    # Pre-populate DB with TWO records sharing the same hash — simulates the
+    # state left by code that ran before the deduplication invariant existed.
+    test_database.upsert_files(
+        [
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v001.0001.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v001.0001.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                version_major=1,
+                hash=csv_hash,
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 12, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 12, 0, 0),
+                software_version=__version__,
+            ),
+            File(
+                name="imap_mag_quality-norm-layer_20260116_v002.0001.json",
+                path="calibration/layers/2026/01/imap_mag_quality-norm-layer_20260116_v002.0001.json",
+                descriptor="imap_mag_quality-norm-layer",
+                version=1,
+                version_major=2,
+                hash=csv_hash,
+                size=100,
+                content_date=date,
+                creation_date=datetime(2026, 1, 16, 13, 0, 0),
+                last_modified_date=datetime(2026, 1, 16, 13, 0, 0),
+                software_version=__version__,
+            ),
+        ]
+    )
+
+    dest_json = (
+        Path(tempfile.gettempdir())
+        / "imap_mag_quality-norm-layer_20260116_v002.0001.json"
+    )
+
+    path_handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=1, version_major=2
+    )
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(
+            dest_json,
+            json.dumps(
+                {
+                    "metadata": {
+                        "data_filename": "imap_mag_quality-norm-layer-data_20260116_v002.0001.csv"
+                    }
+                }
+            ),
+        ),
+        path_handler,
+        False,
+    )
+
+    # Must not raise AssertionError
+    database_manager.add_file(work_json, path_handler)
+
+    # Should reuse v002.0001 (matching version_major=2), no new record
+    assert path_handler.version == 1
+    assert path_handler.version_major == 2
+    db_files = test_database.get_files()
+    assert len(db_files) == 2  # the two pre-existing records, no new one added
+    assert "records with identical content identity" in capture_cli_logs.text
 
 
 @pytest.mark.skipif(
@@ -786,7 +881,7 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     )
 
     path_handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1
+        descriptor="quality-norm", content_date=date, version=1, version_major=1
     )
 
     # Capture source content during the mock call (before cleanup deletes the temp file)
@@ -794,11 +889,11 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
 
     def capture_add_file(
         source: Path, handler
-    ) -> tuple[Path, CalibrationLayerPathHandler]:
+    ) -> tuple[Path, CalibrationLayerPathHandler, bool]:
         captured_contents.append(json.loads(source.read_text()))
         dest = Path(tempfile.gettempdir()) / f"layer_v{handler.version:03d}.json"
         dest.write_bytes(source.read_bytes())
-        return dest, handler
+        return dest, handler, False
 
     mock_datastore_manager.add_file.side_effect = capture_add_file
 
@@ -901,6 +996,7 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
             ),
         ),
         path_handler,
+        False,
     )
 
     # Exercise
@@ -945,10 +1041,10 @@ def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
 
     modified_timestamp = datetime(2025, 5, 3, 12, 34, 56).timestamp()
 
-    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler]:
+    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler, bool]:
         created_file = create_test_file(test_file, "some content")
         os.utime(created_file, (modified_timestamp, modified_timestamp))
-        return created_file, path_handler
+        return created_file, path_handler, False
 
     mock_datastore_manager.add_file.side_effect = add_file_side_effect
 
@@ -1007,7 +1103,7 @@ def test_DBIndexedDatastoreFileManager_add_file_with_deleted_file_to_real_postgr
     test_database.upsert_files([existing_file_record])
 
     # Exercise.
-    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+    (actual_file, _, _) = database_manager.add_file(new_file, path_handler)
 
     # assert only one file record exists and it is not deleted, with last modified updated to now
     database_files = test_database.get_files()
@@ -1063,7 +1159,7 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     test_database.upsert_files([existing_file_record])
 
     # Exercise.
-    (actual_file, _) = database_manager.add_file(new_file, path_handler)
+    (actual_file, _, _) = database_manager.add_file(new_file, path_handler)
 
     # assert only one file record exists and it is not deleted, with last modified updated to now
     database_files = test_database.get_files()
@@ -1105,6 +1201,7 @@ def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "science content vmaj"),
         path_handler,
+        False,
     )
     mock_database.get_files.return_value = []
 
@@ -1176,6 +1273,7 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
     mock_datastore_manager.add_file.side_effect = lambda *_: (
         create_test_file(test_file, "new science content"),
         path_handler,
+        False,
     )
 
     captured_files: list[File] = []
@@ -1186,6 +1284,71 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
 
     # Verify: version is bumped past both v1 (legacy) and v2 (new format) to v3.
     assert path_handler.version == 3
+    assert len(captured_files) == 1
+    assert captured_files[0].version == 3
+
+
+def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_one_not_first_gap(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """Version assignment must use max(existing) + 1, not the first gap.
+
+    If v002 is the only active record (v001 never existed or was deleted), the
+    next version must be 003, not 001.
+    """
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_science_gap", "new science content"
+    )
+    path_handler = SciencePathHandler(
+        level="l2-pre",
+        descriptor="norm-srf",
+        content_date=datetime(2026, 1, 16),
+        version=1,
+        version_major=1,
+        has_major_version=True,
+        extension="cdf",
+    )
+
+    # Only v002 is in the DB; v001 was never written (or was deleted).
+    folder = "science/mag/l2-pre/2026/01"
+    mock_database.get_files.return_value = [
+        File(
+            name="imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            path=f"{folder}/imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf",
+            descriptor="imap_mag_l2-pre_norm-srf",
+            version=2,
+            version_major=1,
+            hash="existing_hash_v002",
+            size=100,
+            content_date=datetime(2026, 1, 16),
+            software_version=__version__,
+        ),
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "test_science_gap.cdf"
+    mock_datastore_manager.add_file.side_effect = lambda *_: (
+        create_test_file(test_file, "new science content"),
+        path_handler,
+        False,
+    )
+
+    captured_files: list[File] = []
+    mock_database.upsert_file.side_effect = lambda f: captured_files.append(f)
+
+    # Exercise.
+    database_manager.add_file(original_file, path_handler)
+
+    # Verify: version must be max+1 = 3, not the first gap (1).
+    assert path_handler.version == 3, (
+        f"Expected version 3 (max+1 of existing version 2) but got {path_handler.version}. "
+        "Version assignment must be monotonically increasing, not first-gap."
+    )
     assert len(captured_files) == 1
     assert captured_files[0].version == 3
 

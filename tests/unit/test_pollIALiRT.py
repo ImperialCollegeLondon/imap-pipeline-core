@@ -8,9 +8,39 @@ import pytest
 from prefect_server.pollIALiRT import (
     AutomaticRunParameters,
     FetchByDatesRunParameters,
+    generate_flow_run_name,
     poll_ialirt_flow,
     run_ialirt_polling_pipeline_task,
 )
+
+
+class TestPollIALiRTFlowGenerateName:
+    """Unit tests for generate_flow_run_name."""
+
+    def test_generate_flow_run_name_with_auto_run(self):
+        mock_params = {"run_parameters": AutomaticRunParameters()}
+
+        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            mock_dp = MagicMock()
+            mock_dp.end_of_hour.return_value = datetime(2025, 1, 1, 13, 0)
+            name = generate_flow_run_name(datetime_provider=mock_dp)
+
+        assert "last-update" in name
+        assert "01-01-2025" in name
+
+    def test_generate_flow_run_name_with_date_params(self):
+        run_params = FetchByDatesRunParameters(
+            start_date=datetime(2026, 7, 24, 15, 7, 0),
+            end_date=datetime(2026, 7, 27, 0, 0, 0),
+        )
+        mock_params = {"run_parameters": run_params}
+
+        with patch("prefect_server.pollIALiRT.flow_run") as mock_flow_run:
+            mock_flow_run.parameters = mock_params
+            name = generate_flow_run_name()
+
+        assert name == "Poll-IALiRT-from-24-07-2026-to-27-07-2026"
 
 
 class TestIALiRTPollingTask:

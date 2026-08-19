@@ -1,6 +1,6 @@
 """Tests for GetProcessingDatesStage."""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -172,6 +172,38 @@ async def test_force_redownload_overrides_database_progress():
     record = collector.received[0]
     assert record.start_date == explicit_start
     assert record.end_date == explicit_end
+
+
+@pytest.mark.asyncio
+async def test_force_redownload_normalizes_timezone_aware_dates():
+    """force_redownload=True with timezone-aware requested dates must still publish
+    naive datetimes, otherwise SaveProcessingDatesStage later crashes comparing them
+    against the naive progress_timestamp read back from the database."""
+    explicit_start = datetime(
+        2026, 7, 24, 15, 7, 0, tzinfo=timezone(timedelta(hours=1))
+    )
+    explicit_end = datetime(2026, 7, 27, 0, 0, 0, tzinfo=timezone(timedelta(hours=1)))
+
+    dp_instance = DatetimeProvider(fixed_now=NOW)
+    stage = GetProcessingDatesStage(database=None, datetime_provider=dp_instance)
+    pipeline, collector = _build_pipeline_with_stage(
+        stage,
+        run_parameters=dp.FetchByDatesRunParameters(
+            start_date=explicit_start,
+            end_date=explicit_end,
+            force_redownload=True,
+        ),
+    )
+
+    await pipeline.run()
+
+    assert len(collector.received) == 1
+    record = collector.received[0]
+    assert record.start_date.tzinfo is None
+    assert record.end_date.tzinfo is None
+    # comparable against a naive datetime without raising TypeError
+    assert record.start_date < datetime(2026, 7, 25)
+    assert record.end_date > datetime(2026, 7, 25)
 
 
 # ---- DateResolutionMode.DATE_ONLY ----

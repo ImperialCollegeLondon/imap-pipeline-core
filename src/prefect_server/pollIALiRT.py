@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -32,20 +33,20 @@ from prefect_server.quicklookIALiRT import quicklook_ialirt_flow
 def generate_flow_run_name(
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> str:
-    parameters = flow_run.parameters
+    parameters = flow_run.parameters["run_parameters"]
 
     start_date: str = (
-        parameters["start_date"].strftime("%d-%m-%YT%H:%M:%S")
-        if parameters.get("start_date")
+        parameters.start_date.strftime("%d-%m-%Y")
+        if hasattr(parameters, "start_date") and parameters.start_date is not None
         else "last-update"
     )
     end_date: datetime = (
-        parameters["end_date"]
-        if parameters.get("end_date")
+        parameters.end_date
+        if hasattr(parameters, "end_date") and parameters.end_date is not None
         else datetime_provider.end_of_hour()
     )
 
-    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%YT%H:%M:%S')}"
+    return f"Poll-IALiRT-from-{start_date}-to-{end_date.strftime('%d-%m-%Y')}"
 
 
 @task(
@@ -168,7 +169,7 @@ async def poll_ialirt_flow(
     force_send_notification: bool = False,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ):
@@ -281,3 +282,16 @@ async def poll_ialirt_flow(
             )  # type: ignore
 
     return Completed(message="Hourly I-ALiRT Polling completed successfully.")
+
+
+# Enable quick local dev like `source .env && python -m src.prefect_server.spiceDownloadFlow` and "debug this file" in vscode
+if __name__ == "__main__":
+    # we are running locally for development?
+    if os.environ.get("ENV_NAME", "") == "dev":
+        print("Setting up database for dev environment...")
+        from imap_db.main import create_db, upgrade_db
+
+        create_db()
+        upgrade_db()
+
+    poll_ialirt_flow.serve()

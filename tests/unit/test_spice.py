@@ -197,6 +197,7 @@ class TestFetchSpice:
         mock_output_manager.add_file.return_value = (
             mock_output_file,
             mock_output_handler,
+            False,
         )
         mock_settings = _make_mock_fetch_spice_settings(tmp_path)
         mock_settings.fetch_spice.publish_to_data_store = True
@@ -246,7 +247,7 @@ class TestPublishSpiceKernel:
         kernel_path.write_text("kernel content")
         output_file = tmp_path / "datastore" / "spice" / "sclk" / "imap_sclk_0001.tsc"
         mock_output_manager = MagicMock()
-        mock_output_manager.add_file.return_value = (output_file, MagicMock())
+        mock_output_manager.add_file.return_value = (output_file, MagicMock(), False)
 
         with (
             patch(

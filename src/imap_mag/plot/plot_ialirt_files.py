@@ -36,7 +36,13 @@ def plot_ialirt_files(
     ialirt_data = _merge_science_and_hk(science_data, hk_data)
 
     if ialirt_data.empty:
-        logger.info("No I-ALiRT data present in files.")
+        logger.warning(
+            "No I-ALiRT data present in files. Generating an empty quicklook plot."
+        )
+        (output_file, output_handler) = create_figure(
+            ialirt_data, save_folder, datetime_provider
+        )
+        generated_files[output_file] = output_handler
         return generated_files
 
     if combine_plots:
@@ -87,6 +93,14 @@ def _merge_science_and_hk(
         return science_data.join(hk_data, how="outer", rsuffix="_hk")
 
 
+def _non_null_column(data: pd.DataFrame, column: str) -> pd.Series:
+    """Return the non-null values for `column`, or an empty series if the
+    column is absent (e.g. when only science or only HK data is available)."""
+    if column not in data.columns:
+        return pd.Series(dtype="float64")
+    return data[data[column].notna()][column]
+
+
 def create_figure(
     ialirt_data: pd.DataFrame,
     save_folder: Path,
@@ -106,9 +120,10 @@ def create_figure(
             "mag_B_magnitude",
         ]
     ):
+        series = _non_null_column(ialirt_data, b)
         ax00.plot(
-            ialirt_data[ialirt_data[b].notna()].index,
-            ialirt_data[ialirt_data[b].notna()][b] * (1 + i * 0.1),
+            series.index,
+            series * (1 + i * 0.1),
             label=b.lstrip("mag_B_GSE_") if b != "mag_B_magnitude" else "|B|",
         )
 
@@ -134,9 +149,10 @@ def create_figure(
     ):
         # Multiply by (1 + i * 0.1) to offset the lines for better visibility
         # if they are ever equal to 1 at the same time.
+        series = _non_null_column(ialirt_data, hk)
         ax02.plot(
-            ialirt_data[ialirt_data[hk].notna()].index,
-            ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
+            series.index,
+            series * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_danger"),
         )
 
@@ -162,9 +178,10 @@ def create_figure(
     ):
         # Multiply by (1 + i * 0.1) to offset the lines for better visibility
         # if they are ever equal to 1 at the same time.
+        series = _non_null_column(ialirt_data, hk)
         ax03.plot(
-            ialirt_data[ialirt_data[hk].notna()].index,
-            ialirt_data[ialirt_data[hk].notna()][hk] * (1 + i * 0.1),
+            series.index,
+            series * (1 + i * 0.1),
             label=hk.lstrip("mag_hk_").rstrip("_warn"),
         )
 
@@ -176,18 +193,18 @@ def create_figure(
     # 3.3 V
     ax10 = fig.add_subplot(gs[1, 0])
 
+    series = _non_null_column(ialirt_data, "mag_hk_hk3v3")
     ax10.plot(
-        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hk3v3"].notna()]["mag_hk_hk3v3"],
+        series.index,
+        series,
         linestyle="--",
         label="Voltage",
     )
     ax10_left = ax10.twinx()
+    series = _non_null_column(ialirt_data, "mag_hk_hk3v3_current")
     ax10_left.plot(
-        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hk3v3_current"].notna()][
-            "mag_hk_hk3v3_current"
-        ],
+        series.index,
+        series,
         color="orange",
         label="Current",
     )
@@ -200,18 +217,18 @@ def create_figure(
     # -8 V
     ax11 = fig.add_subplot(gs[1, 1])
 
+    series = _non_null_column(ialirt_data, "mag_hk_hkn8v5")
     ax11.plot(
-        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hkn8v5"].notna()]["mag_hk_hkn8v5"],
+        series.index,
+        series,
         linestyle="--",
         label="Voltage",
     )
     ax11_left = ax11.twinx()
+    series = _non_null_column(ialirt_data, "mag_hk_hkn8v5_current")
     ax11_left.plot(
-        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_hkn8v5_current"].notna()][
-            "mag_hk_hkn8v5_current"
-        ],
+        series.index,
+        series,
         color="orange",
         label="Current",
     )
@@ -224,10 +241,8 @@ def create_figure(
     # Bit errors
     ax12 = fig.add_subplot(gs[1, 2])
 
-    ax12.plot(
-        ialirt_data[ialirt_data["mag_hk_multbit_errs"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_multbit_errs"].notna()]["mag_hk_multbit_errs"],
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_multbit_errs")
+    ax12.plot(series.index, series)
     ax12.set_ylabel("[-]")
     ax12.grid()
     ax12.set_title("Multibit Errors")
@@ -235,32 +250,18 @@ def create_figure(
     # Mode
     ax13 = fig.add_subplot(gs[1, 3])
 
-    ax13.plot(
-        ialirt_data[ialirt_data["mag_hk_mode"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_mode"].notna()]["mag_hk_mode"],
-        label="ICU",
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_mode")
+    ax13.plot(series.index, series, label="ICU")
     ax13.grid()
     ax13.set_title("Mode")
 
     # Saturation
     ax20 = fig.add_subplot(gs[2, 0])
 
-    ax20.plot(
-        ialirt_data[ialirt_data["mag_hk_fob_saturated"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fob_saturated"].notna()][
-            "mag_hk_fob_saturated"
-        ],
-        label="FOB",
-    )
-    ax20.plot(
-        ialirt_data[ialirt_data["mag_hk_fib_saturated"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fib_saturated"].notna()][
-            "mag_hk_fib_saturated"
-        ],
-        label="FIB",
-        linestyle="--",
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_fob_saturated")
+    ax20.plot(series.index, series, label="FOB")
+    series = _non_null_column(ialirt_data, "mag_hk_fib_saturated")
+    ax20.plot(series.index, series, label="FIB", linestyle="--")
     ax20.set_ylabel("[-]")
     ax20.legend(loc="upper right", fontsize="small")
     ax20.grid()
@@ -269,17 +270,10 @@ def create_figure(
     # Ranges
     ax21 = fig.add_subplot(gs[2, 1])
 
-    ax21.plot(
-        ialirt_data[ialirt_data["mag_hk_fob_range"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fob_range"].notna()]["mag_hk_fob_range"],
-        label="FOB",
-    )
-    ax21.plot(
-        ialirt_data[ialirt_data["mag_hk_fib_range"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fib_range"].notna()]["mag_hk_fib_range"],
-        label="FIB",
-        linestyle="--",
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_fob_range")
+    ax21.plot(series.index, series, label="FOB")
+    series = _non_null_column(ialirt_data, "mag_hk_fib_range")
+    ax21.plot(series.index, series, label="FIB", linestyle="--")
     ax21.set_ylabel("[-]")
     ax21.legend(loc="upper right", fontsize="small")
     ax21.grid()
@@ -288,17 +282,10 @@ def create_figure(
     # Active
     ax22 = fig.add_subplot(gs[2, 2])
 
-    ax22.plot(
-        ialirt_data[ialirt_data["mag_hk_pri_isvalid"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_pri_isvalid"].notna()]["mag_hk_pri_isvalid"],
-        label="FOB",
-    )
-    ax22.plot(
-        ialirt_data[ialirt_data["mag_hk_sec_isvalid"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_sec_isvalid"].notna()]["mag_hk_sec_isvalid"],
-        label="FIB",
-        linestyle="--",
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_pri_isvalid")
+    ax22.plot(series.index, series, label="FOB")
+    series = _non_null_column(ialirt_data, "mag_hk_sec_isvalid")
+    ax22.plot(series.index, series, label="FIB", linestyle="--")
     ax22.legend(loc="upper right", fontsize="small")
     ax22.grid()
     ax22.set_title("Status")
@@ -306,31 +293,29 @@ def create_figure(
     # Temperatures
     ax23 = fig.add_subplot(gs[2, 3])
 
-    ax23.plot(
-        ialirt_data[ialirt_data["mag_hk_fob_temp"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fob_temp"].notna()]["mag_hk_fob_temp"],
-        label="FOB",
-    )
-    ax23.plot(
-        ialirt_data[ialirt_data["mag_hk_fib_temp"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_fib_temp"].notna()]["mag_hk_fib_temp"],
-        label="FIB",
-        linestyle="--",
-    )
-    ax23.plot(
-        ialirt_data[ialirt_data["mag_hk_icu_temp"].notna()].index,
-        ialirt_data[ialirt_data["mag_hk_icu_temp"].notna()]["mag_hk_icu_temp"],
-        label="ICU",
-        linestyle=":",
-    )
+    series = _non_null_column(ialirt_data, "mag_hk_fob_temp")
+    ax23.plot(series.index, series, label="FOB")
+    series = _non_null_column(ialirt_data, "mag_hk_fib_temp")
+    ax23.plot(series.index, series, label="FIB", linestyle="--")
+    series = _non_null_column(ialirt_data, "mag_hk_icu_temp")
+    ax23.plot(series.index, series, label="ICU", linestyle=":")
     ax23.set_ylabel("[°C]")
     ax23.legend(loc="upper right", fontsize="small")
     ax23.grid()
     ax23.set_title("Temperatures")
 
     # Save figure
-    max_date: datetime = ialirt_data.index.max().to_pydatetime()
+    max_date: datetime = (
+        ialirt_data.index.max().to_pydatetime()
+        if not ialirt_data.empty
+        else datetime_provider.now()
+    )
     output_file = save_folder / f"ialirt_quicklook_{max_date.strftime('%Y%m%d')}.png"
+
+    if not ialirt_data.empty:
+        _fix_bogus_axis_autoscale(
+            fig, ialirt_data.index.min().to_pydatetime(), max_date
+        )
 
     set_time_format(fig)
     set_figure_title(fig, datetime_provider)
@@ -346,6 +331,30 @@ def create_figure(
             content_date=max_date,
         ),
     )
+
+
+def _fix_bogus_axis_autoscale(
+    fig: plt.Figure, min_date: datetime, max_date: datetime
+) -> None:
+    """Reset axes whose autoscaled x-limits vastly exceed the real data range.
+
+    Matplotlib can mis-autoscale a date axis to a huge, bogus time span when
+    an axis only has a single data point plotted against a categorical (e.g.
+    string) y-value (e.g. "Mode" with only one HK sample). set_time_format()
+    would then try to generate ticks across that bogus span, which can
+    hang/crash figure rendering. Axes that autoscaled sensibly (i.e. within
+    the real data range, plus matplotlib's usual small margin) are left
+    untouched so their normal padding is preserved.
+    """
+    data_min_num = mdates.date2num(min_date)
+    data_max_num = mdates.date2num(max_date)
+    data_span = max(data_max_num - data_min_num, 1 / 24)  # at least 1 hour
+
+    for ax in fig.get_axes():
+        x_lim = ax.get_xlim()
+        axis_span = x_lim[1] - x_lim[0]
+        if axis_span > data_span * 10:
+            ax.set_xlim(data_min_num, data_max_num)
 
 
 def set_time_format(fig: plt.Figure) -> None:

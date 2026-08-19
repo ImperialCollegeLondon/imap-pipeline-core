@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from imap_mag.io import FileFinder
+from imap_mag.io.FileFinder import FileFinder
 from imap_mag.process.FileProcessor import FileProcessor
 from imap_mag.process.HKProcessor import HKProcessor
 

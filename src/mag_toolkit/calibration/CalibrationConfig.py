@@ -1,16 +1,23 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
+    CreateOffsets,
     DatastoreAccessMode,
 )
 
 
 class CalibrationConfig(BaseModel):
+    cleanup_temp_files_after_run: Annotated[
+        bool, Field(default=True, json_schema_extra={"position": 99})
+    ] = True
+
     @classmethod
     @abstractmethod
     def get_method(cls) -> CalibrationMethod:
@@ -31,12 +38,6 @@ class CalibrationConfig(BaseModel):
         raise ValueError(f"No subclass found for method {method}")
 
 
-class EmptyCalibrationConfig(CalibrationConfig):
-    @classmethod
-    def get_method(cls) -> CalibrationMethod:
-        return CalibrationMethod.NOOP
-
-
 class GradiometryConfig(CalibrationConfig):
     kappa: float = 0.0
     sc_interference_threshold: float = 0.0
@@ -54,11 +55,22 @@ class SetQualityAndNaNConfig(CalibrationConfig):
         return CalibrationMethod.SET_QUALITY_AND_NAN
 
 
+@dataclass
+class ScienceFileVersionConfig:
+    major: int
+    minor: int
+
+
 class ScriptedL2CalibrationConfig(CalibrationConfig):
     calibration_matrix_version: int
     input_json_file: str
     datastore_access_mode: DatastoreAccessMode = DatastoreAccessMode.READ_DIRECTLY
     matlab_repo: str
+    produce_report: bool = False
+    write_offsets: CreateOffsets = CreateOffsets.AUTOMATIC
+    layer_version_number_override: Annotated[
+        ScienceFileVersionConfig | None, Field(default=None)
+    ] = None
 
     @classmethod
     def get_method(cls) -> CalibrationMethod:
