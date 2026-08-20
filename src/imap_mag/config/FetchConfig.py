@@ -1,5 +1,4 @@
 from imap_mag.config.ApiSource import (
-    DSCOVRApiSource,
     IALiRTApiSource,
     SdcApiSource,
     SOLAR1andACEApiSource,
@@ -36,9 +35,4 @@ class FetchWebTCADLaTiSConfig(CommandConfig):
 
 class FetchSOLAR1andACEConfig(CommandConfig):
     api: SOLAR1andACEApiSource
-    publish_to_data_store: bool = True
-
-
-class FetchDSCOVRConfig(CommandConfig):
-    api: DSCOVRApiSource
     publish_to_data_store: bool = True
