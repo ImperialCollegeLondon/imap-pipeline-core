@@ -272,9 +272,9 @@ def test_fetch_ialirt_downloads_data_from_sdc(
         priority=1,
     )
 
-    expected_data_file = TEST_DATA / "imap_ialirt_20251014.csv"
+    expected_data_file = TEST_DATA / "imap_ialirt_mag_20251014.csv"
     expected_output_file: Path = (
-        temp_datastore / "ialirt/2025/10/imap_ialirt_20251014.csv"
+        temp_datastore / "ialirt/2025/10/imap_ialirt_mag_20251014.csv"
     )
 
     settings_overrides_for_env: Mapping[str, str] = {
@@ -290,6 +290,8 @@ def test_fetch_ialirt_downloads_data_from_sdc(
             "--verbose",
             "fetch",
             "ialirt",
+            "--instrument",
+            "mag",
             "--start-date",
             "2025-10-14 03:00:00",
             "--end-date",

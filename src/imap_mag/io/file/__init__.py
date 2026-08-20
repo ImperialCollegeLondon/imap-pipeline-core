@@ -1,10 +1,12 @@
 from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
+from imap_mag.io.file.CalculatedOffsetsPathHandler import (
+    CalculatedOffsetsPathHandler,
+)
 from imap_mag.io.file.CalibrationLayerPathHandler import (
     CalibrationLayerPathHandler,
 )
 from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
-from imap_mag.io.file.IALiRTHKPathHandler import IALiRTHKPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
@@ -22,11 +24,10 @@ from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 __all__ = [
     "AncillaryPathHandler",
-    "CalibrationLayerPathHandler",
+    "CalculatedOffsetsPathHandler",
     "CalibrationLayerPathHandler",
     "HKBinaryPathHandler",
     "HKDecodedPathHandler",
-    "IALiRTHKPathHandler",
     "IALiRTPathHandler",
     "IALiRTQuicklookPathHandler",
     "IFilePathHandler",

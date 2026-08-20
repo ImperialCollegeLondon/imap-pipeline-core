@@ -387,16 +387,6 @@ def test_add_to_files_multiple_days_produce_multiple_files(
 # ---------------------------------------------------------------------------
 
 
-def test_download_csv_invalid_spacecraft_raises(fetch_noaa: FetchNOAA) -> None:
-    with pytest.raises(ValueError, match="BAD_CRAFT"):
-        fetch_noaa.download_csv(spacecraft="BAD_CRAFT", instrument="mag")  # type: ignore
-
-
-def test_download_csv_invalid_instrument_raises(fetch_noaa: FetchNOAA) -> None:
-    with pytest.raises(ValueError, match="bad_instrument"):
-        fetch_noaa.download_csv(spacecraft="SOLAR1", instrument="bad_instrument")  # type: ignore
-
-
 def test_download_csv_no_data_returns_empty_dict(fetch_noaa: FetchNOAA) -> None:
     # Set up.
     fetch_noaa._data_access.get_data.return_value = []  # type: ignore

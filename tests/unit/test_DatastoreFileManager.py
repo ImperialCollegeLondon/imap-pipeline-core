@@ -250,7 +250,7 @@ def test_copy_file_same_origin_destination(temp_folder_path, caplog):
     original_mod_time = original_file.stat().st_mtime
 
     # Exercise.
-    (new_file, _) = manager.add_file(
+    (new_file, _, _) = manager.add_file(
         original_file,
         CustomPathHandler(
             folder=temp_folder_path.as_posix(),
@@ -304,10 +304,10 @@ def test_calibration_layer_identical_content_deduplicates_to_existing_version(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1
+        descriptor="quality-norm", content_date=date, version=1, version_major=1
     )
 
-    (result_path, _) = manager.add_file(work_json, handler)
+    (result_path, _, _) = manager.add_file(work_json, handler)
 
     assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0001.json"
     assert handler.version == 1
@@ -336,10 +336,10 @@ def test_calibration_layer_different_content_bumps_to_v002(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1
+        descriptor="quality-norm", content_date=date, version=1, version_major=1
     )
 
-    (result_path, _) = manager.add_file(work_json, handler)
+    (result_path, _, _) = manager.add_file(work_json, handler)
 
     assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0002.json"
     assert handler.version == 2
@@ -367,15 +367,53 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
 
     manager = _manager(temp_folder_path)
     json_handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1
+        descriptor="quality-norm", content_date=date, version=1, version_major=1
     )
     manager.add_file(work_json, json_handler)
 
     csv_handler = json_handler.get_equivalent_data_handler()  # version now 2
-    (csv_result, _) = manager.add_file(work_csv, csv_handler)
+    (csv_result, _, overwrite) = manager.add_file(work_csv, csv_handler)
 
     assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
     assert csv_result.read_bytes() == work_csv.read_bytes()
+    assert overwrite is False
+
+
+def test_allow_overwrite_replaces_same_version(temp_folder_path):
+    """allow_overwrite=True writes new content at the exact requested version."""
+    date = datetime(2026, 1, 16)
+
+    store_dir = temp_folder_path / "calibration" / "layers" / "2026" / "01"
+    store_dir.mkdir(parents=True)
+    write_calibration_layer_pair(store_dir, "quality-norm", date, 3, seed=0)
+    existing_json = store_dir / "imap_mag_quality-norm-layer_20260116_v001.0003.json"
+    import hashlib
+
+    original_digest = hashlib.md5(existing_json.read_bytes()).hexdigest()
+
+    work_dir = temp_folder_path / "work"
+    work_dir.mkdir()
+    work_json, _ = write_calibration_layer_pair(
+        work_dir, "quality-norm", date, 3, seed=99
+    )
+
+    manager = _manager(temp_folder_path)
+    handler = CalibrationLayerPathHandler(
+        descriptor="quality-norm", content_date=date, version=3, version_major=1
+    )
+    handler.versioning_mode = handler.VersionMode.USER_OVERRIDE
+
+    (result_path, _, overwrite) = manager.add_file(work_json, handler)
+
+    assert result_path.name == "imap_mag_quality-norm-layer_20260116_v001.0003.json"
+    # Content replaced — hash differs because the seed (and thus timestamp+hash) changed.
+    new_digest = hashlib.md5(result_path.read_bytes()).hexdigest()
+    assert new_digest != original_digest
+    # No v001.0004 should have been created.
+    assert not (
+        store_dir / "imap_mag_quality-norm-layer_20260116_v001.0004.json"
+    ).exists()
+    assert overwrite is True
 
 
 # ── Disk space threshold checks ───────────────────────────────────────────────
@@ -429,7 +467,7 @@ def test_add_file_allowed_when_disk_usage_below_threshold(temp_folder_path):
     original_file = create_test_file(Path(f"{temp_folder_path}/source.txt"))
 
     with patch("shutil.disk_usage", return_value=_disk_usage_at(0.94)):
-        (destination, _) = manager.add_file(
+        (destination, _, _) = manager.add_file(
             original_file,
             HKDecodedPathHandler(
                 descriptor="pwr",

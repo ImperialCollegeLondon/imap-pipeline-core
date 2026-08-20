@@ -19,7 +19,8 @@ class Environment(AbstractContextManager):
 
     def __enter__(self):
         """Set the environment variables."""
-        os.environ.update(self.key_values)
+        if self.key_values:
+            os.environ.update(self.key_values)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Restore the original environment variables."""

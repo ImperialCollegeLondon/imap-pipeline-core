@@ -21,17 +21,17 @@ repos:
       - id: remove-crlf
       - id: remove-tabs
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: "0.37.4"
+    rev: "0.38.0"
     hooks:
       - id: check-github-workflows
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.21
+    rev: v0.16.2
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.49.0
+    rev: v0.49.1
     hooks:
       - id: markdownlint-fix
         args: [--ignore, LICENSE.md]

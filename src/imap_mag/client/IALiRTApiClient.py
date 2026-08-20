@@ -1,7 +1,8 @@
 """Interact with SDC APIs to get MAG data via ialirt-data-access."""
 
+import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import ialirt_data_access
 from pydantic import SecretStr
@@ -38,56 +39,61 @@ class IALiRTApiClient:
     ) -> list[dict]:
         """Download data from I-ALiRT via ialirt-data-access for a specific instrument."""
 
-        whole_data: list[dict] = []
-        latest_date: datetime = start_date
+        if start_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date.tzinfo is not None:
+            end_date = end_date.replace(tzinfo=None)
 
-        while (end_date - latest_date) > timedelta(seconds=4):
-            end_date_this_chunk = (
-                min(end_date, latest_date + timedelta(hours=max_hours_per_chunk))
+        whole_data: list[dict] = []
+        window_start: datetime = start_date
+
+        while (end_date - window_start) > timedelta(seconds=4):
+            window_end = (
+                min(end_date, window_start + timedelta(hours=max_hours_per_chunk))
                 if max_hours_per_chunk is not None
                 else end_date
             )
-
-            logger.info(
-                f"GET {instrument} from {latest_date} to {end_date_this_chunk}."
-            )
-
             data_chunk: list[dict] = self.__do_download(
-                instrument, latest_date, end_date_this_chunk
+                instrument, window_start, window_end
             )
-            whole_data.extend(data_chunk)
 
-            if data_chunk:
-                max_chunk_date = max(
-                    datetime.strptime(d[self.__DATE_INDEX], self.__DATE_FORMAT)
-                    for d in data_chunk
+            if data_chunk is None:
+                logger.warning(
+                    f"API returned None for {instrument}. Treating as empty."
                 )
+                data_chunk = {}
 
-                logger.debug(
-                    f"Downloaded {len(data_chunk)} records from I-ALiRT between {latest_date} and {max_chunk_date}."
-                )
-                latest_date = max_chunk_date + timedelta(seconds=1)
-            elif end_date_this_chunk < end_date:
-                logger.debug(
-                    f"No data downloaded between {latest_date} and {end_date_this_chunk}, but end date not reached. Advancing latest_date to {end_date_this_chunk} to continue downloading."
-                )
-                latest_date = end_date_this_chunk
-            else:
-                logger.debug(
-                    f"No more data to download between {latest_date} and {end_date}."
-                )
-                break
+            logger.debug(
+                f"Downloaded {len(data_chunk)} records from I-ALiRT between {window_start} and {window_end}."
+            )
+
+            records = (
+                data_chunk.get("data", [])
+                if isinstance(data_chunk, dict)
+                else data_chunk
+            )
+
+            whole_data.extend(records)
+
+            window_start = window_end
 
         return whole_data
 
     def __do_download(
         self, instrument: str, start_date: datetime, end_date: datetime
     ) -> list[dict]:
+
         result = ialirt_data_access.data_product_query(
             instrument=instrument,
-            time_utc_start=start_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
-            time_utc_end=end_date.astimezone(UTC).strftime(self.__DATE_FORMAT),
+            time_utc_start=start_date.strftime(self.__DATE_FORMAT),
+            time_utc_end=end_date.strftime(self.__DATE_FORMAT),
         )
+
+        if isinstance(result, (str, bytes)):
+            try:
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to decode JSON from API response: {result}")
 
         if isinstance(result, dict):
             return result.get("data", [])

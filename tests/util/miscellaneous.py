@@ -122,6 +122,7 @@ def write_calibration_layer_pair(
         validity=Validity(start=epoch, end=epoch),
         sensor=Sensor.MAGO,
         version=version,
+        version_major=1,
         metadata=CalibrationMetadata(
             dependencies=[],
             science=[],
@@ -134,7 +135,7 @@ def write_calibration_layer_pair(
     layer._contents = contents
 
     handler = CalibrationLayerPathHandler(
-        descriptor=descriptor, content_date=date, version=version
+        descriptor=descriptor, content_date=date, version=version, version_major=1
     )
     json_path = folder / handler.get_filename()
     layer.writeToFile(json_path)

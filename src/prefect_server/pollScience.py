@@ -9,6 +9,7 @@ from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.science import fetch_science
+from imap_mag.config.DatastoreSaveOption import DatastoreSaveOption
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import SciencePathHandler
@@ -70,6 +71,8 @@ def _download_batch_of_science(
     packet_start_timestamp,
     batch_size,
     skip_items_count,
+    overwrite_option: DatastoreSaveOption = DatastoreSaveOption.FILE_OVERWRITES_BLOCKED,
+    version_str_or_latest: str | None = None,
 ) -> dict[Path, SciencePathHandler]:
     logger.info(
         f"Downloading batch of up to {batch_size} files for {progress_item_id} from {start_date} to {end_date}, skipping first {skip_items_count} items."
@@ -86,6 +89,8 @@ def _download_batch_of_science(
         fetch_mode=FetchMode.DownloadAndUpdateProgress,
         max_downloads=batch_size,
         skip_items_count=skip_items_count,
+        overwrite_option=overwrite_option,
+        version_str_or_latest=version_str_or_latest,
     )
 
     # Update database with latest ingestion date as progress (for science)
@@ -98,9 +103,9 @@ def _download_batch_of_science(
             checked_timestamp=packet_start_timestamp,
             latest_timestamp=latest_ingestion_date,
         )
-        logger.info(f"Database updated for {progress_item_id}.")
+        logger.info(f"Database workflow progress updated for {progress_item_id}.")
     else:
-        logger.info(f"Database not updated for {progress_item_id}.")
+        logger.info(f"Database workflow progress not updated for {progress_item_id}.")
 
     return downloaded_science
 
@@ -165,6 +170,15 @@ async def poll_science_flow(
             }
         ),
     ] = False,
+    version_str_or_latest: Annotated[
+        str | None,
+        Field(
+            json_schema_extra={
+                "title": "Version string to download",
+                "description": "Leave Blank/None for all versions. String like 'vMMM.mmmm' or 'latest' or the deprecated minor-only 'vXXX'",
+            }
+        ),
+    ] = None,
     force_database_update: Annotated[
         bool,
         Field(
@@ -174,9 +188,18 @@ async def poll_science_flow(
             }
         ),
     ] = False,
+    overwrite_option: Annotated[
+        DatastoreSaveOption,
+        Field(
+            json_schema_extra={
+                "title": "File overwrite option",
+                "description": "Whether to block or allow overwriting an existing datastore file that has the same version but different content. Default blocks overwrites and raises an error, which is the expected behaviour for SDC science files.",
+            }
+        ),
+    ] = DatastoreSaveOption.FILE_OVERWRITES_BLOCKED,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ):
@@ -197,7 +220,7 @@ async def poll_science_flow(
 
     if force_database_update and not force_ingestion_date:
         logger.warning(
-            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
         )
 
     # If this is an automated flow run, use the database to figure out what to download,
@@ -263,6 +286,8 @@ async def poll_science_flow(
                 packet_start_timestamp,
                 BATCH_SIZE,
                 len(downloaded_science),
+                overwrite_option=overwrite_option,
+                version_str_or_latest=version_str_or_latest,
             )
             if items:
                 downloaded_science.extend(items.keys())

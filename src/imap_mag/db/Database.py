@@ -92,7 +92,7 @@ class Database:
         session = self.__get_active_session()
         for file in files:
             # check file does not already exist if this is a new file record (id is none)
-            if file.id is None:
+            if file.id is None or file.id == 0:
                 existing_file = (
                     session.query(File)
                     .filter_by(name=file.name, path=file.path)

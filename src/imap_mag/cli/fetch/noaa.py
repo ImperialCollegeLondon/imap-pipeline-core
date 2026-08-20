@@ -68,7 +68,7 @@ def fetch_noaa(
     instrument: Annotated[
         Literal["mag", "wind"],
         typer.Option(
-            help="Instrument data to download. Must be 'mag' or 'palsma'",
+            help="Instrument data to download. Must be 'mag' for the magnetic field instrument or 'wind' for the plasma instrument",
         ),
     ],
     fetch_mode: Annotated[

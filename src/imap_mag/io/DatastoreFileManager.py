@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from imap_mag.db.Database import Database
-from imap_mag.io.file import IFilePathHandler, SequenceablePathHandler
+from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
 from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
 from imap_mag.util.diskSpace import check_disk_space
 
@@ -27,8 +28,9 @@ class DatastoreFileManager(IDatastoreFileManager):
     def _check_disk_space(self) -> None:
         check_disk_space(self.location, self.disk_usage_threshold)
 
-    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
-        """Add file to output location."""
+    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
+        """Add file to output location.
+        Returns the destination file path and the path handler used to generate it and a bool indicating if an overwrite occured"""
 
         if not original_file.exists():
             logger.error(f"File {original_file} does not exist.")
@@ -50,13 +52,13 @@ class DatastoreFileManager(IDatastoreFileManager):
             logger.info(
                 f"Source and destination files are the same ({original_file}). Skipping update."
             )
-            return (destination_file, path_handler)
+            return (destination_file, path_handler, False)
 
         elif skip_file_copy:
             logger.info(
                 f"File {destination_file} already exists and is the same - skip copy into datastore."
             )
-            return (destination_file, path_handler)
+            return (destination_file, path_handler, False)
 
         elif not destination_file.parent.exists():
             logger.debug(
@@ -66,8 +68,11 @@ class DatastoreFileManager(IDatastoreFileManager):
 
         # Allow the handler to rewrite the source (e.g. update version references in JSON).
         source_file_after_reversioning = path_handler.prepare_for_version(original_file)
+        destination_overwritten = destination_file.exists()
         try:
-            logger.info(f"Copying {original_file} to {destination_file.absolute()}.")
+            logger.info(
+                f"Copying {original_file} to {destination_file.absolute()}. ({'overwriting' if destination_overwritten else 'new'})"
+            )
             destination = shutil.copy2(source_file_after_reversioning, destination_file)
             logger.debug(f"Copied to {destination}.")
             self.verify_file_delivered_to_datastore(
@@ -80,7 +85,7 @@ class DatastoreFileManager(IDatastoreFileManager):
             ):
                 source_file_after_reversioning.unlink()
 
-        return (destination_file, path_handler)
+        return (destination_file, path_handler, destination_overwritten)
 
     def verify_file_delivered_to_datastore(
         self, original_file, source_file_after_reversioning, destination_file
@@ -108,7 +113,10 @@ class DatastoreFileManager(IDatastoreFileManager):
         original_file: Path,
         path_handler: IFilePathHandler,
     ) -> bool:
-        """Find a viable version for a file."""
+        """Find a viable version for a file for increasing the version number on the handler until the next available version number has been found.
+
+        Returns True if the file already exists and is the same as the original file, False otherwise.
+        """
 
         destination_file: Path = path_handler.get_full_path(self.location)
 
@@ -123,6 +131,20 @@ class DatastoreFileManager(IDatastoreFileManager):
             return orig_identity == dest_identity
         else:
             assert isinstance(path_handler, SequenceablePathHandler)
+
+        # Version override: skip up-versioning and overwrite the exact version in place.
+        if path_handler.allow_overwrite:
+            if not destination_file.exists():
+                return False
+            orig_identity = path_handler.get_content_identity(original_file)
+            dest_identity = path_handler.get_content_identity(destination_file)
+            if orig_identity == dest_identity:
+                return True
+            logger.warning(
+                f"Version override active: overwriting existing file {destination_file} "
+                f"at version {path_handler.get_sequence()} with different content."
+            )
+            return False
 
         while True:
             if destination_file.exists():

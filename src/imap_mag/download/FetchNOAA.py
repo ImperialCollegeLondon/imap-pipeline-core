@@ -13,6 +13,9 @@ from imap_mag.io.file import IFilePathHandler, NOAAPathHandler
 
 logger = logging.getLogger(__name__)
 
+SPACECRAFTS_TYPES = Literal["SOLAR1", "ACE"]
+INSTRUMENTS_TYPES = Literal["mag", "wind"]
+
 
 class FetchNOAA:
     _DATE_INDEX = "time_tag"
@@ -35,8 +38,8 @@ class FetchNOAA:
 
     def download_csv(
         self,
-        spacecraft: Literal["SOLAR1", "ACE"],
-        instrument: Literal["mag", "wind"],
+        spacecraft: SPACECRAFTS_TYPES,
+        instrument: INSTRUMENTS_TYPES,
     ) -> dict[Path, IFilePathHandler]:
         """Downloads the data from the server and saves it as CSV.
 
@@ -48,18 +51,18 @@ class FetchNOAA:
         Returns:
             A dicitonary of paths and path handlers with the data.
         """
-        if spacecraft not in ("SOLAR1", "ACE"):
-            raise ValueError(
-                "Invalid spacecraft requested. "
-                f"It must be 'SOLAR1' or 'ACE', but '{spacecraft}' found"
-            )
-
-        if instrument not in ("mag", "wind"):
-            raise ValueError(
-                f"Invalid instrument type requested for {spacecraft}. "
-                f"It must be 'mag' or 'wind', but '{instrument}' found"
-            )
-
+        # The downloaded data would be a list of dictionaries containnig all the
+        # available fields for the chosen spacecraft and instrument:
+        # [
+        #    {
+        #     "active": false,
+        #     "bx_gsm": 5.66,
+        #     "source": "IMAP",
+        #     "time_tag": "2026-07-23T08:51:03"
+        #     ...
+        #    },
+        # ...
+        # ]
         downloaded: list[dict[str, Any]] = self._data_access.get_data(
             spacecraft=spacecraft,
             instrument=instrument,
@@ -71,14 +74,21 @@ class FetchNOAA:
             )
             return dict()
 
-        process_fn = _process_noaa_mag if instrument == "mag" else _process_noaa_wind
-        downloaded_data = process_fn(pd.DataFrame(downloaded))
+        match instrument:
+            case "mag":
+                downloaded_data = _process_noaa_mag(pd.DataFrame(downloaded))
+            case "wind":
+                downloaded_data = _process_noaa_wind(pd.DataFrame(downloaded))
+            case _:
+                raise ValueError(
+                    f"Invalid instrument: {instrument}. Must be 'mag' or 'wind'."
+                )
         return self._add_to_files(spacecraft, instrument, downloaded_data)
 
     def _add_to_files(
         self,
-        spacecraft: Literal["SOLAR1", "ACE"],
-        instrument: Literal["mag", "wind"],
+        spacecraft: SPACECRAFTS_TYPES,
+        instrument: INSTRUMENTS_TYPES,
         data: pd.DataFrame,
     ) -> dict[Path, IFilePathHandler]:
         """Add downloaded data to existing (or new) files."""

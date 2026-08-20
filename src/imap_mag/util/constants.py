@@ -26,9 +26,28 @@ class CONSTANTS:
         SDC_AUTH_CODE = "IMAP_API_KEY"
         SDC_URL = "IMAP_DATA_ACCESS_URL"
         SOLAR1_ACE_URL = "SOLAR1_ACE_DATA_ACCESS_URL"
-        DSCOVR_URL = "DSCOVR_DATA_ACCESS_URL"
 
     class DATABASE:
         IALIRT_PROGRESS_ID = "MAG_IALIRT"
         IALIRT_HK_PROGRESS_ID = "MAG_IALIRT_HK"
         IALIRT_VALIDATION_ID = "IALIRT_VALIDATION"
+
+    class IALIRT_INSTRUMENTS:
+        IALIRT_MAG = "mag"
+        IALIRT_MAG_HK = "mag_hk"
+        IALIRT_HIT = "hit"
+        IALIRT_SWE = "swe"
+        IALIRT_SWAPI = "swapi"
+
+
+VALID_IALIRT_INSTRUMENTS = [
+    v
+    for k, v in CONSTANTS.IALIRT_INSTRUMENTS.__dict__.items()
+    if k.isupper() and isinstance(v, str) and not v.endswith("_hk")
+]
+
+VALID_IALIRT_HK_INSTRUMENTS = [
+    v
+    for k, v in CONSTANTS.IALIRT_INSTRUMENTS.__dict__.items()
+    if k.isupper() and isinstance(v, str) and v.endswith("_hk")
+]

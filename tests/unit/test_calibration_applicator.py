@@ -186,7 +186,7 @@ class TestApplyValidation:
             )
 
     def test_raises_file_exists_error_when_offsets_file_already_exists(self, tmp_path):
-        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.cdf"
+        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
         existing_offsets = tmp_path / "offsets.cdf"
         existing_offsets.write_bytes(b"existing offsets")
@@ -355,7 +355,7 @@ class TestCreateOffsetsFileValidation:
 
 class TestApplyPostValidation:
     def _make_validated_apply_kwargs(self, tmp_path):
-        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.cdf"
+        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
         return dict(
             day_to_process=datetime(2025, 10, 17),
@@ -418,7 +418,7 @@ class TestApplyPostValidation:
     def test_processes_through_spice_and_returns_empty_files_when_no_datasets(
         self, tmp_path
     ):
-        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.cdf"
+        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
         spice_mk = tmp_path / "metakernel.tm"
         spice_mk.write_text("SPICE")
@@ -452,7 +452,7 @@ class TestApplyPostValidation:
 
 class TestApplyEarlyReturn:
     def test_returns_empty_l2_list_when_no_reference_frames(self, tmp_path):
-        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.cdf"
+        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
         offsets_path = tmp_path / "offsets.cdf"
 

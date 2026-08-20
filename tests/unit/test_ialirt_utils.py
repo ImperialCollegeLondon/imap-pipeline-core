@@ -48,7 +48,7 @@ class TestFetchIalirtFilesForWork:
         data_store.mkdir()
         work_folder = tmp_path / "work"
         work_folder.mkdir()
-        source_file = data_store / "imap_ialirt_20250101.csv"
+        source_file = data_store / "imap_ialirt_mag_20250101.csv"
         source_file.write_text("col1,col2\n1,2")
 
         result = fetch_ialirt_files_for_work(
@@ -60,8 +60,8 @@ class TestFetchIalirtFilesForWork:
         )
 
         assert len(result) == 1
-        assert result[0].name == "imap_ialirt_20250101.csv"
-        assert (work_folder / "imap_ialirt_20250101.csv").exists()
+        assert result[0].name == "imap_ialirt_mag_20250101.csv"
+        assert (work_folder / "imap_ialirt_mag_20250101.csv").exists()
 
     def test_returns_empty_list_when_provided_files_list_is_empty(self, tmp_path):
         data_store = tmp_path / "datastore"

@@ -6,7 +6,7 @@ import pandas as pd
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
 from imap_mag.io import FileFinder
-from imap_mag.io.file import IALiRTHKPathHandler, IALiRTPathHandler
+from imap_mag.io.file import IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import DatetimeProvider
 
@@ -51,7 +51,9 @@ def fetch_ialirt_hk_files_for_work(
         start_date=start_date,
         end_date=end_date,
         files=files,
-        path_handler_factory=lambda date: IALiRTHKPathHandler(content_date=date),
+        path_handler_factory=lambda date: IALiRTPathHandler(
+            content_date=date, is_hk=True
+        ),
         label="I-ALiRT HK",
         datetime_provider=datetime_provider,
     )

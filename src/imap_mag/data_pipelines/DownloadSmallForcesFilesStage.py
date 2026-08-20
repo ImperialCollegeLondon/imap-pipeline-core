@@ -116,7 +116,7 @@ class DownloadSmallForcesFilesStage(Stage):
             # Publish to datastore with metadata preserved
             output_file = downloaded_file
             if output_manager is not None:
-                (output_file, _) = output_manager.add_file(downloaded_file, handler)
+                (output_file, _, _) = output_manager.add_file(downloaded_file, handler)
 
             # Update progress to the latest ingestion date
             if ingestion_date:

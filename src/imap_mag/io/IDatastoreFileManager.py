@@ -11,5 +11,5 @@ class IDatastoreFileManager(abc.ABC):
     """Interface for output managers."""
 
     @abc.abstractmethod
-    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T]:
-        """Add file to output location."""
+    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
+        """Add file to output location. Returns the destination file path, the path handler used to generate it, and a bool indicating if an overwrite occurred."""

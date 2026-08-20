@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 import logging
+import shutil
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from imap_mag.cli.cliUtils import fetch_file_for_work
-from imap_mag.io import FileFinder
-from imap_mag.io.file import CalibrationLayerPathHandler
 from mag_toolkit.calibration.CalibrationConfig import CalibrationConfig
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
+
+if TYPE_CHECKING:
+    from imap_mag.io.file import CalibrationLayerPathHandler
+    from imap_mag.io.FileFinder import FileFinder
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +23,8 @@ class CalibrationJob(ABC):
 
     calibration_job_parameters: CalibrationJobParameters
     work_folder: Path
+    _paths_needing_cleanup: list[Path]
+    _ancillary_files_created: list[Path]
 
     def __init__(
         self, calibration_job_parameters: CalibrationJobParameters, work_folder: Path
@@ -23,22 +32,8 @@ class CalibrationJob(ABC):
         self.required_files: dict = dict()
         self.calibration_job_parameters = calibration_job_parameters
         self.work_folder = work_folder
-
-    def setup_calibration_files(
-        self,
-        datastore_finder: FileFinder,
-    ):
-        path_handlers = self._get_path_handlers(self.calibration_job_parameters)
-
-        for key in path_handlers:
-            path_handler = path_handlers[key]
-            input_file = datastore_finder.find_latest_version_by_handler(
-                path_handler, throw_if_not_found=True
-            )
-            work_file = fetch_file_for_work(
-                input_file, self.work_folder, throw_if_not_found=True
-            )
-            self.set_file(key, work_file)
+        self._paths_needing_cleanup = []
+        self._ancillary_files_created = []
 
     def set_file(self, file_key, filepath):
         """
@@ -93,7 +88,7 @@ class CalibrationJob(ABC):
         :return: True, as most calibration requires a data store."""
         return True
 
-    def setup_datastore(self, datastore: Path):
+    def setup(self, datastore: Path, datastore_finder: FileFinder | None = None):
         """
         Setup the data store for the calibrator.
         :param datastore: The path to the data store.
@@ -101,8 +96,49 @@ class CalibrationJob(ABC):
         if self.needs_data_store():
             self.data_store = datastore
 
+        if datastore_finder is not None:
+            path_handlers = self._get_path_handlers(self.calibration_job_parameters)
+
+            for key in path_handlers:
+                path_handler = path_handlers[key]
+                input_file = datastore_finder.find_latest_version_by_handler(
+                    path_handler, throw_if_not_found=True
+                )
+                work_file = fetch_file_for_work(
+                    input_file, self.work_folder, throw_if_not_found=True
+                )
+                self.set_file(key, work_file)
+
+        self._ancillary_files_created = []  # reset the list of ancillary files created for this run
+
+    def cleanup(self):
+
+        if not self.calibration_job_parameters.cleanup_temp_files_after_run:
+            logger.info(
+                "Skipping cleanup of temporary files after calibration run as per configuration."
+            )
+            return
+        else:
+            logger.info(
+                f"Cleaning up {len(self._paths_needing_cleanup)} paths after calibration run."
+            )
+
+        for path in self._paths_needing_cleanup:
+            if path.exists() and path.is_file():
+                logger.debug(f"Cleaning up {path}")
+                path.unlink()
+            if path.exists() and path.is_dir():
+                logger.debug(f"Cleaning up {path}")
+                shutil.rmtree(path, ignore_errors=True)
+
     @abstractmethod
     def run_calibration(
         self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
-    ) -> tuple[Path, Path]:
+    ) -> Sequence[Path]:
         """Calibration that generates a calibration layer."""
+
+    def get_ancillary_files(self) -> Sequence[Path]:
+        """
+        Get the list of ancillary files created during the calibration job.
+        :return: A list of paths to ancillary files."""
+        return self._ancillary_files_created

@@ -12,6 +12,7 @@ set -e
 
 # VSCODE TASK WILL USE THIS MESSAGE TO KNOW WHEN TASK IS STARTING
 echo "STARTING DEV SERVERS"
+set -a # automatically export all variables
 source ./defaults.env
 
 if [ -f ".env" ]; then
@@ -20,6 +21,7 @@ if [ -f ".env" ]; then
 else
     echo "No local .env file found, skipping"
 fi
+set +a # stop automatically exporting all variables
 
 # if .venv is missing, run poetry install
 if [ ! -d ".venv" ]; then
@@ -55,7 +57,7 @@ runDatabase() {
         docker container rm -f $DB_CONTAINER
     fi
 
-    docker run --rm --name $DB_CONTAINER -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:17-alpine
+    docker run --rm --name $DB_CONTAINER -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DATABASE=imap -p 5432:5432 postgres:18-alpine
 }
 
 runWiremock() {

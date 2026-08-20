@@ -76,6 +76,9 @@ class CalibrationMethod(Enum):
         self.long_name = long_name
 
     GRADIOMETER = "gradiometer", "Gradiometer"
+    # NOOP is not a selectable calibration job; it is retained only as the internal
+    # descriptor/method for the zero-offset layer that ``apply`` auto-creates when no
+    # calibration layers are supplied.
     NOOP = "noop", "noop"
     SUM = "sum", "Sum of other calibrations"
     SET_QUALITY_AND_NAN = "quality", "Set Quality and NaN"
@@ -105,6 +108,19 @@ class DatastoreAccessMode(StrEnum):
 
     READ_DIRECTLY = "read_directly"
     LOCAL_WORK_FOLDER_COPY = "local_work_folder_copy"
+
+
+class CreateOffsets(StrEnum):
+    """Whether the MATLAB calibration script should produce offset files.
+
+    AUTOMATIC: produce offsets for normal mode, skip for burst mode (default).
+    YES: always produce offsets regardless of mode.
+    NO: never produce offsets regardless of mode.
+    """
+
+    AUTOMATIC = "automatic"
+    ALWAYS = "yes"
+    NEVER = "no"
 
 
 class Sensor(StrEnum):
