@@ -187,6 +187,7 @@ postgres_upload:
         - "ialirt/**/imap_ialirt_hit_*.csv"
         - "ialirt/**/imap_ialirt_swe_*.csv"
         - "ialirt/**/imap_ialirt_swapi_*.csv"
+        - "noaa/**/*.csv"
 
 datastore_cleanup:
     dry_run: false
@@ -236,5 +237,11 @@ datastore_cleanup:
           paths_to_match:
               - "*quicklook/ialirt/**/*.png"
           files_older_than: "90d"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"
+        - name: "delete-noaa-files-older-than-7days"
+          paths_to_match:
+              - "*noaa/**/*.csv"
+          files_older_than: "7d"
           keep_latest_version_only: false
           cleanup_mode: "delete"
