@@ -23,17 +23,17 @@ from tests.util.miscellaneous import temp_datastore  # noqa: F401
         ),
         pytest.param(
             "SOLAR1",
-            "plasma",
+            "wind",
             2,
             "speed",
             does_not_raise(),
-            id="SOLAR-1, plasma, valid",
+            id="SOLAR-1, wind, valid",
         ),
         pytest.param(
             "ACE", "mag", 1, "mag_B_GSE", does_not_raise(), id="ACE, mag, valid"
         ),
         pytest.param(
-            "ACE", "plasma", 1, "speed", does_not_raise(), id="ACE, plasma, valid"
+            "ACE", "wind", 1, "speed", does_not_raise(), id="ACE, wind, valid"
         ),
         pytest.param(
             "ENTERPRISE",
@@ -55,7 +55,7 @@ from tests.util.miscellaneous import temp_datastore  # noqa: F401
             pytest.raises(
                 ValueError,
                 match=r"Invalid instrument type requested for ACE. "
-                "It must be 'mag' or 'plasma', but 'flux' found",
+                "It must be 'mag' or 'wind', but 'flux' found",
             ),
             id="Invalid spacecraft",
         ),
@@ -85,7 +85,7 @@ def test_download_rtsw_data(
             "mag_B_GSE": [0.596, 3.986, -1.569],
         },
     ]
-    response_plasma: list[dict] = [
+    response_wind: list[dict] = [
         {
             "source": "SOLAR1",
             "speed": 400.0,
@@ -101,12 +101,12 @@ def test_download_rtsw_data(
     ]
 
     wiremock_manager.add_string_mapping(
-        "/mag_1m.json",
+        "/rtsw_mag_1m.json",
         json.dumps(response_mag),
     )
     wiremock_manager.add_string_mapping(
-        "/plasma_1m.json",
-        json.dumps(response_plasma),
+        "/rtsw_wind_1m.json",
+        json.dumps(response_wind),
     )
 
     data_access = NOAARTSWApiClient(url=wiremock_manager.get_url().rstrip("/"))
@@ -134,11 +134,11 @@ def test_download_rtsw_data(
         pytest.param("mag", "1-day", 24, "mag_B_GSE", does_not_raise()),
         pytest.param("mag", "3-day", 72, "mag_B_GSE", does_not_raise()),
         pytest.param("mag", "7-day", 168, "mag_B_GSE", does_not_raise()),
-        pytest.param("plasma", "2-hour", 2, "speed", does_not_raise()),
-        pytest.param("plasma", "6-hour", 6, "speed", does_not_raise()),
-        pytest.param("plasma", "1-day", 24, "speed", does_not_raise()),
-        pytest.param("plasma", "3-day", 72, "speed", does_not_raise()),
-        pytest.param("plasma", "7-day", 168, "speed", does_not_raise()),
+        pytest.param("wind", "2-hour", 2, "speed", does_not_raise()),
+        pytest.param("wind", "6-hour", 6, "speed", does_not_raise()),
+        pytest.param("wind", "1-day", 24, "speed", does_not_raise()),
+        pytest.param("wind", "3-day", 72, "speed", does_not_raise()),
+        pytest.param("wind", "7-day", 168, "speed", does_not_raise()),
         pytest.param(
             "flux",
             "1-day",
@@ -147,7 +147,7 @@ def test_download_rtsw_data(
             pytest.raises(
                 ValueError,
                 match=r"Invalid instrument type requested for DSCOVR."
-                " It must be 'mag' or 'plasma', but 'flux' found",
+                " It must be 'mag' or 'wind', but 'flux' found",
             ),
             id="Invalid instrument",
         ),
@@ -169,7 +169,7 @@ def test_download_dscovr_data(
             [-1.53, -3.033, 0.539],
         ]
     ] * hours * 60
-    response_plasma: list = [["time", "speed"]] + [
+    response_wind: list = [["time", "speed"]] + [
         [
             "2025-10-14T03:00:10",
             400.0,
@@ -181,8 +181,8 @@ def test_download_dscovr_data(
         json.dumps(response_mag),
     )
     wiremock_manager.add_string_mapping(
-        f"/plasma-{filename}.json",
-        json.dumps(response_plasma),
+        f"/wind-{filename}.json",
+        json.dumps(response_wind),
     )
 
     data_access = DSCOVRApiClient(url=wiremock_manager.get_url().rstrip("/"))

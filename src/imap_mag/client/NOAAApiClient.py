@@ -31,7 +31,7 @@ class NOAARTSWApiClient:
     """Interacts with NOAA's RTSW API, for SOLAR-1 and ACE spacecrafts data.
 
     Which specific JSON file to use depends on the specific instrument to fetch, mag or
-    plasma data.
+    wind data.
     """
 
     def __init__(self, url: str):
@@ -41,11 +41,11 @@ class NOAARTSWApiClient:
             raise ValueError("SOLAR-1 and ACE URL cannot be empty.")
 
     def get_data(
-        self, spacecraft: Literal["SOLAR1", "ACE"], instrument: Literal["mag", "plasma"]
+        self, spacecraft: Literal["SOLAR1", "ACE"], instrument: Literal["mag", "wind"]
     ) -> list[dict[str, Any]]:
         """Download SOLAR-1 and ACE data from real-time space weather API.
 
-        As there is one file for magnetic field and another for plasma, both containing
+        As there is one file for magnetic field and another for wind, both containing
         the last 24h, we can just download the selected file and return the data.
         No date range needed.
 
@@ -54,7 +54,7 @@ class NOAARTSWApiClient:
         Args:
             spacecraft: The spacecraft to retrieve the data for. Must be "SOLAR1" or
                 "ACE"
-            instrument: The instrument to retrieve. Must be `mag` or `plasma`.
+            instrument: The instrument to retrieve. Must be `mag` or `wind`.
 
         Returns:
             A list of dictionaries containing the combined data from both files.
@@ -65,17 +65,17 @@ class NOAARTSWApiClient:
                 f"It must be 'SOLAR1' or 'ACE', but '{spacecraft}' found"
             )
 
-        if instrument not in ("mag", "plasma"):
+        if instrument not in ("mag", "wind"):
             raise ValueError(
                 f"Invalid instrument type requested for {spacecraft}. "
-                f"It must be 'mag' or 'plasma', but '{instrument}' found"
+                f"It must be 'mag' or 'wind', but '{instrument}' found"
             )
 
         start_time = time()
         logger.info(f"Downloading {instrument} data for {spacecraft}...")
 
         _data: list[dict[str, Any]] = _download_json_file(
-            self._url, f"{instrument}_1m.json"
+            self._url, f"rtsw_{instrument}_1m.json"
         )
         # We return only data relevant for the selected spacecraft
         _data = [record for record in _data if record["source"] == spacecraft]
@@ -98,7 +98,7 @@ class DSCOVRApiClient:
             raise ValueError("DSCOVR URL cannot be empty.")
 
     def get_data(
-        self, instrument: Literal["mag", "plasma"], start_date: datetime
+        self, instrument: Literal["mag", "wind"], start_date: datetime
     ) -> list[dict[str, Any]]:
         """Download DSCOVR data from solar wind API.
 
@@ -107,16 +107,16 @@ class DSCOVRApiClient:
         that covers as much as possible of the requested time range.
 
         Args:
-            instrument: The instrument to retrieve. Must be `mag` or `plasma`.
+            instrument: The instrument to retrieve. Must be `mag` or `wind`.
             start_date: The start date of the requested time range.
 
         Returns:
             A list of dictionaries containing the DSCOVR data.
         """
-        if instrument not in ("mag", "plasma"):
+        if instrument not in ("mag", "wind"):
             raise ValueError(
                 "Invalid instrument type requested for DSCOVR. "
-                f"It must be 'mag' or 'plasma', but '{instrument}' found"
+                f"It must be 'mag' or 'wind', but '{instrument}' found"
             )
 
         start_time = time()
