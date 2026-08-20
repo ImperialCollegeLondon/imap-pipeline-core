@@ -173,7 +173,7 @@ class TestDownloadSpinTableFilesStageProcess:
         mock_handler.add_metadata = MagicMock()
 
         mock_manager = MagicMock()
-        mock_manager.add_file.return_value = (csv_file, mock_handler)
+        mock_manager.add_file.return_value = (csv_file, mock_handler, False)
 
         stage = DownloadSpinTableFilesStage(
             client=mock_client, settings=mock_settings, database=None

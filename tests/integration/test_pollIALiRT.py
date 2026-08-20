@@ -29,7 +29,9 @@ TOMORROW = TODAY + timedelta(days=1)
 YESTERDAY = TODAY - timedelta(days=1)
 START_OF_HOUR = NOW.replace(minute=0, second=0, microsecond=0)
 END_OF_HOUR = NOW.replace(minute=59, second=59, microsecond=999999)
-END_OF_TODAY = TODAY.replace(hour=23, minute=59, second=59, microsecond=999999)
+# The mocked I-ALiRT API responses encode timestamps without microseconds, so the
+# actual latest downloaded data record timestamp truncates to whole seconds.
+LATEST_DOWNLOADED_RECORD_TIMESTAMP = END_OF_HOUR.replace(microsecond=0)
 
 
 def define_available_ialirt_mappings(
@@ -213,7 +215,7 @@ async def test_poll_ialirt_first_ever_run_mag(
     verify_available_ialirt(
         database=test_database,
         instrument="mag",
-        expected_progress_timestamp=END_OF_TODAY,
+        expected_progress_timestamp=LATEST_DOWNLOADED_RECORD_TIMESTAMP,
         actual_timestamp=NOW.replace(microsecond=0),
     )
 
@@ -267,7 +269,7 @@ async def test_poll_ialirt_concurrent_multi_instrument(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=END_OF_TODAY,
+            expected_progress_timestamp=LATEST_DOWNLOADED_RECORD_TIMESTAMP,
             actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
@@ -331,7 +333,7 @@ async def test_poll_ialirt_continue_from_previous_download(
         verify_available_ialirt(
             database=test_database,
             instrument=inst,
-            expected_progress_timestamp=END_OF_TODAY,
+            expected_progress_timestamp=LATEST_DOWNLOADED_RECORD_TIMESTAMP,
             actual_timestamp=NOW.replace(tzinfo=None),
         )
         assert_file_exists(inst, TODAY)
@@ -447,7 +449,7 @@ async def test_poll_ialirt_hk_first_ever_run(
     verify_available_ialirt(
         database=test_database,
         instrument="mag_hk",
-        expected_progress_timestamp=END_OF_HOUR,
+        expected_progress_timestamp=LATEST_DOWNLOADED_RECORD_TIMESTAMP,
         actual_timestamp=NOW.replace(microsecond=0),
         hk=True,
     )
@@ -502,7 +504,9 @@ async def test_poll_ialirt_specify_start_end_dates_hk(
 
     verify_available_ialirt(
         database=test_database,
-        expected_progress_timestamp=END_OF_HOUR.replace(tzinfo=None),
+        expected_progress_timestamp=LATEST_DOWNLOADED_RECORD_TIMESTAMP.replace(
+            tzinfo=None
+        ),
         actual_timestamp=NOW.replace(microsecond=0).replace(tzinfo=None),
         hk=True,
         instrument="mag_hk",

@@ -17,7 +17,6 @@ from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
-    FetchDSCOVRConfig,
     FetchIALiRTConfig,
     FetchScienceConfig,
     FetchSOLAR1andACEConfig,
@@ -68,9 +67,8 @@ class AppSettings(BaseSettings):
     fetch_science: FetchScienceConfig
     fetch_spice: FetchSpiceConfig
     fetch_solar1_ace: FetchSOLAR1andACEConfig
-    fetch_dscovr: FetchDSCOVRConfig
     plot_ialirt: QuicklookConfig
-    calibration: CommandConfig
+    apply: CommandConfig
     calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
     process: CommandConfig
     publish: PublishConfig

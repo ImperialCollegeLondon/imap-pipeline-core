@@ -11,6 +11,7 @@ import spiceypy
 from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 from imap_processing.mag.l2 import mag_l2, mag_l2_data
 from imap_processing.mag.l2.mag_l2_data import ValidFrames
+from xarray import Dataset
 
 from imap_mag.config import AppSettings
 from imap_mag.util import ScienceMode
@@ -114,6 +115,8 @@ class CalibrationApplicator:
             )
 
         science_handler = SciencePathHandler.from_filename(dataFile.name)
+        # resolve datafile to an absolute path to ensure it exists in the datastore
+        dataFile = dataFile.resolve()
         if not dataFile.exists() or not science_handler:
             raise ValueError(
                 f"Input science file does not exist or could not be parsed: {dataFile}"
@@ -134,6 +137,7 @@ class CalibrationApplicator:
             outputOffsetsFile,
             science=science,
         )
+        created_offsets_filepath = created_offsets_filepath.resolve()
 
         del science
 
@@ -188,11 +192,18 @@ class CalibrationApplicator:
         logger.info(f"furnishing spice metakernel at {resolved_mk_path}")
 
         original_cwd = Path.cwd()
+        science_data: Dataset | None = None
+        created_offsets_data: Dataset | None = None
         try:
             os.chdir(self.app_settings.data_store)
             spiceypy.kclear()
             spiceypy.furnsh(str(resolved_mk_path))
-            os.chdir(original_cwd)
+            # Do NOT restore CWD here.  The metakernel uses relative kernel paths
+            # (e.g. spice/spk/...) resolved against data_store.  SPICE's DAF
+            # handle manager closes and re-opens kernel files on demand using
+            # those stored relative paths.  If CWD changes before mag_l2 runs,
+            # large production SPK reconnects fail with SpiceFILEOPENFAIL.
+            # The finally block below performs the restore after computation ends.
             logger.info("Kernels furnished. Loading data ready for L2 file generation")
             science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
             created_offsets_data = cdf_to_xarray(

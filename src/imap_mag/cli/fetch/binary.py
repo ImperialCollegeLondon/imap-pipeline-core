@@ -103,7 +103,7 @@ def fetch_binary(
         )
 
         for file, path_handler in downloaded_binaries.items():
-            (output_file, output_handler) = datastore_manager.add_file(
+            (output_file, output_handler, _) = datastore_manager.add_file(
                 file, path_handler
             )
             output_binaries[output_file] = output_handler

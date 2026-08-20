@@ -105,6 +105,7 @@ RUN apt-get update && apt-get install -y \
     libcups2t64 \
     libncurses6 \
     libasound2t64 \
+    xvfb \
     git \
     wget \
     && apt-get clean && \

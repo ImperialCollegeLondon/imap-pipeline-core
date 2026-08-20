@@ -60,7 +60,7 @@ def add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file: Path):
 )
 def test_publish_file_to_sdc(wiremock_manager, capture_cli_logs, dynamic_work_folder):
     # Set up.
-    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.0001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     # Exercise.
@@ -87,10 +87,10 @@ def test_failed_sdc_file_publish(
     wiremock_manager, capture_cli_logs, dynamic_work_folder
 ):
     # Set up.
-    upload_file1 = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    upload_file1 = Path("imap_mag_l1c_norm-mago_20251017_v001.0001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file1)
 
-    upload_file2 = Path("imap_mag_l1b_norm-mago_20251017_v001.cdf")
+    upload_file2 = Path("imap_mag_l1b_norm-mago_20251017_v001.0001.cdf")
     wiremock_manager.add_mapping(
         Mapping(
             request=MappingRequest(
@@ -137,7 +137,7 @@ def test_publish_file_to_sdc_cli(
     wiremock_manager, dynamic_work_folder, capture_cli_logs
 ):
     # Set up.
-    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.0001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     # Exercise.
@@ -173,7 +173,7 @@ async def test_publish_flow_to_sdc(
     prefect_test_fixture,  # noqa: F811
 ):
     # Set up.
-    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.cdf")
+    upload_file = Path("imap_mag_l1c_norm-mago_20251017_v001.0001.cdf")
     add_mapping_for_successful_sdc_upload(wiremock_manager, upload_file)
 
     # Exercise.

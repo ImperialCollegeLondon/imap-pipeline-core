@@ -111,7 +111,7 @@ def test_fetch_ialirt_single_day_no_existing_data(
 
     assert file_path.exists()
     assert file_path.name == "imap_ialirt_mag_20250502.csv"
-    assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()
@@ -237,7 +237,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore(
 
     assert file_path.exists()
     assert file_path == datastore_file
-    assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()
@@ -310,7 +310,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_more_colu
 
     assert file_path.exists()
     assert file_path == datastore_file
-    assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()
@@ -390,7 +390,7 @@ def test_fetch_ialirt_single_day_existing_older_data_in_datastore_with_fewer_col
 
     assert file_path.exists()
     assert file_path == datastore_file
-    assert path_handler.content_date == datetime(2025, 5, 2, 4, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()
@@ -463,7 +463,7 @@ def test_fetch_ialirt_single_day_existing_newer_data_in_datastore(
 
     assert file_path.exists()
     assert file_path == datastore_file
-    assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()
@@ -552,7 +552,7 @@ def test_fetch_ialirt_duplicate_timestamps_different_instruments(
     ((file_path, path_handler),) = actual_downloaded.items()
 
     assert file_path.exists()
-    assert path_handler.content_date == datetime(2025, 5, 2, 2, 0, 0)
+    assert path_handler.content_date == datetime(2025, 5, 2)
 
     with open(file_path) as f:
         file_content = f.read()

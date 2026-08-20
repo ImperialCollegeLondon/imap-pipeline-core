@@ -76,7 +76,7 @@ def test_apply_fails_when_timestamps_dont_align(temp_datastore, dynamic_work_fol
     ):
         apply(
             layers=["imap_mag_misaligned-timestamps-norm-layer_20251017_v001.json"],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
@@ -100,7 +100,7 @@ def test_apply_fails_when_no_layers_provided(temp_datastore, dynamic_work_folder
     ):
         apply(
             layers=[],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
@@ -135,7 +135,7 @@ def test_apply_errors_on_metadata_incorrect_data_filename_format(
     ):
         apply(
             layers=[calibration_layer],
-            input="imap_mag_l1c_norm-mago_20251017_v001.cdf",
+            input="imap_mag_l1c_norm-mago_20251017_v001.0001.cdf",
             start_date=datetime(2025, 10, 17),
         )
 
@@ -446,4 +446,129 @@ def test_apply_output_l2_uses_major_version_format_when_version_major_is_1(
     assert output_l2_file.exists(), (
         f"Expected L2 file {output_l2_file.name!r} in _vMMM.mmmm format when "
         "version_major=1 is configured, but it was not found in the datastore."
+    )
+
+
+def test_apply_data_store_is_cwd_when_spice_kernels_are_accessed(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """data_store must remain the CWD throughout the SPICE computation.
+
+    CalibrationApplicator furnishes SPICE kernels with relative paths such as
+    ``spice/spk/...`` after ``os.chdir(data_store)``.  SPICE stores these
+    relative paths and re-opens the files on demand (a "logical unit reconnect").
+    If the CWD is restored before ``mag_l2.mag_l2()`` completes, the reconnect
+    of large production SPK kernels fails with SpiceFILEOPENFAIL — the exact
+    error seen in production with files such as
+    ``spice/spk/imap_recon_20250925_20260720_v01.bsp``.
+
+    Regression test for the premature ``os.chdir(original_cwd)`` inside the
+    ``try`` block immediately after ``furnsh`` in
+    ``CalibrationApplicator._apply_day()``.
+    """
+    import imap_processing.mag.l2.mag_l2 as mag_l2_module
+
+    cwd_when_called: list[Path] = []
+    original_fn = mag_l2_module.mag_l2
+
+    def capture_cwd_and_run(*args, **kwargs):
+        cwd_when_called.append(Path.cwd())
+        return original_fn(*args, **kwargs)
+
+    with patch("imap_processing.mag.l2.mag_l2.mag_l2", side_effect=capture_cwd_and_run):
+        apply(
+            layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+            input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+            start_date=datetime(2026, 1, 16),
+        )
+
+    assert cwd_when_called, "mag_l2.mag_l2 was never called"
+    expected = temp_datastore.resolve()
+    actual = cwd_when_called[0].resolve()
+    assert actual == expected, (
+        f"CWD when mag_l2.mag_l2 ran was {actual!r} but expected the "
+        f"data_store path {expected!r}.  SPICE keeps relative kernel paths "
+        f"(e.g. spice/spk/imap_recon_*.bsp) and reconnects them against the "
+        f"active CWD; if CWD changes before the computation finishes the "
+        f"reconnect fails with SpiceFILEOPENFAIL on large production kernels."
+    )
+
+
+def test_apply_offset_version_override_forces_specific_version(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """offset_version_override must write the offset file at the forced version
+    instead of auto-incrementing, overwriting any existing file at that slot."""
+    offsets_dir = temp_datastore / "science-ancillary/l2-offsets/2026/01"
+    offsets_dir.mkdir(parents=True, exist_ok=True)
+    existing = offsets_dir / "imap_mag_l2-norm-offsets_20260116_20260116_v005.cdf"
+    existing.write_bytes(b"old content")
+
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+        offset_version_override=5,
+    )
+
+    assert existing.exists(), "Offset file must exist at the forced version v005"
+    assert existing.stat().st_size > len(b"old content"), (
+        "Offset file at forced version must have been overwritten with real content"
+    )
+    assert not (
+        offsets_dir / "imap_mag_l2-norm-offsets_20260116_20260116_v006.cdf"
+    ).exists(), "Auto-incremented v006 must not be created when override is active"
+
+
+def test_apply_l2_version_override_forces_specific_version(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """l2_version_override must write all L2-pre science files at the forced
+    (major, minor) version instead of auto-incrementing."""
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+        l2_version_override=(2, 5),
+    )
+
+    l2_dir = temp_datastore / "science/mag/l2-pre/2026/01"
+    forced_srf = l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v002.0005.cdf"
+    assert forced_srf.exists(), (
+        "L2-pre SRF file must exist at the forced version v002.0005"
+    )
+    assert not (l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf").exists(), (
+        "Default v001.0001 must not be created when the L2 version override is active"
+    )
+
+
+def test_apply_l2_version_override_overwrites_existing_file(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """When l2_version_override targets a slot that already has a file with
+    different content, the new file replaces it in the datastore."""
+    l2_dir = temp_datastore / "science/mag/l2-pre/2026/01"
+    l2_dir.mkdir(parents=True, exist_ok=True)
+    existing = l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v003.0007.cdf"
+    existing.write_bytes(b"stale content")
+    original_mtime = existing.stat().st_mtime
+
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+        l2_version_override=(3, 7),
+    )
+
+    assert existing.exists()
+    assert existing.stat().st_mtime != original_mtime, (
+        "Existing L2 file at the forced version must have been overwritten"
     )

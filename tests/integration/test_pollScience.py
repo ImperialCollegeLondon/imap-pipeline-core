@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from imap_mag.config import DatastoreSaveOption
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.download.FetchScience import FetchScience
 from imap_mag.util import Environment, ScienceMode
@@ -35,9 +36,11 @@ def define_available_data_sdc_mappings(
     end_date: datetime,
     ingestion_timestamp: datetime,
     is_ingestion_date: bool = False,
+    content: str = "some super scientific content",
+    version: str = "v000",
 ):
     science_file = create_test_file(
-        Path(tempfile.gettempdir()) / "science.cdf", "some super scientific content"
+        Path(tempfile.gettempdir()) / "science.cdf", content
     )
 
     mode_str = mode.short_name
@@ -48,13 +51,13 @@ def define_available_data_sdc_mappings(
 
     query_response: list[dict[str, str]] = [
         {
-            "file_path": f"imap/mag/l1c/{start_date.year}/{start_date.month:02}/imap_mag_l1c_{mode_str}-magi_{start_date_str}_v000.cdf",
+            "file_path": f"imap/mag/l1c/{start_date.year}/{start_date.month:02}/imap_mag_l1c_{mode_str}-magi_{start_date_str}_{version}.cdf",
             "instrument": "mag",
             "data_level": "l1c",
             "descriptor": f"{mode_str}-magi",
             "start_date": start_date_str,
             "repointing": None,
-            "version": "v000",
+            "version": version,
             "extension": "cdf",
             "ingestion_date": ingestion_timestamp.strftime("%Y%m%d %H:%M:%S"),
         }
@@ -65,7 +68,7 @@ def define_available_data_sdc_mappings(
         priority=1,
     )
     wiremock_manager.add_file_mapping(
-        f"/download/imap/mag/l1c/{start_date.year}/{start_date.month:02}/imap_mag_l1c_{mode_str}-magi_{start_date_str}_v000.cdf",
+        f"/download/imap/mag/l1c/{start_date.year}/{start_date.month:02}/imap_mag_l1c_{mode_str}-magi_{start_date_str}_{version}.cdf",
         science_file,
     )
 
@@ -130,15 +133,24 @@ def verify_available_modes(
     check_file_existence(available_modes, actual_timestamp)
 
 
-def check_file_existence(modes_to_check: list[ScienceMode], actual_timestamp: datetime):
+def check_file_existence(
+    modes_to_check: list[ScienceMode],
+    actual_timestamp: datetime,
+    content_to_verify: str | None = None,
+    version: str = "v000",
+):
     datastore = AppSettings().data_store
     for mode in modes_to_check:
         data_folder = os.path.join(
             datastore, "science/mag/l1c", actual_timestamp.strftime("%Y/%m")
         )
-        cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_v000.cdf"
+        cdf_file = f"imap_mag_l1c_{mode.short_name}-magi_{actual_timestamp.strftime('%Y%m%d')}_{version}.cdf"
 
-        assert os.path.exists(os.path.join(data_folder, cdf_file))
+        file_path = os.path.join(data_folder, cdf_file)
+        assert os.path.exists(file_path)
+        if content_to_verify is not None:
+            with open(file_path) as f:
+                assert f.read() == content_to_verify
 
 
 @pytest.mark.skipif(
@@ -298,7 +310,7 @@ async def test_poll_science_specify_packets_and_start_end_dates(
 
     if force_database_update:
         assert (
-            "Database cannot be updated without forcing ingestion date. Database will not be updated."
+            "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
             in capture_cli_logs.text
         )
 
@@ -416,3 +428,98 @@ async def test_database_progress_table_not_modified_if_poll_science_fails(
 
     # Verify.
     verify_not_requested_modes(test_database, [m for m in ScienceMode])
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_science_refuses_overwrites_with_different_files_unless_explicitly_allowed(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    capture_cli_logs,
+    clean_datastore,
+    dynamic_work_folder,
+):
+    # Set up.
+    start_date = datetime(2025, 4, 1)
+    end_date = datetime(2025, 4, 2)
+    version = "v003"
+    ingestion_timestamp = datetime(2025, 4, 2, 13, 37, 9)
+
+    wiremock_manager.reset()
+
+    # Some data is available for the requested dates for Burst mode.
+    define_available_data_sdc_mappings(
+        wiremock_manager,
+        ScienceMode.Burst,
+        start_date,
+        end_date,
+        ingestion_timestamp,
+        is_ingestion_date=False,
+        version=version,
+    )
+
+    # No data is available for any other date/packet.
+    define_unavailable_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        await poll_science_flow(
+            modes=[ScienceMode.Burst],
+            start_date=start_date,
+            end_date=end_date,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+        check_file_existence(
+            [ScienceMode.Burst],
+            start_date,
+            "some super scientific content",
+            version=version,
+        )
+        # Some data is available for the requested dates for Burst mode.
+        define_available_data_sdc_mappings(
+            wiremock_manager,
+            ScienceMode.Burst,
+            start_date,
+            end_date,
+            ingestion_timestamp,
+            is_ingestion_date=False,
+            content="some different super scientific content",
+            version=version,
+        )
+        # force redownload of the same file with different content
+        # throws because of overwrite
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Cannot proceed with adding file imap_mag_l1c_burst-magi_20250401_v003.cdf.Existing version(s) [3] found in database with different content which cannot be overwritten without allow_overwrite option"
+            ),
+        ):
+            await poll_science_flow(
+                modes=[ScienceMode.Burst],
+                start_date=start_date,
+                end_date=end_date,
+                datetime_provider=DatetimeProvider(fixed_now=NOW),
+            )
+
+        # does not throw because overwrite is allowed
+        await poll_science_flow(
+            modes=[ScienceMode.Burst],
+            start_date=start_date,
+            end_date=end_date,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+            overwrite_option=DatastoreSaveOption.FILE_OVERWRITES_ALLOWED,
+        )
+
+        check_file_existence(
+            [ScienceMode.Burst],
+            start_date,
+            "some different super scientific content",
+            version=version,
+        )

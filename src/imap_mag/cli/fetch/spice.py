@@ -267,9 +267,9 @@ def fetch_spice(
 
     app_settings = AppSettings()  # type: ignore
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_science)
-    initialiseLoggingForCommand(
-        work_folder
-    )  # DO NOT log anything before this point (it won't be captured in the log file)
+    # initialiseLoggingForCommand(
+    #     work_folder
+    # )  # DO NOT log anything before this point (it won't be captured in the log file)
     data_access = SDCDataAccess(
         auth_code=app_settings.fetch_spice.api.auth_code,
         data_dir=work_folder,
@@ -318,7 +318,9 @@ def fetch_spice(
 
         handler.add_metadata(file_metadata)
         if output_manager is not None:
-            (output_file, output_handler) = output_manager.add_file(file_path, handler)
+            (output_file, output_handler, _) = output_manager.add_file(
+                file_path, handler
+            )
             output_spice.append((output_file, output_handler, file_metadata))
         else:
             output_spice.append((file_path, handler, file_metadata))
@@ -555,7 +557,7 @@ def publish_spice_kernel(
             f"Downloaded SPICE file {kernal_file_path} could not be parsed into SPICEPathHandler"
         )
 
-    (output_file, _) = output_manager.add_file(kernal_file_path, handler)
+    (output_file, _, _) = output_manager.add_file(kernal_file_path, handler)
 
     return output_file
 
@@ -594,10 +596,13 @@ def _metakernel_builder(
         file_list_with_version.sort(
             key=lambda f: int(f.file_meta.get("version", "1")), reverse=True
         )
-        latest_files.append(file_list_with_version[0])  # take the latest version only
+        if file_list_with_version:
+            latest_files.append(
+                file_list_with_version[0]
+            )  # take the latest version only
         if len(file_list_with_version) > 1:
             logger.debug(
-                f"Using file {file_list_with_version[0].name}. Ignored {len(file_list) - 1} older versions for {root_path}"
+                f"Using file {file_list_with_version[0].name}. Ignored {len(file_list_with_version) - 1} older versions for {root_path}"
             )
 
     # get the first leapseconds kernel if available
@@ -692,7 +697,7 @@ def _metakernel_builder(
                     "file_intervals_j2000": f.file_meta["file_intervals_j2000"],
                     "timestamp": f.file_meta["timestamp"],
                 }
-                for f in files
+                for f in latest_files
                 if f.file_meta
                 and (
                     f.file_meta.get(SPICE_FILE_META_FIELD_KERNAL_TYPE)

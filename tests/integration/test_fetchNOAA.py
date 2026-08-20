@@ -1,6 +1,4 @@
-import json
 import os
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +8,7 @@ from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.download.FetchNOAA import FetchNOAA
 from imap_mag.io import FileFinder
 
-NOAA_DATA_PATH = Path(__file__).parent.parent / "datastore" / "noaa"
+NOAA_DATA_PATH = Path(__file__).parent.parent / "test_truth" / "noaa"
 
 
 @pytest.mark.skipif(
@@ -27,28 +25,21 @@ NOAA_DATA_PATH = Path(__file__).parent.parent / "datastore" / "noaa"
     ],
 )
 def test_fetch_rtsw_data(
-    spacecraft,
-    instrument,
-    wiremock_manager,
-    capture_cli_logs,
+    spacecraft, instrument, wiremock_manager, capture_cli_logs, temp_folder_path
 ) -> None:
     # Set up.
     filename = f"rtsw_{instrument}_1m.json"
     mock_data_path = NOAA_DATA_PATH / filename
-    with open(mock_data_path) as f:
-        response = json.load(f)
-    wiremock_manager.add_string_mapping(
+    wiremock_manager.add_file_mapping(
         f"/{filename}",
-        json.dumps(response),
+        mock_data_path,
     )
 
     # Create FetchNOAA instance.
-    work_folder = Path(tempfile.mkdtemp())
-    datastore_finder = FileFinder(Path(tempfile.mkdtemp()))
     fetch = FetchNOAA(
         data_access=NOAARTSWApiClient(url=wiremock_manager.get_url().rstrip("/")),
-        work_folder=work_folder,
-        datastore_finder=datastore_finder,
+        work_folder=Path(temp_folder_path),
+        datastore_finder=FileFinder(temp_folder_path),
     )
 
     # Download data.

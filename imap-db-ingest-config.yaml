@@ -11301,4 +11301,127 @@ jobs:
           type: date
           use_to_delete_old_rows: true
     filename_match: imap_ialirt_codice_hi_*.csv
-
+  ace_mag_noaa:
+    target_table: ace_mag_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      bx_gsm:
+        db_column: bx_gsm
+        type: float
+        nullable: false
+      by_gsm:
+        db_column: by_gsm
+        type: float
+        nullable: false
+      bz_gsm:
+        db_column: bz_gsm
+        type: float
+        nullable: false
+      phi_gsm:
+        db_column: phi_gsm
+        type: float
+        nullable: false
+      theta_gsm:
+        db_column: theta_gsm
+        type: float
+        nullable: false
+    filename_to_column:
+      template: ACE_mag_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  ace_wind_noaa:
+    target_table: ace_wind_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      density:
+        db_column: density
+        type: float
+        nullable: false
+      speed:
+        db_column: speed
+        type: float
+        nullable: false
+      temperature:
+        db_column: temperature
+        type: integer
+        nullable: false
+    filename_to_column:
+      template: ACE_wind_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  solar_mag_noaa:
+    target_table: solar_mag_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      bx_gsm:
+        db_column: bx_gsm
+        type: float
+        nullable: false
+      by_gsm:
+        db_column: by_gsm
+        type: float
+        nullable: false
+      bz_gsm:
+        db_column: bz_gsm
+        type: float
+        nullable: false
+      phi_gsm:
+        db_column: phi_gsm
+        type: float
+        nullable: false
+      theta_gsm:
+        db_column: theta_gsm
+        type: float
+        nullable: false
+    filename_to_column:
+      template: SOLAR1_mag_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true
+  solar_wind_noaa:
+    target_table: solar_wind_noaa
+    id_mapping:
+      time_tag:
+        db_column: id
+        type: datetime
+        nullable: false
+    columns:
+      density:
+        db_column: density
+        type: float
+        nullable: false
+      speed:
+        db_column: speed
+        type: float
+        nullable: false
+      temperature:
+        db_column: temperature
+        type: integer
+        nullable: false
+    filename_to_column:
+      template: SOLAR1_wind_noaa_[date].csv
+      columns:
+        date:
+          db_column: file_date
+          type: date
+          use_to_delete_old_rows: true

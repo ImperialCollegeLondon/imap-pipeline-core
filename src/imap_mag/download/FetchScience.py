@@ -33,6 +33,8 @@ class FetchScience:
         use_ingestion_date: bool = False,
         max_downloads: int | None = None,
         skip_items_count: int = 0,
+        # vMMM.mmmm or the deprecated minor-only vXXX or latest
+        version_str_or_latest: str | None = None,
     ) -> dict[Path, SciencePathHandler]:
         """Retrieve SDC data."""
 
@@ -60,6 +62,7 @@ class FetchScience:
                 level=level.value,
                 descriptor=descriptor,
                 extension="cdf",
+                version=version_str_or_latest,
                 **dates,  # type: ignore
             )
 

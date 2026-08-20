@@ -115,7 +115,7 @@ async def poll_spice_flow(
     ] = False,
     # Used for automated testing only, to override the default datetime provider with a test one
     datetime_provider: Annotated[
-        None | DatetimeProvider,
+        DatetimeProvider | None,
         Field(exclude=True, frozen=True, json_schema_extra={"title": "(Do not use)"}),
     ] = None,
 ):
@@ -224,7 +224,7 @@ async def poll_spice_flow(
             latest_timestamp=latest_ingestion_date,
         )
     else:
-        logger.info(f"Database not updated with progress for {progress_item_id}.")
+        logger.info(f"Database workflow progress not updated for {progress_item_id}.")
 
 
 # Enable quick local dev like `source .env && python -m src.prefect_server.spiceDownloadFlow` and "debug this file" in vscode

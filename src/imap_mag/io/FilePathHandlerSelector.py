@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, overload
 
 from imap_mag.io.file.AncillaryPathHandler import AncillaryPathHandler
+from imap_mag.io.file.CalculatedOffsetsPathHandler import CalculatedOffsetsPathHandler
 from imap_mag.io.file.CalibrationLayerPathHandler import (
     CalibrationLayerPathHandler,
 )
@@ -48,8 +49,12 @@ class FilePathHandlerSelector:
     ) -> IFilePathHandler | None:
         """Find a suitable path handler for the given filepath."""
 
-        # Providers to try in alphabetical order.
+        # Providers to try: more-specific handlers first so they are not shadowed
+        # by broader ones. CalculatedOffsetsPathHandler is more specific than
+        # AncillaryPathHandler (it also checks the parent folder name), so it
+        # must be tried first.
         provider_to_try: list[type[IFilePathHandler]] = [
+            CalculatedOffsetsPathHandler,
             AncillaryPathHandler,
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,

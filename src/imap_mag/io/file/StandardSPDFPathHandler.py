@@ -25,19 +25,24 @@ class StandardSPDFPathHandler(VersionedPathHandler):
 
     def get_filename(self) -> str:
         super()._check_property_values(
-            "file name", ["descriptor", "level", "content_date", "extension"]
+            "file name", ["descriptor", "level", "content_date"]
         )
         assert self.content_date
-        assert self.extension
 
         return self.generate_filename_from_logical_source(
             logical_source=f"{self.mission}_{self.instrument}_{self.level}_{self.descriptor}",
             content_date=self.content_date,
             version=self.version,
-            extension=self.extension,
+            extension=self.get_extension_or_default(),
             version_major=self.version_major,
             legacy=not self.has_major_version,
         )
+
+    def get_extension_or_default(self) -> str:
+        if self.extension is not None:
+            return self.extension
+        else:
+            return "cdf"
 
     def get_content_date_for_indexing(self):
         return self.content_date

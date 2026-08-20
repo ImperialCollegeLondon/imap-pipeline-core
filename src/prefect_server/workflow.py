@@ -198,6 +198,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "modes": ["norm"],
                     "level": "l1c",
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1C_NORM,
             )
@@ -210,6 +211,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "modes": ["burst"],
                     "level": "l1b",
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1B_BURST,
             )
@@ -222,6 +224,7 @@ async def adeploy_flows(local_debug: bool = False):
                 parameters={
                     "level": "l2",
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L2,
             )
@@ -235,6 +238,7 @@ async def adeploy_flows(local_debug: bool = False):
                     "level": "l1d",
                     "modes": ["norm"],
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D + "_norm_only",
             )
@@ -247,6 +251,7 @@ async def adeploy_flows(local_debug: bool = False):
                     "level": "l1d",
                     "modes": ["burst"],
                     "reference_frames": ["gse", "rtn"],
+                    "version_str_or_latest": "latest",
                 },
                 slug=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_L1D
                 + "_burst_gse_rtn_only",
@@ -387,8 +392,8 @@ async def adeploy_flows(local_debug: bool = False):
     )
 
     matlab_shared_job_variables = shared_job_variables.copy()
-    matlab_shared_job_variables["mem_limit"] = "4g"
-    matlab_shared_job_variables["memswap_limit"] = "4g"
+    matlab_shared_job_variables["mem_limit"] = "12g"
+    matlab_shared_job_variables["memswap_limit"] = "16g"
 
     calibration_deployable = calibrate_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE,
@@ -410,7 +415,7 @@ async def adeploy_flows(local_debug: bool = False):
 
     calibrate_and_apply_deployable = calibrate_and_apply_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_AND_APPLY,
-        job_variables=apply_shared_job_variables,
+        job_variables=matlab_shared_job_variables,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )

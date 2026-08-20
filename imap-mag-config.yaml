@@ -5,6 +5,7 @@
 
 # General application conifguration:
 work_folder: '.work'
+#data_store:  '/mnt/box/IMAP Flight Data/Flight Data'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
@@ -24,7 +25,8 @@ metakernel_file_types:
     - ephemeris_reconstructed
 
 sdc: &sdc_creds
-    url_base: "https://api.dev.imap-mission.com"
+    #url_base: "https://api.dev.imap-mission.com"
+    url_base: "https://api.imap-mission.com"
     auth_code:
 
 # Command specific configuration:
@@ -40,7 +42,8 @@ fetch_binary:
 
 fetch_ialirt:
     api:
-        url_base: "https://ialirt.dev.imap-mission.com"
+        #url_base: "https://ialirt.dev.imap-mission.com"
+        url_base: "https://ialirt.imap-mission.com"
         auth_code:
     work_sub_folder:
     publish_to_data_store: true
@@ -61,10 +64,6 @@ fetch_solar1_ace:
     api:
         url_base: "https://services.swpc.noaa.gov/json/rtsw"
 
-fetch_dscovr:
-    api:
-        url_base: "https://services.swpc.noaa.gov/products/solar-wind"
-
 fetch_webtcad:
     api:
         # Example URL: https://lasp.colorado.edu/ops/imap/webtcad/latis/dap/AnalogTelemetryItem_SID1.csv?TMID=58350&time,value&time%3E=2026-02-11T13:43:32.000Z&time%3C=2026-02-12T13:43:32.000Z&format_time(yyyy-MM-dd%27T%27HH:mm:ss.SSS)&limit(10)
@@ -78,13 +77,15 @@ plot_ialirt:
     work_sub_folder:
     publish_to_data_store: true
 
-calibration:
+apply:
     work_sub_folder:
 
 # Configuration for the calibrate flow. work_sub_folder supports {date}/{mode}/{sensor}
 # placeholders so each calibrate run gets its own uniquely-named work folder.
 calibrate:
     work_sub_folder: 'calibrate_{date}_{mode}'
+    # where do layer folder get published to? If null, they are published to the data_store
+    output_folder_override: null
     scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
     scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
     # Files copied into the sparse datastore (LOCAL_WORK_FOLDER_COPY mode). Paths are
@@ -114,9 +115,9 @@ calibrate:
             - pattern: 'calibration/calculated_offsets/kepko/*'
             - pattern: 'calibration/calculated_offsets/leinweber/*'
             - pattern: 'calibration/calculated_offsets/spin_axis/*'
-            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
-              days_before: 1
-              days_after: 1
+            - pattern: 'calibration/calculated_offsets/spin_optimised/imap_mag_*-spin-plane-optimised-offsets_%Y%m%d_v{sequence}.csv*'
+              days_before: 2
+              days_after: 2
               get_previous_if_empty: true
               highest_sequence_only: true
             - pattern: 'calibration/calculated_offsets/spin_plane/imap_mag_*-spin-plane-offsets_%Y%m%d_v{sequence}.csv*'
@@ -159,6 +160,8 @@ upload:
         - "*ialirt_hk/*"
         - "*quicklook/*"
         - "*spice/*"
+        - "*calibration/calculated_offsets/spin_plane/*"
+        - "*calibration/calculated_offsets/spin_optimised/*"
 
 postgres_upload:
     crump_config_path: imap-db-ingest-config.yaml
@@ -184,6 +187,7 @@ postgres_upload:
         - "ialirt/**/imap_ialirt_hit_*.csv"
         - "ialirt/**/imap_ialirt_swe_*.csv"
         - "ialirt/**/imap_ialirt_swapi_*.csv"
+        - "noaa/**/*.csv"
 
 datastore_cleanup:
     dry_run: false
@@ -233,5 +237,11 @@ datastore_cleanup:
           paths_to_match:
               - "*quicklook/ialirt/**/*.png"
           files_older_than: "90d"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"
+        - name: "delete-noaa-files-older-than-7days"
+          paths_to_match:
+              - "*noaa/**/*.csv"
+          files_older_than: "7d"
           keep_latest_version_only: false
           cleanup_mode: "delete"

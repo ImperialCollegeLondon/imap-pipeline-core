@@ -68,7 +68,7 @@ class TestCalibrationJobBase:
 
     def test_setup_datastore_sets_data_store(self):
         job = _make_concrete_job()
-        job.setup_datastore(Path("/datastore"))
+        job.setup(Path("/datastore"))
         assert job.data_store == Path("/datastore")
 
     def test_setup_datastore_skips_when_not_needed(self):
@@ -84,5 +84,5 @@ class TestCalibrationJobBase:
 
         params = MagicMock(spec=CalibrationJobParameters)
         job = NoDataStoreJob(params, Path("/tmp"))
-        job.setup_datastore(Path("/datastore"))
+        job.setup(Path("/datastore"))
         assert job.data_store is None
