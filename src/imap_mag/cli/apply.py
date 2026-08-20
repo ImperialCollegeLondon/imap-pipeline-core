@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -24,6 +23,7 @@ from mag_toolkit.calibration import (
     CalibrationApplicator,
     CalibrationLayer,
     CalibrationMethod,
+    FileType,
     ScienceLayer,
 )
 
@@ -101,12 +101,6 @@ def _validate_l2_version_override(
     return (major, minor)
 
 
-class FileType(Enum):
-    CSV = "csv"
-    CDF = "cdf"
-    JSON = "json"
-
-
 # TODO: REFACTOR - moving files to a work folder could be simplified/generalized?
 def _prepare_layers_for_application(
     layers: list[str], datastore_finder: FileFinder, appSettings: AppSettings
@@ -141,10 +135,11 @@ def _prepare_layers_for_application(
 
         # Get data file
         cal_layer = CalibrationLayer.from_file(versioned_layer_file)
+        datafile = cal_layer.get_datafile_path()
 
-        if cal_layer.metadata.data_filename:
+        if datafile:
             fetch_file_for_work(
-                versioned_layer_file.parent / cal_layer.metadata.data_filename,
+                datafile,
                 appSettings.work_folder,
                 throw_if_not_found=True,
             )
@@ -334,7 +329,7 @@ def _apply_for_date(
     datastore_finder = FileFinder(app_settings.data_store, app_settings.work_folder)
     resolved_layers = (
         datastore_finder.find_layers_by_date_and_patterns(
-            layers, date, mode, throw_if_not_found=True
+            layers, start_date=date, end_date=date, mode=mode, throw_if_not_found=True
         )
         if layers
         else []  # ensure we throw if a layer is passed in but not found
@@ -472,12 +467,24 @@ def cleanup_workfolder_after_apply(
     if workRotationFile:
         files_to_cleanup.append(workRotationFile)
 
-    # add the .csv version of all layer files to the cleanup list as well
+    # add the companion data file (CSV or Parquet) for each JSON layer to the cleanup list
     for layer_file in workLayers:
-        if layer_file.suffix == ".json":
-            corresponding_csv = layer_file.with_suffix(".csv")
-            if corresponding_csv.exists():
-                files_to_cleanup.append(corresponding_csv)
+        handler = CalibrationLayerPathHandler.from_filename(layer_file)
+        if handler is not None and handler.is_metadata_file():
+            try:
+                cal = CalibrationLayer.from_file(layer_file, load_contents=False)
+                data_filename = cal.get_datafile_path()
+            except Exception:
+                data_filename = None
+
+            if data_filename is not None:
+                if data_filename.exists():
+                    files_to_cleanup.append(data_filename)
+            else:
+                for ext in (".csv", ".parquet"):
+                    companion = layer_file.with_suffix(ext)
+                    if companion.exists():
+                        files_to_cleanup.append(companion)
 
     work_folder_resolved = app_settings.work_folder.resolve()
     for temp_file in files_to_cleanup:
@@ -521,7 +528,7 @@ def _setup_zero_calibration_layer(
     )
     del science_layer
 
-    zero_offset_layer.writeToFile(
+    zero_offset_layer.write_to_file(
         new_layer_file, False
     )  # json and also writes CSV for us automatically
 

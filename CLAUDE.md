@@ -102,18 +102,20 @@ Recurring review feedback — follow these to avoid the same corrections:
 ### PR hygiene
 
 - Keep PRs focused: never leave changes unrelated to the branch in the diff (revert them).
-- Document **all** arguments when you touch a function's signature/docstring, not only the new ones.
 - Use generic example values/URLs in tests (e.g. `example-org/example-repo`), not real or overly specific ones.
+- keep PR description and comments short and do not mention Claude, copilot or any agent.
+- if a pr comments has been addressed then add a comment  with a short summary of how it was adressed
 
 ## Testing
 
 - Tests in `tests/` directory, one `test_*.py` file per source file
-- Unit tests in `tests/unit/` (pytest, mocking where you have to) Must be fast to run and not have network/docker dependencies
+- Unit tests in `tests/unit/` (pytest, mocking where you have to buy prefer not to mock) Must be fast to run and not have network/docker dependencies
 - Integration end-to-end tests in `tests/integration/` (pytest, may use dockerized services like Postgres, Prefect, WireMock)
 - All API calls to external services (IMAP SDC, I-ALiRT, SharePoint) must be uses WireMock for integration tests to stub external services.
 - Test utilities in `tests/util/` (database fixtures, WireMock, Prefect helpers)
 - Test data in `tests/datastore/`
 - Expect code to be well covered with automated tests and tests should pass before committing
+- `tests/unit` and `tests/integration` are separate suites and a green `tests/unit` run does NOT imply `tests/integration` is green (or vice versa) — for any non-trivial change run both explicitly: `poetry run pytest tests/unit` and `poetry run pytest tests/integration`. integration tests are slower. amost changes break assumptions baked into existing integration tests (hardcoded extensions, direct file reads) that unit tests won't catch, since integration tests exercise real CLI/flow entry points end-to-end rather than mocked units.
 
 ## Code Style
 

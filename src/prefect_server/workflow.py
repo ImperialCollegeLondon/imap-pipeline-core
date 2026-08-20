@@ -12,15 +12,14 @@ from prefect.schedules import Cron
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
+from prefect_server.applyFlow import apply_flow
+from prefect_server.calibrateAndApplyFlow import calibrate_and_apply_flow
+from prefect_server.calibrateConvertFlow import calibrate_convert_flow
+from prefect_server.calibrateFlow import calibrate_flow
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
-from prefect_server.performCalibration import (
-    apply_flow,
-    calibrate_and_apply_flow,
-    calibrate_flow,
-)
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -420,10 +419,18 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    calibrate_convert_deployable = calibrate_convert_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_CONVERT,
+        job_variables=apply_shared_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_deployables = await asyncio.gather(
         calibration_deployable,
         apply_deployable,
         calibrate_and_apply_deployable,
+        calibrate_convert_deployable,
     )
 
     deployables = await asyncio.gather(

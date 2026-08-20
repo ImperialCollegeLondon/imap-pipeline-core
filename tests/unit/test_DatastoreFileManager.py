@@ -16,6 +16,7 @@ from imap_mag.io.file import (
     HKDecodedPathHandler,
     IFilePathHandler,
 )
+from mag_toolkit.calibration import LayerDataFormat
 from tests.util.miscellaneous import (
     create_test_file,
     write_calibration_layer_pair,
@@ -304,7 +305,10 @@ def test_calibration_layer_identical_content_deduplicates_to_existing_version(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
     )
 
     (result_path, _, _) = manager.add_file(work_json, handler)
@@ -336,7 +340,10 @@ def test_calibration_layer_different_content_bumps_to_v002(
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
     )
 
     (result_path, _, _) = manager.add_file(work_json, handler)
@@ -367,11 +374,16 @@ def test_calibration_layer_csv_saved_at_matching_version(temp_folder_path):
 
     manager = _manager(temp_folder_path)
     json_handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=1, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=1,
+        version_major=1,
     )
     manager.add_file(work_json, json_handler)
 
-    csv_handler = json_handler.get_equivalent_data_handler()  # version now 2
+    csv_handler = json_handler.create_new_datafile_handler(
+        LayerDataFormat.CSV
+    )  # version now 2
     (csv_result, _, overwrite) = manager.add_file(work_csv, csv_handler)
 
     assert csv_result.name == "imap_mag_quality-norm-layer-data_20260116_v001.0002.csv"
@@ -399,7 +411,10 @@ def test_allow_overwrite_replaces_same_version(temp_folder_path):
 
     manager = _manager(temp_folder_path)
     handler = CalibrationLayerPathHandler(
-        descriptor="quality-norm", content_date=date, version=3, version_major=1
+        descriptor="quality-norm",
+        content_date=date,
+        version=3,
+        version_major=1,
     )
     handler.versioning_mode = handler.VersionMode.USER_OVERRIDE
 

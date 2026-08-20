@@ -97,6 +97,7 @@ def write_calibration_layer_pair(
     from mag_toolkit.calibration.CalibrationDefinitions import (
         CalibrationMetadata,
         CalibrationMethod,
+        LayerDataFormat,
         Mission,
         Sensor,
         Validity,
@@ -132,15 +133,20 @@ def write_calibration_layer_pair(
         value_type=ValueType.VECTOR,
         method=CalibrationMethod.NOOP,
     )
+    handler = CalibrationLayerPathHandler(
+        descriptor=descriptor,
+        content_date=date,
+        version=version,
+        version_major=1,
+    )
+    data_handler = handler.create_new_datafile_handler(LayerDataFormat.CSV)
+    layer.metadata.data_filename = Path(data_handler.get_filename())
     layer._contents = contents
 
-    handler = CalibrationLayerPathHandler(
-        descriptor=descriptor, content_date=date, version=version, version_major=1
-    )
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    layer.write_to_file(json_path)
 
-    csv_path = folder / handler.get_equivalent_data_handler().get_filename()
+    csv_path = folder / data_handler.get_filename()
     return json_path, csv_path
 
 
