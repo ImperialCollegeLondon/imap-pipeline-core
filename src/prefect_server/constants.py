@@ -95,6 +95,7 @@ class PREFECT_CONSTANTS:
         POSTGRES_UPLOAD = "postgres-upload"
         DATASTORE_CLEANUP = "datastore-cleanup"
         DATASTORE_INDEXER = "datastore-indexer"
+        POLL_NOAA = "poll-noaa"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
