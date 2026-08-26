@@ -2,18 +2,12 @@ from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import (
     AutomaticRunParameters,
-    FetchByDatesRunParameters,
     Pipeline,
 )
 from imap_mag.data_pipelines.DownloadNOAAStage import DownloadNOAAStage
-from imap_mag.data_pipelines.GetProcessingDatesStage import (
-    DateResolutionMode,
-    GetProcessingDatesStage,
-)
 from imap_mag.data_pipelines.PublishFileToDatastoreStage import (
     PublishFileToDatastoreStage,
 )
-from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
 from imap_mag.db import Database
 from imap_mag.download.FetchNOAA import FetchNOAA
 from imap_mag.io import FileFinder
@@ -34,11 +28,11 @@ class NOAAPipeline(Pipeline):
         self.spacecraft = spacecraft
         self.instrument = instrument
 
+        self._database = database
+
         self.initial_context = {
             "progress_item_name": f"{spacecraft.upper()}_{instrument.upper()}",
         }
-
-        self._database = database
 
         self._client = NOAARTSWApiClient(
             settings.fetch_solar1_ace.api.url_base,
@@ -55,15 +49,10 @@ class NOAAPipeline(Pipeline):
 
         self._datetime_provider = datetime_provider
 
-    def build(self, run_params: AutomaticRunParameters | FetchByDatesRunParameters):  # type: ignore
+    def build(self, run_params: AutomaticRunParameters):  # type: ignore
         super().build(
             run_parameters=run_params,
             stages=[
-                GetProcessingDatesStage(
-                    database=self._database,
-                    date_resolution_mode=DateResolutionMode.EXACT_DATETIME,
-                    datetime_provider=self._datetime_provider,
-                ),
                 DownloadNOAAStage(
                     spacecraft=self.spacecraft,
                     instrument=self.instrument,
@@ -74,6 +63,5 @@ class NOAAPipeline(Pipeline):
                     database=self._database,
                     settings=self._settings,
                 ),
-                SaveProcessingDatesStage(database=self._database),
             ],
         )
