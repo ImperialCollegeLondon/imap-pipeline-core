@@ -9,7 +9,7 @@ import pytest
 from imap_mag.cli.calibrate import gradiometry
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationLayer
-from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, LayerDataFormat
 
 
 @pytest.mark.skipif(
@@ -27,6 +27,7 @@ def test_gradiometry_calibration_layer_is_created_with_correct_offsets_for_one_v
         mode=ScienceMode.Normal,
         kappa=0.25,
         sc_interference_threshold=10.0,
+        layer_data_format=LayerDataFormat.CSV,
     )
     layer_metadata = (
         temp_datastore

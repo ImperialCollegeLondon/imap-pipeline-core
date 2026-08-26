@@ -33,6 +33,7 @@ from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
     CalibrationMethod,
+    LayerDataFormat,
     Mission,
     Sensor,
     ValueType,
@@ -631,7 +632,7 @@ def _write_layer_pair(
         descriptor=descriptor, content_date=date, version=version
     )
 
-    csv_name = handler.get_equivalent_data_handler().get_filename()
+    csv_name = handler.create_new_datafile_handler(LayerDataFormat.CSV).get_filename()
     csv_path = folder / csv_name
     csv_path.write_text(csv_content)
 
@@ -656,7 +657,7 @@ def _write_layer_pair(
     )  # directly set contents without reading from file
 
     json_path = folder / handler.get_filename()
-    layer.writeToFile(json_path)
+    layer.write_to_file(json_path)
 
     assert json_path.exists()
     assert csv_path.exists()

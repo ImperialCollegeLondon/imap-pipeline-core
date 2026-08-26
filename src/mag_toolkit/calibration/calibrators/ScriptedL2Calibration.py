@@ -16,6 +16,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
     CreateOffsets,
     DatastoreAccessMode,
+    LayerDataFormat,
 )
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 from mag_toolkit.calibration.SparseDatastoreBuilder import SparseDatastoreBuilder
@@ -96,7 +97,10 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         return {}
 
     def run_calibration(
-        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+        self,
+        cal_handler: CalibrationLayerPathHandler,
+        config: CalibrationConfig,
+        layer_data_format: LayerDataFormat,
     ) -> list[Path]:
         if not isinstance(config, ScriptedL2CalibrationConfig):
             raise TypeError(
@@ -162,6 +166,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             matlab_mode=str(mode.value),
             produce_report=config.produce_report,
             write_offsets=write_offsets,
+            layer_data_format=layer_data_format,
         )
 
         call_matlab(
@@ -315,6 +320,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         matlab_mode: str,
         produce_report: bool,
         write_offsets: bool,
+        layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -331,6 +337,8 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             matlab_mode: Science mode to process (``"norm"`` or ``"burst"``).
             produce_report: Whether the MATLAB script should produce a calibration report.
             write_offsets: Whether the MATLAB script should create offset files.
+            layer_data_format: Companion layer data file format MATLAB should write
+                (default parquet).
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
         bool_str = {True: "true", False: "false"}
@@ -348,5 +356,6 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f"display_plots=false,"
             f"spice_transform_and_write=false,"
             f"produce_report={bool_str[produce_report]},"
-            f"write_offsets={bool_str[write_offsets]})"
+            f"write_offsets={bool_str[write_offsets]},"
+            f'layer_data_format="{layer_data_format.value}")'
         )

@@ -14,6 +14,7 @@ from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParam
 if TYPE_CHECKING:
     from imap_mag.io.file import CalibrationLayerPathHandler
     from imap_mag.io.FileFinder import FileFinder
+    from mag_toolkit.calibration.CalibrationDefinitions import LayerDataFormat
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +134,19 @@ class CalibrationJob(ABC):
 
     @abstractmethod
     def run_calibration(
-        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+        self,
+        cal_handler: CalibrationLayerPathHandler,
+        config: CalibrationConfig,
+        layer_data_format: LayerDataFormat,
     ) -> Sequence[Path]:
-        """Calibration that generates a calibration layer."""
+        """Calibration that generates a calibration layer.
+
+        Args:
+            cal_handler: Path handler for the calibration layer's JSON metadata file.
+            config: Calibration-method-specific configuration.
+            layer_data_format: Format (csv/parquet) to write the layer's companion
+                data file in. The job must produce exactly this format.
+        """
 
     def get_ancillary_files(self) -> Sequence[Path]:
         """

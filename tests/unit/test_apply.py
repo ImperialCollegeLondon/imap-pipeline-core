@@ -1,12 +1,14 @@
 """Unit tests for apply CLI command helper functions."""
 
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 
 from imap_mag.cli.apply import (
+    FileType,
     _apply_for_date,
     _prepare_layers_for_application,
     _prepare_rotation_layer_for_application,
@@ -15,7 +17,21 @@ from imap_mag.cli.apply import (
     cleanup_workfolder_after_apply,
 )
 from imap_mag.config import AppSettings, SaveMode
+from imap_mag.io import FileFinder
+from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ReferenceFrame
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CONSTANTS,
+    CalibrationMetadata,
+    CalibrationMethod,
+    LayerDataFormat,
+    Mission,
+    Sensor,
+    Validity,
+    ValueType,
+)
+from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+from tests.util.miscellaneous import write_calibration_layer_pair
 
 
 class TestPrepareLayers:
@@ -278,10 +294,9 @@ class TestCleanupWorkfolderAfterApply:
         mock_settings = MagicMock()
         mock_settings.work_folder = work_folder
 
-        json_layer = work_folder / "layer.json"
-        json_layer.write_text("data")
-        csv_layer = work_folder / "layer.csv"
-        csv_layer.write_text("data")
+        json_layer, csv_layer = write_calibration_layer_pair(
+            work_folder, "noop-norm", datetime(2026, 1, 16), version=1
+        )
         offset_file = work_folder / "offsets.cdf"
         offset_file.write_text("data")
         science_file = work_folder / "science.cdf"
@@ -347,7 +362,7 @@ class TestSetupZeroCalibrationLayer:
                 app_settings=AppSettings(),
             )
 
-        mock_zero_layer.writeToFile.assert_called_once()
+        mock_zero_layer.write_to_file.assert_called_once()
         assert result == work_folder / "noop_layer.json"
 
     def test_overwrites_existing_layer_file(self, tmp_path):
@@ -383,4 +398,117 @@ class TestSetupZeroCalibrationLayer:
             )
 
         assert result == existing_file
-        mock_zero_layer.writeToFile.assert_called_once()
+        mock_zero_layer.write_to_file.assert_called_once()
+
+
+def _make_real_layer(folder, descriptor: str, date: datetime, fmt: FileType):
+    """Write a real calibration layer JSON+companion pair in *folder* at format *fmt*."""
+    import numpy as np
+    import pandas as pd
+
+    folder.mkdir(parents=True, exist_ok=True)
+    handler = CalibrationLayerPathHandler(
+        descriptor=descriptor,
+        content_date=date,
+        version=1,
+        version_major=1,
+    )
+    df = pd.DataFrame(
+        {
+            CONSTANTS.CSV_VARS.EPOCH: np.array([np.datetime64(date)]),
+            CONSTANTS.CSV_VARS.OFFSET_X: [1.0],
+            CONSTANTS.CSV_VARS.OFFSET_Y: [2.0],
+            CONSTANTS.CSV_VARS.OFFSET_Z: [3.0],
+            CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+            CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
+        }
+    )
+    layer = CalibrationLayer(
+        id="",
+        mission=Mission.IMAP,
+        validity=Validity(start=np.datetime64(date), end=np.datetime64(date)),
+        sensor=Sensor.MAGO,
+        version=1,
+        version_major=1,
+        metadata=CalibrationMetadata(
+            dependencies=[],
+            science=[],
+            creation_timestamp=np.datetime64("now"),
+            content_date=np.datetime64(date),
+        ),
+        value_type=ValueType.VECTOR,
+        method=CalibrationMethod.NOOP,
+    )
+    layer._contents = df
+    layer.metadata.data_filename = Path(
+        handler.create_new_datafile_handler(LayerDataFormat(fmt.value)).get_filename()
+    )
+    json_path = folder / handler.get_filename()
+    layer.write_to_file(json_path)
+    return json_path.name
+
+
+class TestPrepareLayersMixedFormats:
+    def test_reads_both_csv_and_parquet_layers(
+        self, clean_datastore, dynamic_work_folder
+    ):
+        """apply() can be given a mix of csv- and parquet-format layers as input."""
+        date = datetime(2026, 1, 16)
+        layers_dir = clean_datastore / "calibration" / "layers" / "2026" / "01"
+
+        csv_name = _make_real_layer(layers_dir, "quality-norm", date, FileType.CSV)
+        parquet_name = _make_real_layer(
+            layers_dir, "manual-norm", date, FileType.PARQUET
+        )
+
+        app_settings = AppSettings()
+        datastore_finder = FileFinder(clean_datastore, dynamic_work_folder)
+
+        result = _prepare_layers_for_application(
+            layers=[csv_name, parquet_name],
+            datastore_finder=datastore_finder,
+            appSettings=app_settings,
+        )
+
+        assert len(result) == 2
+        work_files = {p.name for p in dynamic_work_folder.iterdir()}
+        assert csv_name in work_files
+        assert parquet_name in work_files
+        assert any(f.endswith(".csv") for f in work_files)
+        assert any(f.endswith(".parquet") for f in work_files)
+
+
+class TestCleanupWorkfolderParquetCompanion:
+    def test_cleans_up_parquet_companion(self, tmp_path):
+        work_folder = tmp_path / "work"
+        work_folder.mkdir()
+
+        mock_settings = MagicMock()
+        mock_settings.work_folder = work_folder
+
+        json_layer = _make_real_layer(
+            work_folder, "manual-norm", datetime(2026, 1, 16), FileType.PARQUET
+        )
+        json_path = work_folder / json_layer
+        parquet_companion = (
+            work_folder / "imap_mag_manual-norm-layer-data_20260116_v001.0001.parquet"
+        )
+        assert parquet_companion.exists()
+
+        science_file = work_folder / "science.cdf"
+        science_file.write_text("data")
+        offset_file = work_folder / "offsets.cdf"
+        offset_file.write_text("data")
+
+        cleanup_workfolder_after_apply(
+            app_settings=mock_settings,
+            workScienceFile=science_file,
+            workLayers=[json_path],
+            workRotationFile=None,
+            L2_files=[],
+            offset_file=offset_file,
+        )
+
+        assert not parquet_companion.exists()
+        assert not json_path.exists()

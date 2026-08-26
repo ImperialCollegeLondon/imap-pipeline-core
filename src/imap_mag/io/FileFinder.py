@@ -127,30 +127,38 @@ class FileFinder:
     def find_layers_by_date_and_patterns(
         self,
         layers: list[str],
-        date: datetime,
-        mode: ScienceMode,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        mode: ScienceMode | None = None,
         throw_if_not_found: bool = False,
     ) -> list[str]:
-        """Resolve layer pattern strings to actual layer filenames. Expect one layer file per item in layers.
+        """Resolve layer pattern strings to actual layer filenames, optionally
+        restricted to a date range and/or science mode. Expect one layer file
+        per item in ``layers`` (or, for the literal pattern ``"*"``, every
+        matching layer).
 
-        Each entry in layers can be:
+        Each entry in ``layers`` can be:
         - An exact filename (e.g. "imap_mag_noop-norm-layer_20260116_v001.json")
-        - A glob pattern (e.g. "*noop*", "*") that matches layer filenames for the given date.
+        - A glob pattern (e.g. "*noop*", "*") that matches layer filenames.
 
-        When matching by pattern, only the highest version per descriptor+date is returned.
+        Only top-level layer files (the JSON metadata file, or a standalone CDF
+        layer) are matched - companion CSV/Parquet data files are not layer
+        identifiers in their own right.
 
-        Returns resolved filenames in the order the patterns were provided.
+        For the literal pattern ``"*"``, the highest version per descriptor+date
+        is returned; for any other pattern, only the single highest-version
+        match overall is returned (matching a specific layer's history).
+
+        ``start_date``/``end_date``/``mode`` are only applied when provided;
+        omitting all three searches the entire calibration layers datastore -
+        useful for flows (like calibrate-convert) that may operate across many
+        days or the whole datastore history at once.
         """
-        handler = CalibrationLayerPathHandler(
-            content_date=date,
-            descriptor=CalibrationLayerPathHandler.DESCRIPTOR_WILDCARD,
-        )
+        layers_folder = self._data_store / "calibration" / "layers"
 
         resolved: list[str] = []
         for layer in layers:
-            fnmatch_pattern = None
-            if "*" in layer or "?" in layer:
-                fnmatch_pattern = layer
+            fnmatch_pattern = layer if ("*" in layer or "?" in layer) else None
 
             match_by_path = Path(layer)
             if (
@@ -161,48 +169,79 @@ class FileFinder:
                 resolved.append(layer)
                 continue
 
-            all_matching_files_with_version: list[tuple[str, int]] = (
-                self.__find_files_and_sequences(
-                    handler,
-                    throw_if_not_found=throw_if_not_found,
-                    fnmatch_pattern=fnmatch_pattern,
-                    filename_only=True,
-                )
+            candidate_paths = self.__candidate_layer_paths(
+                layers_folder, start_date, end_date
             )
 
-            if not fnmatch_pattern:
-                # must match exactly by filename, so filter to that file only
-                all_matching_files_with_version = [
-                    (f, v)
-                    for f, v in all_matching_files_with_version
-                    if Path(f).name == layer
-                ]
+            candidates: list[tuple[str, int]] = []
+            for path in candidate_paths:
+                handler = CalibrationLayerPathHandler.from_filename(path.name)
+                if handler is None or not handler.is_metadata_file():
+                    continue
+                if fnmatch_pattern is not None:
+                    if not fnmatch.fnmatch(path.name, fnmatch_pattern):
+                        continue
+                elif path.name != layer:
+                    continue
+                if mode is not None and f"{mode.short_name}-layer" not in path.name:
+                    continue
+                if start_date is not None and handler.content_date is not None:
+                    effective_end = end_date or start_date
+                    if not (
+                        start_date.date()
+                        <= handler.content_date.date()
+                        <= effective_end.date()
+                    ):
+                        continue
+                candidates.append((path.name, handler.version))
 
-            # remove files that do not match mode "{mode}-layer"
-            all_matching_files_with_version = [
-                (f, v)
-                for f, v in all_matching_files_with_version
-                if f"{mode.short_name}-layer" in f
-            ]
-
-            if all_matching_files_with_version:
+            if candidates:
                 if layer == "*":
                     resolved.extend(
                         self._keep_highest_version_layers_only(
-                            [f for f, v in all_matching_files_with_version]
+                            [name for name, _ in candidates]
                         )
                     )
-                else:  # just take the highest version match
-                    resolved.append(all_matching_files_with_version[0][0])
+                else:
+                    candidates.sort(key=lambda x: x[1], reverse=True)
+                    resolved.append(candidates[0][0])
             elif throw_if_not_found:
-                logger.error(
-                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
-                )
+                logger.error(f"No layer files found matching pattern '{layer}'.")
                 raise FileNotFoundError(
-                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
+                    f"No layer files found matching pattern '{layer}'."
                 )
 
         return resolved
+
+    @staticmethod
+    def __candidate_layer_paths(
+        layers_folder: Path,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> list[Path]:
+        """Files to consider for layer matching: every month folder in the given
+        date range (cheap, matches the old single-month-folder scan for the
+        common single-day case), or the whole tree when no date is given."""
+        if not layers_folder.exists():
+            return []
+
+        if start_date is None:
+            return [p for p in layers_folder.rglob("*") if p.is_file()]
+
+        # Represent each month as a single "months since year 0" integer so the
+        # range can be walked with plain integer arithmetic (no calendar edge
+        # cases like day-31/leap-year rollover to worry about).
+        effective_end = end_date or start_date
+        start_month_index = start_date.year * 12 + start_date.month
+        end_month_index = effective_end.year * 12 + effective_end.month
+
+        candidate_paths: list[Path] = []
+        for month_index in range(start_month_index, end_month_index + 1):
+            year, month = divmod(month_index - 1, 12)
+            month_folder = layers_folder / f"{year}" / f"{month + 1:02d}"
+            if month_folder.exists():
+                candidate_paths.extend(p for p in month_folder.iterdir() if p.is_file())
+        return candidate_paths
 
     @staticmethod
     def _keep_highest_version_layers_only(filenames: list[str]) -> list[str]:

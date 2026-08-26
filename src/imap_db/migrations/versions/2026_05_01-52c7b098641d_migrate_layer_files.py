@@ -105,7 +105,7 @@ def _run_migration(connection: sa.engine.Connection, datastore: Path) -> None:
         else:
             csv_hash = IFilePathHandler.default_file_hash(csv_path)
             layer.metadata.data_hash = csv_hash
-            layer.writeToFile(json_path)
+            layer.write_to_file(json_path)
             logger.info(f"Populated data_hash for {name}: {csv_hash}.")
 
         if current_hash != csv_hash:

@@ -96,6 +96,41 @@ class CalibrationMethod(Enum):
         raise ValueError(f"Unknown calibration method: {name}")
 
 
+class LayerDataFormat(StrEnum):
+    """File format for the companion data file of a calibration layer.
+
+    PARQUET: Apache Parquet, zstd-compressed (default; compact, cross-language).
+    CSV: comma-separated values (human-readable).
+    """
+
+    PARQUET = "parquet"
+    CSV = "csv"
+
+
+class FileType(StrEnum):
+    """File format of a calibration layer's actual data — either a companion
+    csv/parquet file (see ``LayerDataFormat``) or a self-contained CDF/JSON layer.
+    """
+
+    CSV = "csv"
+    CDF = "cdf"
+    JSON = "json"
+    PARQUET = "parquet"
+
+
+class ConversionStrategy(StrEnum):
+    """How the calibrate-convert flow handles the versioning of converted layers.
+
+    OVERWRITE: replace the original layer files (JSON + companion data file) in
+        place, keeping the same version.
+    CREATE_NEW_VERSION: leave the original layer files untouched and publish the
+        converted layer as a new version.
+    """
+
+    OVERWRITE = "overwrite"
+    CREATE_NEW_VERSION = "create_new_version"
+
+
 class DatastoreAccessMode(StrEnum):
     """How a calibration job that shells out to MATLAB accesses the datastore.
 

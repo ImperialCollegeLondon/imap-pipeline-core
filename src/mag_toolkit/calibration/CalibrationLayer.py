@@ -17,6 +17,8 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    FileType,
+    LayerDataFormat,
     Mission,
     Sensor,
     ValueType,
@@ -25,6 +27,30 @@ from mag_toolkit.calibration.Layer import Layer, Validity
 from mag_toolkit.calibration.ScienceLayer import ScienceLayer
 
 logger = logging.getLogger(__name__)
+
+
+def _format_epoch_as_nanosecond_string(epoch: pd.Series) -> pd.Series:
+    """Format a datetime64[ns] series as ISO 8601 text with a fixed 9-digit
+    (nanosecond) fractional-second part, so text-based formats (CSV) retain the
+    same precision as native binary formats (Parquet)."""
+    sub_second_ns = epoch.dt.microsecond.astype(
+        "int64"
+    ) * 1000 + epoch.dt.nanosecond.astype("int64")
+    return (
+        epoch.dt.strftime("%Y-%m-%dT%H:%M:%S")
+        + "."
+        + sub_second_ns.astype(str).str.zfill(9)
+    )
+
+
+def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
+    """Format a numeric series the same way MATLAB's Layer.write does for CSV
+    (``compose("%.17g", x)``), so a Python-written CSV is byte-identical to a
+    MATLAB-written one for the same values, regardless of the in-memory dtype
+    (e.g. a boolean quality_flag read back from Parquet must still render as
+    "0"/"1", not "False"/"True", and integral floats like timedelta as "0",
+    not "0.0")."""
+    return series.map(lambda x: f"{x:.17g}")
 
 
 class CalibrationLayer(Layer):
@@ -39,11 +65,60 @@ class CalibrationLayer(Layer):
             filepath.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Writing calibration layer CSV to {filepath!s}.")
-        self._contents.to_csv(
+
+        # pandas' to_csv(date_format=...) only supports %f (microseconds), which
+        # would silently truncate any sub-microsecond precision in the epoch
+        # column. Format it manually with a fixed 9-digit (nanosecond) fractional
+        # part instead, so CSV round-trips with the same precision as Parquet.
+        df = self._contents.copy()
+        epoch_col = CONSTANTS.CSV_VARS.EPOCH
+        if epoch_col in df.columns and pd.api.types.is_datetime64_any_dtype(
+            df[epoch_col]
+        ):
+            df[epoch_col] = _format_epoch_as_nanosecond_string(df[epoch_col])
+
+        # Format every other numeric column the same way MATLAB does, rather than
+        # relying on pandas' default (variable-length, dtype-dependent) float/bool
+        # formatting. Without this, values that are numerically identical but
+        # arrived via a different dtype (e.g. a boolean quality_flag from a
+        # Parquet round-trip vs. an int64 one written natively) produce different
+        # CSV text for the same data.
+        for col in df.columns:
+            if col != epoch_col and pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = _format_numeric_as_matlab_repr(df[col])
+
+        df.to_csv(
             filepath,
             index=False,
             header=True,
-            date_format="%Y-%m-%dT%H:%M:%S.%f",
+        )
+        return filepath
+
+    def _write_to_parquet(self, filepath: Path, createDirectory=False):
+        if self._contents is None:
+            raise ValueError("No contents loaded to write to Parquet.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Writing calibration layer Parquet data to {filepath!s}.")
+
+        # The epoch column is stored as a native pandas datetime64[ns] column via
+        # pyarrow, which keeps full nanosecond precision losslessly (unlike CSV's
+        # text formatting, which truncates to microseconds). Other numeric columns
+        # are written as their native dtype for the same reason.
+        #
+        # Dictionary encoding (pyarrow's default) hurts here: offset_x/y/z are
+        # near-unique doubles, so paying for a dictionary + indices costs more
+        # than just compressing the raw values. Plain encoding measured ~15-19%
+        # smaller on real layer files - matching MATLAB's VariableEncoding="plain"
+        # (Layer.write), which both apps must use identically since either can
+        # write or read a layer's Parquet companion.
+        self._contents.to_parquet(
+            filepath,
+            index=False,
+            engine="pyarrow",
+            compression="zstd",
+            use_dictionary=False,
         )
         return filepath
 
@@ -116,7 +191,7 @@ class CalibrationLayer(Layer):
         if self._contents is None:
             if self._data_path is None:
                 raise ValueError("Calibration layer has no associated path for data.")
-            self._contents = self._values_from_csv(self._data_path)
+            self._load_data_file(self._data_path)
 
         logger.debug("Converting epoch values to raw epoch format for CDF.")
         self._convert_to_raw_epoch()
@@ -234,7 +309,12 @@ class CalibrationLayer(Layer):
                 f"Existing calibration values will be overwritten with data in {path!s}."
             )
 
-        self._contents = self._values_from_csv(path)
+        if path.suffix == ".parquet":
+            self._contents = self._values_from_parquet(path)
+        elif path.suffix == ".cdf":
+            self._contents = self._values_from_cdf(path)
+        else:
+            self._contents = self._values_from_csv(path)
         return self
 
     def _write_to_json(self, filepath: Path, createDirectory=False):
@@ -246,14 +326,20 @@ class CalibrationLayer(Layer):
     def save_calibration_layer(self, filepath, createDirectory, save_contents=True):
         if self._contents is not None:
             if self.metadata.data_filename is None:
+                # No format was specified for this write; default to parquet.
+                # Callers that care about the companion format should set
+                # metadata.data_filename themselves before calling write_to_file.
                 self.metadata.data_filename = Path(
                     CalibrationLayerPathHandler.from_filename(filepath)
-                    .get_equivalent_data_handler()
+                    .create_new_datafile_handler(LayerDataFormat.PARQUET)
                     .get_filename()
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
             if save_contents:
-                self._write_to_csv(data_file_path, createDirectory)
+                if data_file_path.suffix.lstrip(".") == LayerDataFormat.PARQUET.value:
+                    self._write_to_parquet(data_file_path, createDirectory)
+                else:
+                    self._write_to_csv(data_file_path, createDirectory)
 
         data_file_path = filepath.parent / self.metadata.data_filename
         if self.metadata.data_hash is None and data_file_path.exists():
@@ -269,22 +355,148 @@ class CalibrationLayer(Layer):
             self.metadata.dependencies.append(dependency)
 
         created = super()._write_to_json(filepath, createDirectory)
+
+        self._local_file_path = created
+
         return created
+
+    @staticmethod
+    def is_self_contained_format(extension: str) -> bool:
+        """True for formats (currently just CDF) that embed all layer data and
+        metadata into a single file, rather than a JSON + companion data-file pair."""
+        return extension == "cdf"
+
+    def get_data_file_type(self) -> FileType:
+        """Return the format of this layer's actual data: its own file for a
+        self-contained format (e.g. CDF), or the companion csv/parquet file for
+        a paired JSON layer.
+
+        Relies on ``metadata.data_filename`` always pointing at the file that
+        holds the data — the companion for a paired layer, or the layer's own
+        file for a self-contained one (see ``_build_from_values``).
+        """
+        if self.metadata.data_filename is None:
+            raise ValueError(
+                "Layer has no data_filename set; cannot determine its data file type."
+            )
+        return FileType(Path(self.metadata.data_filename).suffix.lstrip("."))
+
+    def get_datafile_path(self, local_metadata_path: Path | None = None) -> Path | None:
+        """Return the path of the companion data file (CSV or Parquet) for a JSON layer, or the layer's own path for a self-contained format (CDF).
+        The path will be relative to the JSON layer's location unless ``local_metadata_path`` is providedwhen it will be relative to that instead.
+        """
+        if self.is_self_contained_format(self.get_data_file_type().value):
+            return (
+                local_metadata_path
+                if local_metadata_path is not None
+                else self._local_file_path
+            )
+
+        if self.metadata.data_filename is None:
+            return None
+
+        if local_metadata_path is None and self._local_file_path is None:
+            raise ValueError(
+                "Cannot determine companion data file path: both local_metadata_path and _local_file_path are None."
+            )
+
+        parent_folder = (
+            local_metadata_path.parent
+            if local_metadata_path is not None
+            else self._local_file_path.parent
+        )
+
+        return parent_folder / Path(self.metadata.data_filename).name
+
+    def prepare_metadata_for_output_format(
+        self,
+        output_handler: CalibrationLayerPathHandler,
+        layer_data_format: LayerDataFormat | None,
+    ) -> Path | None:
+        """Update ``metadata.data_filename``/``data_hash`` to match
+        ``output_handler``'s target format, ready for
+        ``write_to_file(work_folder / output_handler.get_filename())``.
+
+        Clears the companion reference entirely for self-contained formats
+        (CDF, in which case ``layer_data_format`` is unused and may be
+        ``None``); otherwise ``layer_data_format`` must be provided and is
+        used to build the equivalent companion data file handler, clearing
+        any stale hash so it is recomputed for the new content.
+
+        Returns the companion data file's filename, or ``None`` for
+        self-contained formats.
+        """
+        if self.is_self_contained_format(output_handler.extension):
+            self.metadata.data_filename = None
+            self.metadata.data_hash = None
+            return None
+
+        assert layer_data_format is not None, (
+            "layer_data_format is required when the output format is not self-contained"
+        )
+        data_handler = output_handler.create_new_datafile_handler(layer_data_format)
+        companion_filename = Path(data_handler.get_filename())
+        self.metadata.data_filename = companion_filename
+        self.metadata.data_hash = None
+        return companion_filename
+
+    def update_file_contents_based_on_version(
+        self, handler: CalibrationLayerPathHandler, source_file: Path
+    ) -> Path:
+        """Rewrite this layer's data_filename to match handler's current version,
+        if the datastore assigned a different version than source_file was
+        originally generated at (e.g. v001 -> v002 because v001 already exists
+        with different content).
+
+        Returns source_file unchanged if no rewrite is needed, otherwise a new
+        temporary file the caller must delete.
+        """
+        current = (
+            Path(self.metadata.data_filename).name
+            if self.metadata.data_filename
+            else None
+        )
+        if current is None:
+            return source_file
+
+        # Preserve the companion's actual current format (csv/parquet) rather
+        # than guessing — we are re-versioning an existing file, not creating
+        # a new one, so its format is already fixed.
+        current_format = LayerDataFormat(Path(current).suffix.lstrip("."))
+        expected_data_filename = handler.create_new_datafile_handler(
+            current_format
+        ).get_filename()
+
+        if current == expected_data_filename:
+            return source_file  # already correct — no rewrite needed
+
+        self.metadata.data_filename = Path(expected_data_filename)
+        self.version = handler.version
+        self.version_major = handler.version_major
+        new_version_path = source_file.parent / handler.get_filename()
+        self.write_to_file(new_version_path)
+
+        logger.debug(
+            f"Rewrote {source_file.name} data_filename from {current!r} to "
+            f"{expected_data_filename!r} in {new_version_path.name}."
+        )
+        return new_version_path
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
         if path.suffix == ".csv":
             return cls._from_csv(path)
+        elif path.suffix == ".parquet":
+            return cls._from_parquet(path)
+        elif path.suffix == ".cdf":
+            return cls._from_cdf(path)
         else:
             return super().from_file(path, load_contents)
 
     @classmethod
-    def _values_from_csv(cls, path: Path) -> pd.DataFrame:
-        df = pd.read_csv(
-            path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
-        )
+    def _validate_contents(cls, df: pd.DataFrame, path: Path) -> pd.DataFrame:
         if df.columns.empty:
-            raise ValueError("CSV file is empty or does not contain valid data")
+            raise ValueError(f"Layer data file '{path.name}' is empty or invalid")
 
         # NaN is no longer valid in quality_flag or quality_bitmask columns.
         # Use 0 for no-op, positive to set bits, negative to clear bits.
@@ -302,9 +514,29 @@ class CalibrationLayer(Layer):
         return df
 
     @classmethod
-    def _from_csv(cls, path: Path):
-        df = cls._values_from_csv(path)
+    def _values_from_csv(cls, path: Path) -> pd.DataFrame:
+        df = pd.read_csv(
+            path, parse_dates=[CONSTANTS.CSV_VARS.EPOCH], float_precision="round_trip"
+        )
+        return cls._validate_contents(df, path)
 
+    @classmethod
+    def _values_from_parquet(cls, path: Path) -> pd.DataFrame:
+        df = pd.read_parquet(path, engine="pyarrow")
+
+        # MATLAB writes the epoch column as text (to avoid parquetwrite's native
+        # datetime round-trip truncating to microsecond precision); Python writes
+        # it as a native datetime64[ns] column. Normalise both to datetime64[ns].
+        epoch_col = CONSTANTS.CSV_VARS.EPOCH
+        if epoch_col in df.columns and not pd.api.types.is_datetime64_any_dtype(
+            df[epoch_col]
+        ):
+            df[epoch_col] = pd.to_datetime(df[epoch_col])
+
+        return cls._validate_contents(df, path)
+
+    @classmethod
+    def _build_from_values(cls, df: pd.DataFrame, path: Path) -> "CalibrationLayer":
         validity = (
             Validity(
                 start=df[CONSTANTS.CSV_VARS.EPOCH].iloc[0],
@@ -316,13 +548,19 @@ class CalibrationLayer(Layer):
 
         calibration_metadata_handler = CalibrationLayerPathHandler.from_filename(path)
 
-        method: CalibrationMethod = (
-            CalibrationMethod.from_string(calibration_metadata_handler.descriptor)
-            if (
-                calibration_metadata_handler and calibration_metadata_handler.descriptor
-            )
-            else CalibrationMethod.NOOP
-        )
+        method = CalibrationMethod.NOOP
+        if calibration_metadata_handler and calibration_metadata_handler.descriptor:
+            # descriptor is "{method}" or "{method}-{mode}" (e.g. "quality-norm");
+            # try the full descriptor first, then just the method portion before
+            # the first hyphen, since CalibrationMethod.short_name never itself
+            # contains a hyphen.
+            descriptor = calibration_metadata_handler.descriptor
+            for candidate in (descriptor, descriptor.split("-", 1)[0]):
+                try:
+                    method = CalibrationMethod.from_string(candidate)
+                    break
+                except ValueError:
+                    continue
 
         instance = cls(
             id="",
@@ -346,8 +584,74 @@ class CalibrationLayer(Layer):
         return instance
 
     @classmethod
+    def _from_csv(cls, path: Path):
+        return cls._build_from_values(cls._values_from_csv(path), path)
+
+    @classmethod
+    def _from_parquet(cls, path: Path):
+        return cls._build_from_values(cls._values_from_parquet(path), path)
+
+    @classmethod
+    def _values_from_cdf(cls, path: Path) -> pd.DataFrame:
+        logger.info(f"Reading calibration layer CDF data from {path!s}.")
+        dataset = cdf_to_xarray(str(path), to_datetime=False)
+
+        epoch = lib.cdfepoch.to_datetime(dataset[CONSTANTS.CDF_VARS.EPOCH].values)
+        offsets = dataset[CONSTANTS.CDF_VARS.OFFSETS].values
+
+        df = pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(epoch),
+                CONSTANTS.CSV_VARS.OFFSET_X: offsets[:, 0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: offsets[:, 1],
+                CONSTANTS.CSV_VARS.OFFSET_Z: offsets[:, 2],
+                CONSTANTS.CSV_VARS.TIMEDELTA: dataset[
+                    CONSTANTS.CDF_VARS.TIMEDELTAS
+                ].values,
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: dataset[
+                    CONSTANTS.CDF_VARS.QUALITY_FLAG
+                ].values.astype(int),
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: dataset[
+                    CONSTANTS.CDF_VARS.QUALITY_BITMASK
+                ].values.astype(int),
+            }
+        )
+
+        fill_mask = df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ].isin([CONSTANTS.CDF_FLOAT_FILLVAL])
+        df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ] = df[
+            [
+                CONSTANTS.CSV_VARS.OFFSET_X,
+                CONSTANTS.CSV_VARS.OFFSET_Y,
+                CONSTANTS.CSV_VARS.OFFSET_Z,
+            ]
+        ].mask(fill_mask, np.nan)
+
+        return cls._validate_contents(df, path)
+
+    @classmethod
+    def _from_cdf(cls, path: Path):
+        layer = cls._build_from_values(cls._values_from_cdf(path), path)
+        layer._local_file_path = path
+        return layer
+
+    @classmethod
     def create_zero_offset_layer_from_science(
-        cls, science_layer: ScienceLayer, settings: AppSettings = AppSettings()
+        cls,
+        science_layer: ScienceLayer,
+        settings: AppSettings = AppSettings(),
+        layer_data_format: LayerDataFormat | None = None,
     ) -> "CalibrationLayer":
         if not science_layer:
             raise ValueError(
@@ -391,7 +695,11 @@ class CalibrationLayer(Layer):
                 content_date=content_date,
                 settings=settings,
             )
-            datefilehandler = calibration_handler.get_equivalent_data_handler()
+            datefilehandler = calibration_handler.create_new_datafile_handler(
+                layer_data_format
+                if layer_data_format is not None
+                else LayerDataFormat.PARQUET
+            )
             datefilename = Path(datefilehandler.get_filename())
 
         metadata = CalibrationMetadata(

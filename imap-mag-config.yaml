@@ -80,6 +80,12 @@ plot_ialirt:
 apply:
     work_sub_folder:
 
+# Configuration for the calibrate-convert flow, which converts existing calibration
+# layer files between csv/parquet/cdf formats.
+convert:
+    work_sub_folder: convert
+    publish_to_data_store: true
+
 # Configuration for the calibrate flow. work_sub_folder supports {date}/{mode}/{sensor}
 # placeholders so each calibrate run gets its own uniquely-named work folder.
 calibrate:
