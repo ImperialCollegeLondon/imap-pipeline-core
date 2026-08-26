@@ -163,6 +163,21 @@ class TestCalibrationLayerWriteToParquet:
         }
         assert compressions == {"ZSTD"}
 
+    def test_write_to_parquet_uses_plain_encoding(self, tmp_path):
+        """Plain (not dictionary) encoding, matching MATLAB's Layer.write, since
+        either app may write or read a layer's Parquet companion."""
+        import pyarrow.parquet as pq
+
+        layer = _make_layer_with_contents()
+        output_file = tmp_path / "output.parquet"
+        layer._write_to_parquet(output_file)
+
+        metadata = pq.ParquetFile(output_file).metadata
+        for i in range(metadata.row_group(0).num_columns):
+            encodings = metadata.row_group(0).column(i).encodings
+            assert "PLAIN_DICTIONARY" not in encodings
+            assert "RLE_DICTIONARY" not in encodings
+
     def test_write_to_file_dispatches_parquet_on_parquet_extension(self, tmp_path):
         layer = _make_layer_with_contents()
         output_file = tmp_path / "output.parquet"
