@@ -11336,6 +11336,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: ACE_mag_noaa_*.csv
   ace_wind_noaa:
     target_table: ace_wind_noaa
     id_mapping:
@@ -11363,6 +11364,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: ACE_wind_noaa_*.csv
   solar_mag_noaa:
     target_table: solar_mag_noaa
     id_mapping:
@@ -11398,6 +11400,7 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: SOLAR1_mag_noaa_*.csv
   solar_wind_noaa:
     target_table: solar_wind_noaa
     id_mapping:
@@ -11425,3 +11428,4 @@ jobs:
           db_column: file_date
           type: date
           use_to_delete_old_rows: true
+    filename_match: SOLAR1_wind_noaa_*.csv
