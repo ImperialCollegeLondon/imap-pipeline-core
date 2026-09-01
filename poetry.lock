@@ -5152,34 +5152,39 @@ scipy = ">=1.0"
 
 [[package]]
 name = "spiceypy"
-version = "8.1.2"
+version = "8.2.0"
 description = "A Python Wrapper for the NAIF CSPICE Toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "spiceypy-8.1.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e92b33da65c7d604ff8adc42bf3605de40c5aaf2ffce2dbf76e95db7a9346b05"},
-    {file = "spiceypy-8.1.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:697f643e46e94e4f3c0f4d82f754ef31b61ee1dab1cd28cebb2f3601a05977c0"},
-    {file = "spiceypy-8.1.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9312973300d12e919f6cad0331e19b8465288f8b24e481b373d9ad4eb9db9a41"},
-    {file = "spiceypy-8.1.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8c0900ad0b91b660961ffb84d164c3fef1114cfde34f53449c5f6962ce687a97"},
-    {file = "spiceypy-8.1.2-cp311-cp311-win_amd64.whl", hash = "sha256:786404edfca6e1e4a35a412f3b104dda94c58dff2945d284d9b2dbec08b32d23"},
-    {file = "spiceypy-8.1.2-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:e7171b7bafb7f1b3e89358be7c8dd29021206f6ade769f30fca96849c042163f"},
-    {file = "spiceypy-8.1.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:db43ad59f835cb291e582440f031beec06ba9168f8e896aec67d8c91afe24e17"},
-    {file = "spiceypy-8.1.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6bd346b5eedf68b167929c479f1c690659814c5456eb6f9e3e0ac178d8eb3dab"},
-    {file = "spiceypy-8.1.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f1c1966f52c1979b9fc83cfe9f1dc93b5993c8e3f5852d541c4b89dbfc35ea66"},
-    {file = "spiceypy-8.1.2-cp312-cp312-win_amd64.whl", hash = "sha256:084e8ea67754035565dd77065e7bf29ce7e23cea56999ab49f14fdfdb1b7d5a4"},
-    {file = "spiceypy-8.1.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:ec417e90082bcb5c3d7dcbb0a773b1ef2ecd96a76818f26f7157eef03547485b"},
-    {file = "spiceypy-8.1.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d665674053cb7e67d4d22a98d48b5f1e97bce46064437b05865d0f2718bef6a3"},
-    {file = "spiceypy-8.1.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:233dd5b7b187a666b36bd12cf3c9de9295e2c543d1c93610fd95a874bb32f7ad"},
-    {file = "spiceypy-8.1.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a51c062b00c0eb4309d2eb3760ebd70fc26dbad86d483dea7e51830b306f1845"},
-    {file = "spiceypy-8.1.2-cp313-cp313-win_amd64.whl", hash = "sha256:a2c22485f26f2fd9d5ac0226fded7e1545a44260c6441fe4ed43b1be1a23a389"},
-    {file = "spiceypy-8.1.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:400073e767302a55e173cb847e47600aaca910b1bea1ccf61c21c957554968ef"},
-    {file = "spiceypy-8.1.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:7f01602d2396bb90d84c8557781d45168466078f6a75bbc85fd90e8e4788166f"},
-    {file = "spiceypy-8.1.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:51943ee83011dbbf3a23799cb57a45eef74538bfc625ae8e4bf2dfe0e873fb28"},
-    {file = "spiceypy-8.1.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f560dc4aef2522b66366d3ef3017b987e2e79a69582d568008312c6881e78e9b"},
-    {file = "spiceypy-8.1.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:b44eba9a545ddd2019a720a1b01bf65bbbd0d09e082426678f9ce1395400101c"},
-    {file = "spiceypy-8.1.2-cp314-cp314-win_amd64.whl", hash = "sha256:272f2b576bd4b95e228b525a9c345a0349c9ebf6aba0dc6a1d3e39fcbe44f84d"},
-    {file = "spiceypy-8.1.2.tar.gz", hash = "sha256:26a12b2b9577bba28f2962b6628e81cad4f790c21b969d3770bbafb291797e83"},
+    {file = "spiceypy-8.2.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:1548848424fc165ae46cb7c0ec029b786fe50d0da7f52eb1e71d3fa3b6bad5db"},
+    {file = "spiceypy-8.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1647e510fb8484f4cf08e6a6b2c57ba806dc7e47a6d9301bdedbe56ff0745135"},
+    {file = "spiceypy-8.2.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:55f05d33d02a1d36cc72ed3e875737e5bbd702c967d9ca5c5f487ad58f8a7e84"},
+    {file = "spiceypy-8.2.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:cdc6d8a0c4ded38d258d05d16d00c5132fc90c0e1bbb1df373f654ea704cac83"},
+    {file = "spiceypy-8.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:277fde0ca5d4a7e7043b227242c835a61d83c3ee5895c324dc3dbf452a762da9"},
+    {file = "spiceypy-8.2.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:9d67acd28c47bff75c785f6fea2b81a899b1c31eadc50472887097d50ef89945"},
+    {file = "spiceypy-8.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:601eba9762cc29cddbe6ec215a06bb42ae8e0f143be3f93a47f327ef989be9f1"},
+    {file = "spiceypy-8.2.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:95ae46c2408e14edd39f2cda8bcbdc05c3d80dc4b292e6483c8f3351fc708b29"},
+    {file = "spiceypy-8.2.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b0a00e825ea7b1bd000e3f0b3b8bdacbaa4bb1b3756490856f9ca6dd3488ab4f"},
+    {file = "spiceypy-8.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:44ddef79b8bb75ee992bf8d0984190b0765aca89a8c7e5a500dad9faa7e51564"},
+    {file = "spiceypy-8.2.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:6957975d7160b2ea397cd96723b6f05f72f2bc4e68cfd602fe357436b7eaef7d"},
+    {file = "spiceypy-8.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:521ea59af51137138227602a4d0496e2317da73b9913be8b7da8d3d0777e9333"},
+    {file = "spiceypy-8.2.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9697ec159d1cd585d9da169739573bc09d8c499ea3d61b69772e4224fe83072e"},
+    {file = "spiceypy-8.2.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c91643e43d0b1d0de5616ffd9a2a82a7e2ae7ea50c1bf5f740e89ed1e67d4996"},
+    {file = "spiceypy-8.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:744487aa627f6a49d5bc906719f54382e85028472fe7451fe5a7e3746443e8e8"},
+    {file = "spiceypy-8.2.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:7b111a181c3d2d94c55986ccb8abe1470b792133ad2327c4ee532f47c517257f"},
+    {file = "spiceypy-8.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:e6c9be1b6f23d521551721b47196bc2609cca25abf6b809606c6eb956e0f1090"},
+    {file = "spiceypy-8.2.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c8e808703c5d0889d4fc84a017e91fbb01bd61878ce063a3fddc104584e5e474"},
+    {file = "spiceypy-8.2.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b7abbcc53320d74a1d1cf3e86f1c4bcd4bcc2e733a25c3b32fffbac677606ee1"},
+    {file = "spiceypy-8.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:0f7ae4fe9e0e3e9bcf6036a161cf0f0197eecf268a7fc574af5e9d15bab1d3a7"},
+    {file = "spiceypy-8.2.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:b508acc2a39d1a4b80386b9b258d4eb06a093b74f1efb24734789fafbd2d192d"},
+    {file = "spiceypy-8.2.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:f356e910bc5a080a898e234c077cd7b500e29bd81215f8063d27698d48a6b55d"},
+    {file = "spiceypy-8.2.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:875b32cacc9768426c29a75bde8385343c7e04e111f4d15651d12405bd6390fa"},
+    {file = "spiceypy-8.2.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:00c2714d3dd67180794ad0b66735d6cac470e19627d6e99f9628a50b52133d90"},
+    {file = "spiceypy-8.2.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:dc3c8aa6fb6270a53053af7606b4351b3b0855c76882fd163d27d44c2cea41bf"},
+    {file = "spiceypy-8.2.0-cp314-cp314-win_amd64.whl", hash = "sha256:06ca746324c4adc8bdff2a79a918c9479b20d7e4dcd154af74ed83d1afe24714"},
+    {file = "spiceypy-8.2.0.tar.gz", hash = "sha256:6f820a48207f5c7794ab484d6daa5a12b2f76ea78ee1364a7465c94d616f9e11"},
 ]
 
 [package.dependencies]
@@ -5793,4 +5798,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "cc113fe3cd90eecf1df6ccc61358e5be1d6a4e4b8fa04fa1fb95412219079cce"
+content-hash = "2c358078347b1698fff4f20a3e10bdbed93e98384c243caa726a34fde0a0203c"
