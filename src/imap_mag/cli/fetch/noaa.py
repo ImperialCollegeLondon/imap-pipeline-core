@@ -1,59 +1,15 @@
+import asyncio
 import logging
-from pathlib import Path
 from typing import Annotated, Literal
 
 import typer
 
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
-from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.config import AppSettings, FetchMode
-from imap_mag.download.FetchNOAA import FetchNOAA
-from imap_mag.io import DatastoreFileManager, FileFinder
-from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.data_pipelines import AutomaticRunParameters
+from imap_mag.data_pipelines.NOAAPipeline import NOAAPipeline
 
 logger = logging.getLogger(__name__)
-
-
-def _create_fetch_noaa(app_settings: AppSettings) -> FetchNOAA:
-    """Create a FetchNOAA instance with common configuration."""
-
-    data_access = NOAARTSWApiClient(
-        app_settings.fetch_solar1_ace.api.url_base,
-    )
-    datastore_finder = FileFinder(app_settings.data_store)
-    work_folder = app_settings.setup_work_folder_for_command(
-        app_settings.fetch_solar1_ace
-    )
-
-    initialiseLoggingForCommand(
-        work_folder
-    )  # DO NOT log anything before this point (it won't be captured in the log file)
-
-    return FetchNOAA(data_access, work_folder, datastore_finder)
-
-
-def _publish_files(
-    app_settings: AppSettings,
-    downloaded_files: dict[Path, IFilePathHandler],
-    fetch_mode: FetchMode,
-) -> dict[Path, IFilePathHandler]:
-    """Publish downloaded files to data store."""
-
-    if not app_settings.fetch_solar1_ace.publish_to_data_store:
-        logger.info("Files not published to data store based on config.")
-        return downloaded_files
-
-    datastore_manager = DatastoreFileManager.CreateByMode(
-        app_settings,
-        use_database=(fetch_mode == FetchMode.DownloadAndUpdateProgress),
-    )
-
-    result: dict[Path, IFilePathHandler] = dict()
-    for file, path_handler in downloaded_files.items():
-        (output_file, output_handler) = datastore_manager.add_file(file, path_handler)
-        result[output_file] = output_handler
-
-    return result
 
 
 # E.g.,
@@ -77,22 +33,28 @@ def fetch_noaa(
             help="Whether to download only or download and update progress in database",
         ),
     ] = FetchMode.DownloadOnly,
-) -> dict[Path, IFilePathHandler]:
+) -> None:
     """Download SOLAR1 and ACE data from NOAA."""
 
-    app_settings = AppSettings()  # type: ignore
+    app_settings = AppSettings()  #  type: ignore
+    work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_spice)
+    initialiseLoggingForCommand(work_folder)
 
-    fetch = _create_fetch_noaa(app_settings)
-
-    downloaded: dict[Path, IFilePathHandler] = fetch.download_csv(
-        spacecraft=spacecraft, instrument=instrument
+    pipeline = NOAAPipeline(
+        spacecraft=spacecraft,
+        instrument=instrument,
+        database=None,
+        settings=app_settings,
     )
+    run_params = AutomaticRunParameters()
 
-    if not downloaded:
-        logger.info(f"No '{instrument}' data downloaded for {spacecraft}.")
-    else:
-        logger.debug(
-            f"Downloaded {len(downloaded)} files:\n{', '.join(str(f) for f in downloaded.keys())}"
-        )
+    pipeline.build(run_params)
+    asyncio.run(pipeline.run())
 
-    return _publish_files(app_settings, downloaded, fetch_mode)
+    result = pipeline.get_results()
+    if not result.success:
+        raise RuntimeError(f"Pipeline failed: {result}")
+
+    logger.info(
+        f"NOAA data download complete. {len(result.data_items)} files processed."
+    )

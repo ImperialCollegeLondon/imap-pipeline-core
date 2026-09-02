@@ -61,6 +61,7 @@ class PREFECT_CONSTANTS:
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
         IMAP_CRON_DATASTORE_INDEXER = "IMAP_CRON_DATASTORE_INDEXER"
+        POLL_NOAA_CRON = "IMAP_CRON_POLL_NOAA"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -95,6 +96,7 @@ class PREFECT_CONSTANTS:
         POSTGRES_UPLOAD = "postgres-upload"
         DATASTORE_CLEANUP = "datastore-cleanup"
         DATASTORE_INDEXER = "datastore-indexer"
+        POLL_NOAA = "poll-noaa"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
@@ -121,3 +123,4 @@ class PREFECT_CONSTANTS:
         POSTGRES_UPLOAD = "postgres_upload"
         DATASTORE_CLEANUP = "datastore_cleanup"
         DATASTORE_INDEXER = "datastore_indexer"
+        POLL_NOAA = "poll_noaa"
