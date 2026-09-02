@@ -1,13 +1,15 @@
 [project]
 requires-python = ">=3.11,<3.13" # blocked by imap_processing https://github.com/IMAP-Science-Operations-Center/imap_processing/blob/dev/pyproject.toml#L17
 name = "imap-mag"
-version = "6.6.1"
+version = "6.7.0"
 description = "Process IMAP data"
 authors = [
   {name = "alastairtree"},
   {name = "mhairifin"},
   {name = "mfacchinelli"},
   {name = "jean-imperial"},
+  {name = "miruuna"},
+  {name = "dalonsoa"},
 ]
 readme = "README.md"
 dependencies = [
