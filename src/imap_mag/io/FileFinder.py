@@ -176,23 +176,16 @@ class FileFinder:
             candidates: list[tuple[str, int]] = []
             for path in candidate_paths:
                 handler = CalibrationLayerPathHandler.from_filename(path.name)
-                if handler is None or not handler.is_metadata_file():
+                if handler is None or not self.__is_layer_candidate_match(
+                    path.name,
+                    handler,
+                    fnmatch_pattern,
+                    layer,
+                    mode,
+                    start_date,
+                    end_date,
+                ):
                     continue
-                if fnmatch_pattern is not None:
-                    if not fnmatch.fnmatch(path.name, fnmatch_pattern):
-                        continue
-                elif path.name != layer:
-                    continue
-                if mode is not None and f"{mode.short_name}-layer" not in path.name:
-                    continue
-                if start_date is not None and handler.content_date is not None:
-                    effective_end = end_date or start_date
-                    if not (
-                        start_date.date()
-                        <= handler.content_date.date()
-                        <= effective_end.date()
-                    ):
-                        continue
                 candidates.append((path.name, handler.version))
 
             if candidates:
@@ -212,6 +205,35 @@ class FileFinder:
                 )
 
         return resolved
+
+    @staticmethod
+    def __is_layer_candidate_match(
+        path_name: str,
+        handler: CalibrationLayerPathHandler,
+        fnmatch_pattern: str | None,
+        layer: str,
+        mode: ScienceMode | None,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> bool:
+        """Whether a candidate layer file matches the requested layer pattern,
+        science mode and date range."""
+        if not handler.is_metadata_file():
+            return False
+        if fnmatch_pattern is not None:
+            if not fnmatch.fnmatch(path_name, fnmatch_pattern):
+                return False
+        elif path_name != layer:
+            return False
+        if mode is not None and f"{mode.short_name}-layer" not in path_name:
+            return False
+        if start_date is not None and handler.content_date is not None:
+            effective_end = end_date or start_date
+            if not (
+                start_date.date() <= handler.content_date.date() <= effective_end.date()
+            ):
+                return False
+        return True
 
     @staticmethod
     def __candidate_layer_paths(

@@ -193,23 +193,22 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         Reading the layer's own data_filename field means the lookup stays correct
         regardless of what version number is currently set on the handler — both
         work-folder v001.json and datastore v002.json point at their own companion.
-        """
-        try:
-            from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
-            cal = CalibrationLayer.from_file(alongside, load_contents=False)
-            companion = cal.get_datafile_path()
-            if companion is not None:
-                return companion
-        except Exception:
-            pass
-        # Last resort when the JSON can't be read to determine the real
-        # companion extension: guess the default. This path is only used for
-        # existence checks below, so a wrong guess just reads as "not found".
-        return (
-            alongside.parent
-            / self.create_new_datafile_handler(LayerDataFormat.PARQUET).get_filename()
-        )
+        Raises if the companion cannot be determined from ``alongside`` (the JSON
+        can't be read, or has no data_filename set) rather than guessing an
+        extension: a layer file that can't be understood is a bigger problem than
+        a missing companion.
+        """
+        from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+        cal = CalibrationLayer.from_file(alongside, load_contents=False)
+        companion = cal.get_datafile_path()
+        if companion is None:
+            raise ValueError(
+                f"Could not determine companion data file for {alongside}: "
+                "no data_filename set in its metadata."
+            )
+        return companion
 
     def get_content_identity(
         self, file_path_override: Path | None = None, parent_folder: Path = Path()
@@ -242,8 +241,15 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             except Exception:
                 pass
 
-            companion = self._companion_data_path(source_file)
-            if companion.exists():
+            try:
+                companion = self._companion_data_path(source_file)
+            except Exception as exc:
+                logger.debug(
+                    f"Could not determine companion data file for {source_file}: {exc}"
+                )
+                companion = None
+
+            if companion is not None and companion.exists():
                 logger.warning(
                     f"No data_hash in metadata of {source_file}. Falling back to hashing the companion CSV."
                 )

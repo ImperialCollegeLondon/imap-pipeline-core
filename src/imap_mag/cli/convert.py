@@ -327,7 +327,11 @@ def _verify_matching_contents(
     ]
     for col in numeric_cols:
         if col not in original_df.columns or col not in converted_df.columns:
-            continue
+            raise ValueError(
+                f"Conversion verification failed for {layer_name}: "
+                f"column '{col}' is missing from the "
+                f"{'original' if col not in original_df.columns else 'converted'} data."
+            )
         original_values = original_df[col].to_numpy(dtype=float)
         converted_values = converted_df[col].to_numpy(dtype=float)
         if involves_cdf:
@@ -349,7 +353,11 @@ def _verify_matching_contents(
 
     for col in [CONSTANTS.CSV_VARS.QUALITY_FLAG, CONSTANTS.CSV_VARS.QUALITY_BITMASK]:
         if col not in original_df.columns or col not in converted_df.columns:
-            continue
+            raise ValueError(
+                f"Conversion verification failed for {layer_name}: "
+                f"column '{col}' is missing from the "
+                f"{'original' if col not in original_df.columns else 'converted'} data."
+            )
         if not np.array_equal(
             original_df[col].to_numpy(dtype=int), converted_df[col].to_numpy(dtype=int)
         ):

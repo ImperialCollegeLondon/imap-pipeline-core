@@ -474,7 +474,11 @@ def cleanup_workfolder_after_apply(
             try:
                 cal = CalibrationLayer.from_file(layer_file, load_contents=False)
                 data_filename = cal.get_datafile_path()
-            except Exception:
+            except Exception as exc:
+                logger.error(
+                    f"Could not load calibration layer {layer_file} to determine "
+                    f"its companion data file for cleanup: {exc}"
+                )
                 data_filename = None
 
             if data_filename is not None:
