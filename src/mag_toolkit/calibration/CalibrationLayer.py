@@ -459,9 +459,7 @@ class CalibrationLayer(Layer):
         if current is None:
             return source_file
 
-        # Preserve the companion's actual current format (csv/parquet) rather
-        # than guessing — we are re-versioning an existing file, not creating
-        # a new one, so its format is already fixed.
+        # Preserve the companion's current format (csv/parquet) 
         current_format = LayerDataFormat(Path(current).suffix.lstrip("."))
         expected_data_filename = handler.create_new_datafile_handler(
             current_format
