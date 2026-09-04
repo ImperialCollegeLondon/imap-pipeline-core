@@ -171,7 +171,7 @@ def _save_calibration_outputs(
             # we deliberately did not save the data file with its own handler, as that would cause it to be versioned independently of the JSON layer.
             # The calibration job is expected to honour the requested layer_data_format
             # exactly; a mismatch means the job did not produce the format it was asked
-            # for, which is a bug worth failing loudly on rather than silently adapting to.
+            # for
             data_handler = handler.create_new_datafile_handler(  # type: ignore
                 layer_data_format
             )
