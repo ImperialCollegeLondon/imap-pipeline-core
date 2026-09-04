@@ -90,8 +90,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         """Build a handler for a *new* companion data file in the given format.
 
         Only for creating new output: the caller must already know what format
-        it is writing (csv/parquet), since that is a property of the write
-        operation, not something a path handler can infer. To find the
+        it is writing (csv/parquet). To find the
         companion of an *existing* layer, read its data_filename from a
         CalibrationLayer instance instead (see ``CalibrationLayer.from_file``).
         """
