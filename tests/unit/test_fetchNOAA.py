@@ -170,6 +170,46 @@ def test_process_noaa_wind_preserves_values() -> None:
     assert all(result["time_tag"].tolist() == data["time_tag"])
 
 
+def test_process_noaa_wind_converts_decimal_temperature_to_integer() -> None:
+    # Set up - temperature arrives as decimals from the API.
+    data = pd.DataFrame(
+        {
+            "time_tag": ["2026-09-02T00:00:00", "2026-09-02T00:01:00"],
+            "proton_speed": [400.7, 450.0],
+            "proton_temperature": [95964.0, 310921.6],
+            "proton_density": [2.78, 6.0],
+        }
+    )
+
+    # Exercise.
+    result = _process_noaa_wind(data)
+
+    # Verify.
+    assert result["temperature"].dtype == "Int64"
+    assert result["temperature"].tolist() == [95964, 310922]
+
+
+def test_process_noaa_wind_handles_missing_values() -> None:
+    # Set up.
+    data = pd.DataFrame(
+        {
+            "time_tag": ["2026-09-02T00:00:00"],
+            "proton_speed": [None],
+            "proton_temperature": [None],
+            "proton_density": [None],
+        }
+    )
+
+    # Exercise.
+    result = _process_noaa_wind(data)
+
+    # Verify - missing values are preserved rather than raising.
+    assert result["temperature"].dtype == "Int64"
+    assert result["temperature"].isna().all()
+    assert result["speed"].isna().all()
+    assert result["density"].isna().all()
+
+
 # ---------------------------------------------------------------------------
 # FetchNOAA._get_index_as_datetime
 # ---------------------------------------------------------------------------
