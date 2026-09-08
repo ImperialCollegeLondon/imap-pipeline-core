@@ -161,6 +161,10 @@ class FetchNOAA:
                 sorted(combined_data.columns), axis="columns"
             )
 
+            # Restore the processed column types, as combining with data read
+            # from an existing file can change them (e.g. integer to float).
+            combined_data = _match_column_types(combined_data, data.dtypes)
+
             combined_data.to_csv(
                 file_path, mode=write_mode, header=(write_mode == "w"), index=True
             )
@@ -171,6 +175,35 @@ class FetchNOAA:
             downloaded_files[file_path] = path_handler
 
         return downloaded_files
+
+
+def _match_column_types(data: pd.DataFrame, dtypes: pd.Series) -> pd.DataFrame:
+    """Force the numeric columns of a dataframe to the given types.
+
+    Args:
+        data: Dataframe whose columns need converting.
+        dtypes: Types to apply, keyed by column name. Columns not present in
+            the dataframe, and non-numeric types, are ignored.
+
+    Returns:
+        Dataframe with the numeric columns converted.
+    """
+    for column, dtype in dtypes.items():
+        if (
+            column not in data.columns
+            or data[column].dtype == dtype
+            or not pd.api.types.is_numeric_dtype(dtype)
+        ):
+            continue
+
+        values = pd.to_numeric(data[column], errors="coerce")
+
+        if pd.api.types.is_integer_dtype(dtype):
+            values = values.round()
+
+        data[column] = values.astype(dtype)
+
+    return data
 
 
 def _process_noaa_mag(data: pd.DataFrame) -> pd.DataFrame:
@@ -196,7 +229,9 @@ def _process_noaa_mag(data: pd.DataFrame) -> pd.DataFrame:
 def _process_noaa_wind(data: pd.DataFrame) -> pd.DataFrame:
     """Process the wind data to pick only the relevant columns.
 
-    It also renames the columns to remove the 'proton_' prefix.
+    It also renames the columns to remove the 'proton_' prefix, and forces the
+    column types to match the database schema, i.e. floating point speed and
+    density, and integer temperature.
 
     Args:
         data: Plasma data to process.
@@ -210,11 +245,18 @@ def _process_noaa_wind(data: pd.DataFrame) -> pd.DataFrame:
         "proton_temperature",
         "proton_density",
     ]
-    data: pd.DataFrame = data[expected_columns]
-    return data.rename(
+    data: pd.DataFrame = data[expected_columns].rename(
         columns={
             "proton_speed": "speed",
             "proton_temperature": "temperature",
             "proton_density": "density",
         }
     )
+
+    data["speed"] = pd.to_numeric(data["speed"], errors="coerce").astype("Float64")
+    data["density"] = pd.to_numeric(data["density"], errors="coerce").astype("Float64")
+    data["temperature"] = (
+        pd.to_numeric(data["temperature"], errors="coerce").round().astype("Int64")
+    )
+
+    return data
