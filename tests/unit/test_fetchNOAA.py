@@ -10,6 +10,7 @@ import pytest
 from imap_mag.client.NOAAApiClient import NOAARTSWApiClient
 from imap_mag.download.FetchNOAA import (
     FetchNOAA,
+    _match_column_types,
     _process_noaa_mag,
     _process_noaa_wind,
 )
@@ -208,6 +209,67 @@ def test_process_noaa_wind_handles_missing_values() -> None:
     assert result["temperature"].isna().all()
     assert result["speed"].isna().all()
     assert result["density"].isna().all()
+
+
+# ---------------------------------------------------------------------------
+# _match_column_types
+# ---------------------------------------------------------------------------
+
+
+def test_match_column_types_restores_integer_column_after_combining() -> None:
+    # Set up - reading an existing CSV back turns Int64 temperature into float.
+    processed = pd.DataFrame({"temperature": pd.array([95964, 310922], dtype="Int64")})
+    combined = pd.DataFrame({"temperature": [95964.0, 310921.6]})
+
+    # Exercise.
+    result = _match_column_types(combined, processed.dtypes)
+
+    # Verify - rounded and back to the processed type.
+    assert result["temperature"].dtype == "Int64"
+    assert result["temperature"].tolist() == [95964, 310922]
+
+
+def test_match_column_types_restores_float_column_without_rounding() -> None:
+    processed = pd.DataFrame({"speed": pd.array([400.7], dtype="Float64")})
+    combined = pd.DataFrame({"speed": ["400.7"]})
+
+    result = _match_column_types(combined, processed.dtypes)
+
+    assert result["speed"].dtype == "Float64"
+    assert result["speed"].tolist() == [400.7]
+
+
+def test_match_column_types_skips_matching_absent_and_non_numeric() -> None:
+    # Set up - one column already matches, one is absent, one is non-numeric.
+    processed = pd.DataFrame(
+        {
+            "density": pd.array([2.78], dtype="Float64"),
+            "absent": pd.array([1], dtype="Int64"),
+            "time_tag": ["2026-09-02T00:00:00"],
+        }
+    )
+    combined = pd.DataFrame(
+        {"density": pd.array([2.78], dtype="Float64"), "time_tag": [20260902]}
+    )
+    before = combined.copy()
+
+    # Exercise.
+    result = _match_column_types(combined, processed.dtypes)
+
+    # Verify - nothing converted, nothing added.
+    pd.testing.assert_frame_equal(result, before)
+    assert "absent" not in result.columns
+
+
+def test_match_column_types_coerces_unparseable_values_to_missing() -> None:
+    processed = pd.DataFrame({"temperature": pd.array([1], dtype="Int64")})
+    combined = pd.DataFrame({"temperature": ["12.6", "n/a"]})
+
+    result = _match_column_types(combined, processed.dtypes)
+
+    assert result["temperature"].dtype == "Int64"
+    assert result["temperature"].tolist()[0] == 13
+    assert pd.isna(result["temperature"].tolist()[1])
 
 
 # ---------------------------------------------------------------------------
