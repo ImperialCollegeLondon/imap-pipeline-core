@@ -223,7 +223,9 @@ def _process_noaa_mag(data: pd.DataFrame) -> pd.DataFrame:
         "theta_gsm",
         "phi_gsm",
     ]
-    return data[expected_columns]
+    data = data[expected_columns]
+    data["b_mod"] = (data[["bx_gsm", "by_gsm", "bz_gsm"]] ** 2).sum(axis=1).pow(0.5)
+    return data
 
 
 def _process_noaa_wind(data: pd.DataFrame) -> pd.DataFrame:
