@@ -7,6 +7,7 @@ import typer
 from imap_mag.cli import calibrate, process, publish
 from imap_mag.cli.check import check
 from imap_mag.cli.cliUtils import globalState
+from imap_mag.cli.deleteOldDatabaseRows import delete_old_database_rows
 from imap_mag.cli.fetch import fetch
 from imap_mag.cli.plot import plot
 
@@ -21,6 +22,7 @@ def hello(name: str):
 app.command()(process.process)
 app.command()(calibrate.calibrate)
 app.command()(publish.publish)
+app.command("delete-old-database-rows")(delete_old_database_rows)
 
 app.add_typer(fetch.app, name="fetch", help="Fetch data from the SDC or WebPODA")
 app.add_typer(calibrate.app, name="calibration", help="Generate calibration parameters")

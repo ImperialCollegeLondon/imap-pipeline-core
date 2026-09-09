@@ -16,6 +16,7 @@ from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
+from prefect_server.deleteOldDatabaseRowsFlow import delete_old_database_rows_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -294,6 +295,31 @@ async def adeploy_flows(local_debug: bool = False):
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
+    delete_old_noaa_rows_schedules = []
+    for noaa_table in [
+        "ace_mag_noaa",
+        "ace_wind_noaa",
+        "solar_mag_noaa",
+        "solar_wind_noaa",
+    ]:
+        if get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.DELETE_OLD_DATABASE_ROWS_CRON
+        ):
+            delete_old_noaa_rows_schedules.append(
+                Cron(
+                    get_cron_from_env(
+                        PREFECT_CONSTANTS.ENV_VAR_NAMES.DELETE_OLD_DATABASE_ROWS_CRON
+                    ),
+                    timezone=timezone,
+                    parameters={
+                        "table": noaa_table,
+                        "older_than_days": 7,
+                        "datetime_column": "id",
+                    },
+                    slug=f"{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DELETE_OLD_DATABASE_ROWS}-{noaa_table}",
+                )
+            )
+
     publish_deployable = publish_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.PUBLISH,
         job_variables=shared_job_variables,
@@ -406,6 +432,14 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    delete_old_database_rows_deployable = delete_old_database_rows_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DELETE_OLD_DATABASE_ROWS,
+        job_variables=shared_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        schedules=delete_old_noaa_rows_schedules,
+    )
+
     datastore_indexer_deployable = index_datastore_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DATASTORE_INDEXER,
         cron=get_cron_from_env(
@@ -472,6 +506,7 @@ async def adeploy_flows(local_debug: bool = False):
         datastore_cleanup_deployable,
         datastore_indexer_deployable,
         poll_noaa_deployable,
+        delete_old_database_rows_deployable,
     )
 
     if local_debug:
