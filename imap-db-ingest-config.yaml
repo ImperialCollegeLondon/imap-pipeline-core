@@ -11321,6 +11321,10 @@ jobs:
         db_column: bz_gsm
         type: float
         nullable: false
+      b_mod:
+        db_column: b_mod
+        type: float
+        nullable: false
       phi_gsm:
         db_column: phi_gsm
         type: float
@@ -11383,6 +11387,10 @@ jobs:
         nullable: false
       bz_gsm:
         db_column: bz_gsm
+        type: float
+        nullable: false
+      b_mod:
+        db_column: b_mod
         type: float
         nullable: false
       phi_gsm:

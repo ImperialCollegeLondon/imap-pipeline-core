@@ -26,6 +26,8 @@ def generate_flow_run_name() -> str:
     name=PREFECT_CONSTANTS.FLOW_NAMES.POLL_NOAA,
     log_prints=True,
     flow_run_name=lambda: generate_flow_run_name(),
+    retries=1,
+    retry_delay_seconds=120,
 )
 async def poll_noaa_flow(
     spacecraft: Annotated[

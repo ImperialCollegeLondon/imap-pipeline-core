@@ -61,6 +61,7 @@ def test_process_noaa_mag_all_columns_present() -> None:
         "bz_gsm",
         "theta_gsm",
         "phi_gsm",
+        "b_mod",
     ]
     assert "extra_col" not in result.columns
     assert len(result) == 1
@@ -104,6 +105,12 @@ def test_process_noaa_mag_preserves_values() -> None:
     assert all(result["bx_gsm"].tolist() == data["bx_gsm"])
     assert all(result["bz_gsm"].tolist() == data["bz_gsm"])
     assert all(result["theta_gsm"].tolist() == data["theta_gsm"])
+    assert result["b_mod"].tolist() == pytest.approx(
+        [
+            (1.0**2 + 2.0**2 + 3.0**2) ** 0.5,
+            (1.0**2 + 2.0**2 + 3.0**2) ** 0.5,
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
