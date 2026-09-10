@@ -248,6 +248,7 @@ datastore_cleanup:
 
 database_delete_rows:
     dry_run: false
+    database_url_env_var_or_block_name: "imap-database"
     tasks:
         - name: "delete-rows-ace-mag-noaa-older-7d"
           table: "ace_mag_noaa"

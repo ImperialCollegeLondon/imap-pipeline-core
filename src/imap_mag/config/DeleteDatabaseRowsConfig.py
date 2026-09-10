@@ -25,3 +25,7 @@ class DeleteDatabaseRowsConfig(CommandConfig):
         default=True,
         description="If True, only log number of rows that would be deleted without actually doing it",
     )
+    database_url_env_var_or_block_name: str = Field(
+        default="DATABASE_URL",
+        description="Environment variable name or Prefect block name containing PostgreSQL connection string",
+    )
