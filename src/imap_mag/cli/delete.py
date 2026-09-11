@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Annotated
 
@@ -31,7 +32,7 @@ def delete_old_database_rows(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
-    affected = delete_old_rows(app_settings, dry_run, DatetimeProvider())
+    affected = asyncio.run(delete_old_rows(app_settings, dry_run, DatetimeProvider()))
     tables = [task.table for task in app_settings.database_delete_rows.tasks]
 
     action_word = "would be" if dry_run else "were"

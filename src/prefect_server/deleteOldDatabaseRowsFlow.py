@@ -29,7 +29,7 @@ async def delete_old_database_rows_flow(
     config = app_settings.database_delete_rows
     dry_run = dry_run if dry_run is not None else config.dry_run
 
-    affected = delete_old_rows(app_settings, dry_run, DatetimeProvider())
+    affected = await delete_old_rows(app_settings, dry_run, DatetimeProvider())
     tables = [task.table for task in app_settings.database_delete_rows.tasks]
 
     action_word = "would be" if dry_run else "were"

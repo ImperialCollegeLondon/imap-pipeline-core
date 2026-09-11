@@ -1,21 +1,21 @@
 """Utilities for deleting old rows from PostgreSQL database tables."""
 
-import asyncio
 import logging
 from datetime import timedelta
 
 from psycopg.errors import UndefinedTable
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.db import Database
 from imap_mag.db.utils import get_database_connectionstring
 from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
 
 
-def delete_old_rows(
+async def delete_old_rows(
     app_settings: AppSettings,
     dry_run: bool | None = None,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
@@ -32,19 +32,16 @@ def delete_old_rows(
     """
     config = app_settings.database_delete_rows
     dry_run = dry_run if dry_run is not None else config.dry_run
-    db_url = asyncio.run(
-        get_database_connectionstring(
-            app_settings, config.database_url_env_var_or_block_name
-        )
+    db_url = await get_database_connectionstring(
+        app_settings, config.database_url_env_var_or_block_name
     )
+    db = Database(db_url)
 
-    engine = create_engine(db_url)
     total_deleted = 0
-
-    with engine.begin() as connection:
+    with db.engine.begin() as connection:
         for task in config.tasks:
             try:
-                cutoff = datetime_provider.now() - timedelta(days=task.threhold_days)
+                cutoff = datetime_provider.now() - timedelta(days=task.threshold_days)
                 if dry_run:
                     statement = text(
                         f'SELECT COUNT(*) FROM "{task.table}" WHERE "{task.datetime_column}" < :cutoff'
@@ -74,6 +71,6 @@ def delete_old_rows(
                         f"Table '{task.table}' does not exist - nothing to delete"
                     )
                 else:
-                    engine.dispose()
+                    db.engine.dispose()
                     raise
     return total_deleted
