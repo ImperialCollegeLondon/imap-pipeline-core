@@ -11,7 +11,9 @@ class DeleteRowsTask(BaseModel):
     datetime_column: str = Field(
         description="Name of the column indicating the datetime"
     )
-    threhold_days: int = Field(description="Delete rows older than this value, in days")
+    threshold_days: int = Field(
+        description="Delete rows older than this value, in days"
+    )
 
 
 class DeleteDatabaseRowsConfig(CommandConfig):
