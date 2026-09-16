@@ -160,20 +160,100 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
         )
 
 
-def insert_test_files_into_database(test_database, test_files, app_settings):
+@pytest.mark.asyncio
+async def test_upload_new_files_to_postgres_allows_empty_noaa_wind_values(
+    capture_cli_logs,
+    test_database,
+    test_database_server_engine,
+    test_database_container,
+    tmp_path,
+):
+    test_file = tmp_path / "noaa/2026/09/SOLAR1_wind_noaa_20260915.csv"
+    test_file.parent.mkdir(parents=True, exist_ok=True)
+    test_file.write_text(
+        "\n".join(
+            [
+                "time_tag,density,speed,temperature",
+                "2026-09-15T03:46:00,0.76,358.2,256915",
+                "2026-09-15T03:48:00,,,",
+                "2026-09-15T03:49:00,0.79,366.5,278443",
+            ]
+        )
+        + "\n"
+    )
+
+    target_db_url = test_database_container.get_connection_url()
+
+    with Environment(
+        MAG_DATA_STORE=str(tmp_path),
+        TARGET_DATABASE_URL=target_db_url,
+        PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW="ignore",
+    ):
+        app_settings = AppSettings()
+        insert_test_files_into_database(
+            test_database,
+            ["noaa/2026/09/SOLAR1_wind_noaa_20260915.csv"],
+            app_settings,
+            datastore_root=tmp_path,
+        )
+
+        await upload_new_files_to_postgres.fn(
+            find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
+            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
+        )
+
+        assert (
+            "Synced 3 rows from noaa/2026/09/SOLAR1_wind_noaa_20260915.csv"
+            in capture_cli_logs.text
+        )
+
+        with test_database_server_engine.connect() as conn:
+            row_count = conn.scalar(text("SELECT COUNT(*) FROM solar_wind_noaa"))
+            assert row_count == 3, (
+                f"Expected 3 rows in solar_wind_noaa, but found {row_count}"
+            )
+
+            null_row_count = conn.scalar(
+                text(
+                    "SELECT COUNT(*) FROM solar_wind_noaa WHERE density IS NULL AND speed IS NULL AND temperature IS NULL"
+                )
+            )
+            assert null_row_count == 1, (
+                "Expected one NOAA wind row with null density, speed, and temperature"
+            )
+
+
+def insert_test_files_into_database(
+    test_database, test_files, app_settings, datastore_root=DATASTORE
+):
+    def is_yyyymmdd_date_part(part: str) -> bool:
+        if len(part) != 8 or not part.isdigit():
+            return False
+        try:
+            datetime.strptime(part, "%Y%m%d")
+        except ValueError:
+            return False
+        return True
+
     last_modified_date = datetime(2026, 1, 1, tzinfo=UTC)
     for file_path_str in test_files:
-        file_path = DATASTORE / file_path_str
+        file_path = datastore_root / file_path_str
         # Extract version from filename (e.g., v001 -> 1, v002 -> 2)
-        version = int(file_path.stem.split("_v")[-1])
+        version = int(file_path.stem.split("_v")[-1]) if "_v" in file_path.stem else 1
         # Extract date from filename (e.g., 20251101 -> 2025-11-01)
-        date_str = file_path.stem.split("_")[-2]  # e.g., "20251101"
-        content_date = datetime(
-            int(date_str[:4]),
-            int(date_str[4:6]),
-            int(date_str[6:8]),
-            tzinfo=UTC,
+        date_str = next(
+            (
+                part
+                for part in reversed(file_path.stem.split("_"))
+                if is_yyyymmdd_date_part(part)
+            ),
+            None,
         )
+        if date_str is None:
+            raise ValueError(
+                f"Could not find YYYYMMDD date in filename {file_path.name}"
+            )
+        content_date = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
         last_modified_date += timedelta(seconds=1)
         file = File.from_file(
             file_path,

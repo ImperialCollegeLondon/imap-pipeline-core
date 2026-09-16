@@ -11352,15 +11352,15 @@ jobs:
       density:
         db_column: density
         type: float
-        nullable: false
+        nullable: true
       speed:
         db_column: speed
         type: float
-        nullable: false
+        nullable: true
       temperature:
         db_column: temperature
         type: integer
-        nullable: false
+        nullable: true
     filename_to_column:
       template: ACE_wind_noaa_[date].csv
       columns:
@@ -11420,15 +11420,15 @@ jobs:
       density:
         db_column: density
         type: float
-        nullable: false
+        nullable: true
       speed:
         db_column: speed
         type: float
-        nullable: false
+        nullable: true
       temperature:
         db_column: temperature
         type: integer
-        nullable: false
+        nullable: true
     filename_to_column:
       template: SOLAR1_wind_noaa_[date].csv
       columns:
