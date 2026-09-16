@@ -245,3 +245,24 @@ datastore_cleanup:
           files_older_than: "7d"
           keep_latest_version_only: false
           cleanup_mode: "delete"
+
+database_delete_rows:
+    dry_run: false
+    database_url_env_var_or_block_name: "imap-database"
+    tasks:
+        - name: "delete-rows-ace-mag-noaa-older-7d"
+          table: "ace_mag_noaa"
+          datetime_column: "id"
+          threshold_days: 7
+        - name: "delete-rows-ace-wind-noaa-older-7d"
+          table: "ace_wind_noaa"
+          datetime_column: "id"
+          threshold_days: 7
+        - name: "delete-rows-solar-mag-noaa-older-7d"
+          table: "solar_mag_noaa"
+          datetime_column: "id"
+          threshold_days: 7
+        - name: "delete-rows-ace-wind-noaa-older-7d"
+          table: "solar_wind_noaa"
+          datetime_column: "id"
+          threshold_days: 7

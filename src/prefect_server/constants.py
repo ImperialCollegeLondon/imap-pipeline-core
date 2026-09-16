@@ -63,6 +63,8 @@ class PREFECT_CONSTANTS:
         IMAP_CRON_DATASTORE_INDEXER = "IMAP_CRON_DATASTORE_INDEXER"
         POLL_NOAA_CRON = "IMAP_CRON_POLL_NOAA"
 
+        DELETE_OLD_DATABASE_ROWS_CRON = "IMAP_CRON_DELETE_OLD_DATABASE_ROWS"
+
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
         PREFECT_LOGGING_EXTRA_LOGGERS = "PREFECT_LOGGING_EXTRA_LOGGERS"
@@ -97,6 +99,7 @@ class PREFECT_CONSTANTS:
         DATASTORE_CLEANUP = "datastore-cleanup"
         DATASTORE_INDEXER = "datastore-indexer"
         POLL_NOAA = "poll-noaa"
+        DELETE_OLD_DATABASE_ROWS = "delete-old-database-rows"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
@@ -124,3 +127,4 @@ class PREFECT_CONSTANTS:
         DATASTORE_CLEANUP = "datastore_cleanup"
         DATASTORE_INDEXER = "datastore_indexer"
         POLL_NOAA = "poll_noaa"
+        DELETE_OLD_DATABASE_ROWS = "delete_old_database_rows"

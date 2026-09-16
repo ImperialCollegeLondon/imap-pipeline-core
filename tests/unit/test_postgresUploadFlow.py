@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from prefect_server.postgresUploadFlow import (
-    _get_database_connectionstring,
     _process_files,
+    get_database_connectionstring,
     upload_new_files_to_postgres,
 )
 
@@ -29,14 +29,14 @@ class TestGetDatabaseConnectionstring:
         with pytest.raises(
             RuntimeError, match="Database connection information not provided"
         ):
-            await _get_database_connectionstring(mock_settings, None)
+            await get_database_connectionstring(mock_settings, None)
 
     @pytest.mark.asyncio
     async def test_uses_env_var_when_string_and_env_var_set(self):
         mock_settings = self._make_app_settings()
 
         with patch.dict(os.environ, {"MY_DB_URL": "postgresql://user:pass@host/db"}):
-            result = await _get_database_connectionstring(mock_settings, "MY_DB_URL")
+            result = await get_database_connectionstring(mock_settings, "MY_DB_URL")
 
         assert result == "postgresql://user:pass@host/db"
 
@@ -47,7 +47,7 @@ class TestGetDatabaseConnectionstring:
         with patch.dict(
             os.environ, {"MY_DB_URL": "postgresql+psycopg://user:pass@host/db"}
         ):
-            result = await _get_database_connectionstring(mock_settings, "MY_DB_URL")
+            result = await get_database_connectionstring(mock_settings, "MY_DB_URL")
 
         assert result == "postgresql://user:pass@host/db"
 
@@ -67,9 +67,7 @@ class TestGetDatabaseConnectionstring:
                 return_value=mock_connector,
             ),
         ):
-            result = await _get_database_connectionstring(
-                mock_settings, "my-block-name"
-            )
+            result = await get_database_connectionstring(mock_settings, "my-block-name")
 
         assert "postgresql" in result
 
@@ -85,7 +83,7 @@ class TestGetDatabaseConnectionstring:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid database connection input"):
-                await _get_database_connectionstring(mock_settings, "nonexistent-block")
+                await get_database_connectionstring(mock_settings, "nonexistent-block")
 
     @pytest.mark.asyncio
     async def test_raises_when_none_passed_and_app_settings_has_env_var(self):
@@ -97,7 +95,7 @@ class TestGetDatabaseConnectionstring:
             os.environ, {"MY_DB_URL_FROM_SETTINGS": "postgresql://host/db"}
         ):
             with pytest.raises(ValueError, match="Invalid database connection input"):
-                await _get_database_connectionstring(mock_settings, None)
+                await get_database_connectionstring(mock_settings, None)
 
 
 class TestProcessFiles:
@@ -251,7 +249,7 @@ class TestUploadNewFilesToPostgres:
                 return_value=mock_db,
             ),
             patch(
-                "prefect_server.postgresUploadFlow._get_database_connectionstring",
+                "prefect_server.postgresUploadFlow.get_database_connectionstring",
                 new_callable=AsyncMock,
                 return_value="postgresql://test",
             ),
@@ -445,7 +443,7 @@ class TestPostgresUploadFlowSimpleRun:
 
         with (
             patch(
-                "prefect_server.postgresUploadFlow._get_database_connectionstring",
+                "prefect_server.postgresUploadFlow.get_database_connectionstring",
                 new_callable=AsyncMock,
                 return_value="postgresql://localhost/test",
             ),
