@@ -1,7 +1,6 @@
 """Utilities for deleting old rows from PostgreSQL database tables."""
 
 import logging
-from datetime import timedelta
 
 from psycopg.errors import UndefinedTable
 from sqlalchemy import text
@@ -11,6 +10,7 @@ from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.db.utils import DatabaseDriver, get_database_connectionstring
 from imap_mag.util import DatetimeProvider
+from prefect_server.durationUtils import parse_duration
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def delete_old_rows(
     total_deleted = 0
     for task in config.tasks:
         try:
-            cutoff = datetime_provider.now() - timedelta(days=task.threshold_days)
+            cutoff = datetime_provider.now() - parse_duration(task.older_than)
             # Each task gets its own transaction. Postgres aborts the entire
             # transaction as soon as one statement fails (e.g. a missing table),
             # so sharing a single transaction across tasks would cause every

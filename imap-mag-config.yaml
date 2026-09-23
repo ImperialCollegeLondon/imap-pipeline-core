@@ -253,16 +253,16 @@ database_delete_rows:
         - name: "delete-rows-ace-mag-noaa-older-7d"
           table: "ace_mag_noaa"
           datetime_column: "id"
-          threshold_days: 7
+          older_than: "7d"
         - name: "delete-rows-ace-wind-noaa-older-7d"
           table: "ace_wind_noaa"
           datetime_column: "id"
-          threshold_days: 7
+          older_than: "7d"
         - name: "delete-rows-solar-mag-noaa-older-7d"
           table: "solar_mag_noaa"
           datetime_column: "id"
-          threshold_days: 7
+          older_than: "7d"
         - name: "delete-rows-ace-wind-noaa-older-7d"
           table: "solar_wind_noaa"
           datetime_column: "id"
-          threshold_days: 7
+          older_than: "7d"
