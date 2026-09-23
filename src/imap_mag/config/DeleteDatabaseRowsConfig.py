@@ -3,6 +3,7 @@ import re
 from pydantic import BaseModel, Field, field_validator
 
 from imap_mag.config.CommandConfig import CommandConfig
+from prefect_server.durationUtils import parse_duration
 
 
 class DeleteRowsTask(BaseModel):
@@ -21,9 +22,15 @@ class DeleteRowsTask(BaseModel):
 
     @field_validator("table", "datetime_column", mode="after")
     @classmethod
-    def conforms(cls, value: str, pat: str = "^[a-zA-Z_][\-\._a-zA-Z0-9\$]*$") -> str:
+    def conforms(cls, value: str, pat: str = r"^[a-zA-Z_][\-\._a-zA-Z0-9\$]*$") -> str:
         if re.fullmatch(pat, value) is None:
             raise ValueError(f"Invalid identifier {value}")
+        return value
+
+    @field_validator("older_than", mode="before")
+    @classmethod
+    def parseable_timedelta(cls, value: str) -> str:
+        parse_duration(value)
         return value
 
 
