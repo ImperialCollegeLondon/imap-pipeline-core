@@ -14,9 +14,9 @@ from prefect.variables import Variable
 from imap_mag.util import CONSTANTS
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
-from prefect_server.deleteOldDatabaseRowsFlow import delete_old_database_rows_flow
 from prefect_server.performCalibration import (
     apply_flow,
     calibrate_and_apply_flow,
@@ -420,7 +420,7 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    delete_old_database_rows_deployable = delete_old_database_rows_flow.to_deployment(
+    delete_old_database_rows_deployable = database_cleanup_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DELETE_OLD_DATABASE_ROWS,
         job_variables=shared_job_variables,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
