@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 from imap_mag.config.CommandConfig import CommandConfig
 
@@ -11,9 +13,18 @@ class DeleteRowsTask(BaseModel):
     datetime_column: str = Field(
         description="Name of the column indicating the datetime"
     )
-    threshold_days: int = Field(
-        description="Delete rows older than this value, in days"
+    older_than: str = Field(
+        default="7d",
+        description="Files rows than this duration will be deleted. Supports "
+        "formats like '30d' (days), '12h' (hours), '45m' (minutes), '60s' (seconds)",
     )
+
+    @field_validator("table", "datetime_column", mode="after")
+    @classmethod
+    def conforms(cls, value: str, pat: str = "^[a-zA-Z_][\-\._a-zA-Z0-9\$]*$") -> str:
+        if re.fullmatch(pat, value) is None:
+            raise ValueError(f"Invalid identifier {value}")
+        return value
 
 
 class DeleteDatabaseRowsConfig(CommandConfig):
