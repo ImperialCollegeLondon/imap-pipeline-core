@@ -9,7 +9,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.db.utils import get_database_connectionstring
+from imap_mag.db.utils import DatabaseDriver, get_database_connectionstring
 from imap_mag.util import DatetimeProvider
 
 logger = logging.getLogger(__name__)
@@ -33,16 +33,10 @@ async def delete_old_rows(
     config = app_settings.database_delete_rows
     dry_run = dry_run if dry_run is not None else config.dry_run
     db_url = await get_database_connectionstring(
-        app_settings, config.database_url_env_var_or_block_name
+        app_settings,
+        config.database_url_env_var_or_block_name,
+        DatabaseDriver.PostgresqlPsychopg,
     )
-
-    # `get_database_connectionstring` strips the psycopg driver suffix so the URL
-    # can be handed to crump (used by the postgres-upload flow), which expects a bare
-    # "postgresql://" scheme. This module talks to the database directly through
-    # SQLAlchemy/`Database`, though, which needs the driver specified explicitly -
-    # otherwise SQLAlchemy defaults to psycopg2, which isn't installed in this project.
-    if db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
     db = Database(db_url)
 

@@ -1,5 +1,6 @@
 import logging
 import os
+from enum import StrEnum
 
 from prefect_sqlalchemy import SqlAlchemyConnector
 
@@ -8,9 +9,16 @@ from imap_mag.config.AppSettings import AppSettings
 logger = logging.getLogger(__name__)
 
 
+class DatabaseDriver(StrEnum):
+    Unchange = "unchange"
+    Postgresql = "postgresql"
+    PostgresqlPsychopg = "postgresql+psycopg"
+
+
 async def get_database_connectionstring(
     app_settings: AppSettings,
     db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None,
+    database_driver: DatabaseDriver = DatabaseDriver.Postgresql,
 ) -> str:
     """
     Get database connection string from environment variable or Prefect block.
@@ -66,8 +74,10 @@ async def get_database_connectionstring(
     if db_url is None:
         raise ValueError("Invalid database connection input")
 
-    # Convert PostgreSQL URL for crump (remove +psycopg driver specification)
-    # crump expects/needs: postgresql://user:pass@host:port/dbname
-    db_url = db_url.replace("postgresql+psycopg://", "postgresql://")
+    # We update the db_url, depending on the chosen driver.
+    # Note that crump expects/needs: postgresql://user:pass@host:port/dbname so whenever
+    # crump is used, the postgress driver should be forced.
+    if database_driver != DatabaseDriver.Unchange:
+        db_url = database_driver + "://" + db_url.split("://")[-1]
 
     return db_url
