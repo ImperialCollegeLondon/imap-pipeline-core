@@ -12,8 +12,8 @@ from imap_mag.util import DatetimeProvider
 logger = logging.getLogger(__name__)
 
 
-# E.g., imap-mag delete delete_old_database_rows
-def delete_old_database_rows(
+# E.g., imap-mag clean database
+def database(
     dry_run: Annotated[
         bool | None,
         typer.Option(
@@ -42,4 +42,4 @@ def delete_old_database_rows(
 
 
 app = typer.Typer()
-app.command()(delete_old_database_rows)
+app.command()(database)
