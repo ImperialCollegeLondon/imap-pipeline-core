@@ -52,6 +52,12 @@ def wiremock_manager():
         yield WireMockManager(mock_container)
 
 
+@pytest.fixture(autouse=True)
+def override_version_major():
+    with Environment(MAG_VERSION_MAJOR="1"):
+        yield
+
+
 @pytest.fixture(autouse=False)
 def temp_file_path() -> Generator[Path, None, None]:
     """Fixture to create a temporary file for testing."""
