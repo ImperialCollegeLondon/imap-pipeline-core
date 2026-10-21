@@ -151,6 +151,7 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_.*\.ap\.bc$", "ck"),
         (r"^imap_.*\.ap\.a$", "ck"),
         (r"^imap_dps_.*\.ah\.bc$", "ck"),
+        (r"^imap_lopivot-.*\.bc$", "ck"),
         (r"^imap_.*\.spice\.mk$", "mk"),
         (r"^imap_.*\.stk_a\.mk$", "mk"),
         (r"^imap_.*\.spin\.csv$", "spin"),
@@ -189,6 +190,7 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_launch_.*\.bsp$", "ephemeris_launch"),
         (r"^imap_nom_.*\.bsp$", "ephemeris_nominal"),
         (r"^imap_noburn_.*\.bsp$", "ephemeris_nominal"),
+        (r"^imap_lopivot-.*\.bc$", "lo_pivot_attitude"),
     ]
 
     @staticmethod
