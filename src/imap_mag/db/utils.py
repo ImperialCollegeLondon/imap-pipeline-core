@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseDriver(StrEnum):
-    Unchange = "unchange"
+    Unchanged = ""
     Postgresql = "postgresql"
     PostgresqlPsychopg = "postgresql+psycopg"
 
@@ -18,7 +18,7 @@ class DatabaseDriver(StrEnum):
 async def get_database_connectionstring(
     app_settings: AppSettings,
     db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None,
-    database_driver: DatabaseDriver = DatabaseDriver.Postgresql,
+    database_driver: DatabaseDriver = DatabaseDriver.Unchanged,
 ) -> str:
     """
     Get database connection string from environment variable or Prefect block.
@@ -77,7 +77,7 @@ async def get_database_connectionstring(
     # We update the db_url, depending on the chosen driver.
     # Note that crump expects/needs: postgresql://user:pass@host:port/dbname so whenever
     # crump is used, the postgress driver should be forced.
-    if database_driver != DatabaseDriver.Unchange:
+    if database_driver != DatabaseDriver.Unchanged:
         db_url = database_driver + "://" + db_url.split("://")[-1]
 
     return db_url

@@ -14,7 +14,7 @@ from prefect_sqlalchemy import SqlAlchemyConnector
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.db.utils import get_database_connectionstring
+from imap_mag.db.utils import DatabaseDriver, get_database_connectionstring
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import try_get_prefect_logger
 
@@ -191,8 +191,11 @@ async def upload_new_files_to_postgres(
     db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
     started = datetime.now(tz=UTC)
 
+    # crump requires a database connection string without the psychopg option in it so force strip it.
     db_url = await get_database_connectionstring(
-        app_settings, db_env_name_or_block_name_or_block
+        app_settings,
+        db_env_name_or_block_name_or_block,
+        database_driver=DatabaseDriver.Postgresql,
     )
 
     # Get workflow progress

@@ -246,10 +246,6 @@ async def test_delete_old_rows_works_with_bare_postgresql_url_missing_driver(
     test_database_container,
     test_database_server_engine,
 ):
-    # `get_database_connectionstring` strips the psycopg driver suffix so the URL
-    # can be handed to crump (used by the postgres-upload flow). `delete_old_rows`
-    # must restore it, or SQLAlchemy defaults to the (uninstalled) psycopg2 driver
-    # and the connection fails outright.
     table_name = "delete_old_rows_test_bare_url"
     _create_table(
         test_database_server_engine,
