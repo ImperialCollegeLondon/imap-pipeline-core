@@ -132,6 +132,16 @@ class CalibrationJob(ABC):
                 logger.debug(f"Cleaning up {path}")
                 shutil.rmtree(path, ignore_errors=True)
 
+    def resolve_layer_data_format(self, requested: LayerDataFormat) -> LayerDataFormat:
+        """Return the layer data format this job will write when asked for
+        ``requested``. Callers pass the result to ``run_calibration`` and use it
+        to save the outputs.
+
+        Args:
+            requested: Layer data format the caller asked for.
+        """
+        return requested
+
     @abstractmethod
     def run_calibration(
         self,

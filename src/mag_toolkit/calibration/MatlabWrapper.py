@@ -2,15 +2,26 @@ import ctypes
 import ctypes.util
 import logging
 import os
+import re
 import signal
 import subprocess
 from pathlib import Path
 from shutil import which
 
+from mag_toolkit.calibration.CalibrationDefinitions import LayerDataFormat
+
 logger = logging.getLogger(__name__)
 
 _MATLAB_DEFAULT_PATH = "/app/matlab"
 _MATLAB_LOCAL_PATH = "src/matlab"
+
+# File within the IMAP_MAG_Calibration code that records its version.
+_CALIBRATION_VERSION_FILE = Path("+calibration") / "get_version.m"
+
+# First IMAP_MAG_Calibration release that can write Parquet layer data files and
+# accepts the layer_data_format option of calibrate_l2_offsets. Earlier releases
+# only write CSV and reject that option.
+LAYER_DATA_FORMAT_MIN_CALIBRATION_VERSION = (3, 5, 0)
 
 # Tracks whether the MATLAB path has already been set up in this process.
 # ``savepath`` persists the path to disk, so setup only needs to run once.
@@ -66,6 +77,73 @@ def _build_path_setup_prefix() -> str:
         f'addpath(genpath("{_MATLAB_LOCAL_PATH}")); '
         f"savepath; "
     )
+
+
+def get_calibration_code_version(
+    calibration_code_root: Path | None,
+) -> tuple[int, int, int] | None:
+    """Read the version of the IMAP_MAG_Calibration code at the given root.
+
+    Args:
+        calibration_code_root: Root folder of the MATLAB calibration repository.
+
+    Returns:
+        The (major, minor, patch) version from ``+calibration/get_version.m``, or
+        None if there is no such file or it does not contain a version.
+    """
+    if calibration_code_root is None:
+        return None
+    version_file = calibration_code_root / _CALIBRATION_VERSION_FILE
+    if not version_file.is_file():
+        return None
+    match = re.search(r'"v?(\d+)\.(\d+)\.(\d+)"', version_file.read_text())
+    if match is None:
+        return None
+    major, minor, patch = (int(part) for part in match.groups())
+    return major, minor, patch
+
+
+def calibration_code_supports_layer_data_format(
+    calibration_code_root: Path | None,
+) -> bool:
+    """Whether the MATLAB calibration code can write any layer data format.
+
+    Versions before ``LAYER_DATA_FORMAT_MIN_CALIBRATION_VERSION``, and code whose
+    version cannot be determined, only write CSV layer data files.
+
+    Args:
+        calibration_code_root: Root folder of the MATLAB calibration repository.
+    """
+    version = get_calibration_code_version(calibration_code_root)
+    return version is not None and version >= LAYER_DATA_FORMAT_MIN_CALIBRATION_VERSION
+
+
+def resolve_matlab_layer_data_format(
+    requested: LayerDataFormat, calibration_code_root: Path | None
+) -> LayerDataFormat:
+    """Return the layer data format MATLAB calibration code will write.
+
+    The requested format when the code supports it, otherwise CSV - the only
+    format older calibration code can write.
+
+    Args:
+        requested: Layer data format the caller asked for.
+        calibration_code_root: Root folder of the MATLAB calibration repository.
+    """
+    if requested == LayerDataFormat.CSV or calibration_code_supports_layer_data_format(
+        calibration_code_root
+    ):
+        return requested
+
+    version = get_calibration_code_version(calibration_code_root)
+    version_str = ".".join(map(str, version)) if version else "unknown"
+    min_version_str = ".".join(map(str, LAYER_DATA_FORMAT_MIN_CALIBRATION_VERSION))
+    logger.warning(
+        f"MATLAB calibration code at {calibration_code_root} is version "
+        f"{version_str}, which can only write CSV layer data files (needs "
+        f"v{min_version_str} or later for {requested.value}). Using CSV instead."
+    )
+    return LayerDataFormat.CSV
 
 
 def get_matlab_command():

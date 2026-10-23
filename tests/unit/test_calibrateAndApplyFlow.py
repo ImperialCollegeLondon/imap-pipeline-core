@@ -9,7 +9,7 @@ from prefect.filesystems import LocalFileSystem
 from prefect_github import GitHubRepository
 
 from mag_toolkit.calibration import DatastoreAccessMode, LayerDataFormat
-from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
+from mag_toolkit.calibration.CalibrationConfig import SetQualityAndNaNConfig
 from prefect_server.calibrateAndApplyFlow import (
     calibrate_and_apply_flow,
     generate_calibrate_and_apply_flow_run_name,
@@ -64,7 +64,7 @@ class TestCalibrateAndApplyFlow:
             patch(
                 "prefect_server.calibrationFlowCommon.calibrate",
                 return_value=[
-                    Path("imap_mag_gradiometry-norm-layer_20260101_v002.0002.json")
+                    Path("imap_mag_quality-norm-layer_20260101_v002.0002.json")
                 ],
             ) as mock_calibrate,
             patch(
@@ -75,7 +75,7 @@ class TestCalibrateAndApplyFlow:
         ):
             calibrate_and_apply_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
         mock_calibrate.assert_called_once()
@@ -165,9 +165,7 @@ class TestCalibrateAndApplyFlow:
         ):
             calibrate_and_apply_flow.fn(
                 start_date=datetime(2026, 1, 30),
-                configuration=GradiometryConfig(
-                    kappa=0.1, sc_interference_threshold=0.2
-                ),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 layer_data_format=LayerDataFormat.CSV,
             )
 
@@ -192,7 +190,7 @@ class TestCalibrateAndApplyFlowSplitByDay:
             patch("prefect_server.calibrateAndApplyFlow.apply") as mock_apply,
         ):
             result = calibrate_and_apply_flow.fn(
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 split_by_day=True,
@@ -220,7 +218,7 @@ class TestCalibrateAndApplyFlowSplitByDay:
             patch("prefect_server.calibrateAndApplyFlow.apply"),
         ):
             calibrate_and_apply_flow.fn(
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 2),
                 split_by_day=True,

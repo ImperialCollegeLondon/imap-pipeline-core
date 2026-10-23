@@ -8,7 +8,7 @@ import pytest
 from prefect.filesystems import LocalFileSystem
 from prefect_github import GitHubRepository
 
-from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
+from mag_toolkit.calibration.CalibrationConfig import SetQualityAndNaNConfig
 from prefect_server.calibrationFlowCommon import (
     PrefectScriptedL2CalibrationConfig,
     _configuration_for_deployment,
@@ -48,7 +48,7 @@ class TestConfigurationForDeployment:
     """_configuration_for_deployment replaces block objects with $ref references."""
 
     def test_non_scripted_config_returned_unchanged(self):
-        config = GradiometryConfig()
+        config = SetQualityAndNaNConfig(csv_file="quality.csv")
         assert _configuration_for_deployment(config) is config
 
     def test_scripted_config_without_block_returned_unchanged(self):

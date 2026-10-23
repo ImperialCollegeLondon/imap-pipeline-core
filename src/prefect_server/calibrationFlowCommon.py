@@ -15,7 +15,6 @@ from imap_mag.cli.calibrate import calibrate
 from imap_mag.config.AppSettings import AppSettings
 from mag_toolkit.calibration import LayerDataFormat
 from mag_toolkit.calibration.CalibrationConfig import (
-    GradiometryConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
 )
@@ -135,8 +134,8 @@ def _load_matlab_repo_block(
 
 
 def _configuration_for_deployment(
-    configuration: "PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig",
-) -> "dict | SetQualityAndNaNConfig | GradiometryConfig":
+    configuration: "PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig",
+) -> "dict | SetQualityAndNaNConfig":
     """Prepare configuration for passing to ``run_deployment``.
 
     For ``PrefectScriptedL2CalibrationConfig``, any block stored in ``matlab_repo``

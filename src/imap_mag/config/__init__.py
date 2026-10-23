@@ -15,7 +15,6 @@ from imap_mag.config.PublishConfig import PublishConfig
 from imap_mag.config.SaveMode import SaveMode
 from mag_toolkit.calibration.CalibrationConfig import (
     CalibrationConfig,
-    GradiometryConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
 )
@@ -31,7 +30,6 @@ __all__ = [
     "FetchBinaryConfig",
     "FetchMode",
     "FetchScienceConfig",
-    "GradiometryConfig",
     "NestedAliasEnvSettingsSource",
     "PublishConfig",
     "SaveMode",

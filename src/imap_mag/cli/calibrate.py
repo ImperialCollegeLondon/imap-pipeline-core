@@ -10,7 +10,6 @@ from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import (
     AppSettings,
     CalibrationConfig,
-    GradiometryConfig,
     SaveMode,
     ScriptedL2CalibrationConfig,
 )
@@ -32,7 +31,6 @@ from mag_toolkit.calibration import (
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 from mag_toolkit.calibration.calibrators import (
     CalibrationJob,
-    GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
     SetQualityAndNaNCalibrationJob,
 )
@@ -187,42 +185,6 @@ def _save_calibration_outputs(
     return saved_file_paths
 
 
-def gradiometry(
-    start_date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
-    mode: Annotated[
-        ScienceMode, typer.Option(help="Science mode")
-    ] = ScienceMode.Normal,
-    kappa: Annotated[float, typer.Option(help="Kappa value for gradiometry")] = 0.0,
-    sc_interference_threshold: Annotated[
-        float, typer.Option(help="SC interference threshold")
-    ] = 10.0,
-    save_mode: Annotated[
-        SaveMode,
-        typer.Option(help="Whether to save locally only or to also save to database"),
-    ] = SaveMode.LocalOnly,
-    layer_data_format: Annotated[
-        LayerDataFormat,
-        typer.Option(help="Format of the calibration layer's companion data file."),
-    ] = LayerDataFormat.PARQUET,
-) -> list[Path]:
-    """
-    Run gradiometry calibration.
-    """
-    configuration = GradiometryConfig(
-        kappa=kappa, sc_interference_threshold=sc_interference_threshold
-    )
-
-    return _calibrate_for_date(
-        start_date=start_date,
-        method=CalibrationMethod.GRADIOMETER,
-        mode=mode,
-        sensor=Sensor.MAGO,
-        configuration=configuration.model_dump_json(),
-        save_mode=save_mode,
-        layer_data_format=layer_data_format,
-    )
-
-
 def calibrate(
     start_date: Annotated[
         datetime | None,
@@ -291,8 +253,8 @@ def calibrate(
 
     Supports single date (--date) or date ranges (--start-date/--end-date).
 
-    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method gradiometer
-    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method gradiometer
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --method quality --configuration quality.yaml
+    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method manual --configuration scripted.yaml
     """
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
@@ -343,6 +305,13 @@ def _calibrate_for_date(
             "The 'noop' calibration method is not runnable. It exists only for the "
             "internal zero-offset layer. Choose a real calibration method."
         )
+    if method == CalibrationMethod.GRADIOMETER:
+        # Gradiometry now runs inside the MATLAB scripted calibration; the method
+        # is retained only so existing gradiometer layers can still be read.
+        raise ValueError(
+            "The 'gradiometer' calibration method is no longer runnable. "
+            "Gradiometry is part of the scripted ('manual') MATLAB calibration."
+        )
 
     version_number_override = _validate_version_number_override(version_number_override)
 
@@ -387,10 +356,6 @@ def _calibrate_for_date(
     )
     calibrator: CalibrationJob
     match method:
-        case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrationJob(
-                calibration_job_parameters, work_folder
-            )
         case CalibrationMethod.SET_QUALITY_AND_NAN:
             calibrator = SetQualityAndNaNCalibrationJob(
                 calibration_job_parameters, work_folder, datastore_finder
@@ -411,6 +376,11 @@ def _calibrate_for_date(
             raise ValueError("Calibration method is not implemented")
 
     calibrator.setup(app_settings.data_store, datastore_finder)
+
+    # Older MATLAB calibration code can only write CSV layers, so the job may
+    # write a different format than was asked for. Use what it will actually
+    # write, so the saved layer files are checked against the right format.
+    layer_data_format = calibrator.resolve_layer_data_format(layer_data_format)
 
     if app_settings.calibrate.output_folder_override:
         logger.info(

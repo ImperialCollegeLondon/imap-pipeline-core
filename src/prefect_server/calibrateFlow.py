@@ -12,7 +12,6 @@ from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat
 from mag_toolkit.calibration.CalibrationConfig import (
-    GradiometryConfig,
     SetQualityAndNaNConfig,
 )
 from prefect_server.calibrationFlowCommon import (
@@ -76,7 +75,7 @@ def calibrate_flow(
         ),
     ] = None,
     configuration: Annotated[
-        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig,
+        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig,
         Field(
             json_schema_extra={
                 "title": "Calibration Type Configuration",

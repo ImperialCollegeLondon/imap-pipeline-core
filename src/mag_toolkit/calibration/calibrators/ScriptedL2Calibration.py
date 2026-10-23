@@ -18,7 +18,11 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     DatastoreAccessMode,
     LayerDataFormat,
 )
-from mag_toolkit.calibration.MatlabWrapper import call_matlab
+from mag_toolkit.calibration.MatlabWrapper import (
+    calibration_code_supports_layer_data_format,
+    call_matlab,
+    resolve_matlab_layer_data_format,
+)
 from mag_toolkit.calibration.SparseDatastoreBuilder import SparseDatastoreBuilder
 
 from .CalibrationJob import CalibrationJob
@@ -80,6 +84,14 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         self.name = CalibrationMethod.SCRIPTED_L2_CALIBRATION
         self.app_settings = app_settings
         self.metakernel = metakernel
+        # Older calibration code only writes CSV and rejects the
+        # layer_data_format option, so it is only passed when supported.
+        self.supports_layer_data_format = calibration_code_supports_layer_data_format(
+            self.matlab_repo_path
+        )
+
+    def resolve_layer_data_format(self, requested: LayerDataFormat) -> LayerDataFormat:
+        return resolve_matlab_layer_data_format(requested, self.matlab_repo_path)
 
     @staticmethod
     def _work_folder_context(
@@ -111,6 +123,13 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         if not self._check_environment_is_setup():
             raise FileNotFoundError(
                 "Environment has not been correctly set up for calibration."
+            )
+
+        if self.resolve_layer_data_format(layer_data_format) != layer_data_format:
+            raise ValueError(
+                f"MATLAB calibration code at {self.matlab_repo_path} cannot write "
+                f"{layer_data_format.value} layer data files; use "
+                f"{LayerDataFormat.CSV.value}."
             )
 
         date = self.calibration_job_parameters.date
@@ -166,7 +185,9 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             matlab_mode=str(mode.value),
             produce_report=config.produce_report,
             write_offsets=write_offsets,
-            layer_data_format=layer_data_format,
+            layer_data_format=layer_data_format
+            if self.supports_layer_data_format
+            else None,
         )
 
         call_matlab(
@@ -320,7 +341,7 @@ class ScriptedL2CalibrationJob(CalibrationJob):
         matlab_mode: str,
         produce_report: bool,
         write_offsets: bool,
-        layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
+        layer_data_format: LayerDataFormat | None = LayerDataFormat.PARQUET,
     ) -> str:
         """Build the ``calibrate_l2_offsets`` MATLAB command for a single day.
 
@@ -338,7 +359,8 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             produce_report: Whether the MATLAB script should produce a calibration report.
             write_offsets: Whether the MATLAB script should create offset files.
             layer_data_format: Companion layer data file format MATLAB should write
-                (default parquet).
+                (default parquet), or None to leave the option out for calibration
+                code that predates it (which always writes CSV).
         """
         date_expr = f"datetime({date.year},{date.month},{date.day})"
         bool_str = {True: "true", False: "false"}
@@ -356,6 +378,11 @@ class ScriptedL2CalibrationJob(CalibrationJob):
             f"display_plots=false,"
             f"spice_transform_and_write=false,"
             f"produce_report={bool_str[produce_report]},"
-            f"write_offsets={bool_str[write_offsets]},"
-            f'layer_data_format="{layer_data_format.value}")'
+            f"write_offsets={bool_str[write_offsets]}"
+            + (
+                f',layer_data_format="{layer_data_format.value}"'
+                if layer_data_format is not None
+                else ""
+            )
+            + ")"
         )

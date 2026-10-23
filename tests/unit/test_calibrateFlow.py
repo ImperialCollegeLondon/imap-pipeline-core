@@ -9,7 +9,7 @@ from prefect.filesystems import LocalFileSystem
 from prefect_github import GitHubRepository
 
 from mag_toolkit.calibration import DatastoreAccessMode, LayerDataFormat
-from mag_toolkit.calibration.CalibrationConfig import GradiometryConfig
+from mag_toolkit.calibration.CalibrationConfig import SetQualityAndNaNConfig
 from prefect_server.calibrateFlow import (
     calibrate_flow,
     generate_calibration_flow_run_name,
@@ -62,9 +62,7 @@ class TestCalibrateFlow:
             mock_calibrate.return_value = [Path("some_layer.json")]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(
-                    kappa=0.1, sc_interference_threshold=0.2
-                ),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
         mock_calibrate.assert_called_once()
@@ -74,9 +72,7 @@ class TestCalibrateFlow:
             mock_calibrate.return_value = [Path("some_layer.json")]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(
-                    kappa=0.1, sc_interference_threshold=0.2
-                ),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 layer_data_format=LayerDataFormat.CSV,
             )
 
@@ -89,9 +85,7 @@ class TestCalibrateFlow:
             mock_calibrate.return_value = [Path("some_layer.json")]
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(
-                    kappa=0.1, sc_interference_threshold=0.2
-                ),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
         assert mock_calibrate.call_args.kwargs["layer_data_format"] == (
@@ -108,7 +102,7 @@ class TestCalibrateFlowDateHandling:
             calibrate_flow.fn(
                 start_date=date(2025, 1, 1),
                 end_date=date(2025, 1, 2),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
         kwargs = mock_calibrate.call_args.kwargs
@@ -120,7 +114,7 @@ class TestCalibrateFlowDateHandling:
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 5),
                 end_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
     def test_raises_runtime_error_when_no_layers_generated(self):
@@ -131,7 +125,7 @@ class TestCalibrateFlowDateHandling:
             with pytest.raises(RuntimeError, match="No calibration layers"):
                 calibrate_flow.fn(
                     start_date=datetime(2025, 1, 1),
-                    configuration=GradiometryConfig(),
+                    configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 )
 
     def test_returns_all_paths_when_multiple_layers_generated(self):
@@ -142,7 +136,7 @@ class TestCalibrateFlowDateHandling:
         ):
             result = calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             )
 
         assert result == paths
@@ -222,7 +216,7 @@ class TestCalibrateFlowSplitByDay:
             result = calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 3),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 split_by_day=True,
             )
 
@@ -258,7 +252,7 @@ class TestCalibrateFlowSplitByDay:
         ):
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 split_by_day=True,
             )
 
@@ -278,7 +272,7 @@ class TestCalibrateFlowSplitByDay:
             calibrate_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 3),
-                configuration=GradiometryConfig(),
+                configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
                 split_by_day=False,
             )
 

@@ -10,6 +10,7 @@ import pytest
 
 from imap_mag.appLogging import AppLogging
 from imap_mag.util import DatetimeProvider, Environment
+from mag_toolkit.calibration.CalibrationDefinitions import LayerDataFormat
 
 NOW = datetime(2025, 10, 14, 12, 37, 9)
 TODAY = NOW.replace(hour=0, minute=0, second=0, microsecond=0)  # 2025-10-14
@@ -91,8 +92,21 @@ def write_calibration_layer_pair(
     date: datetime,
     version: int,
     seed: int = 0,
+    layer_data_format: LayerDataFormat | None = None,
 ) -> tuple[Path, Path]:
-    """Create a real CalibrationLayer JSON+CSV pair in *folder*. Returns (json_path, csv_path)."""
+    """Create a real CalibrationLayer JSON + data file pair in *folder*.
+
+    Args:
+        folder: Folder to write the pair into.
+        descriptor: Layer descriptor, e.g. "manual-norm".
+        date: Content date of the layer.
+        version: Minor version of the layer files.
+        seed: Varies the epoch and offsets so different seeds give different content.
+        layer_data_format: Format of the data file, CSV when not given.
+
+    Returns:
+        (json_path, data_path)
+    """
     from imap_mag.io.file import CalibrationLayerPathHandler
     from mag_toolkit.calibration.CalibrationDefinitions import (
         CalibrationMetadata,
@@ -139,7 +153,9 @@ def write_calibration_layer_pair(
         version=version,
         version_major=1,
     )
-    data_handler = handler.create_new_datafile_handler(LayerDataFormat.CSV)
+    data_handler = handler.create_new_datafile_handler(
+        layer_data_format or LayerDataFormat.CSV
+    )
     layer.metadata.data_filename = Path(data_handler.get_filename())
     layer._contents = contents
 
@@ -156,3 +172,25 @@ def open_cdf(cdf_path: Path, readonly: bool = True):
     )
 
     return pycdf.CDF(str(cdf_path), readonly=readonly)
+
+
+def make_fake_matlab_calibration_repo(folder: Path, version: str | None = None) -> Path:
+    """Create a stand-in for the IMAP_MAG_Calibration MATLAB repository.
+
+    Args:
+        folder: Folder to create the repository in (as ``folder / "repo"``).
+        version: Version for ``+calibration/get_version.m`` to report, e.g.
+            "v3.5.0". No version file is written when not given.
+
+    Returns:
+        Path to the repository root.
+    """
+    repo = folder / "repo"
+    script = repo / "+calibration" / "+scripts" / "calibrate_l2_offsets.m"
+    script.parent.mkdir(parents=True)
+    script.write_text("function calibrate_l2_offsets(); end")
+    if version is not None:
+        (repo / "+calibration" / "get_version.m").write_text(
+            f'function v=get_version()\nv="{version}";\nend\n'
+        )
+    return repo

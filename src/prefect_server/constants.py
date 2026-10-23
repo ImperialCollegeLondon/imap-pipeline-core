@@ -14,6 +14,10 @@ class PREFECT_CONSTANTS:
 
     IMAP_DATABASE_BLOCK_NAME = "imap-database"
 
+    # Deployments ("flow-name/deployment-name") created by earlier releases that
+    # no longer exist; deploying removes them from the Prefect server.
+    OBSOLETE_DEPLOYMENTS = ("gradiometry/gradiometer",)
+
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_HK_UPDATED = "imap.ialirt_hk.updated"

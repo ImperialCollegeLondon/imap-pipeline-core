@@ -2,12 +2,13 @@ import asyncio
 import os
 import sys
 
-from prefect import aserve, deploy
+from prefect import aserve, deploy, get_client
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
 from prefect.events import DeploymentEventTrigger
+from prefect.exceptions import ObjectNotFound
 from prefect.schedules import Cron
 from prefect.variables import Variable
 
@@ -46,6 +47,19 @@ async def get_matlab_license_server():
         "matlab_license",
         default=os.getenv("MLM_LICENSE_FILE"),  # type: ignore
     )
+
+
+async def delete_obsolete_deployments() -> None:
+    """Delete deployments from earlier releases that this release no longer has,
+    so that deploying to an existing environment also removes them."""
+    async with get_client() as client:
+        for name in PREFECT_CONSTANTS.OBSOLETE_DEPLOYMENTS:
+            try:
+                deployment = await client.read_deployment_by_name(name)
+            except ObjectNotFound:
+                continue
+            await client.delete_deployment(deployment.id)
+            print(f"Deleted obsolete deployment {name}")
 
 
 def deploy_flows(local_debug: bool = False):
@@ -505,6 +519,8 @@ async def adeploy_flows(local_debug: bool = False):
         )
 
     else:
+        await delete_obsolete_deployments()
+
         deploy_ids = await deploy(
             *deployables,  # type: ignore
             work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,

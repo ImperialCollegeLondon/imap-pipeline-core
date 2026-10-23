@@ -14,16 +14,41 @@ import pytest
 from imap_mag.cli.calibrate import _validate_version_number_override, calibrate
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat, Sensor
-from tests.util.miscellaneous import write_calibration_layer_pair
+from mag_toolkit.calibration.CalibrationConfig import ScriptedL2CalibrationConfig
+from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
+    OUTPUT_SUBFOLDER_NAME,
+)
+from tests.util.miscellaneous import (
+    make_fake_matlab_calibration_repo,
+    write_calibration_layer_pair,
+)
 
 MODULE_CALL_MATLAB = (
-    "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab"
+    "mag_toolkit.calibration.calibrators.ScriptedL2Calibration.call_matlab"
 )
 DATE = datetime(2026, 9, 30)
 
 
-def _cal_work_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
-    return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}"
+def _matlab_output_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
+    return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}" / OUTPUT_SUBFOLDER_NAME
+
+
+def _calibrate_with_override(tmp_path: Path, override: tuple[int, int]) -> None:
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=9,
+        input_json_file="input.json",
+        matlab_repo=str(make_fake_matlab_calibration_repo(tmp_path)),
+    )
+    calibrate(
+        start_date=DATE,
+        method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+        mode=ScienceMode.Normal,
+        sensor=Sensor.MAGO,
+        configuration=config.model_dump_json(),
+        metakernel=Path("metakernel.txt"),
+        version_number_override=override,
+        layer_data_format=LayerDataFormat.CSV,
+    )
 
 
 # ── _validate_version_number_override ─────────────────────────────────────────
@@ -59,71 +84,51 @@ def test_valid_override_is_returned():
 
 
 def test_override_forces_version_no_upversion(
-    monkeypatch, temp_datastore, dynamic_work_folder
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):
     """With a version override the layer is written at the forced version, not max+1."""
-    work = _cal_work_folder(dynamic_work_folder, DATE)
+    work = _matlab_output_folder(dynamic_work_folder, DATE)
 
     # Pre-populate v001 in the datastore so auto-increment would produce v002.
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
-    write_calibration_layer_pair(layers_dir, "gradiometer-norm", DATE, 1, seed=1)
+    write_calibration_layer_pair(layers_dir, "manual-norm", DATE, 1, seed=1)
 
-    def mock_call_matlab(command):
-        write_calibration_layer_pair(work, "gradiometer-norm", DATE, 1, seed=99)
+    def mock_call_matlab(command, **kwargs):
+        write_calibration_layer_pair(work, "manual-norm", DATE, 1, seed=99)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    calibrate(
-        start_date=DATE,
-        method=CalibrationMethod.GRADIOMETER,
-        mode=ScienceMode.Normal,
-        sensor=Sensor.MAGO,
-        configuration='{"kappa": 0.0, "sc_interference_threshold": 10.0}',
-        version_number_override=(1, 1),
-        layer_data_format=LayerDataFormat.CSV,
-    )
+    _calibrate_with_override(tmp_path, (1, 1))
 
     # The override forces v001.0001; v001.0002 must not exist.
-    assert (
-        layers_dir / "imap_mag_gradiometer-norm-layer_20260930_v001.0001.json"
-    ).exists()
+    assert (layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0001.json").exists()
     assert not (
-        layers_dir / "imap_mag_gradiometer-norm-layer_20260930_v001.0002.json"
+        layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0002.json"
     ).exists()
 
 
 def test_override_overwrites_layer_content(
-    monkeypatch, temp_datastore, dynamic_work_folder
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):
     """Content at the forced version is replaced when the new calibration differs."""
-    work = _cal_work_folder(dynamic_work_folder, DATE)
+    work = _matlab_output_folder(dynamic_work_folder, DATE)
 
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
 
     # Existing v001.0005 with seed=0
-    write_calibration_layer_pair(layers_dir, "gradiometer-norm", DATE, 5, seed=0)
-    existing_json = (
-        layers_dir / "imap_mag_gradiometer-norm-layer_20260930_v001.0005.json"
-    )
+    write_calibration_layer_pair(layers_dir, "manual-norm", DATE, 5, seed=0)
+    existing_json = layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0005.json"
     original_mtime = existing_json.stat().st_mtime
 
-    def mock_call_matlab(command):
-        # The override seeds the handler at v005; Gradiometer expects that filename.
-        write_calibration_layer_pair(work, "gradiometer-norm", DATE, 5, seed=42)
+    def mock_call_matlab(command, **kwargs):
+        # MATLAB is asked to write at the overridden version, v001.0005.
+        write_calibration_layer_pair(work, "manual-norm", DATE, 5, seed=42)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    calibrate(
-        start_date=DATE,
-        method=CalibrationMethod.GRADIOMETER,
-        mode=ScienceMode.Normal,
-        sensor=Sensor.MAGO,
-        configuration='{"kappa": 0.0, "sc_interference_threshold": 10.0}',
-        version_number_override=(1, 5),
-        layer_data_format=LayerDataFormat.CSV,
-    )
+    _calibrate_with_override(tmp_path, (1, 5))
 
     # v005 exists and its content has been replaced (mtime changed).
     assert existing_json.exists()

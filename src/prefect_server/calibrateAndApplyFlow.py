@@ -20,7 +20,6 @@ from mag_toolkit.calibration import (
     LayerDataFormat,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
-    GradiometryConfig,
     ScienceFileVersionConfig,
     SetQualityAndNaNConfig,
 )
@@ -82,7 +81,7 @@ def calibrate_and_apply_flow(
         ),
     ] = None,
     configuration: Annotated[
-        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig | GradiometryConfig,
+        PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig,
         Field(
             json_schema_extra={
                 "title": "Calibration Type Configuration",
