@@ -154,7 +154,9 @@ class FileFinder:
         useful for flows (like calibrate-convert) that may operate across many
         days or the whole datastore history at once.
         """
-        layers_folder = self._data_store / "calibration" / "layers"
+        # Listed once up front rather than per pattern: with no date range this
+        # walks the whole layers tree, which may be on a network mount.
+        candidate_paths: list[Path] | None = None
 
         resolved: list[str] = []
         for layer in layers:
@@ -169,9 +171,10 @@ class FileFinder:
                 resolved.append(layer)
                 continue
 
-            candidate_paths = self.__candidate_layer_paths(
-                layers_folder, start_date, end_date
-            )
+            if candidate_paths is None:
+                candidate_paths = self.__candidate_layer_paths(
+                    self._data_store, start_date, end_date
+                )
 
             candidates: list[tuple[str, int]] = []
             for path in candidate_paths:
@@ -237,32 +240,30 @@ class FileFinder:
 
     @staticmethod
     def __candidate_layer_paths(
-        layers_folder: Path,
+        data_store: Path,
         start_date: datetime | None,
         end_date: datetime | None,
     ) -> list[Path]:
-        """Files to consider for layer matching: every month folder in the given
-        date range (cheap, matches the old single-month-folder scan for the
-        common single-day case), or the whole tree when no date is given."""
-        if not layers_folder.exists():
-            return []
-
+        """Files to consider for layer matching: those in the month folder of
+        each month in the given date range, or the whole layers tree when no
+        date is given."""
         if start_date is None:
+            layers_folder = data_store / CalibrationLayerPathHandler.get_root_folder()
             return [p for p in layers_folder.rglob("*") if p.is_file()]
 
-        # Represent each month as a single "months since year 0" integer so the
-        # range can be walked with plain integer arithmetic (no calendar edge
-        # cases like day-31/leap-year rollover to worry about).
-        effective_end = end_date or start_date
-        start_month_index = start_date.year * 12 + start_date.month
-        end_month_index = effective_end.year * 12 + effective_end.month
+        last_day = (end_date or start_date).date()
+        month = datetime(start_date.year, start_date.month, 1)
 
         candidate_paths: list[Path] = []
-        for month_index in range(start_month_index, end_month_index + 1):
-            year, month = divmod(month_index - 1, 12)
-            month_folder = layers_folder / f"{year}" / f"{month + 1:02d}"
+        while month.date() <= last_day:
+            month_folder = (
+                data_store
+                / CalibrationLayerPathHandler(content_date=month).get_folder_structure()
+            )
             if month_folder.exists():
                 candidate_paths.extend(p for p in month_folder.iterdir() if p.is_file())
+            # the 1st plus 32 days always lands in the next month
+            month = (month + timedelta(days=32)).replace(day=1)
         return candidate_paths
 
     @staticmethod

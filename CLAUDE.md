@@ -98,6 +98,7 @@ Recurring review feedback — follow these to avoid the same corrections:
 - Build datastore paths via the path handlers (e.g. `SPICEPathHandler.get_metakernel_path`), not hardcoded folder-name strings like `"spice"/"mk"`.
 - **SPICE gotcha**: a metakernel's `PATH_VALUES` is length-limited (long absolute paths get silently truncated → `furnsh` "file could not be located"). Keep `PATH_VALUES` relative (e.g. `spice`) and furnish from the correct working directory.
 - When copying from the (potentially huge, network-mounted) datastore, be day- and version-specific and mind file sizes — never copy the whole tree. Use per-pattern day windows (default: just the day being calibrated).
+- **File versions `_vMMM.mmmm`**: the minor version (`mmmm`, `handler.version`) is globally unique and always increasing, so it alone decides which file is latest. The major version (`MMM`, `version_major`) is only a human-facing label — never include it when ordering or comparing versions.
 
 ### PR hygiene
 

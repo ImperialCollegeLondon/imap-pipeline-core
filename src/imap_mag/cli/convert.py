@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import typer
 
-from imap_mag.cli.apply import FileType
 from imap_mag.cli.cliUtils import fetch_file_for_work, initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.db.Database import Database
@@ -15,7 +14,7 @@ from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationLayer, ConversionStrategy
+from mag_toolkit.calibration import CalibrationLayer, ConversionStrategy, FileType
 from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS, LayerDataFormat
 
 app = typer.Typer()
@@ -169,15 +168,18 @@ def _convert_layer(
 
     old_datastore_paths: list[Path] = [versioned_source_path]
     companion_versioned_path = layer.get_datafile_path(versioned_source_path)
-    if companion_versioned_path is not None:
+    # A self-contained (CDF) layer is its own data file, so has nothing extra to fetch.
+    if (
+        companion_versioned_path is not None
+        and companion_versioned_path != versioned_source_path
+    ):
         fetch_file_for_work(
             companion_versioned_path, work_folder, throw_if_not_found=True
         )
         old_datastore_paths.append(companion_versioned_path)
 
     layer.load_contents()
-    source_extension = layer.get_data_file_type().value
-    if source_extension == output_layer_data_format.value:
+    if layer.get_data_file_type() == output_layer_data_format:
         logger.info(
             f"Layer {layer_name} is already in {output_layer_data_format.value} "
             "format; skipping conversion."
@@ -192,10 +194,12 @@ def _convert_layer(
     )
 
     output_is_self_contained = CalibrationLayer.is_self_contained_format(
-        output_layer_data_format.value
+        output_layer_data_format
     )
     output_handler = source_handler.with_new_primary_format(
-        extension="cdf" if output_is_self_contained else "json",
+        extension=output_layer_data_format.value
+        if output_is_self_contained
+        else FileType.JSON.value,
         versioning_mode=versioning_mode,
         allow_overwrite=is_overwrite,
     )
@@ -230,7 +234,8 @@ def _convert_layer(
         layer_name=layer_name,
         original=layer,
         converted_path=new_primary_path,
-        involves_cdf=source_handler.extension == "cdf" or output_is_self_contained,
+        involves_cdf=CalibrationLayer.is_self_contained_format(source_handler.extension)
+        or output_is_self_contained,
     )
 
     published: list[Path] = []

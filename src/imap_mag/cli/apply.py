@@ -467,28 +467,16 @@ def cleanup_workfolder_after_apply(
     if workRotationFile:
         files_to_cleanup.append(workRotationFile)
 
-    # add the companion data file (CSV or Parquet) for each JSON layer to the cleanup list
+    # add the companion data file (CSV or Parquet) for each JSON layer to the cleanup list.
+    # These layers were already loaded successfully to apply them, so a failure to
+    # read one here is unexpected and is left to propagate.
     for layer_file in workLayers:
         handler = CalibrationLayerPathHandler.from_filename(layer_file)
-        if handler is not None and handler.is_metadata_file():
-            try:
-                cal = CalibrationLayer.from_file(layer_file, load_contents=False)
-                data_filename = cal.get_datafile_path()
-            except Exception as exc:
-                logger.error(
-                    f"Could not load calibration layer {layer_file} to determine "
-                    f"its companion data file for cleanup: {exc}"
-                )
-                data_filename = None
-
-            if data_filename is not None:
-                if data_filename.exists():
-                    files_to_cleanup.append(data_filename)
-            else:
-                for ext in (".csv", ".parquet"):
-                    companion = layer_file.with_suffix(ext)
-                    if companion.exists():
-                        files_to_cleanup.append(companion)
+        if handler is not None and handler.has_companion_data_file():
+            cal = CalibrationLayer.from_file(layer_file, load_contents=False)
+            data_file = cal.get_datafile_path()
+            if data_file is not None and data_file.exists():
+                files_to_cleanup.append(data_file)
 
     work_folder_resolved = app_settings.work_folder.resolve()
     for temp_file in files_to_cleanup:

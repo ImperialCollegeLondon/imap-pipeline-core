@@ -9,6 +9,7 @@ from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMethod,
+    FileType,
     LayerDataFormat,
 )
 
@@ -30,19 +31,22 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     descriptor: str | None = None
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
-    extension: str = "json"
+    extension: str = FileType.JSON.value
     _has_major_version: bool = True
     original_filename_or_path: str | Path | None = field(compare=False, default=None)
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
+    @staticmethod
+    def get_root_folder() -> Path:
+        """Datastore-relative folder that all calibration layers live under."""
+        return Path("calibration") / "layers"
+
     def get_folder_structure(self) -> str:
         super()._check_property_values("folder structure", ["content_date"])
         assert self.content_date
 
-        return (
-            Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
-        ).as_posix()
+        return (self.get_root_folder() / self.content_date.strftime("%Y/%m")).as_posix()
 
     def get_content_date_for_indexing(self):
         return self.content_date
@@ -74,6 +78,12 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     def is_metadata_file(self) -> bool:
         """Determine if this handler represents a metadata JSON file (true) or a data csv/parquet/cdf type file (false)."""
         return self.extra_descriptor != "-data"
+
+    def has_companion_data_file(self) -> bool:
+        """Determine if this handler represents a JSON metadata file paired with a
+        companion csv/parquet data file (true), rather than a data file or a
+        self-contained (e.g. CDF) layer (false)."""
+        return self.is_metadata_file() and self.extension == FileType.JSON
 
     def _derived(self, **overrides) -> "CalibrationLayerPathHandler":
         """Build a new handler by copying this handler's fields and applying
@@ -215,9 +225,9 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     ) -> str:
         """Return a hash representing content identity for deduplication.
 
-        JSON layer files are identified by their companion CSV hash (stored in the
+        JSON layer files are identified by their companion data file hash (stored in the
         layer's metadata.data_hash field), not the JSON file itself, because the JSON
-        can change (e.g. version bump rewrites data_filename) while the CSV data stays
+        can change (e.g. version bump rewrites data_filename) while the data file stays
         the same.
         """
         source_file = (
@@ -251,12 +261,12 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
 
             if companion is not None and companion.exists():
                 logger.warning(
-                    f"No data_hash in metadata of {source_file}. Falling back to hashing the companion CSV."
+                    f"No data_hash in metadata of {source_file}. Falling back to hashing the companion data file."
                 )
                 return self.default_file_hash(companion)
 
             logger.debug(
-                f"No data_hash or companion CSV for {source_file}. Using JSON file hash as identity fallback."
+                f"No data_hash or companion data file for {source_file}. Using JSON file hash as identity fallback."
             )
             # Fall through to hash the JSON itself
 
@@ -281,7 +291,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         CDF layer (also a "metadata file" per is_metadata_file, but
         self-contained) has no sibling and needs no rewriting.
         """
-        if self.extension != "json":
+        if not self.has_companion_data_file():
             return source_file
 
         from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
@@ -299,7 +309,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         even when only one half of the pair exists in the datastore from a prior
         partial save. A standalone CDF layer has no companion, so is exempt.
         """
-        if self.extension != "json":
+        if not self.has_companion_data_file():
             return False
         new_companion = self._companion_data_path(source_file)
         # Not creating a new file here, just checking an existing/candidate slot,

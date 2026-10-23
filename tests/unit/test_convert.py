@@ -6,12 +6,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from imap_mag.cli.apply import FileType
 from imap_mag.cli.convert import convert
 from imap_mag.config import AppSettings, ConvertCommandConfig, SaveMode
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import ConversionStrategy, LayerDataFormat
+from mag_toolkit.calibration import ConversionStrategy, FileType, LayerDataFormat
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,

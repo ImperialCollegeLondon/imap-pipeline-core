@@ -309,9 +309,10 @@ class CalibrationLayer(Layer):
                 f"Existing calibration values will be overwritten with data in {path!s}."
             )
 
-        if path.suffix == ".parquet":
+        extension = path.suffix.lstrip(".")
+        if extension == FileType.PARQUET:
             self._contents = self._values_from_parquet(path)
-        elif path.suffix == ".cdf":
+        elif extension == FileType.CDF:
             self._contents = self._values_from_cdf(path)
         else:
             self._contents = self._values_from_csv(path)
@@ -336,7 +337,7 @@ class CalibrationLayer(Layer):
                 )
             data_file_path = filepath.parent / self.metadata.data_filename
             if save_contents:
-                if data_file_path.suffix.lstrip(".") == LayerDataFormat.PARQUET.value:
+                if data_file_path.suffix.lstrip(".") == LayerDataFormat.PARQUET:
                     self._write_to_parquet(data_file_path, createDirectory)
                 else:
                     self._write_to_csv(data_file_path, createDirectory)
@@ -364,7 +365,7 @@ class CalibrationLayer(Layer):
     def is_self_contained_format(extension: str) -> bool:
         """True for formats (currently just CDF) that embed all layer data and
         metadata into a single file, rather than a JSON + companion data-file pair."""
-        return extension == "cdf"
+        return extension == FileType.CDF
 
     def get_data_file_type(self) -> FileType:
         """Return the format of this layer's actual data: its own file for a
@@ -383,18 +384,25 @@ class CalibrationLayer(Layer):
 
     def get_datafile_path(self, local_metadata_path: Path | None = None) -> Path | None:
         """Return the path of the companion data file (CSV or Parquet) for a JSON layer, or the layer's own path for a self-contained format (CDF).
-        The path will be relative to the JSON layer's location unless ``local_metadata_path`` is providedwhen it will be relative to that instead.
+        The path will be relative to the JSON layer's location unless ``local_metadata_path`` is provided, when it will be relative to that instead.
+
+        Args:
+            local_metadata_path: Location of the layer's metadata file to resolve
+                the data file against, instead of where this layer was last
+                read from/written to.
+
+        Raises:
+            ValueError: If the layer has no ``data_filename`` set, or no location
+                to resolve its companion data file against.
         """
-        if self.is_self_contained_format(self.get_data_file_type().value):
+        if self.is_self_contained_format(self.get_data_file_type()):
             return (
                 local_metadata_path
                 if local_metadata_path is not None
                 else self._local_file_path
             )
 
-        if self.metadata.data_filename is None:
-            return None
-
+        assert self.metadata.data_filename is not None
         if local_metadata_path is None and self._local_file_path is None:
             raise ValueError(
                 "Cannot determine companion data file path: both local_metadata_path and _local_file_path are None."
@@ -459,7 +467,7 @@ class CalibrationLayer(Layer):
         if current is None:
             return source_file
 
-        # Preserve the companion's current format (csv/parquet) 
+        # Preserve the companion's current format (csv/parquet)
         current_format = LayerDataFormat(Path(current).suffix.lstrip("."))
         expected_data_filename = handler.create_new_datafile_handler(
             current_format
@@ -482,11 +490,12 @@ class CalibrationLayer(Layer):
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
-        if path.suffix == ".csv":
+        extension = path.suffix.lstrip(".")
+        if extension == FileType.CSV:
             return cls._from_csv(path)
-        elif path.suffix == ".parquet":
+        elif extension == FileType.PARQUET:
             return cls._from_parquet(path)
-        elif path.suffix == ".cdf":
+        elif extension == FileType.CDF:
             return cls._from_cdf(path)
         else:
             return super().from_file(path, load_contents)

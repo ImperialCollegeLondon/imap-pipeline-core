@@ -7,13 +7,18 @@ from prefect.client.schemas.objects import FlowRun
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.cli.apply import FileType, apply
+from imap_mag.cli.apply import apply
 from imap_mag.cli.calibrate import Sensor
 from imap_mag.config import SaveMode
 from imap_mag.io.file import CalibrationLayerPathHandler
 from imap_mag.io.file.SPICEPathHandler import METAKERNEL_FILENAME_PREFIX
 from imap_mag.util import ReferenceFrame, ScienceMode
-from mag_toolkit.calibration import CalibrationLayer, CalibrationMethod, LayerDataFormat
+from mag_toolkit.calibration import (
+    CalibrationLayer,
+    CalibrationMethod,
+    FileType,
+    LayerDataFormat,
+)
 from mag_toolkit.calibration.CalibrationConfig import (
     GradiometryConfig,
     ScienceFileVersionConfig,

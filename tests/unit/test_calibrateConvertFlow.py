@@ -3,8 +3,7 @@
 from datetime import date, datetime
 from unittest.mock import patch
 
-from imap_mag.cli.apply import FileType
-from mag_toolkit.calibration import ConversionStrategy
+from mag_toolkit.calibration import ConversionStrategy, FileType
 from prefect_server.calibrateConvertFlow import calibrate_convert_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 

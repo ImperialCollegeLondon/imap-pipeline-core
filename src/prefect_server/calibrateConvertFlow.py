@@ -6,11 +6,10 @@ from prefect import flow
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.cli.apply import FileType
 from imap_mag.cli.convert import convert
 from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import ConversionStrategy
+from mag_toolkit.calibration import ConversionStrategy, FileType
 from prefect_server.constants import PREFECT_CONSTANTS
 
 

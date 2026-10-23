@@ -7,9 +7,10 @@ from prefect.client.schemas.objects import FlowRun
 from prefect.runtime import flow_run
 from pydantic import Field
 
-from imap_mag.cli.apply import FileType, apply
+from imap_mag.cli.apply import apply
 from imap_mag.config import SaveMode
 from imap_mag.util import ReferenceFrame, ScienceMode
+from mag_toolkit.calibration import FileType
 from mag_toolkit.calibration.CalibrationConfig import ScienceFileVersionConfig
 from prefect_server.calibrationFlowCommon import (
     SplitByDay,

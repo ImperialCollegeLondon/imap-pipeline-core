@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CalibrationMetadata,
+    FileType,
     Mission,
     Sensor,
     Validity,
@@ -112,13 +113,14 @@ class Layer(BaseModel, ABC):
         return filepath
 
     def write_to_file(self, filepath: Path, createDirectory=False) -> Path:
-        if filepath.suffix == ".cdf":
+        extension = filepath.suffix.lstrip(".")
+        if extension == FileType.CDF:
             cdf = self._write_to_cdf(filepath, createDirectory=createDirectory)
             self._local_file_path = cdf
             return cdf
-        elif filepath.suffix == ".csv":
+        elif extension == FileType.CSV:
             return self._write_to_csv(filepath, createDirectory=createDirectory)
-        elif filepath.suffix == ".parquet":
+        elif extension == FileType.PARQUET:
             return self._write_to_parquet(filepath, createDirectory=createDirectory)
         else:
             json = self._write_to_json(filepath, createDirectory=createDirectory)
