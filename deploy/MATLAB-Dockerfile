@@ -116,7 +116,6 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --no-cache-dir --upgrade pip
-RUN python -m pip install --user --no-cache-dir --upgrade certifi
 
 RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME} && \
     chown -R ${IMAP_USERNAME} /app && \
