@@ -25,10 +25,12 @@ class TestGetFilesToIndexStage:
         database=None,
         tmp_path=None,
         paths_to_match=None,
+        max_files_per_run=None,
     ) -> GetFilesToIndexStage:
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path or Path("/nonexistent")
         mock_settings.file_analysis.paths_to_match = paths_to_match or []
+        mock_settings.file_analysis.max_files_per_run = max_files_per_run
 
         stage = GetFilesToIndexStage(database=database, settings=mock_settings)
         stage._run_parameters = run_params or AutomaticRunParameters()
@@ -380,3 +382,84 @@ class TestGetFilesToIndexStage:
 
         call_args = db.get_files_since.call_args[0][0]
         assert call_args.year == 2010
+
+    # ------------------------------------------------------------------
+    # max_files_per_run
+    # ------------------------------------------------------------------
+
+    def _published_ids(self, stage) -> list[int]:
+        return [
+            call.args[0].file_id for call in stage._next_stage.process.call_args_list
+        ]
+
+    def test_automatic_run_limited_to_max_files_per_run(self, tmp_path):
+        files = [
+            self._make_file(
+                tmp_path,
+                f"hk/f{i}.csv",
+                file_id=i,
+                last_modified_date=datetime(2026, 1, i, tzinfo=UTC),
+            )
+            for i in range(1, 6)
+        ]
+        db = self._make_db(files=files)
+        stage = self._make_stage(database=db, tmp_path=tmp_path, max_files_per_run=2)
+
+        asyncio.run(stage.start(context=self._context()))
+
+        assert self._published_ids(stage) == [1, 2]
+
+    def test_max_files_per_run_keeps_files_sharing_cutoff_modified_date(self, tmp_path):
+        """Files with the same modified date as the last file in the batch must not be
+        split across runs, or progress would move past them and they'd be skipped."""
+        same_date = datetime(2026, 1, 2, tzinfo=UTC)
+        files = [
+            self._make_file(
+                tmp_path,
+                "hk/a.csv",
+                file_id=1,
+                last_modified_date=datetime(2026, 1, 1, tzinfo=UTC),
+            ),
+            self._make_file(
+                tmp_path, "hk/b.csv", file_id=2, last_modified_date=same_date
+            ),
+            self._make_file(
+                tmp_path, "hk/c.csv", file_id=3, last_modified_date=same_date
+            ),
+            self._make_file(
+                tmp_path,
+                "hk/d.csv",
+                file_id=4,
+                last_modified_date=datetime(2026, 1, 3, tzinfo=UTC),
+            ),
+        ]
+        db = self._make_db(files=files)
+        stage = self._make_stage(database=db, tmp_path=tmp_path, max_files_per_run=2)
+
+        asyncio.run(stage.start(context=self._context()))
+
+        assert self._published_ids(stage) == [1, 2, 3]
+
+    def test_max_files_per_run_not_applied_to_date_range_run(self, tmp_path):
+        files = [
+            self._make_file(
+                tmp_path,
+                f"hk/f{i}.csv",
+                file_id=i,
+                last_modified_date=datetime(2026, 1, i, tzinfo=UTC),
+            )
+            for i in range(1, 4)
+        ]
+        db = self._make_db(files=files)
+        stage = self._make_stage(
+            run_params=IndexByDateRangeRunParameters(
+                modified_after=datetime(2025, 1, 1, tzinfo=UTC)
+            ),
+            database=db,
+            tmp_path=tmp_path,
+            max_files_per_run=1,
+        )
+
+        asyncio.run(stage.start(context=self._context()))
+
+        assert self._published_ids(stage) == [1, 2, 3]

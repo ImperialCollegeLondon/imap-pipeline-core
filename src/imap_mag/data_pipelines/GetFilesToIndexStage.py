@@ -172,7 +172,30 @@ class GetFilesToIndexStage(SourceStage):
             f"Found {len(all_files)} files modified after {last_modified_date}"
         )
 
-        return self._apply_paths_filter(all_files)
+        return self._apply_max_files_limit(self._apply_paths_filter(all_files))
+
+    def _apply_max_files_limit(self, files: list[File]) -> list[File]:
+        """Limit the number of files analysed in one run.
+
+        Files are expected in ascending last modified order. Files sharing the
+        last modified date of the final file in the batch are kept together, so
+        progress (which only moves forward past that date) does not skip any.
+        """
+        max_files = self.settings.file_analysis.max_files_per_run
+        if max_files is None or len(files) <= max_files:
+            return files
+
+        cutoff_date = files[max_files - 1].last_modified_date
+        limited = files[:max_files]
+        for file in files[max_files:]:
+            if file.last_modified_date != cutoff_date:
+                break
+            limited.append(file)
+
+        self.logger.info(
+            f"Limiting run to {len(limited)}/{len(files)} files (max_files_per_run={max_files})"
+        )
+        return limited
 
     def _apply_paths_filter(self, files: list[File]) -> list[File]:
         paths_to_match = self.settings.file_analysis.paths_to_match

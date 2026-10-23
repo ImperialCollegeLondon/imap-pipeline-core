@@ -190,6 +190,7 @@ postgres_upload:
         - "noaa/**/*.csv"
 
 file_analysis:
+  max_files_per_run: 500
   paths_to_match:
     - "science/mag/**/*.cdf"
     - "hk/mag/**/*.csv"

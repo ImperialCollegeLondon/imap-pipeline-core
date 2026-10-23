@@ -27,4 +27,10 @@ class FileAnalysisConfig(BaseModel):
     paths_to_match: list[str] = []  # fnmatch patterns for finding files to index
     file_patterns: list[FileAnalysisPatternConfig] = []  # per-file pattern configs
     default_gap_threshold_seconds: int = 60  # 60 seconds = 1 minute
+    # -1e31 (the CDF float fill value) as stored in float32. Each CDF variable's own
+    # FILLVAL attribute is also treated as bad data, which covers non-float types
+    # such as TT2000 epochs.
     nan_sentinel: float = -9.999999848243207e30
+    # Maximum number of files to analyse in one automatic (scheduled) run, so a
+    # large backlog is worked through over several runs. None means no limit.
+    max_files_per_run: int | None = None
