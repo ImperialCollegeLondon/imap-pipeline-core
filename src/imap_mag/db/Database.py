@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, or_, select
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from imap_db.model import Base, File, WorkflowProgress
+from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +196,18 @@ class Database:
         statement = select(File).where(File.deletion_date.is_(None))
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
+
+    def get_files_by_ids(self, file_ids: list[int]) -> list[File]:
+        """Get files by their IDs."""
+        statement = select(File).where(File.id.in_(file_ids))
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
+
+    def get_file_analysis_by_file_id(self, file_id: int) -> FileAnalysis | None:
+        """Get the file index entry for a given file ID."""
+        statement = select(FileAnalysis).where(FileAnalysis.file_id == file_id)
+        with self.session() as session:
+            return session.execute(statement).scalars().first()
 
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
