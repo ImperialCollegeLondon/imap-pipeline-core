@@ -43,6 +43,7 @@ def test_spice_path_handler_fails_if_given_ancillary_file():
         "earth_000101_260128_251102.bpc",
         Path("ck/imap_2025_302_2025_303_001.ah.bc"),
         Path("sclk/imap_sclk_0032.tsc"),
+        "imap_lopivot-repoint00044_2025_314_2025_315_001.bc",
     ],
 )
 def test_spice_path_handler_succeeds_if_given_spice_file(filename):
@@ -115,6 +116,12 @@ class TestGetKernelTypeFromFilename:
             "imap_2025_302_2025_303_001.ap.bc"
         )
         assert kt == "attitude_predict"
+
+    def test_lo_pivot_file(self):
+        kt = SPICEPathHandler.get_kernel_type_from_filename(
+            "imap_lopivot-repoint00044_2025_314_2025_315_001.bc"
+        )
+        assert kt == "lo_pivot_attitude"
 
 
 class TestGetUnsequencedPattern:
