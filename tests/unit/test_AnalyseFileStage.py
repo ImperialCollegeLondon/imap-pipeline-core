@@ -817,3 +817,168 @@ def test_csv_null_column_values_detected_as_missing_data(tmp_path):
     assert result.has_missing_data is True
     assert result.column_stats is not None
     assert result.column_stats["x"]["null_count"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Empty files
+# ---------------------------------------------------------------------------
+
+
+def test_csv_zero_byte_file_has_zero_records(tmp_path):
+    stage = _make_stage()
+    empty = tmp_path / "empty.csv"
+    empty.write_bytes(b"")
+
+    result = stage._index_file(1, empty, "empty.csv")
+
+    assert result.record_count == 0
+    assert result.first_timestamp is None
+    assert result.has_gaps is None
+    assert result.gaps is None
+
+
+def test_csv_header_only_file_has_zero_records(tmp_path):
+    pattern = FileAnalysisPatternConfig(
+        pattern="*.csv",
+        datetime_column="time",
+        columns_to_check=[ColumnCheckConfig(column_name="value")],
+    )
+    stage = _make_stage(extra_patterns=[pattern])
+    header_only = tmp_path / "header_only.csv"
+    header_only.write_text("time,value\n")
+
+    result = stage._index_file(1, header_only, "header_only.csv")
+
+    assert result.record_count == 0
+    assert result.first_timestamp is None
+    assert result.last_timestamp is None
+    assert result.has_gaps is None
+    assert result.has_bad_data is None
+    assert result.has_missing_data is None
+
+
+def _write_empty_cdf(path):
+    from cdflib.cdfwrite import CDF as CDFWriter
+
+    writer = CDFWriter(str(path))
+    writer.write_var(
+        {
+            "Variable": "epoch",
+            "Data_Type": 33,  # CDF_TIME_TT2000
+            "Num_Elements": 1,
+            "Rec_Vary": True,
+            "Dim_Sizes": [],
+        },
+        var_data=None,
+    )
+    writer.write_var(
+        {
+            "Variable": "magnitude",
+            "Data_Type": 21,  # CDF_REAL4
+            "Num_Elements": 1,
+            "Rec_Vary": True,
+            "Dim_Sizes": [],
+        },
+        var_data=None,
+    )
+    writer.close()
+
+
+def test_cdf_with_no_records_has_zero_records(tmp_path):
+    pattern = FileAnalysisPatternConfig(
+        pattern="*.cdf",
+        datetime_column="epoch",
+        columns_to_check=[ColumnCheckConfig(column_name="magnitude")],
+    )
+    stage = _make_stage(extra_patterns=[pattern])
+    empty = tmp_path / "empty.cdf"
+    _write_empty_cdf(empty)
+
+    result = stage._index_file(1, empty, "empty.cdf")
+
+    assert result.record_count == 0
+    assert result.first_timestamp is None
+    assert result.has_gaps is None
+    assert result.has_bad_data is None
+
+
+def test_cdf_record_count_from_metadata_when_no_datetime_column(tmp_path):
+    """Without a usable datetime variable the record count comes from the CDF metadata."""
+    pattern = FileAnalysisPatternConfig(pattern="*.cdf", datetime_column="not_a_var")
+    stage = _make_stage(extra_patterns=[pattern])
+    path = DATASTORE / "science/mag/l1d/2026/02/imap_mag_l1d_norm-gse_20260222_v001.cdf"
+
+    result = stage._index_file(1, path, "imap_mag_l1d_norm-gse_20260222_v001.cdf")
+
+    assert result.record_count == 172800
+    assert result.first_timestamp is None
+
+
+# ---------------------------------------------------------------------------
+# Fill values
+# ---------------------------------------------------------------------------
+
+
+def test_compute_column_stats_uses_column_fill_value():
+    """TT2000 epoch fill values (int64 min) are not caught by the float sentinel."""
+    stage = _make_stage()
+    col_check = ColumnCheckConfig(column_name="epoch", check_for_bad_data=True)
+    tt2000_fill = -9223372036854775808
+    data = np.array([8.0e17, tt2000_fill, 8.0e17 + 1e9], dtype=float)
+
+    assert stage._compute_column_stats(data, col_check)["bad_data_count"] == 0
+    stats = stage._compute_column_stats(data, col_check, fill_value=tt2000_fill)
+    assert stats["bad_data_count"] == 1
+
+
+def test_compute_column_stats_matches_float32_fill_value():
+    """A -1e31 FILLVAL matches data stored as float32 (-9.999999848243207e30)."""
+    stage = _make_stage()
+    col_check = ColumnCheckConfig(column_name="x", check_for_bad_data=True)
+    data = np.array([1.0, np.float32(-1e31)], dtype=float)
+
+    stats = stage._compute_column_stats(data, col_check, fill_value=-1e31)
+
+    assert stats["bad_data_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Row alignment between timestamps and data
+# ---------------------------------------------------------------------------
+
+
+def test_csv_gaps_aligned_with_rows_when_some_timestamps_unparseable(tmp_path):
+    """Rows with unparseable timestamps must not shift bad-data gap times."""
+    pattern = FileAnalysisPatternConfig(
+        pattern="*.csv",
+        datetime_column="time",
+        columns_to_check=[
+            ColumnCheckConfig(
+                column_name="value", check_for_empty=True, match_as_bad_data=["BAD"]
+            )
+        ],
+    )
+    stage = _make_stage(extra_patterns=[pattern])
+    csv = tmp_path / "misaligned.csv"
+    csv.write_text(
+        "time,value\n"
+        "not-a-time,1.0\n"
+        "2026-01-01T00:00:01,1.0\n"
+        "2026-01-01T00:00:02,BAD\n"
+        "2026-01-01T00:00:03,1.0\n"
+    )
+
+    result = stage._index_file(1, csv, "misaligned.csv")
+
+    assert result.record_count == 4
+    assert result.first_timestamp == datetime(2026, 1, 1, 0, 0, 1, tzinfo=UTC)
+    assert result.has_bad_data is True
+    assert result.nan_gaps is not None
+    assert len(result.nan_gaps) == 1
+    assert result.nan_gaps[0]["start_time"] == "2026-01-01T00:00:02"
+    assert result.nan_gaps[0]["count"] == 1
+
+
+def test_find_runs_reduces_multidimensional_mask_per_record():
+    mask = np.array([[False, False], [True, False], [False, True], [False, False]])
+    assert AnalyseFilesStage._find_runs(mask) == [(1, 2)]
