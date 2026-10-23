@@ -29,27 +29,6 @@
             }
         },
         {
-            "type": "docker-build",
-            "label": "docker-build",
-            "platform": "python",
-            "dockerBuild": {
-                "tag": "imap-pipeline-core:latest",
-                "dockerfile": "${workspaceFolder}/Dockerfile",
-                "context": "${workspaceFolder}",
-                "pull": true
-            }
-        },
-        {
-            "type": "docker-run",
-            "label": "docker-run: debug",
-            "dependsOn": [
-                "docker-build"
-            ],
-            "python": {
-                "file": "src/main.py"
-            }
-        },
-        {
             "type": "shell",
             "label": "start_servers",
             "command": "${workspaceFolder}/start_dev.sh",

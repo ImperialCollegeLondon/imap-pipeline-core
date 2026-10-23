@@ -135,6 +135,11 @@ jobs:
             # pull request event
             type=ref,event=pr
 
+      - name: Set Docker cache date to force expiry after 24hrs
+        id: docker-cache
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
@@ -145,8 +150,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=pipeline-${{ steps.docker-cache.outputs.date }}
+          cache-to: type=gha,mode=max,scope=pipeline-${{ steps.docker-cache.outputs.date }}
 
       - name: Zip up the folder
         run: zip -r ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip python${{matrix.python-versions}}
@@ -345,6 +350,11 @@ jobs:
             # pull request event
             type=ref,event=pr,prefix=matlab-pr-
 
+      - name: Set Docker cache date to max 24hrs
+        id: docker-cache
+        if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
@@ -357,5 +367,5 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=matlab_imap_pipeline_core_embedded
-          cache-to: type=gha,mode=max,scope=matlab_imap_pipeline_core_embedded
+          cache-from: type=gha,scope=matlab-pipeline-${{ steps.docker-cache.outputs.date }}
+          cache-to: type=gha,mode=max,scope=matlab-pipeline-${{ steps.docker-cache.outputs.date }}
