@@ -420,14 +420,12 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
-    delete_old_database_rows_deployable = database_cleanup_flow.to_deployment(
+    database_cleanup_deployable = database_cleanup_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DELETE_OLD_DATABASE_ROWS,
         job_variables=shared_job_variables,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-        cron=get_cron_from_env(
-            PREFECT_CONSTANTS.ENV_VAR_NAMES.DELETE_OLD_DATABASE_ROWS_CRON
-        ),
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
     matlab_shared_job_variables = shared_job_variables.copy()
@@ -483,7 +481,7 @@ async def adeploy_flows(local_debug: bool = False):
         datastore_cleanup_deployable,
         datastore_indexer_deployable,
         poll_noaa_deployable,
-        delete_old_database_rows_deployable,
+        database_cleanup_deployable,
     )
 
     if local_debug:
