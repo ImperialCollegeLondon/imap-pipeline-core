@@ -1,0 +1,24 @@
+{
+    "id": "imap_mag_manual-norm-layer",
+    "metadata": {
+        "comment": "",
+        "creation_timestamp": "2026-10-23T16:47:39.024852000",
+        "data_filename": "imap_mag_manual-norm-layer-data_20260116_v001.0001.parquet",
+        "data_hash": "c5177d37c0934d77412653639e30ad92",
+        "dependencies": [
+            "test"
+        ],
+        "science": [
+            "sci"
+        ]
+    },
+    "method": "manual",
+    "mission": "IMAP",
+    "sensor": "MAGo",
+    "validity": {
+        "end": "2026-01-16T23:59:59.999999999",
+        "start": "2026-01-16T00:00:00.123456789"
+    },
+    "value_type": "vector",
+    "version": 0
+}

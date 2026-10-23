@@ -830,3 +830,110 @@ class TestScienceLayerWriteToCsv:
 
         with pytest.raises(ValueError, match="No science data available"):
             layer._write_to_csv(tmp_path / "output.csv")
+
+
+# Layer pairs written by the IMAP_MAG_Calibration MATLAB code (Layer.write),
+# one with a CSV and one with a Parquet data file holding identical values,
+# including sub-microsecond timestamps and negative quality values.
+MATLAB_LAYERS = Path(__file__).parent.parent / "test_data" / "matlab_layers"
+MATLAB_CSV_LAYER = MATLAB_LAYERS / "imap_mag_manual-norm-layer_20260116_v001.0000.json"
+MATLAB_PARQUET_LAYER = (
+    MATLAB_LAYERS / "imap_mag_manual-norm-layer_20260116_v001.0001.json"
+)
+
+
+class TestMatlabWrittenLayers:
+    def test_csv_and_parquet_read_back_identically(self):
+        from_csv = CalibrationLayer.from_file(MATLAB_CSV_LAYER)
+        from_parquet = CalibrationLayer.from_file(MATLAB_PARQUET_LAYER)
+
+        pd.testing.assert_frame_equal(
+            from_parquet._contents, from_csv._contents, check_exact=True
+        )
+
+    def test_parquet_keeps_nanosecond_timestamps(self):
+        layer = CalibrationLayer.from_file(MATLAB_PARQUET_LAYER)
+
+        assert list(layer._contents[CONSTANTS.CSV_VARS.EPOCH]) == [
+            pd.Timestamp("2026-01-16T00:00:00.123456789"),
+            pd.Timestamp("2026-01-16T00:00:01.987654321"),
+            pd.Timestamp("2026-01-16T00:00:02.500000001"),
+            pd.Timestamp("2026-01-16T23:59:59.999999999"),
+        ]
+
+    def test_parquet_quality_values_are_integers(self):
+        layer = CalibrationLayer.from_file(MATLAB_PARQUET_LAYER)
+
+        assert layer._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].tolist() == [
+            0,
+            1,
+            -1,
+            0,
+        ]
+        assert layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].tolist() == [
+            0,
+            4,
+            -2,
+            1048576,
+        ]
+        assert pd.api.types.is_integer_dtype(
+            layer._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK]
+        )
+
+    @pytest.mark.parametrize("layer_file", [MATLAB_CSV_LAYER, MATLAB_PARQUET_LAYER])
+    def test_recorded_data_hash_matches_data_file(self, layer_file):
+        layer = CalibrationLayer.from_file(layer_file, load_contents=False)
+        data_file = layer.get_datafile_path()
+        assert data_file is not None
+
+        assert (
+            layer.metadata.data_hash
+            == CalibrationLayerPathHandler.default_file_hash(data_file)
+        )
+
+
+class TestQualityColumnTypes:
+    def _write_parquet(self, tmp_path: Path, quality_flag, quality_bitmask) -> Path:
+        path = tmp_path / "imap_mag_noop-layer-data_20260116_v001.parquet"
+        pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                    ["2026-01-16T00:00:00", "2026-01-16T00:00:01"]
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.0, 0.0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [0.0, 0.0],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.0, 0.0],
+                CONSTANTS.CSV_VARS.TIMEDELTA: [0.0, 0.0],
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: quality_flag,
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: quality_bitmask,
+            }
+        ).to_parquet(path, index=False)
+        return path
+
+    def test_float_quality_columns_are_read_as_integers(self, tmp_path):
+        path = self._write_parquet(tmp_path, [0.0, -1.0], [4.0, -2.0])
+
+        df = CalibrationLayer._values_from_parquet(path)
+
+        assert df[CONSTANTS.CSV_VARS.QUALITY_FLAG].dtype == np.int64
+        assert df[CONSTANTS.CSV_VARS.QUALITY_BITMASK].dtype == np.int64
+        assert (df[CONSTANTS.CSV_VARS.QUALITY_BITMASK] | 1).tolist() == [5, -1]
+
+    def test_boolean_and_unsigned_quality_columns_are_read_as_int64(self, tmp_path):
+        # The schema older MATLAB code wrote: logical flag, uint8 bitmask.
+        path = self._write_parquet(
+            tmp_path, [False, True], np.array([0, 4], dtype=np.uint8)
+        )
+
+        df = CalibrationLayer._values_from_parquet(path)
+
+        assert df[CONSTANTS.CSV_VARS.QUALITY_FLAG].tolist() == [0, 1]
+        assert df[CONSTANTS.CSV_VARS.QUALITY_FLAG].dtype == np.int64
+        assert df[CONSTANTS.CSV_VARS.QUALITY_BITMASK].tolist() == [0, 4]
+        assert df[CONSTANTS.CSV_VARS.QUALITY_BITMASK].dtype == np.int64
+
+    def test_non_integer_quality_value_raises(self, tmp_path):
+        path = self._write_parquet(tmp_path, [0.0, 0.5], [0, 0])
+
+        with pytest.raises(ValueError, match="non-integer"):
+            CalibrationLayer._values_from_parquet(path)

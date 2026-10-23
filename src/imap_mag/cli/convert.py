@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _CONVERTIBLE_FORMATS = (FileType.CSV, FileType.PARQUET, FileType.CDF)
 
 
-# e.g. imap-mag convert --input-layers '*noop*.parquet' --output-layer-data-format csv
+# e.g. imap-mag calibration convert --input-layers '*noop*' --output-layer-data-format csv
 def convert(
     input_layers: Annotated[
         list[str],
@@ -71,7 +71,7 @@ def convert(
     Layers are found the same way as ``apply`` (exact filenames or glob patterns),
     optionally restricted to a date range and/or science mode.
 
-    e.g. imap-mag convert --input-layers '*noop*.parquet' --output-layer-data-format csv
+    e.g. imap-mag calibration convert --input-layers '*noop*' --output-layer-data-format csv
     """
     if output_layer_data_format not in _CONVERTIBLE_FORMATS:
         raise typer.BadParameter(

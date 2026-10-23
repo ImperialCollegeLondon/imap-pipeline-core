@@ -511,12 +511,24 @@ class CalibrationLayer(Layer):
             CONSTANTS.CSV_VARS.QUALITY_FLAG,
             CONSTANTS.CSV_VARS.QUALITY_BITMASK,
         ]:
-            if col in df.columns and df[col].isna().any():
+            if col not in df.columns:
+                continue
+            if df[col].isna().any():
                 raise ValueError(
                     f"Layer file '{path.name}' contains NaN/blank values in column '{col}'. "
                     f"Use 0 for no-op, a positive integer to set bits, "
                     f"or a negative integer to clear bits."
                 )
+            # Quality values are combined with bitwise operations, so must be
+            # signed integers (negative values clear bits). Parquet written by
+            # older MATLAB code holds them as bool/uint8/double, so normalise.
+            if df[col].dtype != np.int64:
+                as_float = df[col].astype("float64")
+                if not (as_float == as_float.round()).all():
+                    raise ValueError(
+                        f"Layer file '{path.name}' contains non-integer values in column '{col}'."
+                    )
+                df[col] = as_float.astype("int64")
 
         return df
 
