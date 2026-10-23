@@ -16,6 +16,8 @@ on:
       - "README**"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
 
 # write to checks/pull-request extra permission needed by 5monkeys/cobertura-action to post coverage stats
 # write packages needed by docker image step
@@ -27,7 +29,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'weekly' || 'ci' }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -37,19 +39,46 @@ env:
   CALIBRATION_CODE_LOCATION: "src/matlab/calibration"
   PYTEST_XDIST_AUTO_NUM_WORKERS : "2"
 jobs:
+  build-refs:
+    runs-on: ubuntu-latest
+    outputs:
+      refs: ${{ steps.refs.outputs.refs }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'schedule'
+        with:
+          fetch-depth: 0
+      - name: Select refs to build
+        id: refs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CURRENT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            refs=$(git for-each-ref --count=3 --sort=-creatordate --format='%(refname)' refs/tags |
+              jq -Rsc '["refs/heads/main"] + (split("\n") | map(select(length > 0)))')
+          else
+            refs=$(jq -cn --arg ref "$CURRENT_REF" '[$ref]')
+          fi
+          echo "refs=$refs" >> "$GITHUB_OUTPUT"
+
   qa:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: pre-commit/action@v3.0.1
 
   build:
+    needs: build-refs
     strategy:
+      fail-fast: false
       matrix:
         #python-versions: ["3.11", "3.12", "3.13", "3.14"]
         # https://github.com/IMAP-Science-Operations-Center/imap_processing/blob/dev/pyproject.toml#L17
-        python-versions: ["3.11", "3.12"] # blocked by imap_processing package not supporting 3.13 and 3.14 yet
+        python-versions: ${{ github.event_name == 'schedule' && fromJSON('["3.12"]') || fromJSON('["3.11", "3.12"]') }} # blocked by imap_processing package not supporting 3.13 and 3.14 yet
         os: [ubuntu-latest]
+        ref: ${{ fromJSON(needs.build-refs.outputs.refs) }}
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
     outputs:
@@ -59,6 +88,9 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v7
+        id: checkout
+        with:
+          ref: ${{ matrix.ref }}
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-versions }}
@@ -76,7 +108,7 @@ jobs:
           echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
           echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !startsWith(matrix.ref, 'refs/tags/') }}
         shell: bash
 
       - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
@@ -88,12 +120,14 @@ jobs:
         shell: bash
 
       - name: Ensure tag and version match (tag builds only)
+        env:
+          BUILD_REF: ${{ matrix.ref }}
         run: |
-          if [[ "${{ github.ref_name }}" != "v${{ env.PACKAGE_VERSION }}" ]]; then
-            echo "Tag and version do not match. Tag: ${{ github.ref_name }}, Version: ${{ env.PACKAGE_VERSION }}"
+          if [[ "${BUILD_REF#refs/tags/}" != "v${PACKAGE_VERSION}" ]]; then
+            echo "Tag and version do not match. Ref: $BUILD_REF, Version: $PACKAGE_VERSION"
             exit 1
           fi
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ startsWith(matrix.ref, 'refs/tags/') }}
         shell: bash
 
       - name: build --skip-tests
@@ -103,7 +137,10 @@ jobs:
         run: ./pack.sh
 
       - name: Create Version file
-        run: echo "Version ${{ env.PACKAGE_VERSION }}, SHA ${{ github.sha }}, Ref ${{ github.ref_name }}" >  dist/python${{matrix.python-versions}}/version.txt
+        env:
+          BUILD_REF: ${{ matrix.ref }}
+          BUILD_SHA: ${{ steps.checkout.outputs.commit }}
+        run: echo "Version $PACKAGE_VERSION, SHA $BUILD_SHA, Ref $BUILD_REF" > dist/python${{matrix.python-versions}}/version.txt
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -123,15 +160,19 @@ jobs:
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           images: ghcr.io/${{ github.repository }}
+          flavor: latest=${{ github.event_name == 'schedule' && 'false' || 'auto' }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.checkout.outputs.commit }}
           tags: |
             # minimal
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},enable=${{ github.event_name != 'schedule' }}
             # use custom value instead of git tag
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }}
             # set latest tag for default branch
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ matrix.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=main,enable=${{ github.event_name == 'schedule' && matrix.ref == 'refs/heads/main' }}
             # branch event
-            type=ref,event=branch
+            type=ref,event=branch,enable=${{ github.event_name != 'schedule' }}
             # pull request event
             type=ref,event=pr
 
@@ -148,16 +189,20 @@ jobs:
           file: deploy/Dockerfile
           build-args: PYTHON_VERSION=${{ matrix.python-versions }}
           push: true
+          pull: ${{ github.event_name == 'schedule' }}
+          no-cache: ${{ github.event_name == 'schedule' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=pipeline-${{ steps.docker-cache.outputs.date }}
           cache-to: type=gha,mode=max,scope=pipeline-${{ steps.docker-cache.outputs.date }}
 
       - name: Zip up the folder
+        if: github.event_name != 'schedule'
         run: zip -r ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip python${{matrix.python-versions}}
         working-directory: dist
 
       - name: Upload python wheel/tarball
+        if: github.event_name != 'schedule'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
@@ -166,7 +211,7 @@ jobs:
 
       - name: Create Release ${{github.ref_name}} & upload artifacts
         uses: softprops/action-gh-release@v3
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event_name != 'schedule' && startsWith(github.ref, 'refs/tags/') }}
         with:
           draft: false
           prerelease: false
@@ -175,6 +220,7 @@ jobs:
             dist/${{ env.PACKAGE_NAME }}_python${{matrix.python-versions}}_${{ env.PACKAGE_VERSION }}.zip
 
   tests:
+    if: github.event_name != 'schedule'
     strategy:
       matrix:
         python-versions: ["3.11", "3.12"]
@@ -233,10 +279,13 @@ jobs:
           fail_below_threshold: true
 
   matlab-build:
+    needs: build-refs
     strategy:
+      fail-fast: false
       matrix:
         python-versions: ["3.12"]
         os: [ubuntu-latest]
+        ref: ${{ fromJSON(needs.build-refs.outputs.refs) }}
     runs-on: ${{ matrix.os }}
     # map step outputs to job outputs so they can be share among jobs
     outputs:
@@ -261,6 +310,9 @@ jobs:
             swap-storage: false
 
       - uses: actions/checkout@v7
+        id: checkout
+        with:
+          ref: ${{ matrix.ref }}
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-versions }}
@@ -278,7 +330,7 @@ jobs:
           echo "Using version from pyproject.toml file with dev suffix (because not on a tag): $(poetry version --short)"
           echo "PACKAGE_NAME=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
           echo "PACKAGE_VERSION=$(poetry version --short)" >> $GITHUB_ENV
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !startsWith(matrix.ref, 'refs/tags/') }}
         shell: bash
 
       - name: Declare variables PACKAGE_NAME and PACKAGE_VERSION
@@ -290,12 +342,14 @@ jobs:
         shell: bash
 
       - name: Ensure tag and version match (tag builds only)
+        env:
+          BUILD_REF: ${{ matrix.ref }}
         run: |
-          if [[ "${{ github.ref_name }}" != "v${{ env.PACKAGE_VERSION }}" ]]; then
-            echo "Tag and version do not match. Tag: ${{ github.ref_name }}, Version: ${{ env.PACKAGE_VERSION }}"
+          if [[ "${BUILD_REF#refs/tags/}" != "v${PACKAGE_VERSION}" ]]; then
+            echo "Tag and version do not match. Ref: $BUILD_REF, Version: $PACKAGE_VERSION"
             exit 1
           fi
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ startsWith(matrix.ref, 'refs/tags/') }}
         shell: bash
 
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
@@ -318,7 +372,10 @@ jobs:
         run: ./pack.sh
 
       - name: Create Version file
-        run: echo "Version ${{ env.PACKAGE_VERSION }}, SHA ${{ github.sha }}, Ref ${{ github.ref_name }}" >  dist/python${{matrix.python-versions}}/version.txt
+        env:
+          BUILD_REF: ${{ matrix.ref }}
+          BUILD_SHA: ${{ steps.checkout.outputs.commit }}
+        run: echo "Version $PACKAGE_VERSION, SHA $BUILD_SHA, Ref $BUILD_REF" > dist/python${{matrix.python-versions}}/version.txt
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -338,15 +395,19 @@ jobs:
         if: matrix.python-versions == env.PREFERED_PYTHON_VERSION
         with:
           images: ghcr.io/${{ github.repository }}/${{ vars.CALIBRATION_IMAGE_NAME }}
+          flavor: latest=${{ github.event_name == 'schedule' && 'false' || 'auto' }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.checkout.outputs.commit }}
           tags: |
             # minimal
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},enable=${{ github.event_name != 'schedule' }}
             # use custom value instead of git tag,prefix=matlab-
             type=semver,pattern={{version}},value=${{ env.PACKAGE_VERSION }},prefix=matlab-
             # set latest tag for default branch
-            type=raw,value=latest,prefix=matlab-,enable={{is_default_branch}}
+            type=raw,value=latest,prefix=matlab-,enable=${{ matrix.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=main,prefix=matlab-,enable=${{ github.event_name == 'schedule' && matrix.ref == 'refs/heads/main' }}
             # branch event
-            type=ref,event=branch,prefix=matlab-
+            type=ref,event=branch,prefix=matlab-,enable=${{ github.event_name != 'schedule' }}
             # pull request event
             type=ref,event=pr,prefix=matlab-pr-
 
@@ -365,6 +426,8 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-versions }}
             MATLAB_VERSION=${{ env.MATLAB_VERSION }}
           push: true
+          pull: ${{ github.event_name == 'schedule' }}
+          no-cache: ${{ github.event_name == 'schedule' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=matlab-pipeline-${{ steps.docker-cache.outputs.date }}
