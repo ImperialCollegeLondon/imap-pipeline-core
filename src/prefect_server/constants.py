@@ -99,7 +99,7 @@ class PREFECT_CONSTANTS:
         DATASTORE_CLEANUP = "datastore-cleanup"
         DATASTORE_INDEXER = "datastore-indexer"
         POLL_NOAA = "poll-noaa"
-        DELETE_OLD_DATABASE_ROWS = "delete-old-database-rows"
+        DATABASE_CLEANUP = "database-cleanup"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
@@ -127,4 +127,4 @@ class PREFECT_CONSTANTS:
         DATASTORE_CLEANUP = "datastore_cleanup"
         DATASTORE_INDEXER = "datastore_indexer"
         POLL_NOAA = "poll_noaa"
-        DELETE_OLD_DATABASE_ROWS = "delete_old_database_rows"
+        DATABASE_CLEANUP = "database_cleanup"

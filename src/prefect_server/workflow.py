@@ -421,7 +421,7 @@ async def adeploy_flows(local_debug: bool = False):
     )
 
     database_cleanup_deployable = database_cleanup_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DELETE_OLD_DATABASE_ROWS,
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DATABASE_CLEANUP,
         job_variables=shared_job_variables,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],

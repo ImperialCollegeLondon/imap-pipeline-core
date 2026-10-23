@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @flow(
-    name=PREFECT_CONSTANTS.FLOW_NAMES.DELETE_OLD_DATABASE_ROWS,
+    name=PREFECT_CONSTANTS.FLOW_NAMES.DATABASE_CLEANUP,
 )
 async def database_cleanup_flow(dry_run: bool | None = None):
     """Delete rows from a PostgreSQL database table that are older than a threshold.
