@@ -277,7 +277,7 @@ class TestDownloadSmallForcesFilesStage:
         mock_handler.add_metadata = MagicMock()
 
         mock_manager = MagicMock()
-        mock_manager.add_file.return_value = (sff_file, mock_handler)
+        mock_manager.add_file.return_value = (sff_file, mock_handler, True)
 
         with (
             patch(
