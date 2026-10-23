@@ -2,26 +2,26 @@ import asyncio
 import os
 import sys
 
-from prefect import aserve, deploy
+from prefect import aserve, deploy, get_client
 from prefect.client.schemas.objects import (
     ConcurrencyLimitConfig,
     ConcurrencyLimitStrategy,
 )
 from prefect.events import DeploymentEventTrigger
+from prefect.exceptions import ObjectNotFound
 from prefect.schedules import Cron
 from prefect.variables import Variable
 
 from imap_mag.util import CONSTANTS
+from prefect_server.applyFlow import apply_flow
+from prefect_server.calibrateAndApplyFlow import calibrate_and_apply_flow
+from prefect_server.calibrateConvertFlow import calibrate_convert_flow
+from prefect_server.calibrateFlow import calibrate_flow
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
-from prefect_server.performCalibration import (
-    apply_flow,
-    calibrate_and_apply_flow,
-    calibrate_flow,
-)
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -47,6 +47,19 @@ async def get_matlab_license_server():
         "matlab_license",
         default=os.getenv("MLM_LICENSE_FILE"),  # type: ignore
     )
+
+
+async def delete_obsolete_deployments() -> None:
+    """Delete deployments from earlier releases that this release no longer has,
+    so that deploying to an existing environment also removes them."""
+    async with get_client() as client:
+        for name in PREFECT_CONSTANTS.OBSOLETE_DEPLOYMENTS:
+            try:
+                deployment = await client.read_deployment_by_name(name)
+            except ObjectNotFound:
+                continue
+            await client.delete_deployment(deployment.id)
+            print(f"Deleted obsolete deployment {name}")
 
 
 def deploy_flows(local_debug: bool = False):
@@ -457,10 +470,18 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    calibrate_convert_deployable = calibrate_convert_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.CALIBRATE_CONVERT,
+        job_variables=apply_shared_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_deployables = await asyncio.gather(
         calibration_deployable,
         apply_deployable,
         calibrate_and_apply_deployable,
+        calibrate_convert_deployable,
     )
 
     deployables = await asyncio.gather(
@@ -498,6 +519,8 @@ async def adeploy_flows(local_debug: bool = False):
         )
 
     else:
+        await delete_obsolete_deployments()
+
         deploy_ids = await deploy(
             *deployables,  # type: ignore
             work_pool_name=PREFECT_CONSTANTS.DEFAULT_WORKPOOL,

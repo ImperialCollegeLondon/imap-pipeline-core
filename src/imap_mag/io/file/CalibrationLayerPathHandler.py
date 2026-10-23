@@ -1,13 +1,17 @@
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration.CalibrationDefinitions import CalibrationMethod
+from mag_toolkit.calibration.CalibrationDefinitions import (
+    CalibrationMethod,
+    FileType,
+    LayerDataFormat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +31,22 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
     descriptor: str | None = None
     extra_descriptor: str = ""
     content_date: datetime | None = None  # date data belongs to
-    extension: str = "json"
+    extension: str = FileType.JSON.value
     _has_major_version: bool = True
     original_filename_or_path: str | Path | None = field(compare=False, default=None)
 
     DESCRIPTOR_WILDCARD: ClassVar[str] = "*"
 
+    @staticmethod
+    def get_root_folder() -> Path:
+        """Datastore-relative folder that all calibration layers live under."""
+        return Path("calibration") / "layers"
+
     def get_folder_structure(self) -> str:
         super()._check_property_values("folder structure", ["content_date"])
         assert self.content_date
 
-        return (
-            Path("calibration") / "layers" / self.content_date.strftime("%Y/%m")
-        ).as_posix()
+        return (self.get_root_folder() / self.content_date.strftime("%Y/%m")).as_posix()
 
     def get_content_date_for_indexing(self):
         return self.content_date
@@ -69,21 +76,54 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         )
 
     def is_metadata_file(self) -> bool:
-        """Determine if this handler represents a metadata JSON file (true) or a data csv/cdf/arrow type file (false)."""
+        """Determine if this handler represents a metadata JSON file (true) or a data csv/parquet/cdf type file (false)."""
         return self.extra_descriptor != "-data"
 
-    def get_equivalent_data_handler(self) -> "CalibrationLayerPathHandler":
-        handler = CalibrationLayerPathHandler(
-            descriptor=self.descriptor,
-            extra_descriptor="-data",
-            content_date=self.content_date,
-            version=self.version,
-            extension="csv",
-            version_major=self.version_major,
-            _has_major_version=self._has_major_version,
-            versioning_mode=self.versioning_mode,
+    def has_companion_data_file(self) -> bool:
+        """Determine if this handler represents a JSON metadata file paired with a
+        companion csv/parquet data file (true), rather than a data file or a
+        self-contained (e.g. CDF) layer (false)."""
+        return self.is_metadata_file() and self.extension == FileType.JSON
+
+    def _derived(self, **overrides) -> "CalibrationLayerPathHandler":
+        """Build a new handler by copying this handler's fields and applying
+        overrides. Shared implementation behind every "derive a related handler
+        from this one" helper (companion data file, format-conversion output,
+        sibling existence checks), so the field list only needs to stay in sync
+        with the dataclass in one place.
+        """
+        return replace(self, original_filename_or_path=None, **overrides)
+
+    def create_new_datafile_handler(
+        self, layer_data_format: LayerDataFormat
+    ) -> "CalibrationLayerPathHandler":
+        """Build a handler for a *new* companion data file in the given format.
+
+        Only for creating new output: the caller must already know what format
+        it is writing (csv/parquet). To find the
+        companion of an *existing* layer, read its data_filename from a
+        CalibrationLayer instance instead (see ``CalibrationLayer.from_file``).
+        """
+        return self._derived(
+            extra_descriptor="-data", extension=layer_data_format.value
         )
-        return handler
+
+    def with_new_primary_format(
+        self,
+        extension: str,
+        versioning_mode: VersionedPathHandler.VersionMode,
+        allow_overwrite: bool,
+    ) -> "CalibrationLayerPathHandler":
+        """Build a handler for this same layer's primary (JSON/CDF) file, but
+        targeting a different extension and versioning strategy — used by
+        calibrate-convert to derive the output-format handler from the handler
+        of the layer being converted.
+        """
+        return self._derived(
+            extension=extension,
+            versioning_mode=versioning_mode,
+            allow_overwrite=allow_overwrite,
+        )
 
     @classmethod
     def from_filename(
@@ -156,31 +196,38 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             f"Increased version to {self.version} for file {self.get_filename()}."
         )
 
-    def _companion_csv_path(self, alongside: Path) -> Path:
-        """Return the companion CSV path, reading data_filename from the CalibrationLayer.
+    def _companion_data_path(self, alongside: Path) -> Path:
+        """Return the companion data file path, reading data_filename from the
+        CalibrationLayer (works for any companion format, csv or parquet).
 
         Reading the layer's own data_filename field means the lookup stays correct
         regardless of what version number is currently set on the handler — both
         work-folder v001.json and datastore v002.json point at their own companion.
-        """
-        try:
-            from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
-            cal = CalibrationLayer.from_file(alongside, load_contents=False)
-            if cal.metadata.data_filename:
-                return alongside.parent / cal.metadata.data_filename.name
-        except Exception:
-            pass
-        return alongside.parent / self.get_equivalent_data_handler().get_filename()
+        Raises if the companion cannot be determined from ``alongside`` (the JSON
+        can't be read, or has no data_filename set) rather than guessing an
+        extension: a layer file that can't be understood is a bigger problem than
+        a missing companion.
+        """
+        from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
+
+        cal = CalibrationLayer.from_file(alongside, load_contents=False)
+        companion = cal.get_datafile_path()
+        if companion is None:
+            raise ValueError(
+                f"Could not determine companion data file for {alongside}: "
+                "no data_filename set in its metadata."
+            )
+        return companion
 
     def get_content_identity(
         self, file_path_override: Path | None = None, parent_folder: Path = Path()
     ) -> str:
         """Return a hash representing content identity for deduplication.
 
-        JSON layer files are identified by their companion CSV hash (stored in the
+        JSON layer files are identified by their companion data file hash (stored in the
         layer's metadata.data_hash field), not the JSON file itself, because the JSON
-        can change (e.g. version bump rewrites data_filename) while the CSV data stays
+        can change (e.g. version bump rewrites data_filename) while the data file stays
         the same.
         """
         source_file = (
@@ -194,7 +241,7 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
                 f"Source file {source_file} does not exist for content identity hashing."
             )
 
-        if source_file.suffix == ".json":
+        if self.is_metadata_file():
             try:
                 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
@@ -204,15 +251,22 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
             except Exception:
                 pass
 
-            companion = self._companion_csv_path(source_file)
-            if companion.exists():
+            try:
+                companion = self._companion_data_path(source_file)
+            except Exception as exc:
+                logger.debug(
+                    f"Could not determine companion data file for {source_file}: {exc}"
+                )
+                companion = None
+
+            if companion is not None and companion.exists():
                 logger.warning(
-                    f"No data_hash in metadata of {source_file}. Falling back to hashing the companion CSV."
+                    f"No data_hash in metadata of {source_file}. Falling back to hashing the companion data file."
                 )
                 return self.default_file_hash(companion)
 
             logger.debug(
-                f"No data_hash or companion CSV for {source_file}. Using JSON file hash as identity fallback."
+                f"No data_hash or companion data file for {source_file}. Using JSON file hash as identity fallback."
             )
             # Fall through to hash the JSON itself
 
@@ -227,51 +281,47 @@ class CalibrationLayerPathHandler(VersionedPathHandler):
         When the datastore assigns a version other than what the source file was
         originally generated at (e.g., v001 → v002 because v001 already exists
         with different content), the JSON must reference the correctly-versioned
-        companion CSV.  Returns a temporary file that the caller must delete.
-        """
-        if self.extension != "json":
-            return source_file
+        companion data file. Returns a temporary file that the caller must delete.
 
-        expected_data_filename = self.get_equivalent_data_handler().get_filename()
+        CalibrationLayer owns the actual rewrite logic — it understands the file
+        contents best; this is just the polymorphic dispatch point that
+        DatastoreFileManager calls on any path handler.
+
+        Only JSON layers have a companion to keep in lock-step; a standalone
+        CDF layer (also a "metadata file" per is_metadata_file, but
+        self-contained) has no sibling and needs no rewriting.
+        """
+        if not self.has_companion_data_file():
+            return source_file
 
         from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 
         cal_file = CalibrationLayer.from_file(source_file, load_contents=False)
-
-        current = (
-            Path(cal_file.metadata.data_filename).name
-            if cal_file.metadata.data_filename
-            else None
-        )
-        if current == expected_data_filename:
-            return source_file  # already correct — no rewrite needed
-
-        cal_file.metadata.data_filename = Path(expected_data_filename)
-        new_version_path = source_file.parent / self.get_filename()
-        cal_file.writeToFile(new_version_path)
-
-        logger.debug(
-            f"Rewrote {source_file.name} data_filename from {current!r} to {expected_data_filename!r} in {new_version_path.name}."
-        )
-        return new_version_path
+        return cal_file.update_file_contents_based_on_version(self, source_file)
 
     def is_version_blocked_by_sibling(
         self, version: int, datastore: Path, source_file: Path
     ) -> bool:
-        """For JSON layers: also reject a version if the companion CSV slot is occupied
-        with content that differs from the new companion CSV.
+        """For JSON layers: also reject a version if the companion data file slot is
+        occupied with content that differs from the new companion data file.
 
-        This ensures that JSON and CSV always land on the same version, even when
-        only one half of the pair exists in the datastore from a prior partial save.
+        This ensures that JSON and its companion always land on the same version,
+        even when only one half of the pair exists in the datastore from a prior
+        partial save. A standalone CDF layer has no companion, so is exempt.
         """
-        if self.extension != "json":
+        if not self.has_companion_data_file():
             return False
-        sibling = self.get_equivalent_data_handler()
+        new_companion = self._companion_data_path(source_file)
+        # Not creating a new file here, just checking an existing/candidate slot,
+        # so build the sibling handler directly with the companion's own extension
+        # rather than going through create_new_datafile_handler.
+        sibling = self._derived(
+            extra_descriptor="-data", extension=new_companion.suffix.lstrip(".")
+        )
         sibling.set_sequence(version)
         sibling_dest = sibling.get_full_path(datastore)
         if not sibling_dest.exists():
             return False
-        new_companion = self._companion_csv_path(source_file)
         if new_companion.exists():
             return sibling.get_content_identity(
                 new_companion

@@ -119,7 +119,7 @@ def test_science_layer_writes_to_cdf_correctly(tmp_path):
     science_layer._contents = contents
     cdf_path = tmp_path / "test_layer.cdf"
     science_layer.calculate_magnitudes()  # Ensure magnitudes are calculated
-    science_layer.writeToFile(cdf_path)
+    science_layer.write_to_file(cdf_path)
 
     with open_cdf(cdf_path) as cdf_file:
         vecs = cdf_file["vectors"][...]
@@ -161,7 +161,7 @@ def test_science_layer_writes_to_csv(tmp_path):
     science_layer._contents = contents
     csv_path = tmp_path / "test_layer.csv"
     science_layer.calculate_magnitudes()
-    science_layer.writeToFile(csv_path)
+    science_layer.write_to_file(csv_path)
 
     df = pd.read_csv(csv_path, parse_dates=["time"])
     assert df.x.iloc[0] == science_layer._contents.x.iloc[0]
@@ -235,9 +235,10 @@ def test_calibration_layer_create_zero_offset_from_science():
     assert cl.validity.end == sl.validity.end
     assert cl.sensor == sl.sensor
     assert cl.version == 0
+    # Default layer data format is parquet.
     assert (
         cl.metadata.data_filename is not None
-        and cl.metadata.data_filename.name.endswith(".csv")
+        and cl.metadata.data_filename.name.endswith(".parquet")
     )
     assert cl.metadata.creation_timestamp is not None
     assert cl.value_type == ValueType.VECTOR

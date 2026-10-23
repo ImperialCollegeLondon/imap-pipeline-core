@@ -14,6 +14,10 @@ class PREFECT_CONSTANTS:
 
     IMAP_DATABASE_BLOCK_NAME = "imap-database"
 
+    # Deployments ("flow-name/deployment-name") created by earlier releases that
+    # no longer exist; deploying removes them from the Prefect server.
+    OBSOLETE_DEPLOYMENTS = ("gradiometry/gradiometer",)
+
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
         IALIRT_HK_UPDATED = "imap.ialirt_hk.updated"
@@ -91,6 +95,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
+        CALIBRATE_CONVERT = "calibrate-convert"
         PUBLISH = "publish"
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
@@ -105,6 +110,7 @@ class PREFECT_CONSTANTS:
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply"
         CALIBRATE_AND_APPLY = "calibrate_and_apply"
+        CALIBRATE_CONVERT = "calibrate_convert"
         POLL_IALIRT = "poll_ialirt"
         IALIRT_POSTGRES_SYNC = "ialirt-postgres-sync"
         POLL_HK = "poll_hk"

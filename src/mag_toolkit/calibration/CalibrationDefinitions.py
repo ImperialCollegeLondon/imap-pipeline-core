@@ -75,6 +75,9 @@ class CalibrationMethod(Enum):
         self.short_name = short_name
         self.long_name = long_name
 
+    # GRADIOMETER is no longer a runnable calibration job (gradiometry is part of
+    # the scripted MATLAB calibration); it is retained so that existing
+    # gradiometer layers can still be read.
     GRADIOMETER = "gradiometer", "Gradiometer"
     # NOOP is not a selectable calibration job; it is retained only as the internal
     # descriptor/method for the zero-offset layer that ``apply`` auto-creates when no
@@ -94,6 +97,41 @@ class CalibrationMethod(Enum):
                 return method
 
         raise ValueError(f"Unknown calibration method: {name}")
+
+
+class LayerDataFormat(StrEnum):
+    """File format for the companion data file of a calibration layer.
+
+    PARQUET: Apache Parquet, zstd-compressed (default; compact, cross-language).
+    CSV: comma-separated values (human-readable).
+    """
+
+    PARQUET = "parquet"
+    CSV = "csv"
+
+
+class FileType(StrEnum):
+    """File format of a calibration layer's actual data — either a companion
+    csv/parquet file (see ``LayerDataFormat``) or a self-contained CDF/JSON layer.
+    """
+
+    CSV = "csv"
+    CDF = "cdf"
+    JSON = "json"
+    PARQUET = "parquet"
+
+
+class ConversionStrategy(StrEnum):
+    """How the calibrate-convert flow handles the versioning of converted layers.
+
+    OVERWRITE: replace the original layer files (JSON + companion data file) in
+        place, keeping the same version.
+    CREATE_NEW_VERSION: leave the original layer files untouched and publish the
+        converted layer as a new version.
+    """
+
+    OVERWRITE = "overwrite"
+    CREATE_NEW_VERSION = "create_new_version"
 
 
 class DatastoreAccessMode(StrEnum):

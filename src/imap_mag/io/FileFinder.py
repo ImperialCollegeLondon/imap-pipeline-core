@@ -127,30 +127,40 @@ class FileFinder:
     def find_layers_by_date_and_patterns(
         self,
         layers: list[str],
-        date: datetime,
-        mode: ScienceMode,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        mode: ScienceMode | None = None,
         throw_if_not_found: bool = False,
     ) -> list[str]:
-        """Resolve layer pattern strings to actual layer filenames. Expect one layer file per item in layers.
+        """Resolve layer pattern strings to actual layer filenames, optionally
+        restricted to a date range and/or science mode. Expect one layer file
+        per item in ``layers`` (or, for the literal pattern ``"*"``, every
+        matching layer).
 
-        Each entry in layers can be:
+        Each entry in ``layers`` can be:
         - An exact filename (e.g. "imap_mag_noop-norm-layer_20260116_v001.json")
-        - A glob pattern (e.g. "*noop*", "*") that matches layer filenames for the given date.
+        - A glob pattern (e.g. "*noop*", "*") that matches layer filenames.
 
-        When matching by pattern, only the highest version per descriptor+date is returned.
+        Only top-level layer files (the JSON metadata file, or a standalone CDF
+        layer) are matched - companion CSV/Parquet data files are not layer
+        identifiers in their own right.
 
-        Returns resolved filenames in the order the patterns were provided.
+        For the literal pattern ``"*"``, the highest version per descriptor+date
+        is returned; for any other pattern, only the single highest-version
+        match overall is returned (matching a specific layer's history).
+
+        ``start_date``/``end_date``/``mode`` are only applied when provided;
+        omitting all three searches the entire calibration layers datastore -
+        useful for flows (like calibrate-convert) that may operate across many
+        days or the whole datastore history at once.
         """
-        handler = CalibrationLayerPathHandler(
-            content_date=date,
-            descriptor=CalibrationLayerPathHandler.DESCRIPTOR_WILDCARD,
-        )
+        # Listed once up front rather than per pattern: with no date range this
+        # walks the whole layers tree, which may be on a network mount.
+        candidate_paths: list[Path] | None = None
 
         resolved: list[str] = []
         for layer in layers:
-            fnmatch_pattern = None
-            if "*" in layer or "?" in layer:
-                fnmatch_pattern = layer
+            fnmatch_pattern = layer if ("*" in layer or "?" in layer) else None
 
             match_by_path = Path(layer)
             if (
@@ -161,48 +171,100 @@ class FileFinder:
                 resolved.append(layer)
                 continue
 
-            all_matching_files_with_version: list[tuple[str, int]] = (
-                self.__find_files_and_sequences(
-                    handler,
-                    throw_if_not_found=throw_if_not_found,
-                    fnmatch_pattern=fnmatch_pattern,
-                    filename_only=True,
+            if candidate_paths is None:
+                candidate_paths = self.__candidate_layer_paths(
+                    self._data_store, start_date, end_date
                 )
-            )
 
-            if not fnmatch_pattern:
-                # must match exactly by filename, so filter to that file only
-                all_matching_files_with_version = [
-                    (f, v)
-                    for f, v in all_matching_files_with_version
-                    if Path(f).name == layer
-                ]
+            candidates: list[tuple[str, int]] = []
+            for path in candidate_paths:
+                handler = CalibrationLayerPathHandler.from_filename(path.name)
+                if handler is None or not self.__is_layer_candidate_match(
+                    path.name,
+                    handler,
+                    fnmatch_pattern,
+                    layer,
+                    mode,
+                    start_date,
+                    end_date,
+                ):
+                    continue
+                candidates.append((path.name, handler.version))
 
-            # remove files that do not match mode "{mode}-layer"
-            all_matching_files_with_version = [
-                (f, v)
-                for f, v in all_matching_files_with_version
-                if f"{mode.short_name}-layer" in f
-            ]
-
-            if all_matching_files_with_version:
+            if candidates:
                 if layer == "*":
                     resolved.extend(
                         self._keep_highest_version_layers_only(
-                            [f for f, v in all_matching_files_with_version]
+                            [name for name, _ in candidates]
                         )
                     )
-                else:  # just take the highest version match
-                    resolved.append(all_matching_files_with_version[0][0])
+                else:
+                    candidates.sort(key=lambda x: x[1], reverse=True)
+                    resolved.append(candidates[0][0])
             elif throw_if_not_found:
-                logger.error(
-                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
-                )
+                logger.error(f"No layer files found matching pattern '{layer}'.")
                 raise FileNotFoundError(
-                    f"No layer files found matching pattern '{layer}' for date {date.strftime('%Y-%m-%d')} in {handler.get_folder_structure()}."
+                    f"No layer files found matching pattern '{layer}'."
                 )
 
         return resolved
+
+    @staticmethod
+    def __is_layer_candidate_match(
+        path_name: str,
+        handler: CalibrationLayerPathHandler,
+        fnmatch_pattern: str | None,
+        layer: str,
+        mode: ScienceMode | None,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> bool:
+        """Whether a candidate layer file matches the requested layer pattern,
+        science mode and date range."""
+        if not handler.is_metadata_file():
+            return False
+        if fnmatch_pattern is not None:
+            if not fnmatch.fnmatch(path_name, fnmatch_pattern):
+                return False
+        elif path_name != layer:
+            return False
+        if mode is not None and f"{mode.short_name}-layer" not in path_name:
+            return False
+        if start_date is not None and handler.content_date is not None:
+            effective_end = end_date or start_date
+            if not (
+                start_date.date() <= handler.content_date.date() <= effective_end.date()
+            ):
+                return False
+        return True
+
+    @staticmethod
+    def __candidate_layer_paths(
+        data_store: Path,
+        start_date: datetime | None,
+        end_date: datetime | None,
+    ) -> list[Path]:
+        """Files to consider for layer matching: those in the month folder of
+        each month in the given date range, or the whole layers tree when no
+        date is given."""
+        if start_date is None:
+            layers_folder = data_store / CalibrationLayerPathHandler.get_root_folder()
+            return [p for p in layers_folder.rglob("*") if p.is_file()]
+
+        last_day = (end_date or start_date).date()
+        month = datetime(start_date.year, start_date.month, 1)
+
+        candidate_paths: list[Path] = []
+        while month.date() <= last_day:
+            month_folder = (
+                data_store
+                / CalibrationLayerPathHandler(content_date=month).get_folder_structure()
+            )
+            if month_folder.exists():
+                candidate_paths.extend(p for p in month_folder.iterdir() if p.is_file())
+            # the 1st plus 32 days always lands in the next month
+            month = (month + timedelta(days=32)).replace(day=1)
+        return candidate_paths
 
     @staticmethod
     def _keep_highest_version_layers_only(filenames: list[str]) -> list[str]:

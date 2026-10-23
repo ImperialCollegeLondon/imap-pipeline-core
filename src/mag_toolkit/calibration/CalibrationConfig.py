@@ -38,15 +38,6 @@ class CalibrationConfig(BaseModel):
         raise ValueError(f"No subclass found for method {method}")
 
 
-class GradiometryConfig(CalibrationConfig):
-    kappa: float = 0.0
-    sc_interference_threshold: float = 0.0
-
-    @classmethod
-    def get_method(cls) -> CalibrationMethod:
-        return CalibrationMethod.GRADIOMETER
-
-
 class SetQualityAndNaNConfig(CalibrationConfig):
     csv_file: str
 

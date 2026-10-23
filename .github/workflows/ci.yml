@@ -184,20 +184,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-versions }}
-      - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
-        uses: actions/checkout@v7
-        if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
-        with:
-          path: ${{ env.CALIBRATION_CODE_LOCATION}}
-          sparse-checkout: |
-            +calibration
-            +general
-            external-packages
-          repository: ${{ vars.CALIBRATION_REPO }}
-          ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          ref: ${{ vars.CALIBRATION_TAG || 'v0.2.0' }}
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v3.1.0
       - name: Run Tests
         run: |
             python -m pip install poetry
@@ -298,6 +284,17 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
+      # Without a tag the checkout below silently falls back to the calibration
+      # repo's default branch, so the image would not contain the pinned release.
+      - name: Ensure a calibration code tag is set
+        if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
+        run: |
+          if [[ -z "${{ vars.CALIBRATION_TAG }}" ]]; then
+            echo "The CALIBRATION_TAG repository variable must be set to the calibration code release to embed in the MATLAB image."
+            exit 1
+          fi
+        shell: bash
+
       - name: Check out calibration code into ${{ env.CALIBRATION_CODE_LOCATION }} in repository
         uses: actions/checkout@v7
         if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
@@ -309,7 +306,14 @@ jobs:
             external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          ref: ${{ env.CALIBRATION_TAG }}
+          ref: ${{ vars.CALIBRATION_TAG }}
+
+      - name: Show embedded calibration code version
+        if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
+        run: |
+          echo "Calibration code tag: ${{ vars.CALIBRATION_TAG }}"
+          cat "${{ env.CALIBRATION_CODE_LOCATION }}/+calibration/get_version.m"
+        shell: bash
 
       - name: build --skip-tests
         run: ./build.sh --skip-tests

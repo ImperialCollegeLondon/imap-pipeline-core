@@ -4,13 +4,11 @@ from unittest.mock import patch
 from imap_mag.config import SaveMode
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration.CalibrationConfig import (
-    GradiometryConfig,
     ScienceFileVersionConfig,
+    SetQualityAndNaNConfig,
 )
-from prefect_server.performCalibration import (
-    apply_flow,
-    calibrate_and_apply_flow,
-)
+from prefect_server.applyFlow import apply_flow
+from prefect_server.calibrateAndApplyFlow import calibrate_and_apply_flow
 from tests.util.miscellaneous import open_cdf
 from tests.util.prefect_test_utils import prefect_test_fixture  # noqa: F401
 
@@ -119,12 +117,12 @@ def test_calibrate_and_apply_flow_with_version_overrides(
     )
 
     with patch(
-        "prefect_server.performCalibration._run_calibration",
+        "prefect_server.calibrateAndApplyFlow._run_calibration",
         return_value=[layer_path],
     ):
         calibrate_and_apply_flow.fn(
             start_date=date(2026, 1, 16),
-            configuration=GradiometryConfig(kappa=0.0, sc_interference_threshold=0.0),
+            configuration=SetQualityAndNaNConfig(csv_file="quality.csv"),
             mode=ScienceMode.Normal,
             save_mode=SaveMode.LocalOnly,
             offset_version_override=4,

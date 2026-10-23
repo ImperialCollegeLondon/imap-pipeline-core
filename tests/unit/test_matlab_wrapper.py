@@ -8,10 +8,14 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 import mag_toolkit.calibration.MatlabWrapper as matlab_wrapper
+from mag_toolkit.calibration import LayerDataFormat
 from mag_toolkit.calibration.MatlabWrapper import (
     _get_display_wrapper,
+    calibration_code_supports_layer_data_format,
     call_matlab,
+    get_calibration_code_version,
     get_matlab_command,
+    resolve_matlab_layer_data_format,
 )
 
 
@@ -591,3 +595,61 @@ class TestTerminateProcessGroup:
 
         assert mock_killpg.call_count == 2
         assert process.wait.call_count == 1
+
+
+def _make_calibration_code(tmp_path, version_file_contents: str | None):
+    root = tmp_path / "calibration"
+    (root / "+calibration").mkdir(parents=True)
+    if version_file_contents is not None:
+        (root / "+calibration" / "get_version.m").write_text(version_file_contents)
+    return root
+
+
+class TestCalibrationCodeVersion:
+    def test_reads_version_from_get_version(self, tmp_path):
+        root = _make_calibration_code(
+            tmp_path, 'function v=get_version()\nv="v3.4.0";\nend\n'
+        )
+        assert get_calibration_code_version(root) == (3, 4, 0)
+
+    def test_missing_version_file_is_unknown(self, tmp_path):
+        assert (
+            get_calibration_code_version(_make_calibration_code(tmp_path, None)) is None
+        )
+
+    def test_no_root_is_unknown(self):
+        assert get_calibration_code_version(None) is None
+
+    @pytest.mark.parametrize(
+        "version, supported",
+        [("v3.4.0", False), ("v3.3.6", False), ("v3.5.0", True), ("v4.0.0", True)],
+    )
+    def test_layer_data_format_needs_v3_5_0(self, tmp_path, version, supported):
+        root = _make_calibration_code(tmp_path, f'v="{version}";')
+        assert calibration_code_supports_layer_data_format(root) is supported
+
+    def test_unknown_version_does_not_support_layer_data_format(self, tmp_path):
+        root = _make_calibration_code(tmp_path, None)
+        assert calibration_code_supports_layer_data_format(root) is False
+
+
+class TestResolveMatlabLayerDataFormat:
+    def test_old_code_falls_back_to_csv(self, tmp_path):
+        root = _make_calibration_code(tmp_path, 'v="v3.4.0";')
+        assert (
+            resolve_matlab_layer_data_format(LayerDataFormat.PARQUET, root)
+            == LayerDataFormat.CSV
+        )
+
+    def test_new_code_keeps_requested_format(self, tmp_path):
+        root = _make_calibration_code(tmp_path, 'v="v3.5.0";')
+        assert (
+            resolve_matlab_layer_data_format(LayerDataFormat.PARQUET, root)
+            == LayerDataFormat.PARQUET
+        )
+
+    def test_csv_is_always_kept(self, tmp_path):
+        assert (
+            resolve_matlab_layer_data_format(LayerDataFormat.CSV, None)
+            == LayerDataFormat.CSV
+        )

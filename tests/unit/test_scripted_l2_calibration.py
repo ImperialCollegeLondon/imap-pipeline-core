@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.cli.calibrate import calibrate
-from imap_mag.config import AppSettings, GradiometryConfig
+from imap_mag.config import AppSettings, SetQualityAndNaNConfig
 from imap_mag.io.file import CalculatedOffsetsPathHandler, CalibrationLayerPathHandler
 from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
@@ -20,6 +20,7 @@ from mag_toolkit.calibration import (
     CalibrationMethod,
     CreateOffsets,
     DatastoreAccessMode,
+    LayerDataFormat,
     Sensor,
 )
 from mag_toolkit.calibration.CalibrationConfig import (
@@ -32,7 +33,10 @@ from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
     USER_CONFIG_FILENAME,
     ScriptedL2CalibrationJob,
 )
-from tests.util.miscellaneous import write_calibration_layer_pair
+from tests.util.miscellaneous import (
+    make_fake_matlab_calibration_repo,
+    write_calibration_layer_pair,
+)
 
 MODULE_CALL_MATLAB = (
     "mag_toolkit.calibration.calibrators.ScriptedL2Calibration.call_matlab"
@@ -40,13 +44,8 @@ MODULE_CALL_MATLAB = (
 DATE = datetime(2026, 1, 30)
 
 
-def _make_matlab_repo(tmp_path: Path) -> Path:
-    """Create a fake MATLAB repo containing the expected entry-point script."""
-    repo = tmp_path / "repo"
-    script = repo / "+calibration" / "+scripts" / "calibrate_l2_offsets.m"
-    script.parent.mkdir(parents=True)
-    script.write_text("function calibrate_l2_offsets(); end")
-    return repo
+def _make_matlab_repo(tmp_path: Path, version: str | None = None) -> Path:
+    return make_fake_matlab_calibration_repo(tmp_path, version)
 
 
 def _make_app_settings(
@@ -184,7 +183,7 @@ def test_run_calibration_builds_command_and_collects_output(tmp_path, monkeypatc
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
-    returned = job.run_calibration(_handler(7), config)
+    returned = job.run_calibration(_handler(7), config, LayerDataFormat.CSV)
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     json_file = output_dir / "imap_mag_manual-norm-layer_20260130_v001.0007.json"
     csv_file = output_dir / "imap_mag_manual-norm-layer-data_20260130_v001.0007.csv"
@@ -246,6 +245,7 @@ def test_burst_mode_uses_burst_timeout(tmp_path, monkeypatch):
             descriptor="manual-burst", content_date=DATE, version=1
         ),
         config,
+        LayerDataFormat.CSV,
     )
     assert captured["kwargs"]["timeout"] == 3600
 
@@ -272,7 +272,7 @@ def test_user_config_maps_datastore_and_work_folder(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured_config["sharepoint_flight_data"] == str(datastore.resolve())
@@ -319,7 +319,7 @@ def test_local_work_folder_copy_builds_sparse_datastore(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
     job.cleanup()
 
     sparse_root = work_folder / SPARSE_DATASTORE_FOLDER_NAME
@@ -341,7 +341,7 @@ def test_missing_metakernel_raises(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match=r"absent\.txt"):
-        job.run_calibration(_handler(1), config)
+        job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
 
 def test_missing_output_layer_raises(tmp_path, monkeypatch):
@@ -353,13 +353,17 @@ def test_missing_output_layer_raises(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(MODULE_CALL_MATLAB, lambda *a, **k: None)
     with pytest.raises(FileNotFoundError, match="no output files"):
-        job.run_calibration(_handler(1), config)
+        job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
 
 def test_wrong_config_type_raises(tmp_path):
     job = _make_job(tmp_path)
     with pytest.raises(TypeError, match="ScriptedL2CalibrationConfig"):
-        job.run_calibration(_handler(1), GradiometryConfig())
+        job.run_calibration(
+            _handler(1),
+            SetQualityAndNaNConfig(csv_file="quality.csv"),
+            LayerDataFormat.CSV,
+        )
 
 
 def test_generates_metakernel_when_none(tmp_path, monkeypatch):
@@ -391,7 +395,7 @@ def test_generates_metakernel_when_none(tmp_path, monkeypatch):
         )
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    job.run_calibration(_handler(1), config)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     assert f'"{generated_name}"' in captured["command"]
 
@@ -462,6 +466,7 @@ def test_scripted_calibrate_cli_publishes_layer(
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
         metakernel=Path("metakernel.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     results = [f for f in results if not "metakernel.txt" not in str(f)]
@@ -498,7 +503,7 @@ def test_run_calibration_collects_files_in_offset_directories(tmp_path, monkeypa
         _write_work_offsets(output_dir)
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
-    items = job.run_calibration(_handler(1), config)
+    items = job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
 
     output_dir = work_folder / OUTPUT_SUBFOLDER_NAME
     assert captured["config"]["output_offsets_folder"] == str(output_dir.resolve())
@@ -540,6 +545,7 @@ def _run_scripted_cli_with_offsets(monkeypatch, work_folder: Path, tag: str) -> 
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
         metakernel=Path("metakernel.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
 
@@ -651,7 +657,7 @@ class TestCreateOffsets:
         handler = CalibrationLayerPathHandler(
             descriptor="manual-norm", content_date=DATE, version=1
         )
-        job.run_calibration(handler, config)
+        job.run_calibration(handler, config, LayerDataFormat.CSV)
         return captured["command"]
 
     def test_automatic_norm_mode_enables_write_offsets(self, tmp_path, monkeypatch):
@@ -681,3 +687,113 @@ class TestCreateOffsets:
             tmp_path, monkeypatch, ScienceMode.Normal, CreateOffsets.NEVER
         )
         assert "write_offsets=false" in command
+
+
+@pytest.mark.parametrize(
+    "version, expect_option",
+    [("v3.5.0", True), ("v3.4.0", False), (None, False)],
+)
+def test_layer_data_format_only_passed_to_supporting_calibration_code(
+    tmp_path, monkeypatch, version, expect_option
+):
+    datastore = _make_app_settings(tmp_path)
+    repo = _make_matlab_repo(tmp_path, version)
+    app_settings = AppSettings(data_store=datastore, work_folder=tmp_path / "work")
+    job = ScriptedL2CalibrationJob(
+        CalibrationJobParameters(
+            date=DATE, mode=ScienceMode.Normal, sensor=Sensor.MAGO
+        ),
+        app_settings,
+        matlab_repo_path=repo,
+        metakernel="metakernel.txt",
+    )
+    job.setup(datastore)
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        matlab_repo=str(repo),
+    )
+    captured = {}
+
+    def mock_call_matlab(command, **kwargs):
+        captured["command"] = command
+        write_calibration_layer_pair(
+            job.work_folder / OUTPUT_SUBFOLDER_NAME, "manual-norm", DATE, 1
+        )
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+    job.run_calibration(_handler(1), config, LayerDataFormat.CSV)
+
+    assert ('layer_data_format="csv"' in captured["command"]) is expect_option
+    assert captured["command"].endswith(")")
+
+
+def test_old_calibration_code_resolves_to_csv(tmp_path):
+    job = _make_job(tmp_path)  # fake repo has no get_version.m
+
+    assert job.resolve_layer_data_format(LayerDataFormat.PARQUET) == (
+        LayerDataFormat.CSV
+    )
+
+
+def test_old_calibration_code_rejects_parquet(tmp_path, monkeypatch):
+    job = _make_job(tmp_path)
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="input.json",
+        matlab_repo=str(job.matlab_repo_path),
+    )
+    monkeypatch.setattr(MODULE_CALL_MATLAB, lambda command, **kwargs: None)
+
+    with pytest.raises(ValueError, match="cannot write parquet"):
+        job.run_calibration(_handler(1), config, LayerDataFormat.PARQUET)
+
+
+@pytest.mark.parametrize(
+    "version, expected_extension", [("v3.4.0", "csv"), ("v3.5.0", "parquet")]
+)
+def test_scripted_calibrate_cli_default_format_depends_on_calibration_code(
+    monkeypatch,
+    temp_datastore,
+    dynamic_work_folder,
+    tmp_path,
+    version,
+    expected_extension,
+):
+    """The CLI default (parquet) falls back to CSV for older calibration code."""
+    repo = _make_matlab_repo(tmp_path, version)
+    work_folder = dynamic_work_folder / "calibrate_20260130_norm"
+    captured = {}
+
+    def mock_call_matlab(command, **kwargs):
+        captured["command"] = command
+        write_calibration_layer_pair(
+            work_folder / OUTPUT_SUBFOLDER_NAME,
+            "manual-norm",
+            DATE,
+            1,
+            layer_data_format=LayerDataFormat(expected_extension),
+        )
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=8,
+        input_json_file="+calibration/calibration/input_v002.json",
+        matlab_repo=str(repo),
+    )
+
+    calibrate(
+        start_date=DATE,
+        method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+        mode=ScienceMode.Normal,
+        configuration=config.model_dump_json(),
+        metakernel=Path("metakernel.txt"),
+    )
+
+    assert ("layer_data_format" in captured["command"]) is (
+        expected_extension == "parquet"
+    )
+    assert (
+        temp_datastore
+        / f"calibration/layers/2026/01/imap_mag_manual-norm-layer-data_20260130_v001.0001.{expected_extension}"
+    ).exists()

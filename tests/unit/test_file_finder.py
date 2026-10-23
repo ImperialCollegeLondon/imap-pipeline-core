@@ -45,12 +45,16 @@ def datastore(tmp_path):
 
 
 class TestResolveLayerPatterns:
+    """find_layers_by_patterns called with a single-day range and a required
+    mode, matching how apply resolves its --layers patterns."""
+
     def test_exact_filename_passes_through(self, datastore):
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["imap_mag_noop-burst-layer_20260116_v001.json"],
-            datetime(2026, 1, 16),
-            ScienceMode.Burst,
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Burst,
         )
         assert result == ["imap_mag_noop-burst-layer_20260116_v001.json"]
 
@@ -58,8 +62,9 @@ class TestResolveLayerPatterns:
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["*noop*"],
-            datetime(2026, 1, 16),
-            ScienceMode.Normal,
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Normal,
         )
         # Should only return v002, not v001
         assert result == ["imap_mag_noop-norm-layer_20260116_v002.json"]
@@ -68,8 +73,9 @@ class TestResolveLayerPatterns:
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["*"],
-            datetime(2026, 1, 16),
-            ScienceMode.Normal,
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Normal,
         )
         # Should return highest version of each descriptor
         assert "imap_mag_noop-norm-layer_20260116_v002.json" in result
@@ -80,8 +86,9 @@ class TestResolveLayerPatterns:
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["*nonexistent*"],
-            datetime(2026, 1, 16),
-            ScienceMode.Normal,
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Normal,
         )
         assert result == []
 
@@ -89,8 +96,9 @@ class TestResolveLayerPatterns:
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["*"],
-            datetime(2025, 3, 15),
-            ScienceMode.Normal,
+            start_date=datetime(2025, 3, 15),
+            end_date=datetime(2025, 3, 15),
+            mode=ScienceMode.Normal,
         )
         assert result == []
 
@@ -98,8 +106,9 @@ class TestResolveLayerPatterns:
         finder = FileFinder(datastore)
         result = finder.find_layers_by_date_and_patterns(
             ["imap_mag_noop-burst-layer_20260116_v001.json", "*quality*"],
-            datetime(2026, 1, 16),
-            ScienceMode.Burst,
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 16),
+            mode=ScienceMode.Burst,
         )
         # Exact filename passes through even if not highest version
         assert result == [
@@ -129,6 +138,16 @@ class TestKeepHighestVersions:
         assert len(result) == 2
         assert "imap_mag_noop-layer_20260116_v003.json" in result
         assert "imap_mag_quality-layer_20260116_v001.json" in result
+
+    def test_minor_version_alone_decides_latest(self):
+        # The minor version is globally unique and always increasing; the major
+        # version is only a human-facing label and is ignored for ordering.
+        filenames = [
+            "imap_mag_noop-layer_20260116_v001.0005.json",
+            "imap_mag_noop-layer_20260116_v002.0001.json",
+        ]
+        result = FileFinder._keep_highest_version_layers_only(filenames)
+        assert result == ["imap_mag_noop-layer_20260116_v001.0005.json"]
 
     def test_empty_list(self):
         assert FileFinder._keep_highest_version_layers_only([]) == []
@@ -591,3 +610,101 @@ class TestFindMatchingFilesPlaceholderValidation:
             end_date=datetime(2026, 1, 30),
         )
         assert result == []
+
+
+class TestFindLayersByPatterns:
+    """Tests for find_layers_by_patterns, used by the calibrate-convert flow."""
+
+    def test_exact_filename_passes_through(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
+            ["imap_mag_noop-burst-layer_20260116_v001.json"]
+        )
+        assert result == ["imap_mag_noop-burst-layer_20260116_v001.json"]
+
+    def test_wildcard_returns_highest_version_per_descriptor(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*noop-norm*"])
+        assert result == ["imap_mag_noop-norm-layer_20260116_v002.json"]
+
+    def test_no_date_given_scans_whole_datastore_tree(self, datastore):
+        """Omitting all date/mode filters searches the entire layers tree."""
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*"])
+        # Highest version per descriptor across the whole tree.
+        assert "imap_mag_noop-norm-layer_20260116_v002.json" in result
+        assert "imap_mag_noop-burst-layer_20260116_v002.json" in result
+        assert "imap_mag_quality-norm-layer_20260116_v000.json" in result
+        assert "imap_mag_quality-burst-layer_20260116_v000.json" in result
+
+    def test_mode_filter_restricts_results(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*"], mode=ScienceMode.Burst)
+        assert all("burst-layer" in name for name in result)
+        assert not any("norm-layer" in name for name in result)
+
+    def test_date_range_filter_restricts_results(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
+            ["*"],
+            start_date=datetime(2026, 2, 1),
+            end_date=datetime(2026, 2, 28),
+        )
+        assert result == []
+
+    def test_date_range_filter_includes_matching_day(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(
+            ["*noop-norm*"],
+            start_date=datetime(2026, 1, 1),
+            end_date=datetime(2026, 1, 31),
+        )
+        assert result == ["imap_mag_noop-norm-layer_20260116_v002.json"]
+
+    def test_only_returns_metadata_files_not_companion_data(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*"])
+        assert all(name.endswith(".json") for name in result)
+
+    def test_no_match_throws_when_requested(self, datastore):
+        finder = FileFinder(datastore)
+        with pytest.raises(FileNotFoundError):
+            finder.find_layers_by_date_and_patterns(
+                ["*nonexistent*"], throw_if_not_found=True
+            )
+
+    def test_no_match_returns_empty_by_default(self, datastore):
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*nonexistent*"])
+        assert result == []
+
+    def test_pattern_picks_highest_minor_version_ignoring_major(self, datastore):
+        layer_dir = datastore / "calibration" / "layers" / "2026" / "01"
+        (layer_dir / "imap_mag_gradiometer-layer_20260116_v001.0005.json").touch()
+        (layer_dir / "imap_mag_gradiometer-layer_20260116_v002.0001.json").touch()
+
+        finder = FileFinder(datastore)
+        result = finder.find_layers_by_date_and_patterns(["*gradiometer*"])
+
+        assert result == ["imap_mag_gradiometer-layer_20260116_v001.0005.json"]
+
+    def test_date_range_spanning_year_end_includes_each_month(self, tmp_path):
+        layers_root = tmp_path / "calibration" / "layers"
+        for year, month, day in [(2025, 11, 30), (2025, 12, 15), (2026, 1, 1)]:
+            month_dir = layers_root / f"{year}" / f"{month:02d}"
+            month_dir.mkdir(parents=True)
+            (
+                month_dir / f"imap_mag_noop-layer_{year}{month:02d}{day:02d}_v001.json"
+            ).touch()
+
+        finder = FileFinder(tmp_path)
+        result = finder.find_layers_by_date_and_patterns(
+            ["*"],
+            start_date=datetime(2025, 12, 1, 12),
+            end_date=datetime(2026, 1, 1),
+        )
+
+        assert sorted(result) == [
+            "imap_mag_noop-layer_20251215_v001.json",
+            "imap_mag_noop-layer_20260101_v001.json",
+        ]

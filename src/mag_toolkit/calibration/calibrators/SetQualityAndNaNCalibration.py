@@ -16,6 +16,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    LayerDataFormat,
     Mission,
     ValueType,
 )
@@ -87,7 +88,10 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         return True
 
     def run_calibration(
-        self, cal_handler: CalibrationLayerPathHandler, config: CalibrationConfig
+        self,
+        cal_handler: CalibrationLayerPathHandler,
+        config: CalibrationConfig,
+        layer_data_format: LayerDataFormat,
     ) -> tuple[Path, Path]:
         if not isinstance(config, SetQualityAndNaNConfig):
             raise TypeError(
@@ -213,7 +217,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
 
         calfile = self.work_folder / cal_handler.get_filename()
-        data_handler = cal_handler.get_equivalent_data_handler()
+        data_handler = cal_handler.create_new_datafile_handler(layer_data_format)
         datafile = self.work_folder / data_handler.get_filename()
 
         layer = CalibrationLayer(
@@ -234,7 +238,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         )
         layer._contents = df
 
-        layer.writeToFile(calfile)
+        layer.write_to_file(calfile)
 
         if not calfile.exists():
             raise FileNotFoundError(f"Calibration file {calfile} was not created.")
