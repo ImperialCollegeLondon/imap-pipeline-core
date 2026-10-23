@@ -321,7 +321,7 @@ class FileAnalysis(Base):
     cdf_attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     column_stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    file: Mapped["File"] = relationship(
+    file: Mapped[File] = relationship(
         "File", backref=backref("file_analysis", uselist=False)
     )
 
