@@ -11,6 +11,7 @@ updates:
       interval: "daily"
     allow:
       - dependency-name: "certifi"
+        dependency-type: "all"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
