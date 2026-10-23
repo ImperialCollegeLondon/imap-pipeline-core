@@ -16,9 +16,9 @@ from imap_mag.config.CalibrationCommandConfig import (
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.ConvertCommandConfig import ConvertCommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
+from imap_mag.config.DeleteDatabaseRowsConfig import DeleteDatabaseRowsConfig
 from imap_mag.config.FetchConfig import (
     FetchBinaryConfig,
-    FetchDSCOVRConfig,
     FetchIALiRTConfig,
     FetchScienceConfig,
     FetchSOLAR1andACEConfig,
@@ -69,7 +69,6 @@ class AppSettings(BaseSettings):
     fetch_science: FetchScienceConfig
     fetch_spice: FetchSpiceConfig
     fetch_solar1_ace: FetchSOLAR1andACEConfig
-    fetch_dscovr: FetchDSCOVRConfig
     plot_ialirt: QuicklookConfig
     apply: CommandConfig
     calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
@@ -79,6 +78,7 @@ class AppSettings(BaseSettings):
     upload: UploadConfig
     postgres_upload: PostgresUploadConfig
     datastore_cleanup: DatastoreCleanupConfig
+    database_delete_rows: DeleteDatabaseRowsConfig
 
     # functions
     def setup_work_folder_for_command(

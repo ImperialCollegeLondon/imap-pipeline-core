@@ -22,19 +22,28 @@ RUN adduser -u ${IMAP_USERID} --disabled-password --gecos "" ${IMAP_USERNAME}
 
 USER ${IMAP_USERNAME}
 
+# Ensure pip is up-to-date
+RUN python -m pip install --no-cache-dir --upgrade pip
+
 # first restore the python dependencies in a single cache layer - should get faster builds as this changes rarely
 COPY dist/python${PYTHON_VERSION}/requirements.txt .
 RUN python -m pip install --user --no-deps -r requirements.txt
 
-# now install the imap-mag package as the user
+# now install the imap-mag package as the user, ensure certifi is up-to-date
 COPY dist/python${PYTHON_VERSION}/${TOOL_PACKAGE} python${PYTHON_VERSION}/
-RUN python -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE}
+RUN python -m pip install --user python${PYTHON_VERSION}/${TOOL_PACKAGE} && \
+    python -m pip install --user --no-cache-dir --upgrade certifi
 
 # create the runtime image and copy in the installed packed from compile-image
 FROM python:${PYTHON_VERSION}-slim AS runtime-image
 
 ARG IMAP_USERNAME="imap_pipeline"
 ARG IMAP_USERID=5679
+
+# Ensure OS and pip is up-to-date
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --no-cache-dir --upgrade pip
 
 COPY --from=compile-image /home/${IMAP_USERNAME}/.local /home/${IMAP_USERNAME}/.local
 COPY dist/docker /app

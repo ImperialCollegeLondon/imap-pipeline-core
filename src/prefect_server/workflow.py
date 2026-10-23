@@ -18,6 +18,7 @@ from prefect_server.calibrateConvertFlow import calibrate_convert_flow
 from prefect_server.calibrateFlow import calibrate_flow
 from prefect_server.checkIALiRT import check_ialirt_flow
 from prefect_server.constants import PREFECT_CONSTANTS
+from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
 from prefect_server.pollHiEsaStep import (
@@ -27,6 +28,7 @@ from prefect_server.pollHiEsaStep import (
 from prefect_server.pollHK import poll_hk_flow
 from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
+from prefect_server.pollNOAA import poll_noaa_flow
 from prefect_server.pollScience import poll_science_flow
 from prefect_server.pollSmallForces import poll_small_forces_flow
 from prefect_server.pollSpice import poll_spice_flow
@@ -257,11 +259,38 @@ async def adeploy_flows(local_debug: bool = False):
             )
         )
 
+    noaa_polling_schedules = []
+    timezone = "Europe/London"
+    for spacecraft in ["SOLAR1", "ACE"]:
+        for instrument in ["mag", "wind"]:
+            if get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_NOAA_CRON):
+                noaa_polling_schedules.append(
+                    Cron(
+                        get_cron_from_env(
+                            PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_NOAA_CRON
+                        ),
+                        timezone=timezone,
+                        parameters={
+                            "spacecraft": spacecraft,
+                            "instrument": instrument,
+                        },
+                        slug=f"{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_NOAA}-{spacecraft}-{instrument}",
+                    )
+                )
+
     poll_science_deployable = poll_science_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SCIENCE,
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         schedules=sci_polling_schedules,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+    )
+
+    poll_noaa_deployable = poll_noaa_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_NOAA,
+        job_variables=shared_job_variables,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        schedules=noaa_polling_schedules,
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
     )
 
@@ -390,6 +419,14 @@ async def adeploy_flows(local_debug: bool = False):
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )
 
+    database_cleanup_deployable = database_cleanup_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.DATABASE_CLEANUP,
+        job_variables=shared_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "12g"
     matlab_shared_job_variables["memswap_limit"] = "16g"
@@ -450,6 +487,8 @@ async def adeploy_flows(local_debug: bool = False):
         postgres_upload_deployable,
         datastore_cleanup_deployable,
         datastore_indexer_deployable,
+        poll_noaa_deployable,
+        database_cleanup_deployable,
     )
 
     if local_debug:

@@ -1,6 +1,5 @@
 """Program to retrieve SPICE kernel files from SDC."""
 
-import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -641,9 +640,7 @@ def _metakernel_builder(
             "No SPICE files found in the database matching the time range."
         )
 
-    logger.info(
-        f"Generating SPICE metakernel with {len(latest_files)} files\n{json.dumps([f.path for f in latest_files], indent=2)}"
-    )
+    logger.info(f"Generating SPICE metakernel from {len(latest_files)} files")
 
     if not start_time:
         start_time = minimum_mission_time
@@ -715,8 +712,13 @@ def _metakernel_builder(
                 priority_field="timestamp",
             )
 
+    spice_files_used = metakernel.return_spice_files_in_order(detailed=False)
+
+    # Two space indenting for nicer formatting in the logs
+    files_list = "\n  ".join(spice_files_used)
+
     logger.info(
-        f"Metakernel generated with {len(metakernel.return_spice_files_in_order(detailed=False))} SPICE files."
+        f"Metakernel generated with {len(spice_files_used)} SPICE files.\n  {files_list}"
     )
 
     return metakernel

@@ -9,7 +9,7 @@ work_folder: '.work'
 data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
-version_major: 1
+version_major: 2
 
 # SPICE kernel types included when generating a metakernel. Shared by the
 # calibration applicator and the scripted L2 calibration.
@@ -63,10 +63,6 @@ fetch_spice:
 fetch_solar1_ace:
     api:
         url_base: "https://services.swpc.noaa.gov/json/rtsw"
-
-fetch_dscovr:
-    api:
-        url_base: "https://services.swpc.noaa.gov/products/solar-wind"
 
 fetch_webtcad:
     api:
@@ -197,6 +193,7 @@ postgres_upload:
         - "ialirt/**/imap_ialirt_hit_*.csv"
         - "ialirt/**/imap_ialirt_swe_*.csv"
         - "ialirt/**/imap_ialirt_swapi_*.csv"
+        - "noaa/**/*.csv"
 
 datastore_cleanup:
     dry_run: false
@@ -248,3 +245,30 @@ datastore_cleanup:
           files_older_than: "90d"
           keep_latest_version_only: false
           cleanup_mode: "delete"
+        - name: "delete-noaa-files-older-than-7days"
+          paths_to_match:
+              - "*noaa/**/*.csv"
+          files_older_than: "7d"
+          keep_latest_version_only: false
+          cleanup_mode: "delete"
+
+database_delete_rows:
+    dry_run: false
+    database_url_env_var_or_block_name: "imap-database"
+    tasks:
+        - name: "delete-rows-ace-mag-noaa-older-7d"
+          table: "ace_mag_noaa"
+          datetime_column: "id"
+          older_than: "7d"
+        - name: "delete-rows-ace-wind-noaa-older-7d"
+          table: "ace_wind_noaa"
+          datetime_column: "id"
+          older_than: "7d"
+        - name: "delete-rows-solar-mag-noaa-older-7d"
+          table: "solar_mag_noaa"
+          datetime_column: "id"
+          older_than: "7d"
+        - name: "delete-rows-ace-wind-noaa-older-7d"
+          table: "solar_wind_noaa"
+          datetime_column: "id"
+          older_than: "7d"
