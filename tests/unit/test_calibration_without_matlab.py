@@ -83,18 +83,6 @@ def test_noop_method_is_not_runnable(temp_datastore, dynamic_work_folder):
         )
 
 
-def test_gradiometer_method_is_not_runnable(temp_datastore, dynamic_work_folder):
-    """Gradiometry is part of the scripted MATLAB calibration, not its own method."""
-    with pytest.raises(ValueError, match="no longer runnable"):
-        calibrate(
-            start_date=DATE,
-            sensor=Sensor.MAGO,
-            mode=ScienceMode.Normal,
-            method=CalibrationMethod.GRADIOMETER,
-            configuration="{}",
-        )
-
-
 def test_calibration_finds_next_viable_version(
     monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):

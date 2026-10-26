@@ -680,13 +680,13 @@ class TestFindLayersByPatterns:
 
     def test_pattern_picks_highest_minor_version_ignoring_major(self, datastore):
         layer_dir = datastore / "calibration" / "layers" / "2026" / "01"
-        (layer_dir / "imap_mag_gradiometer-layer_20260116_v001.0005.json").touch()
-        (layer_dir / "imap_mag_gradiometer-layer_20260116_v002.0001.json").touch()
+        (layer_dir / "imap_mag_manual-layer_20260116_v001.0005.json").touch()
+        (layer_dir / "imap_mag_manual-layer_20260116_v002.0001.json").touch()
 
         finder = FileFinder(datastore)
-        result = finder.find_layers_by_date_and_patterns(["*gradiometer*"])
+        result = finder.find_layers_by_date_and_patterns(["*manual*"])
 
-        assert result == ["imap_mag_gradiometer-layer_20260116_v001.0005.json"]
+        assert result == ["imap_mag_manual-layer_20260116_v001.0005.json"]
 
     def test_date_range_spanning_year_end_includes_each_month(self, tmp_path):
         layers_root = tmp_path / "calibration" / "layers"

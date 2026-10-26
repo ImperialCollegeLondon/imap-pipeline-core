@@ -305,13 +305,6 @@ def _calibrate_for_date(
             "The 'noop' calibration method is not runnable. It exists only for the "
             "internal zero-offset layer. Choose a real calibration method."
         )
-    if method == CalibrationMethod.GRADIOMETER:
-        # Gradiometry now runs inside the MATLAB scripted calibration; the method
-        # is retained only so existing gradiometer layers can still be read.
-        raise ValueError(
-            "The 'gradiometer' calibration method is no longer runnable. "
-            "Gradiometry is part of the scripted ('manual') MATLAB calibration."
-        )
 
     version_number_override = _validate_version_number_override(version_number_override)
 

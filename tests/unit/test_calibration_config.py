@@ -3,7 +3,7 @@
 import pytest
 import yaml
 
-from mag_toolkit.calibration import CalibrationMethod, CreateOffsets
+from mag_toolkit.calibration import CreateOffsets
 from mag_toolkit.calibration.CalibrationConfig import (
     CalibrationConfig,
     ScriptedL2CalibrationConfig,
@@ -29,11 +29,6 @@ class TestCalibrationConfig:
         config = SetQualityAndNaNConfig.from_file(config_file)
 
         assert config.csv_file == "quality.csv"
-
-    def test_gradiometer_method_has_no_config(self):
-        # Gradiometry is no longer a runnable calibration in this pipeline.
-        with pytest.raises(ValueError, match="No subclass"):
-            CalibrationConfig.get_class(CalibrationMethod.GRADIOMETER)
 
 
 class TestScriptedL2CalibrationConfig:
