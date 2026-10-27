@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from imap_db.model import Base, File
+from imap_db.model import Base, File, FileAnalysis
 from imap_mag.db.Database import Database, update_database_with_progress
 
 
@@ -272,6 +272,16 @@ class TestDatabaseOperations:
     ):
         results = sqlite_db.get_active_files_matching_patterns([])
         assert results == []
+
+    def test_get_item_by_column_returns_matching_item_or_none(self, sqlite_db):
+        sqlite_db.save(FileAnalysis(file_id=1, record_count=5))
+
+        found = sqlite_db.get_item_by_column(FileAnalysis, FileAnalysis.file_id, 1)
+        missing = sqlite_db.get_item_by_column(FileAnalysis, FileAnalysis.file_id, 2)
+
+        assert found is not None
+        assert found.record_count == 5
+        assert missing is None
 
     def test_get_files_since_with_limit(self, sqlite_db):
         files = [

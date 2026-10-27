@@ -3,15 +3,17 @@ import logging
 import os
 import threading
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import Any, ClassVar, TypeVar
 
 from sqlalchemy import create_engine, or_, select
 from sqlalchemy.engine import Engine, make_url
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 
 logger = logging.getLogger(__name__)
+
+TBase = TypeVar("TBase", bound=Base)
 
 
 class Database:
@@ -204,6 +206,14 @@ class Database:
         )
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
+
+    def get_item_by_column(
+        self, item_type: type[TBase], column: InstrumentedAttribute, value: Any
+    ) -> TBase | None:
+        """Get the first item of the given model type whose column equals the value."""
+        statement = select(item_type).where(column == value)
+        with self.session() as session:
+            return session.execute(statement).scalars().first()
 
     def get_file_analysis_by_file_id(self, file_id: int) -> FileAnalysis | None:
         """Get the file index entry for a given file ID."""

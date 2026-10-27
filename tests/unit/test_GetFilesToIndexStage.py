@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from imap_db.model import File, FileAnalysis, WorkflowProgress
+from imap_db.model import File, WorkflowProgress
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
 from imap_mag.data_pipelines.RunParameters import (
@@ -28,10 +28,13 @@ class TestGetFilesToIndexStage:
     ) -> GetFilesToIndexStage:
         mock_settings = MagicMock()
         mock_settings.data_store = tmp_path or Path("/nonexistent")
-        mock_settings.file_analysis.paths_to_match = paths_to_match or []
-        mock_settings.file_analysis.max_files_per_run = max_files_per_run
 
-        stage = GetFilesToIndexStage(database=database, settings=mock_settings)
+        stage = GetFilesToIndexStage(
+            database=database,
+            settings=mock_settings,
+            paths_to_match=paths_to_match,
+            max_files_per_run=max_files_per_run,
+        )
         stage._run_parameters = run_params or AutomaticRunParameters()
         stage._next_stage = AsyncMock()
         stage._index = 0
@@ -41,7 +44,6 @@ class TestGetFilesToIndexStage:
         self,
         files=None,
         workflow_progress=None,
-        file_analysis=None,
     ) -> MagicMock:
         db = MagicMock()
         db.get_workflow_progress.return_value = workflow_progress or WorkflowProgress(
@@ -49,7 +51,6 @@ class TestGetFilesToIndexStage:
         )
         db.get_files_by_ids.return_value = files or []
         db.get_active_files_by_path_or_modified_date.return_value = files or []
-        db.get_file_analysis_by_file_id.return_value = file_analysis
         return db
 
     def _make_file(
@@ -195,41 +196,6 @@ class TestGetFilesToIndexStage:
         asyncio.run(stage.start(context=context))
 
         assert context[PROGRESS_DATE_CONTEXT_KEY] == late
-
-    # ------------------------------------------------------------------
-    # Existing file analysis attached to record
-    # ------------------------------------------------------------------
-
-    def test_existing_file_analysis_is_attached_to_record(self, tmp_path):
-        existing_fa = MagicMock(spec=FileAnalysis)
-        db = self._make_db(file_analysis=existing_fa)
-        mock_file = self._make_file(tmp_path, "a.cdf")
-        db.get_files_by_ids.return_value = [mock_file]
-
-        stage = self._make_stage(
-            run_params=IndexByIdsRunParameters(file_ids=[1]),
-            database=db,
-            tmp_path=tmp_path,
-        )
-        asyncio.run(stage.start(context=self._context()))
-
-        record = stage._next_stage.process.call_args[0][0]
-        assert record.file_analysis is existing_fa
-
-    def test_no_existing_file_analysis_attaches_none(self, tmp_path):
-        db = self._make_db(file_analysis=None)
-        mock_file = self._make_file(tmp_path, "a.cdf")
-        db.get_files_by_ids.return_value = [mock_file]
-
-        stage = self._make_stage(
-            run_params=IndexByIdsRunParameters(file_ids=[1]),
-            database=db,
-            tmp_path=tmp_path,
-        )
-        asyncio.run(stage.start(context=self._context()))
-
-        record = stage._next_stage.process.call_args[0][0]
-        assert record.file_analysis is None
 
     # ------------------------------------------------------------------
     # _apply_paths_filter

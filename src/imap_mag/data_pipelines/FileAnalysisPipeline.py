@@ -1,6 +1,8 @@
+from imap_db.model import FileAnalysis
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import Pipeline, PipelineRunParameters
 from imap_mag.data_pipelines.AnalyseFilesStage import AnalyseFilesStage
+from imap_mag.data_pipelines.GetDatabaseItemStage import GetDatabaseItemStage
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
 from imap_mag.data_pipelines.SaveDatabaseItemsStage import SaveDatabaseItemsStage
 from imap_mag.data_pipelines.SaveProcessingDatesStage import SaveProcessingDatesStage
@@ -24,6 +26,17 @@ class FileAnalysisPipeline(Pipeline):
                 GetFilesToIndexStage(
                     database=self._database,
                     settings=self._settings,
+                    paths_to_match=self._settings.file_analysis.paths_to_match,
+                    max_files_per_run=self._settings.file_analysis.max_files_per_run,
+                ),
+                GetDatabaseItemStage[FileAnalysis](
+                    database=self._database,
+                    item_type=FileAnalysis,
+                    key_column=FileAnalysis.file_id,
+                    get_key=lambda record: record.file_id,
+                    set_item=lambda record, file_analysis: setattr(
+                        record, "file_analysis", file_analysis
+                    ),
                 ),
                 AnalyseFilesStage(settings=self._settings),
                 SaveDatabaseItemsStage(database=self._database),

@@ -1,7 +1,7 @@
 import fnmatch
 from datetime import UTC, datetime
 
-from imap_db.model import File, FileAnalysis, WorkflowProgress
+from imap_db.model import File, WorkflowProgress
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, SourceStage
 from imap_mag.data_pipelines.Record import Record
@@ -22,14 +22,30 @@ class GetFilesToIndexStage(SourceStage):
     - IndexByPathOrModifiedDateRunParameters: files matching path patterns,
       files modified within a date range, or both combined
 
-    Whatever the mode, the paths_to_match filter and the max_files_per_run limit
-    from app settings are applied.  Deleted files are always skipped.
+    Whatever the mode, the ``paths_to_match`` filter and the ``max_files_per_run``
+    limit given at construction are applied.  Deleted files are always skipped.
+
+    Args:
+        database: Database to query for files.
+        settings: App settings, used to locate the data store.
+        paths_to_match: fnmatch patterns a file path must match to be published.
+            No filtering if empty.
+        max_files_per_run: Maximum number of files to publish in one run.
+            No limit if None.
     """
 
-    def __init__(self, database: Database | None, settings: AppSettings):
+    def __init__(
+        self,
+        database: Database | None,
+        settings: AppSettings,
+        paths_to_match: list[str] | None = None,
+        max_files_per_run: int | None = None,
+    ):
         super().__init__()
         self.database = database
         self.settings = settings
+        self.paths_to_match = paths_to_match or []
+        self.max_files_per_run = max_files_per_run
 
     async def start(self, context: dict, **kwargs):
         files: list[File] = []
@@ -87,19 +103,12 @@ class GetFilesToIndexStage(SourceStage):
                 if existing is None or file.last_modified_date > existing:
                     context[PROGRESS_DATE_CONTEXT_KEY] = file.last_modified_date
 
-            existing_file_analysis: FileAnalysis | None = (
-                self.database.get_file_analysis_by_file_id(file.id)
-                if self.database
-                else None
-            )
-
             await self.publish_next(
                 Record(
                     file_id=file.id,
                     file_path=file_path,
                     file_path_relative=file.path,
                     last_modified_date=file.last_modified_date,
-                    file_analysis=existing_file_analysis,
                 ),
                 context=context,
             )
@@ -152,7 +161,7 @@ class GetFilesToIndexStage(SourceStage):
         last modified date of the final file in the batch are kept together, so
         progress (which only moves forward past that date) does not skip any.
         """
-        max_files = self.settings.file_analysis.max_files_per_run
+        max_files = self.max_files_per_run
         if max_files is None or len(files) <= max_files:
             return files
 
@@ -169,7 +178,7 @@ class GetFilesToIndexStage(SourceStage):
         return limited
 
     def _apply_paths_filter(self, files: list[File]) -> list[File]:
-        paths_to_match = self.settings.file_analysis.paths_to_match
+        paths_to_match = self.paths_to_match
         if not paths_to_match:
             return files
         filtered = [
