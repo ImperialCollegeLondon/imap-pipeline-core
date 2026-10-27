@@ -48,8 +48,7 @@ class TestGetFilesToIndexStage:
             item_name="test"
         )
         db.get_files_by_ids.return_value = files or []
-        db.get_active_files_matching_patterns.return_value = files or []
-        db.get_files_since.return_value = files or []
+        db.get_active_files_by_path_or_modified_date.return_value = files or []
         db.get_file_analysis_by_file_id.return_value = file_analysis
         return db
 
@@ -240,7 +239,7 @@ class TestGetFilesToIndexStage:
         f1 = self._make_file(tmp_path, "science/mag/f1.cdf", file_id=1)
         f2 = self._make_file(tmp_path, "hk/mag/f2.csv", file_id=2)
         db = self._make_db(files=[f1, f2])
-        db.get_files_since.return_value = [f1, f2]
+        db.get_active_files_by_path_or_modified_date.return_value = [f1, f2]
 
         stage = self._make_stage(
             run_params=AutomaticRunParameters(),
@@ -258,7 +257,7 @@ class TestGetFilesToIndexStage:
         f1 = self._make_file(tmp_path, "a.cdf", file_id=1)
         f2 = self._make_file(tmp_path, "b.csv", file_id=2)
         db = self._make_db(files=[f1, f2])
-        db.get_files_since.return_value = [f1, f2]
+        db.get_active_files_by_path_or_modified_date.return_value = [f1, f2]
 
         stage = self._make_stage(
             run_params=AutomaticRunParameters(),
@@ -274,7 +273,7 @@ class TestGetFilesToIndexStage:
         f1 = self._make_file(tmp_path, "science/mag/a.cdf", file_id=1)
         f2 = self._make_file(tmp_path, "hk/mag/l1/b.csv", file_id=2)
         db = self._make_db()
-        db.get_files_since.return_value = [f1, f2]
+        db.get_active_files_by_path_or_modified_date.return_value = [f1, f2]
 
         stage = self._make_stage(
             run_params=AutomaticRunParameters(),
@@ -292,25 +291,25 @@ class TestGetFilesToIndexStage:
     # Date range filtering
     # ------------------------------------------------------------------
 
-    def test_date_range_modified_before_excludes_later_files(self, tmp_path):
-        early = datetime(2026, 1, 10, tzinfo=UTC)
-        late = datetime(2026, 2, 10, tzinfo=UTC)
-        f1 = self._make_file(tmp_path, "a.cdf", file_id=1, last_modified_date=early)
-        f2 = self._make_file(tmp_path, "b.cdf", file_id=2, last_modified_date=late)
-        db = self._make_db()
-        db.get_files_since.return_value = [f1, f2]
+    def test_date_range_passes_modified_bounds_to_database(self, tmp_path):
+        f1 = self._make_file(tmp_path, "a.cdf", file_id=1)
+        db = self._make_db(files=[f1])
 
-        cutoff = datetime(2026, 1, 31, tzinfo=UTC)
+        after = datetime(2026, 1, 1, tzinfo=UTC)
+        before = datetime(2026, 1, 31, tzinfo=UTC)
         stage = self._make_stage(
-            run_params=IndexByPathOrModifiedDateRunParameters(modified_before=cutoff),
+            run_params=IndexByPathOrModifiedDateRunParameters(
+                modified_after=after, modified_before=before
+            ),
             database=db,
             tmp_path=tmp_path,
         )
         asyncio.run(stage.start(context=self._context()))
 
-        assert stage._next_stage.process.call_count == 1
-        published = stage._next_stage.process.call_args[0][0]
-        assert published.file_id == 1
+        db.get_active_files_by_path_or_modified_date.assert_called_once_with(
+            [], after, before
+        )
+        assert self._published_ids(stage) == [1]
 
     def test_paths_and_dates_combined_passes_date_bounds_to_database(self, tmp_path):
         f1 = self._make_file(tmp_path, "a.cdf", file_id=1)
@@ -329,16 +328,15 @@ class TestGetFilesToIndexStage:
         )
         asyncio.run(stage.start(context=self._context()))
 
-        db.get_active_files_matching_patterns.assert_called_once_with(
+        db.get_active_files_by_path_or_modified_date.assert_called_once_with(
             ["*.cdf"], after, before
         )
-        db.get_files_since.assert_not_called()
         assert stage._next_stage.process.call_count == 1
         assert stage._next_stage.process.call_args[0][0].file_id == 1
 
-    def test_date_range_without_modified_after_defaults_to_2010(self, tmp_path):
+    def test_date_range_without_bounds_passes_no_bounds_to_database(self, tmp_path):
         db = self._make_db()
-        db.get_files_since.return_value = []
+        db.get_active_files_by_path_or_modified_date.return_value = []
 
         stage = self._make_stage(
             run_params=IndexByPathOrModifiedDateRunParameters(modified_after=None),
@@ -347,8 +345,9 @@ class TestGetFilesToIndexStage:
         )
         asyncio.run(stage.start(context=self._context()))
 
-        call_args = db.get_files_since.call_args[0][0]
-        assert call_args.year == 2010
+        db.get_active_files_by_path_or_modified_date.assert_called_once_with(
+            [], None, None
+        )
 
     # ------------------------------------------------------------------
     # Empty IDs / paths lists
@@ -381,7 +380,7 @@ class TestGetFilesToIndexStage:
         wp = WorkflowProgress(item_name="test")
         wp.progress_timestamp = progress_ts
         db = self._make_db(workflow_progress=wp)
-        db.get_files_since.return_value = []
+        db.get_active_files_by_path_or_modified_date.return_value = []
 
         stage = self._make_stage(
             run_params=AutomaticRunParameters(),
@@ -390,13 +389,15 @@ class TestGetFilesToIndexStage:
         )
         asyncio.run(stage.start(context=self._context()))
 
-        db.get_files_since.assert_called_once_with(progress_ts)
+        db.get_active_files_by_path_or_modified_date.assert_called_once_with(
+            [], progress_ts, None
+        )
 
     def test_automatic_run_defaults_to_2010_when_no_progress(self, tmp_path):
         wp = WorkflowProgress(item_name="test")
         wp.progress_timestamp = None
         db = self._make_db(workflow_progress=wp)
-        db.get_files_since.return_value = []
+        db.get_active_files_by_path_or_modified_date.return_value = []
 
         stage = self._make_stage(
             run_params=AutomaticRunParameters(),
@@ -405,8 +406,7 @@ class TestGetFilesToIndexStage:
         )
         asyncio.run(stage.start(context=self._context()))
 
-        call_args = db.get_files_since.call_args[0][0]
-        assert call_args.year == 2010
+        assert db.get_active_files_by_path_or_modified_date.call_args[0][1].year == 2010
 
     # ------------------------------------------------------------------
     # max_files_per_run
@@ -465,7 +465,18 @@ class TestGetFilesToIndexStage:
 
         assert self._published_ids(stage) == [1, 2, 3]
 
-    def test_max_files_per_run_not_applied_to_date_range_run(self, tmp_path):
+    @pytest.mark.parametrize(
+        "run_params",
+        [
+            IndexByPathOrModifiedDateRunParameters(
+                modified_after=datetime(2025, 1, 1, tzinfo=UTC)
+            ),
+            IndexByPathOrModifiedDateRunParameters(file_paths=["hk/*.csv"]),
+            IndexByIdsRunParameters(file_ids=[1, 2, 3]),
+        ],
+        ids=["date_range", "paths", "ids"],
+    )
+    def test_max_files_per_run_applied_to_manual_runs(self, tmp_path, run_params):
         files = [
             self._make_file(
                 tmp_path,
@@ -477,9 +488,7 @@ class TestGetFilesToIndexStage:
         ]
         db = self._make_db(files=files)
         stage = self._make_stage(
-            run_params=IndexByPathOrModifiedDateRunParameters(
-                modified_after=datetime(2025, 1, 1, tzinfo=UTC)
-            ),
+            run_params=run_params,
             database=db,
             tmp_path=tmp_path,
             max_files_per_run=1,
@@ -487,4 +496,27 @@ class TestGetFilesToIndexStage:
 
         asyncio.run(stage.start(context=self._context()))
 
-        assert self._published_ids(stage) == [1, 2, 3]
+        assert self._published_ids(stage) == [1]
+
+    @pytest.mark.parametrize(
+        "run_params",
+        [
+            IndexByPathOrModifiedDateRunParameters(file_paths=["*"]),
+            IndexByIdsRunParameters(file_ids=[1, 2]),
+        ],
+        ids=["paths", "ids"],
+    )
+    def test_paths_to_match_applied_to_manual_runs(self, tmp_path, run_params):
+        f1 = self._make_file(tmp_path, "science/mag/f1.cdf", file_id=1)
+        f2 = self._make_file(tmp_path, "hk/mag/f2.csv", file_id=2)
+        db = self._make_db(files=[f1, f2])
+        stage = self._make_stage(
+            run_params=run_params,
+            database=db,
+            tmp_path=tmp_path,
+            paths_to_match=["science/**/*.cdf"],
+        )
+
+        asyncio.run(stage.start(context=self._context()))
+
+        assert self._published_ids(stage) == [1]

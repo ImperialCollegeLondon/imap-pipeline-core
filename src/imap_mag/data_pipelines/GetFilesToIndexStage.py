@@ -22,8 +22,8 @@ class GetFilesToIndexStage(SourceStage):
     - IndexByPathOrModifiedDateRunParameters: files matching path patterns,
       files modified within a date range, or both combined
 
-    Automatic and date-only modes also apply the paths_to_match filter from
-    app settings.  Deleted files are always skipped.
+    Whatever the mode, the paths_to_match filter and the max_files_per_run limit
+    from app settings are applied.  Deleted files are always skipped.
     """
 
     def __init__(self, database: Database | None, settings: AppSettings):
@@ -52,20 +52,19 @@ class GetFilesToIndexStage(SourceStage):
         if isinstance(run_params, IndexByIdsRunParameters):
             files = await self._get_files_by_ids(run_params.file_ids)
         elif isinstance(run_params, IndexByPathOrModifiedDateRunParameters):
-            if run_params.file_paths:
-                files = await self._get_files_by_paths(
-                    run_params.file_paths,
-                    run_params.modified_after,
-                    run_params.modified_before,
-                )
-            else:
-                files = await self._get_files_by_date_range(
-                    run_params.modified_after, run_params.modified_before
-                )
+            files = await self._get_files_by_path_or_modified_date(
+                run_params.file_paths,
+                run_params.modified_after,
+                run_params.modified_before,
+            )
         else:
             # AutomaticRunParameters: use workflow progress
             assert isinstance(run_params, AutomaticRunParameters)
-            files = await self._get_files_automatic(context)
+            files = await self._get_files_by_path_or_modified_date(
+                [], self._get_progress_timestamp(context), None
+            )
+
+        files = self._apply_max_files_limit(self._apply_paths_filter(files))
 
         if not files:
             self.logger.info("No files to index")
@@ -117,86 +116,34 @@ class GetFilesToIndexStage(SourceStage):
         self.logger.info(f"Found {len(files)} non-deleted files by ID")
         return files
 
-    async def _get_files_by_paths(
+    async def _get_files_by_path_or_modified_date(
         self,
         file_paths: list[str],
-        modified_after: datetime | None = None,
-        modified_before: datetime | None = None,
+        modified_after: datetime | None,
+        modified_before: datetime | None,
     ) -> list[File]:
-        if not file_paths:
-            return []
-        self.logger.info(f"Getting files by paths/patterns: {file_paths}")
         if self.database is None:
-            self.logger.warning("No database provided, cannot get files by path")
+            self.logger.warning(
+                "No database provided to GetFilesToIndexStage, nothing to do"
+            )
             return []
-        files = self.database.get_active_files_matching_patterns(
+
+        self.logger.info(
+            f"Getting files matching paths {file_paths}, modified after {modified_after} and before {modified_before}"
+        )
+        files = self.database.get_active_files_by_path_or_modified_date(
             file_paths, modified_after, modified_before
         )
-        self.logger.info(f"Found {len(files)} files matching paths")
+        self.logger.info(f"Found {len(files)} files")
         return files
 
-    async def _get_files_by_date_range(
-        self,
-        modified_after: datetime | None,
-        modified_before: datetime | None,
-    ) -> list[File]:
-        if self.database is None:
-            self.logger.warning(
-                "No database provided to GetFilesToIndexStage, nothing to do"
-            )
-            return []
-
-        after = modified_after or datetime(2010, 1, 1, tzinfo=UTC)
-        self.logger.info(f"Getting files modified after {after}")
-        all_files = self.database.get_files_since(after)
-
-        return self._apply_paths_filter(
-            self._filter_by_modified_date(all_files, None, modified_before)
-        )
-
     @staticmethod
-    def _filter_by_modified_date(
-        files: list[File],
-        modified_after: datetime | None,
-        modified_before: datetime | None,
-    ) -> list[File]:
-        """Keep only files whose last modified date is within the given bounds."""
-        if modified_after is None and modified_before is None:
-            return files
-
-        def in_range(file: File) -> bool:
-            if not file.last_modified_date:
-                return False
-            modified = file.last_modified_date.replace(tzinfo=UTC)
-            return (modified_after is None or modified > modified_after) and (
-                modified_before is None or modified <= modified_before
-            )
-
-        return [f for f in files if in_range(f)]
-
-    async def _get_files_automatic(self, context: dict) -> list[File]:
-        if self.database is None:
-            self.logger.warning(
-                "No database provided to GetFilesToIndexStage, nothing to do"
-            )
-            return []
-
-        last_modified_date: datetime | None = None
-
+    def _get_progress_timestamp(context: dict) -> datetime:
+        """Get the time of the last progress, or the start of the mission if none."""
         workflow_progress = context.get("workflow_progress")
-        if workflow_progress:
-            last_modified_date = workflow_progress.progress_timestamp
-
-        if last_modified_date is None:
-            last_modified_date = datetime(2010, 1, 1, tzinfo=UTC)
-
-        self.logger.info(f"Getting files modified after {last_modified_date}")
-        all_files = self.database.get_files_since(last_modified_date)
-        self.logger.info(
-            f"Found {len(all_files)} files modified after {last_modified_date}"
-        )
-
-        return self._apply_max_files_limit(self._apply_paths_filter(all_files))
+        if workflow_progress and workflow_progress.progress_timestamp:
+            return workflow_progress.progress_timestamp
+        return datetime(2010, 1, 1, tzinfo=UTC)
 
     def _apply_max_files_limit(self, files: list[File]) -> list[File]:
         """Limit the number of files analysed in one run.

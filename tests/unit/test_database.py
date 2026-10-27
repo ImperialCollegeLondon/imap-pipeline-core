@@ -235,9 +235,7 @@ class TestDatabaseOperations:
         results = sqlite_db.get_active_files_matching_patterns(["science/mag/*"])
         assert any(f.name == "file.cdf" for f in results)
 
-    def test_get_active_files_matching_patterns_filters_by_modified_date(
-        self, sqlite_db
-    ):
+    def test_get_active_files_by_path_or_modified_date_filters_by_date(self, sqlite_db):
         for name, modified in [
             ("early.cdf", datetime(2026, 1, 10)),
             ("mid.cdf", datetime(2026, 2, 10)),
@@ -250,8 +248,8 @@ class TestDatabaseOperations:
             sqlite_db.save(stored)
 
         def names(**kwargs):
-            results = sqlite_db.get_active_files_matching_patterns(
-                ["science/mag/*"], **kwargs
+            results = sqlite_db.get_active_files_by_path_or_modified_date(
+                patterns=["science/mag/*"], **kwargs
             )
             return {f.name for f in results}
 
@@ -262,6 +260,12 @@ class TestDatabaseOperations:
             modified_after=datetime(2026, 2, 1, tzinfo=UTC),
             modified_before=datetime(2026, 3, 1, tzinfo=UTC),
         ) == {"mid.cdf"}
+
+        # dates alone, without path patterns, are ordered by modified date
+        by_date = sqlite_db.get_active_files_by_path_or_modified_date(
+            modified_after=datetime(2026, 1, 15)
+        )
+        assert [f.name for f in by_date] == ["mid.cdf", "late.cdf"]
 
     def test_get_active_files_matching_patterns_empty_list_returns_empty(
         self, sqlite_db

@@ -198,8 +198,10 @@ class Database:
             return list(session.execute(statement).scalars().all())
 
     def get_files_by_ids(self, file_ids: list[int]) -> list[File]:
-        """Get files by their IDs."""
-        statement = select(File).where(File.id.in_(file_ids))
+        """Get files by their IDs, ordered by last modified date."""
+        statement = (
+            select(File).where(File.id.in_(file_ids)).order_by(File.last_modified_date)
+        )
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
@@ -218,39 +220,50 @@ class Database:
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
-    def get_active_files_matching_patterns(
-        self,
-        patterns: list[str],
-        modified_after: datetime | None = None,
-        modified_before: datetime | None = None,
-    ) -> list[File]:
+    def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
         """Get all active files matching any of the given fnmatch patterns.
-
-        Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
-        and queries the database server-side, including the optional modified date
-        bounds.
 
         Args:
             patterns: List of fnmatch patterns (e.g., "*hk/mag/l1/*")
-            modified_after: Only include files modified after this datetime.
-            modified_before: Only include files modified at or before this datetime.
 
         Returns:
-            List of matching File objects
+            List of matching File objects. Empty if no patterns are given.
         """
         if not patterns:
             return []
 
-        # Convert fnmatch patterns to SQL LIKE patterns
-        like_patterns = [self._fnmatch_to_like(p) for p in patterns]
+        return self.get_active_files_by_path_or_modified_date(patterns=patterns)
 
-        # Build OR condition for all patterns
-        pattern_conditions = [File.path.like(p) for p in like_patterns]
+    def get_active_files_by_path_or_modified_date(
+        self,
+        patterns: list[str] | None = None,
+        modified_after: datetime | None = None,
+        modified_before: datetime | None = None,
+    ) -> list[File]:
+        """Get active files matching path patterns and/or a modified date range.
 
-        statement = select(File).where(
-            File.deletion_date.is_(None),
-            or_(*pattern_conditions),
+        Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
+        and queries the database server-side. Each filter that is provided must match.
+
+        Args:
+            patterns: Optional fnmatch patterns (e.g., "*hk/mag/l1/*"); a file
+                matching any one of them is included.
+            modified_after: Only include files modified after this datetime.
+            modified_before: Only include files modified at or before this datetime.
+
+        Returns:
+            List of matching File objects, ordered by last modified date.
+        """
+        statement = (
+            select(File)
+            .where(File.deletion_date.is_(None))
+            .order_by(File.last_modified_date)
         )
+
+        if patterns:
+            statement = statement.where(
+                or_(*[File.path.like(self._fnmatch_to_like(p)) for p in patterns])
+            )
 
         # last_modified_date is stored as a naive UTC datetime
         if modified_after is not None:
