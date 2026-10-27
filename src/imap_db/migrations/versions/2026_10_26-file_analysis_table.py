@@ -1,7 +1,7 @@
 """Add file_analysis table
 
 Revision ID: a1b2c3d4e5f7
-Revises: 52c7b098641d
+Revises: d910e3b4bc3d
 Create Date: 2026-03-16 00:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "a1b2c3d4e5f7"
-down_revision = "52c7b098641d"
+down_revision = "d910e3b4bc3d"
 branch_labels = None
 depends_on = None
 
