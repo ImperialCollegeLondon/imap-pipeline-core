@@ -1,6 +1,6 @@
 """Unit tests for Database class that do not require a real database connection."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -234,6 +234,34 @@ class TestDatabaseOperations:
 
         results = sqlite_db.get_active_files_matching_patterns(["science/mag/*"])
         assert any(f.name == "file.cdf" for f in results)
+
+    def test_get_active_files_matching_patterns_filters_by_modified_date(
+        self, sqlite_db
+    ):
+        for name, modified in [
+            ("early.cdf", datetime(2026, 1, 10)),
+            ("mid.cdf", datetime(2026, 2, 10)),
+            ("late.cdf", datetime(2026, 3, 10)),
+        ]:
+            f = _make_file(name, f"science/mag/l2/{name}", name)
+            sqlite_db.upsert_file(f)
+            stored = sqlite_db.get_files(name=name)[0]
+            stored.last_modified_date = modified
+            sqlite_db.save(stored)
+
+        def names(**kwargs):
+            results = sqlite_db.get_active_files_matching_patterns(
+                ["science/mag/*"], **kwargs
+            )
+            return {f.name for f in results}
+
+        assert names() == {"early.cdf", "mid.cdf", "late.cdf"}
+        assert names(modified_after=datetime(2026, 2, 1)) == {"mid.cdf", "late.cdf"}
+        assert names(modified_before=datetime(2026, 2, 10)) == {"early.cdf", "mid.cdf"}
+        assert names(
+            modified_after=datetime(2026, 2, 1, tzinfo=UTC),
+            modified_before=datetime(2026, 3, 1, tzinfo=UTC),
+        ) == {"mid.cdf"}
 
     def test_get_active_files_matching_patterns_empty_list_returns_empty(
         self, sqlite_db

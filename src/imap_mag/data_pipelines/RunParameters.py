@@ -90,13 +90,25 @@ class IndexByIdsRunParameters(PipelineRunParameters):
 
 
 @dataclass
-class IndexByDateRangeRunParameters(PipelineRunParameters):
-    """Manually index files modified within a date range.
+class IndexByPathOrModifiedDateRunParameters(PipelineRunParameters):
+    """Manually index files by path pattern, modified date, or both combined.
 
-    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
+    When both are given, only files matching the paths AND modified within the
+    date range are indexed. Defaults to NEVER_UPDATE_PROGRESS so scheduled
+    automatic runs are unaffected.
     """
 
     progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
+
+    file_paths: Annotated[
+        list[str],
+        Field(
+            json_schema_extra={
+                "title": "File paths",
+                "description": "List of file paths or fnmatch patterns to index.",
+            }
+        ),
+    ] = field(default_factory=list)
 
     modified_after: Annotated[
         datetime | None,
@@ -117,23 +129,3 @@ class IndexByDateRangeRunParameters(PipelineRunParameters):
             }
         ),
     ] = None
-
-
-@dataclass
-class IndexByFileNamesRunParameters(PipelineRunParameters):
-    """Manually index files matching specific path patterns or exact paths.
-
-    Defaults to NEVER_UPDATE_PROGRESS so scheduled automatic runs are unaffected.
-    """
-
-    progress_mode: ProgressUpdateMode = ProgressUpdateMode.NEVER_UPDATE_PROGRESS
-
-    file_paths: Annotated[
-        list[str],
-        Field(
-            json_schema_extra={
-                "title": "File paths",
-                "description": "List of file paths or fnmatch patterns to index.",
-            }
-        ),
-    ] = field(default_factory=list)

@@ -5,6 +5,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from imap_db.model import File
+from imap_mag.data_pipelines import (
+    IndexByIdsRunParameters,
+    IndexByPathOrModifiedDateRunParameters,
+)
 from imap_mag.util.Environment import Environment
 from prefect_server.fileAnalyserFlow import file_analyser_flow
 from tests.util.miscellaneous import DATASTORE
@@ -40,7 +44,9 @@ async def test_flow_analyses_file_by_id(
         settings = AppSettings()  # type: ignore
         file = _insert_file(test_database, rel_path, settings)
 
-        await file_analyser_flow(files=[file.id])
+        await file_analyser_flow(
+            run_parameters=IndexByIdsRunParameters(file_ids=[file.id])
+        )
 
         idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None
@@ -62,7 +68,9 @@ async def test_flow_analyses_by_file_path(
         settings = AppSettings()  # type: ignore
         file = _insert_file(test_database, rel_path, settings)
 
-        await file_analyser_flow(file_paths=[rel_path])
+        await file_analyser_flow(
+            run_parameters=IndexByPathOrModifiedDateRunParameters(file_paths=[rel_path])
+        )
 
         idx = test_database.get_file_analysis_by_file_id(file.id)
         assert idx is not None

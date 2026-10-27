@@ -5,9 +5,8 @@ from datetime import UTC, datetime, timedelta
 from imap_db.model import File
 from imap_mag.data_pipelines import (
     AutomaticRunParameters,
-    IndexByDateRangeRunParameters,
-    IndexByFileNamesRunParameters,
     IndexByIdsRunParameters,
+    IndexByPathOrModifiedDateRunParameters,
 )
 from imap_mag.data_pipelines.FileAnalysisPipeline import FileAnalysisPipeline
 from imap_mag.util.Environment import Environment
@@ -110,7 +109,7 @@ def test_index_by_ids_upserts_on_second_run(test_database, test_database_contain
 
 
 # ---------------------------------------------------------------------------
-# IndexByDateRangeRunParameters
+# IndexByPathOrModifiedDateRunParameters (date range)
 # ---------------------------------------------------------------------------
 
 
@@ -136,7 +135,7 @@ def test_index_by_date_range_finds_files_in_range(
         )
 
         after = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=5)
-        params = IndexByDateRangeRunParameters(modified_after=after)
+        params = IndexByPathOrModifiedDateRunParameters(modified_after=after)
         _build_and_run_pipeline(test_database, settings, params)
 
         idx1 = test_database.get_file_analysis_by_file_id(f1.id)
@@ -161,7 +160,7 @@ def test_index_by_date_range_excludes_files_before_range(
 
         # Set after > file modification time → should not be picked up
         after = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=100)
-        params = IndexByDateRangeRunParameters(modified_after=after)
+        params = IndexByPathOrModifiedDateRunParameters(modified_after=after)
         _build_and_run_pipeline(test_database, settings, params)
 
         idx = test_database.get_file_analysis_by_file_id(file.id)
@@ -169,7 +168,7 @@ def test_index_by_date_range_excludes_files_before_range(
 
 
 # ---------------------------------------------------------------------------
-# IndexByFileNamesRunParameters
+# IndexByPathOrModifiedDateRunParameters (paths)
 # ---------------------------------------------------------------------------
 
 
@@ -181,7 +180,7 @@ def test_index_by_file_names_matches_exact_path(test_database, test_database_con
         rel_path = "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
         file = _insert_file(test_database, rel_path, settings)
 
-        params = IndexByFileNamesRunParameters(file_paths=[rel_path])
+        params = IndexByPathOrModifiedDateRunParameters(file_paths=[rel_path])
         _build_and_run_pipeline(test_database, settings, params)
 
         idx = test_database.get_file_analysis_by_file_id(file.id)
@@ -197,7 +196,9 @@ def test_index_by_file_names_glob_pattern(test_database, test_database_container
         rel_path = "science/mag/l1c/2025/04/imap_mag_l1c_norm-mago_20250421_v001.cdf"
         file = _insert_file(test_database, rel_path, settings)
 
-        params = IndexByFileNamesRunParameters(file_paths=["science/mag/l1c/**/*.cdf"])
+        params = IndexByPathOrModifiedDateRunParameters(
+            file_paths=["science/mag/l1c/**/*.cdf"]
+        )
         _build_and_run_pipeline(test_database, settings, params)
 
         idx = test_database.get_file_analysis_by_file_id(file.id)

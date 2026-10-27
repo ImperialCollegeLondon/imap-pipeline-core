@@ -451,9 +451,6 @@ async def adeploy_flows(local_debug: bool = False):
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
         job_variables=file_analysis_job_variables,
-        concurrency_limit=ConcurrencyLimitConfig(
-            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
-        ),
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
     )

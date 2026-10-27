@@ -7,9 +7,8 @@ from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY, SourceStage
 from imap_mag.data_pipelines.Record import Record
 from imap_mag.data_pipelines.RunParameters import (
     AutomaticRunParameters,
-    IndexByDateRangeRunParameters,
-    IndexByFileNamesRunParameters,
     IndexByIdsRunParameters,
+    IndexByPathOrModifiedDateRunParameters,
 )
 from imap_mag.db import Database
 
@@ -20,10 +19,10 @@ class GetFilesToIndexStage(SourceStage):
     Behaviour depends on the run parameters passed to the pipeline:
     - AutomaticRunParameters: files modified since last workflow progress
     - IndexByIdsRunParameters: explicit file IDs
-    - IndexByDateRangeRunParameters: files modified within a date range
-    - IndexByFileNamesRunParameters: files matching path patterns
+    - IndexByPathOrModifiedDateRunParameters: files matching path patterns,
+      files modified within a date range, or both combined
 
-    Automatic and date-range modes also apply the paths_to_match filter from
+    Automatic and date-only modes also apply the paths_to_match filter from
     app settings.  Deleted files are always skipped.
     """
 
@@ -52,12 +51,17 @@ class GetFilesToIndexStage(SourceStage):
 
         if isinstance(run_params, IndexByIdsRunParameters):
             files = await self._get_files_by_ids(run_params.file_ids)
-        elif isinstance(run_params, IndexByFileNamesRunParameters):
-            files = await self._get_files_by_paths(run_params.file_paths)
-        elif isinstance(run_params, IndexByDateRangeRunParameters):
-            files = await self._get_files_by_date_range(
-                run_params.modified_after, run_params.modified_before, context
-            )
+        elif isinstance(run_params, IndexByPathOrModifiedDateRunParameters):
+            if run_params.file_paths:
+                files = await self._get_files_by_paths(
+                    run_params.file_paths,
+                    run_params.modified_after,
+                    run_params.modified_before,
+                )
+            else:
+                files = await self._get_files_by_date_range(
+                    run_params.modified_after, run_params.modified_before
+                )
         else:
             # AutomaticRunParameters: use workflow progress
             assert isinstance(run_params, AutomaticRunParameters)
@@ -113,14 +117,21 @@ class GetFilesToIndexStage(SourceStage):
         self.logger.info(f"Found {len(files)} non-deleted files by ID")
         return files
 
-    async def _get_files_by_paths(self, file_paths: list[str]) -> list[File]:
+    async def _get_files_by_paths(
+        self,
+        file_paths: list[str],
+        modified_after: datetime | None = None,
+        modified_before: datetime | None = None,
+    ) -> list[File]:
         if not file_paths:
             return []
         self.logger.info(f"Getting files by paths/patterns: {file_paths}")
         if self.database is None:
             self.logger.warning("No database provided, cannot get files by path")
             return []
-        files = self.database.get_active_files_matching_patterns(file_paths)
+        files = self.database.get_active_files_matching_patterns(
+            file_paths, modified_after, modified_before
+        )
         self.logger.info(f"Found {len(files)} files matching paths")
         return files
 
@@ -128,7 +139,6 @@ class GetFilesToIndexStage(SourceStage):
         self,
         modified_after: datetime | None,
         modified_before: datetime | None,
-        context: dict,
     ) -> list[File]:
         if self.database is None:
             self.logger.warning(
@@ -140,15 +150,29 @@ class GetFilesToIndexStage(SourceStage):
         self.logger.info(f"Getting files modified after {after}")
         all_files = self.database.get_files_since(after)
 
-        if modified_before is not None:
-            all_files = [
-                f
-                for f in all_files
-                if f.last_modified_date
-                and f.last_modified_date.replace(tzinfo=UTC) <= modified_before
-            ]
+        return self._apply_paths_filter(
+            self._filter_by_modified_date(all_files, None, modified_before)
+        )
 
-        return self._apply_paths_filter(all_files)
+    @staticmethod
+    def _filter_by_modified_date(
+        files: list[File],
+        modified_after: datetime | None,
+        modified_before: datetime | None,
+    ) -> list[File]:
+        """Keep only files whose last modified date is within the given bounds."""
+        if modified_after is None and modified_before is None:
+            return files
+
+        def in_range(file: File) -> bool:
+            if not file.last_modified_date:
+                return False
+            modified = file.last_modified_date.replace(tzinfo=UTC)
+            return (modified_after is None or modified > modified_after) and (
+                modified_before is None or modified <= modified_before
+            )
+
+        return [f for f in files if in_range(f)]
 
     async def _get_files_automatic(self, context: dict) -> list[File]:
         if self.database is None:

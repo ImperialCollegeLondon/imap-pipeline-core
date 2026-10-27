@@ -2,7 +2,7 @@ import functools
 import logging
 import os
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from sqlalchemy import create_engine, or_, select
@@ -218,14 +218,22 @@ class Database:
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
-    def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
+    def get_active_files_matching_patterns(
+        self,
+        patterns: list[str],
+        modified_after: datetime | None = None,
+        modified_before: datetime | None = None,
+    ) -> list[File]:
         """Get all active files matching any of the given fnmatch patterns.
 
         Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
-        and queries the database server-side.
+        and queries the database server-side, including the optional modified date
+        bounds.
 
         Args:
             patterns: List of fnmatch patterns (e.g., "*hk/mag/l1/*")
+            modified_after: Only include files modified after this datetime.
+            modified_before: Only include files modified at or before this datetime.
 
         Returns:
             List of matching File objects
@@ -244,8 +252,24 @@ class Database:
             or_(*pattern_conditions),
         )
 
+        # last_modified_date is stored as a naive UTC datetime
+        if modified_after is not None:
+            statement = statement.where(
+                File.last_modified_date > self._to_naive_utc(modified_after)
+            )
+        if modified_before is not None:
+            statement = statement.where(
+                File.last_modified_date <= self._to_naive_utc(modified_before)
+            )
+
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
+
+    @staticmethod
+    def _to_naive_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(UTC).replace(tzinfo=None)
 
     @staticmethod
     def _fnmatch_to_like(pattern: str) -> str:

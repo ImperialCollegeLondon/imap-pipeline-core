@@ -12,9 +12,8 @@ from imap_mag.data_pipelines import PROGRESS_DATE_CONTEXT_KEY
 from imap_mag.data_pipelines.GetFilesToIndexStage import GetFilesToIndexStage
 from imap_mag.data_pipelines.RunParameters import (
     AutomaticRunParameters,
-    IndexByDateRangeRunParameters,
-    IndexByFileNamesRunParameters,
     IndexByIdsRunParameters,
+    IndexByPathOrModifiedDateRunParameters,
 )
 
 
@@ -100,7 +99,9 @@ class TestGetFilesToIndexStage:
 
     def test_no_database_paths_run_publishes_nothing(self):
         stage = self._make_stage(
-            run_params=IndexByFileNamesRunParameters(file_paths=["foo/**/*.cdf"]),
+            run_params=IndexByPathOrModifiedDateRunParameters(
+                file_paths=["foo/**/*.cdf"]
+            ),
             database=None,
         )
         asyncio.run(stage.start(context=self._context()))
@@ -108,7 +109,7 @@ class TestGetFilesToIndexStage:
 
     def test_no_database_date_range_run_publishes_nothing(self):
         stage = self._make_stage(
-            run_params=IndexByDateRangeRunParameters(
+            run_params=IndexByPathOrModifiedDateRunParameters(
                 modified_after=datetime(2026, 1, 1, tzinfo=UTC)
             ),
             database=None,
@@ -301,7 +302,7 @@ class TestGetFilesToIndexStage:
 
         cutoff = datetime(2026, 1, 31, tzinfo=UTC)
         stage = self._make_stage(
-            run_params=IndexByDateRangeRunParameters(modified_before=cutoff),
+            run_params=IndexByPathOrModifiedDateRunParameters(modified_before=cutoff),
             database=db,
             tmp_path=tmp_path,
         )
@@ -311,12 +312,36 @@ class TestGetFilesToIndexStage:
         published = stage._next_stage.process.call_args[0][0]
         assert published.file_id == 1
 
+    def test_paths_and_dates_combined_passes_date_bounds_to_database(self, tmp_path):
+        f1 = self._make_file(tmp_path, "a.cdf", file_id=1)
+        db = self._make_db(files=[f1])
+        after = datetime(2026, 2, 1, tzinfo=UTC)
+        before = datetime(2026, 3, 1, tzinfo=UTC)
+
+        stage = self._make_stage(
+            run_params=IndexByPathOrModifiedDateRunParameters(
+                file_paths=["*.cdf"],
+                modified_after=after,
+                modified_before=before,
+            ),
+            database=db,
+            tmp_path=tmp_path,
+        )
+        asyncio.run(stage.start(context=self._context()))
+
+        db.get_active_files_matching_patterns.assert_called_once_with(
+            ["*.cdf"], after, before
+        )
+        db.get_files_since.assert_not_called()
+        assert stage._next_stage.process.call_count == 1
+        assert stage._next_stage.process.call_args[0][0].file_id == 1
+
     def test_date_range_without_modified_after_defaults_to_2010(self, tmp_path):
         db = self._make_db()
         db.get_files_since.return_value = []
 
         stage = self._make_stage(
-            run_params=IndexByDateRangeRunParameters(modified_after=None),
+            run_params=IndexByPathOrModifiedDateRunParameters(modified_after=None),
             database=db,
             tmp_path=tmp_path,
         )
@@ -341,7 +366,7 @@ class TestGetFilesToIndexStage:
     def test_empty_file_paths_list_publishes_nothing(self):
         db = self._make_db()
         stage = self._make_stage(
-            run_params=IndexByFileNamesRunParameters(file_paths=[]),
+            run_params=IndexByPathOrModifiedDateRunParameters(file_paths=[]),
             database=db,
         )
         asyncio.run(stage.start(context=self._context()))
@@ -452,7 +477,7 @@ class TestGetFilesToIndexStage:
         ]
         db = self._make_db(files=files)
         stage = self._make_stage(
-            run_params=IndexByDateRangeRunParameters(
+            run_params=IndexByPathOrModifiedDateRunParameters(
                 modified_after=datetime(2025, 1, 1, tzinfo=UTC)
             ),
             database=db,
