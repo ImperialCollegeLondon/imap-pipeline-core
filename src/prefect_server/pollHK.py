@@ -90,12 +90,21 @@ async def poll_hk_flow(
             }
         ),
     ] = False,
-    force_database_update: Annotated[
+    force_redownload: Annotated[
         bool,
         Field(
             json_schema_extra={
-                "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded packets. Ignored if 'start_date' and 'end_date' are not provided.",
+                "title": "Force redownload",
+                "description": "If True, download all data in the provided date window, irrespective of the current progress date in the database.",
+            }
+        ),
+    ] = False,
+    overwrite_download_progress_date: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Overwrite download progress date",
+                "description": "Whether to save the latest ERT of the downloaded packets as the progress date in the database. Requires 'force_ert' as progress is tracked in ERT. Always saved for automated runs, where no dates are provided.",
             }
         ),
     ] = False,
@@ -120,7 +129,7 @@ async def poll_hk_flow(
         CONSTANTS.ENV_VAR_NAMES.WEBPODA_AUTH_CODE,
     )
 
-    if force_database_update and not force_ert:
+    if overwrite_download_progress_date and not force_ert:
         logger.warning(
             "Workflow progress in database cannot be updated without forcing ERT. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
         )
@@ -128,8 +137,11 @@ async def poll_hk_flow(
     # If this is an automated flow run, use the database to figure out what to download,
     # and use ERT to download data.
     automated_flow_run: bool = (start_date is None) and (end_date is None)
-    use_database: bool = (force_database_update and force_ert) or automated_flow_run
     use_ert: bool = force_ert or automated_flow_run
+    # Progress is tracked in ERT, so can only be used for, or saved from, ERT downloads.
+    save_progress: bool = (
+        overwrite_download_progress_date and force_ert
+    ) or automated_flow_run
 
     for packet in hk_packets:
         progress_item_id = packet.packet_name
@@ -144,8 +156,7 @@ async def poll_hk_flow(
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
             original_end_date=end_date,
-            # Only narrow the dates to database progress for automated runs, a user provided range is always honoured
-            validate_with_database=automated_flow_run,
+            validate_with_database=use_ert and not force_redownload,
         )
 
         if packet_dates is None:
@@ -173,7 +184,7 @@ async def poll_hk_flow(
             )
 
         # Update database with latest content date as progress (for HK)
-        if use_database:
+        if save_progress:
             ert_timestamps: list[datetime] = [
                 metadata.ert
                 for metadata in downloaded_binaries.values()

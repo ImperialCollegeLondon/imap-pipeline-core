@@ -104,12 +104,21 @@ async def poll_spice_flow(
             }
         ),
     ] = False,
-    force_database_update: Annotated[
+    force_redownload: Annotated[
         bool,
         Field(
             json_schema_extra={
-                "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded SPICE files.",
+                "title": "Force redownload",
+                "description": "If True, download all files in the provided ingestion date window, irrespective of the current progress date in the database.",
+            }
+        ),
+    ] = False,
+    overwrite_download_progress_date: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Overwrite download progress date",
+                "description": "Whether to save the latest ingestion date of the downloaded SPICE files as the progress date in the database. Always saved for automated runs, where no parameters are provided.",
             }
         ),
     ] = False,
@@ -151,7 +160,7 @@ async def poll_spice_flow(
         kernel_type,
     )
     automated_flow_run: bool = all(v is None for v in fields_all_none_means_automated)
-    use_database: bool = force_database_update or automated_flow_run
+    save_progress: bool = overwrite_download_progress_date or automated_flow_run
 
     if ingest_start_day is not None and ingest_end_date is None:
         ingest_end_date = datetime_provider.tomorrow().date()
@@ -162,8 +171,7 @@ async def poll_spice_flow(
     safe_download_dates = date_manager.get_dates_for_download(
         original_start_date=ingest_start_day,
         original_end_date=ingest_end_date,
-        # Only narrow the dates to database progress for automated runs, a user provided range is always honoured
-        validate_with_database=automated_flow_run,
+        validate_with_database=not force_redownload,
     )
 
     if safe_download_dates is None:
@@ -204,7 +212,7 @@ async def poll_spice_flow(
         )
 
     # Update database with latest ingestion date as progress
-    if use_database:
+    if save_progress:
         # Find the latest ingestion date from downloaded files
         ingestion_dates: list[datetime] = []
         for _, _, metadata in downloaded_spice:

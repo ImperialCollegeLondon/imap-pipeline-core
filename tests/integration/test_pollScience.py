@@ -261,12 +261,12 @@ async def test_poll_science_autoflow_continue_from_previous_download(
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-@pytest.mark.parametrize("force_database_update", [True, False])
+@pytest.mark.parametrize("overwrite_download_progress_date", [True, False])
 async def test_poll_science_specify_packets_and_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    force_database_update,
+    overwrite_download_progress_date,
     capture_cli_logs,
     clean_datastore,
     dynamic_work_folder,
@@ -301,14 +301,14 @@ async def test_poll_science_specify_packets_and_start_end_dates(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
-            force_database_update=force_database_update,
+            overwrite_download_progress_date=overwrite_download_progress_date,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
     check_file_existence([ScienceMode.Burst], start_date)
 
-    if force_database_update:
+    if overwrite_download_progress_date:
         assert (
             "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
             in capture_cli_logs.text
@@ -358,7 +358,7 @@ async def test_poll_science_specify_ingestion_start_end_dates(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
-            force_database_update=True,
+            overwrite_download_progress_date=True,
             force_ingestion_date=True,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
@@ -573,7 +573,7 @@ async def test_poll_science_forced_ingestion_range_ignores_database_progress(
             modes=[ScienceMode.Burst],
             start_date=start_date,
             end_date=end_date,
-            force_database_update=True,
+            force_redownload=True,
             force_ingestion_date=True,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )

@@ -248,7 +248,7 @@ async def test_poll_spice_forced_date_range_ignores_database_progress(
     prefect_test_fixture,  # noqa: F811
     clean_datastore,
 ):
-    """Test that force_database_update with a date range downloads the whole range, even if progress is already inside it."""
+    """Test that force_redownload with a date range downloads the whole range, even if progress is already inside it."""
     # Set up.
     # Database progress is already part way through the requested range
     previous_progress_timestamp = TODAY - timedelta(days=1) + timedelta(hours=14)
@@ -285,9 +285,120 @@ async def test_poll_spice_forced_date_range_ignores_database_progress(
         await poll_spice_flow(
             ingest_start_day=forced_start_day.date(),
             ingest_end_date=TOMORROW.date(),
-            force_database_update=True,
+            force_redownload=True,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
     check_spice_file_existence(clean_datastore, should_exist=True)
+
+
+@pytest.mark.skipif(
+    bool(os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows"),
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_spice_date_range_without_force_redownload_respects_database_progress(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    """Test that a date range is narrowed to the database progress unless a redownload is forced."""
+    # Set up.
+    previous_progress_timestamp = TODAY - timedelta(days=1) + timedelta(hours=14)
+    ingestion_timestamp = previous_progress_timestamp - timedelta(hours=1)
+    start_day = TODAY - timedelta(days=7)
+
+    test_spice_file = Path("tests/test_data/spice/imap_sclk_0032.tsc")
+    destination_spice_file = clean_datastore / "spice" / "sclk" / "imap_sclk_0032.tsc"
+    if destination_spice_file.exists():
+        destination_spice_file.unlink()
+
+    wiremock_manager.reset()
+
+    workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
+    workflow_progress.update_progress_timestamp(previous_progress_timestamp)
+    test_database.save(workflow_progress)
+
+    define_available_spice_data_sdc_mappings(
+        wiremock_manager,
+        start_day,
+        TOMORROW,
+        ingestion_timestamp,
+        test_spice_file,
+    )
+    define_unavailable_spice_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        await poll_spice_flow(
+            ingest_start_day=start_day.date(),
+            ingest_end_date=TOMORROW.date(),
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+
+    # Verify.
+    check_spice_file_existence(clean_datastore, should_exist=False)
+
+
+@pytest.mark.skipif(
+    bool(os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows"),
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+@pytest.mark.parametrize("overwrite_download_progress_date", [True, False])
+async def test_poll_spice_forced_date_range_saves_progress_only_if_requested(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+    overwrite_download_progress_date,
+):
+    """Test that the progress date is only saved for a forced range when overwrite_download_progress_date is set."""
+    # Set up.
+    previous_progress_timestamp = TODAY - timedelta(days=5)
+    ingestion_timestamp = TODAY - timedelta(days=1)
+    start_day = TODAY - timedelta(days=7)
+
+    test_spice_file = Path("tests/test_data/spice/imap_sclk_0032.tsc")
+
+    wiremock_manager.reset()
+
+    workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
+    workflow_progress.update_progress_timestamp(previous_progress_timestamp)
+    test_database.save(workflow_progress)
+
+    define_available_spice_data_sdc_mappings(
+        wiremock_manager,
+        start_day,
+        TOMORROW,
+        ingestion_timestamp,
+        test_spice_file,
+    )
+    define_unavailable_spice_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        await poll_spice_flow(
+            ingest_start_day=start_day.date(),
+            ingest_end_date=TOMORROW.date(),
+            force_redownload=True,
+            overwrite_download_progress_date=overwrite_download_progress_date,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+
+    # Verify.
+    check_spice_file_existence(clean_datastore, should_exist=True)
+    workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
+    assert workflow_progress.get_progress_timestamp() == (
+        ingestion_timestamp
+        if overwrite_download_progress_date
+        else previous_progress_timestamp
+    )
