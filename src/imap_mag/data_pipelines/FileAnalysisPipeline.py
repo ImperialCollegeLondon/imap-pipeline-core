@@ -32,8 +32,7 @@ class FileAnalysisPipeline(Pipeline):
                 GetDatabaseItemStage[FileAnalysis](
                     database=self._database,
                     item_type=FileAnalysis,
-                    key_column=FileAnalysis.file_id,
-                    get_key=lambda record: record.file_id,
+                    get_key=lambda record: {"file_id": record.file_id},
                     set_item=lambda record, file_analysis: setattr(
                         record, "file_analysis", file_analysis
                     ),

@@ -7,7 +7,7 @@ from typing import Any, ClassVar, TypeVar
 
 from sqlalchemy import create_engine, or_, select
 from sqlalchemy.engine import Engine, make_url
-from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 
@@ -207,11 +207,16 @@ class Database:
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
-    def get_item_by_column(
-        self, item_type: type[TBase], column: InstrumentedAttribute, value: Any
+    def get_item_by_key(
+        self, item_type: type[TBase], key: dict[str, Any]
     ) -> TBase | None:
-        """Get the first item of the given model type whose column equals the value."""
-        statement = select(item_type).where(column == value)
+        """Get the first item of the given model type whose columns equal the key.
+
+        Args:
+            item_type: The model class to query.
+            key: Column names mapped to the values they must equal, e.g. {"file_id": 7}.
+        """
+        statement = select(item_type).filter_by(**key)
         with self.session() as session:
             return session.execute(statement).scalars().first()
 
