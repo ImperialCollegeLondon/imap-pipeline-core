@@ -523,3 +523,60 @@ async def test_poll_science_refuses_overwrites_with_different_files_unless_expli
             "some different super scientific content",
             version=version,
         )
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_science_forced_ingestion_range_ignores_database_progress(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    """Test that a forced ingestion date range is downloaded in full, even if progress is already inside it."""
+    # Set up.
+    start_date = datetime(2025, 4, 1)
+    end_date = datetime(2025, 4, 3)
+
+    # Database progress is already part way through the requested range.
+    progress_timestamp = datetime(2025, 4, 2, 12, 0, 0)
+    ingestion_timestamp = datetime(2025, 4, 1, 6, 0, 0)
+
+    wiremock_manager.reset()
+
+    workflow_progress = test_database.get_workflow_progress(
+        get_database_id_from_mode(ScienceMode.Burst)
+    )
+    workflow_progress.update_progress_timestamp(progress_timestamp)
+    test_database.save(workflow_progress)
+
+    # Only the user provided range is mapped, so a query from the database progress finds nothing.
+    define_available_data_sdc_mappings(
+        wiremock_manager,
+        ScienceMode.Burst,
+        start_date,
+        end_date,
+        ingestion_timestamp,
+        is_ingestion_date=True,
+    )
+    define_unavailable_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        await poll_science_flow(
+            modes=[ScienceMode.Burst],
+            start_date=start_date,
+            end_date=end_date,
+            force_database_update=True,
+            force_ingestion_date=True,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+
+    # Verify.
+    check_file_existence([ScienceMode.Burst], start_date)

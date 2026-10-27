@@ -144,7 +144,8 @@ async def poll_hk_flow(
         packet_dates = date_manager.get_dates_for_download(
             original_start_date=start_date,
             original_end_date=end_date,
-            validate_with_database=use_database,
+            # Only narrow the dates to database progress for automated runs, a user provided range is always honoured
+            validate_with_database=automated_flow_run,
         )
 
         if packet_dates is None:
