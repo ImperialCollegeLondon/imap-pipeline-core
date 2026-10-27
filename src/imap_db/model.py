@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, ClassVar, Self
 
 from sqlalchemy import (
     JSON,
@@ -27,6 +27,16 @@ if TYPE_CHECKING:
     from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
+
+
+class _Missing:
+    """Marks a file_meta key that is absent, so it reads as '<missing>' in change logs."""
+
+    def __repr__(self) -> str:
+        return "<missing>"
+
+
+_MISSING = _Missing()
 
 
 class Base(DeclarativeBase):
@@ -85,6 +95,43 @@ class File(Base):
 
         return full_path
 
+    # Fields copied from a new copy of the file when merging records.
+    _MERGED_FIELDS: ClassVar[tuple[str, ...]] = (
+        "hash",
+        "size",
+        "file_meta",
+        "deletion_date",
+        "descriptor",
+        "content_date",
+        "version",
+        "version_major",
+    )
+
+    def _describe_changes(self, new_file: Self) -> list[str]:
+        """Describe each merged field that differs in new_file as 'field: before -> after'.
+
+        Changes within file_meta are reported per key as 'file_meta.key: before -> after'.
+        """
+        changes: list[str] = []
+        for field in self._MERGED_FIELDS:
+            before = getattr(self, field)
+            after = getattr(new_file, field)
+            if before == after:
+                continue
+
+            if field == "file_meta" and isinstance(before, dict | None):
+                before_meta = before or {}
+                after_meta = after or {}
+                for key in sorted(before_meta.keys() | after_meta.keys(), key=str):
+                    if before_meta.get(key, _MISSING) != after_meta.get(key, _MISSING):
+                        changes.append(
+                            f"file_meta.{key}: {before_meta.get(key, _MISSING)!r} -> {after_meta.get(key, _MISSING)!r}"
+                        )
+            else:
+                changes.append(f"{field}: {before!r} -> {after!r}")
+
+        return changes
+
     def merge_record(self, new_file: Self) -> bool:
         """Merge this file record with a new copy of the file. Returns true if an update was made, false if the existing record is unchanged."""
         if self.path != new_file.path or self.name != new_file.name:
@@ -92,16 +139,8 @@ class File(Base):
                 f"Attempting to merge file {self.path} with a different file {new_file.path}"
             )
 
-        if (
-            self.hash == new_file.hash
-            and self.size == new_file.size
-            and self.file_meta == new_file.file_meta
-            and self.deletion_date == new_file.deletion_date
-            and self.descriptor == new_file.descriptor
-            and self.content_date == new_file.content_date
-            and self.version == new_file.version
-            and self.version_major == new_file.version_major
-        ):
+        changes = self._describe_changes(new_file)
+        if not changes:
             logger.info(f"File record is identical - no updates needed for {self.path}")
             return False
 
@@ -112,17 +151,11 @@ class File(Base):
             action = "Undeleting db record"
 
         logger.info(
-            f"File {new_file.path} record being merged with existing record {self.id}. {action}."
+            f"File {new_file.path} record being merged with existing record {self.id}. {action}. Changes: {'; '.join(changes)}"
         )
 
-        self.hash = new_file.hash
-        self.size = new_file.size
-        self.file_meta = new_file.file_meta
-        self.deletion_date = new_file.deletion_date
-        self.descriptor = new_file.descriptor
-        self.content_date = new_file.content_date
-        self.version = new_file.version
-        self.version_major = new_file.version_major
+        for field in self._MERGED_FIELDS:
+            setattr(self, field, getattr(new_file, field))
 
         now = DatetimeProvider().now()
         self.last_modified_date = now
