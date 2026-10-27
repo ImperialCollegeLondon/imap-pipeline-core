@@ -235,3 +235,59 @@ async def test_poll_spice_autoflow_download_newer_file(
 
     # File should exist in datastore
     check_spice_file_existence(clean_datastore, should_exist=True)
+
+
+@pytest.mark.skipif(
+    bool(os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows"),
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_spice_forced_date_range_ignores_database_progress(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    clean_datastore,
+):
+    """Test that force_database_update with a date range downloads the whole range, even if progress is already inside it."""
+    # Set up.
+    # Database progress is already part way through the requested range
+    previous_progress_timestamp = TODAY - timedelta(days=1) + timedelta(hours=14)
+    # The file was ingested before the progress timestamp, so only a forced download gets it
+    ingestion_timestamp = previous_progress_timestamp - timedelta(hours=1)
+    forced_start_day = TODAY - timedelta(days=7)
+
+    test_spice_file = Path("tests/test_data/spice/imap_sclk_0032.tsc")
+    destination_spice_file = clean_datastore / "spice" / "sclk" / "imap_sclk_0032.tsc"
+    if destination_spice_file.exists():
+        destination_spice_file.unlink()
+
+    wiremock_manager.reset()
+
+    workflow_progress = test_database.get_workflow_progress(PROGRESS_ITEM_ID)
+    workflow_progress.update_progress_timestamp(previous_progress_timestamp)
+    test_database.save(workflow_progress)
+
+    # Only the user provided date range is mapped, so a query from the database progress will find nothing
+    define_available_spice_data_sdc_mappings(
+        wiremock_manager,
+        forced_start_day,
+        TOMORROW,
+        ingestion_timestamp,
+        test_spice_file,
+    )
+    define_unavailable_spice_data_sdc_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        IMAP_DATA_ACCESS_URL=wiremock_manager.get_url(),
+        IMAP_API_KEY="12345",
+    ):
+        await poll_spice_flow(
+            ingest_start_day=forced_start_day.date(),
+            ingest_end_date=TOMORROW.date(),
+            force_database_update=True,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+
+    # Verify.
+    check_spice_file_existence(clean_datastore, should_exist=True)
