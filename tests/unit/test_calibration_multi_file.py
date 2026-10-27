@@ -13,7 +13,7 @@ import pytest
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.io.FilePathHandlerSelector import NoProviderFoundError
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod
+from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat
 from mag_toolkit.calibration.CalibrationConfig import ScriptedL2CalibrationConfig
 from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
     OUTPUT_SUBFOLDER_NAME,
@@ -62,6 +62,7 @@ def test_saves_all_returned_files(
         mode=ScienceMode.Normal,
         configuration=config.model_dump_json(),
         metakernel=Path("mk.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
     results = [f for f in results if "mk.txt" not in str(f)]

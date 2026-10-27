@@ -14,6 +14,7 @@ from imap_mag.config.CalibrationCommandConfig import (
     CalibrationCommandConfig,
 )
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.config.ConvertCommandConfig import ConvertCommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
 from imap_mag.config.DeleteDatabaseRowsConfig import DeleteDatabaseRowsConfig
 from imap_mag.config.FetchConfig import (
@@ -71,6 +72,7 @@ class AppSettings(BaseSettings):
     plot_ialirt: QuicklookConfig
     apply: CommandConfig
     calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
+    convert: ConvertCommandConfig = ConvertCommandConfig()
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig

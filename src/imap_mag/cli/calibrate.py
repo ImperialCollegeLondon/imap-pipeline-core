@@ -5,12 +5,11 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.cli import apply
+from imap_mag.cli import apply, convert
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import (
     AppSettings,
     CalibrationConfig,
-    GradiometryConfig,
     SaveMode,
     ScriptedL2CalibrationConfig,
 )
@@ -26,12 +25,12 @@ from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
     CalibrationJobParameters,
     CalibrationMethod,
+    LayerDataFormat,
     Sensor,
 )
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 from mag_toolkit.calibration.calibrators import (
     CalibrationJob,
-    GradiometerCalibrationJob,
     ScriptedL2CalibrationJob,
     SetQualityAndNaNCalibrationJob,
 )
@@ -41,6 +40,7 @@ app = typer.Typer()
 logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
+app.command(name="convert")(convert.convert)
 
 
 def _validate_version_number_override(
@@ -91,6 +91,7 @@ def _save_calibration_outputs(
     returned: list[Path],
     outputManager: IDatastoreFileManager,
     version_number_override: tuple[int, int] | None = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path]:
 
     if not returned:
@@ -166,43 +167,22 @@ def _save_calibration_outputs(
         if companion_path:
             # Add the companion data file to the output manager with its equivalent data handler, ensuring both files are saved together and co-versioned.
             # we deliberately did not save the data file with its own handler, as that would cause it to be versioned independently of the JSON layer.
-            outputManager.add_file(
-                companion_path,
-                path_handler=handler.get_equivalent_data_handler(),  # type: ignore
+            # The calibration job is expected to honour the requested layer_data_format
+            # exactly; a mismatch means the job did not produce the format it was asked
+            # for
+            data_handler = handler.create_new_datafile_handler(  # type: ignore
+                layer_data_format
             )
+            actual_extension = companion_path.suffix.lstrip(".")
+            if actual_extension != data_handler.extension:
+                raise ValueError(
+                    f"Calibration layer data file {companion_path!s} has extension "
+                    f"'.{actual_extension}' but the requested layer_data_format was "
+                    f"'.{data_handler.extension}'."
+                )
+            outputManager.add_file(companion_path, path_handler=data_handler)
 
     return saved_file_paths
-
-
-def gradiometry(
-    start_date: Annotated[datetime, typer.Option("--date", help="Date to calibrate")],
-    mode: Annotated[
-        ScienceMode, typer.Option(help="Science mode")
-    ] = ScienceMode.Normal,
-    kappa: Annotated[float, typer.Option(help="Kappa value for gradiometry")] = 0.0,
-    sc_interference_threshold: Annotated[
-        float, typer.Option(help="SC interference threshold")
-    ] = 10.0,
-    save_mode: Annotated[
-        SaveMode,
-        typer.Option(help="Whether to save locally only or to also save to database"),
-    ] = SaveMode.LocalOnly,
-) -> list[Path]:
-    """
-    Run gradiometry calibration.
-    """
-    configuration = GradiometryConfig(
-        kappa=kappa, sc_interference_threshold=sc_interference_threshold
-    )
-
-    return _calibrate_for_date(
-        start_date=start_date,
-        method=CalibrationMethod.GRADIOMETER,
-        mode=mode,
-        sensor=Sensor.MAGO,
-        configuration=configuration.model_dump_json(),
-        save_mode=save_mode,
-    )
 
 
 def calibrate(
@@ -263,14 +243,18 @@ def calibrate(
             "overwritten. Provide as two integers, e.g. --version-number-override 1 5.",
         ),
     ] = None,
+    layer_data_format: Annotated[
+        LayerDataFormat,
+        typer.Option(help="Format of the calibration layer's companion data file."),
+    ] = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     """
     Generate calibration parameters for a given input file.
 
     Supports single date (--date) or date ranges (--start-date/--end-date).
 
-    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --sensor mago --method gradiometer
-    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method gradiometer
+    e.g. imap-mag calibrate --date 2025-10-17 --mode norm --method quality --configuration quality.yaml
+    e.g. imap-mag calibrate --start-date 2025-10-17 --end-date 2025-10-20 --method manual --configuration scripted.yaml
     """
     if start_date is None:
         raise typer.BadParameter("A date must be provided via --date or --start-date.")
@@ -289,6 +273,7 @@ def calibrate(
             metakernel=metakernel,
             cleanup_temp_files_after_run=cleanup_temp_files_after_run,
             version_number_override=version_number_override,
+            layer_data_format=layer_data_format,
         )
         if result:
             results.extend(result)
@@ -310,6 +295,7 @@ def _calibrate_for_date(
     metakernel: Path | None = None,
     cleanup_temp_files_after_run: bool = True,
     version_number_override: tuple[int, int] | None = None,
+    layer_data_format: LayerDataFormat = LayerDataFormat.PARQUET,
 ) -> list[Path]:
     """Run calibration for a single date."""
     if method == CalibrationMethod.NOOP:
@@ -363,10 +349,6 @@ def _calibrate_for_date(
     )
     calibrator: CalibrationJob
     match method:
-        case CalibrationMethod.GRADIOMETER:
-            calibrator = GradiometerCalibrationJob(
-                calibration_job_parameters, work_folder
-            )
         case CalibrationMethod.SET_QUALITY_AND_NAN:
             calibrator = SetQualityAndNaNCalibrationJob(
                 calibration_job_parameters, work_folder, datastore_finder
@@ -387,6 +369,11 @@ def _calibrate_for_date(
             raise ValueError("Calibration method is not implemented")
 
     calibrator.setup(app_settings.data_store, datastore_finder)
+
+    # Older MATLAB calibration code can only write CSV layers, so the job may
+    # write a different format than was asked for. Use what it will actually
+    # write, so the saved layer files are checked against the right format.
+    layer_data_format = calibrator.resolve_layer_data_format(layer_data_format)
 
     if app_settings.calibrate.output_folder_override:
         logger.info(
@@ -413,7 +400,9 @@ def _calibrate_for_date(
 
     try:
         returned = list(
-            calibrator.run_calibration(calibration_handler, calibration_configuration)
+            calibrator.run_calibration(
+                calibration_handler, calibration_configuration, layer_data_format
+            )
         )
     finally:
         calibrator.cleanup()
@@ -425,6 +414,7 @@ def _calibrate_for_date(
             returned=returned,
             outputManager=outputManager,
             version_number_override=version_number_override,
+            layer_data_format=layer_data_format,
         )
         + ancillaries
     )

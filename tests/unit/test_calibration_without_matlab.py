@@ -1,46 +1,75 @@
+"""Tests for the calibrate CLI, with the MATLAB scripted calibration mocked out."""
+
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from imap_mag.cli.calibrate import calibrate, gradiometry
+from imap_mag.cli.calibrate import calibrate
 from imap_mag.util import ScienceMode
-from mag_toolkit.calibration import CalibrationMethod, Sensor
+from mag_toolkit.calibration import CalibrationMethod, LayerDataFormat, Sensor
+from mag_toolkit.calibration.CalibrationConfig import ScriptedL2CalibrationConfig
+from mag_toolkit.calibration.calibrators.ScriptedL2Calibration import (
+    OUTPUT_SUBFOLDER_NAME,
+)
 from tests.util.miscellaneous import (
+    make_fake_matlab_calibration_repo,
     write_calibration_layer_pair,
 )
 
+MODULE_CALL_MATLAB = (
+    "mag_toolkit.calibration.calibrators.ScriptedL2Calibration.call_matlab"
+)
+DATE = datetime(2026, 9, 30)
+DESCRIPTOR = "manual-norm"
 
-def test_gradiometry_returns_list(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
-):
-    """gradiometry() returns a list of Path objects (not a single Path or tuple)."""
 
-    def mock_call_matlab(command):
-        write_calibration_layer_pair(
-            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
-            "gradiometer-norm",
-            datetime(2026, 9, 30),
-            1,
-        )
+def _matlab_output_folder(
+    base: Path, date: datetime = DATE, mode: str = "norm"
+) -> Path:
+    """Where the scripted calibration has MATLAB write its outputs, inside the
+    calibrate command's dynamic work folder (base/calibrate_{date}_{mode})."""
+    return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}" / OUTPUT_SUBFOLDER_NAME
 
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
-        mock_call_matlab,
+
+def _run_scripted_calibration(tmp_path: Path) -> list[Path]:
+    config = ScriptedL2CalibrationConfig(
+        calibration_matrix_version=9,
+        input_json_file="input.json",
+        matlab_repo=str(make_fake_matlab_calibration_repo(tmp_path)),
+    )
+    return calibrate(
+        start_date=DATE,
+        method=CalibrationMethod.SCRIPTED_L2_CALIBRATION,
+        mode=ScienceMode.Normal,
+        configuration=config.model_dump_json(),
+        metakernel=Path("metakernel.txt"),
+        layer_data_format=LayerDataFormat.CSV,
     )
 
-    result = gradiometry(start_date=datetime(2026, 9, 30))
+
+def _mock_matlab_writing_layer(monkeypatch, dynamic_work_folder, seed: int = 0) -> None:
+    """MATLAB always emits v001.0001; versioning is the datastore's job."""
+
+    def mock_call_matlab(command, **kwargs):
+        write_calibration_layer_pair(
+            _matlab_output_folder(dynamic_work_folder), DESCRIPTOR, DATE, 1, seed=seed
+        )
+
+    monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
+
+
+def test_calibrate_returns_list(
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
+):
+    """calibrate() returns a list of Path objects (not a single Path or tuple)."""
+    _mock_matlab_writing_layer(monkeypatch, dynamic_work_folder)
+
+    result = _run_scripted_calibration(tmp_path)
 
     assert isinstance(result, list)
     assert len(result) >= 1
     assert all(isinstance(p, Path) for p in result)
-
-
-def _cal_work_folder(base: Path, date: datetime, mode: str = "norm") -> Path:
-    """The calibrate command's dynamic work folder (base/calibrate_{date}_{mode})."""
-    return base / f"calibrate_{date.strftime('%Y%m%d')}_{mode}"
 
 
 def test_noop_method_is_not_runnable(temp_datastore, dynamic_work_folder):
@@ -54,186 +83,71 @@ def test_noop_method_is_not_runnable(temp_datastore, dynamic_work_folder):
         )
 
 
-def test_gradiometer_calibrator_makes_correct_matlab_call(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
-):
-    def mock_call_matlab(command):
-        assert command.startswith("calibration.wrappers.run_gradiometry")
-        write_calibration_layer_pair(
-            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
-            "gradiometer-norm",
-            datetime(2026, 9, 30),
-            1,
-        )
-
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
-        mock_call_matlab,
-    )
-
-    gradiometry(
-        start_date=datetime(2026, 9, 30),
-        mode=ScienceMode.Normal,
-        kappa=0.25,
-        sc_interference_threshold=10.0,
-    )
-
-    layer_metadata = (
-        temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.0001.json"
-    )
-    assert layer_metadata.exists()
-
-    layer_data = (
-        temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v001.0001.csv"
-    )
-    assert layer_data.exists()
-
-
-def test_gradiometer_calibrator_finds_next_viable_version(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
+def test_calibration_finds_next_viable_version(
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):
     """Calibration always produces v001 output; datastore bumps to v002 when v001 already exists."""
+    _mock_matlab_writing_layer(monkeypatch, dynamic_work_folder, seed=0)
 
-    work = _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30))
-
-    def mock_call_matlab(command):
-        assert (
-            command
-            == f'calibration.wrappers.run_gradiometry("2026-09-30T00:00:00", "{work}/imap_mag_l1c_norm-mago_20260930_v001.cdf", "{work}/imap_mag_l1c_norm-magi_20260930_v001.cdf", "{work}/imap_mag_gradiometer-norm-layer_20260930_v001.0001.json", "{work}/imap_mag_gradiometer-norm-layer-data_20260930_v001.0001.csv", "{temp_datastore}", "0.25", "10.0")'
-        )
-        write_calibration_layer_pair(
-            work, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=0
-        )
-
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
-        mock_call_matlab,
-    )
-
-    # Pre-populate datastore with a different v001 (different seed → different content)
+    # Pre-populate datastore with a different v001 (different seed -> different content)
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
-    write_calibration_layer_pair(
-        layers_dir, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=1
-    )
+    write_calibration_layer_pair(layers_dir, DESCRIPTOR, DATE, 1, seed=1)
 
-    gradiometry(
-        start_date=datetime(2026, 9, 30),
-        mode=ScienceMode.Normal,
-        kappa=0.25,
-        sc_interference_threshold=10.0,
-    )
+    _run_scripted_calibration(tmp_path)
 
-    # Datastore must have versioned up to v001.0002
+    assert (layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0002.json").exists()
     assert (
-        temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer_20260930_v001.0002.json"
-    ).exists()
-    assert (
-        temp_datastore
-        / "calibration/layers/2026/09/imap_mag_gradiometer-norm-layer-data_20260930_v001.0002.csv"
+        layers_dir / "imap_mag_manual-norm-layer-data_20260930_v001.0002.csv"
     ).exists()
 
 
 def test_calibration_layer_versioned_together_when_only_json_exists(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):
     """When only a JSON layer exists at v001 (no CSV), both JSON and CSV
-    output files must be versioned as v002 — not JSON=v002, CSV=v001.
-    Calibration always produces v001; the datastore bumps both to v002."""
+    output files must be versioned as v002 - not JSON=v002, CSV=v001."""
+    _mock_matlab_writing_layer(monkeypatch, dynamic_work_folder, seed=0)
 
-    def mock_call_matlab(command):
-        # Calibration always emits v001 — versioning is the datastore's job
-        write_calibration_layer_pair(
-            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
-            "gradiometer-norm",
-            datetime(2026, 9, 30),
-            1,
-            seed=0,
-        )
-
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
-        mock_call_matlab,
-    )
-
-    # Pre-populate the datastore with only a JSON at v001 (no matching CSV)
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
     _, existing_csv = write_calibration_layer_pair(
-        layers_dir, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=1
+        layers_dir, DESCRIPTOR, DATE, 1, seed=1
     )
     existing_csv.unlink()  # Leave only JSON at v001
 
-    gradiometry(
-        start_date=datetime(2026, 9, 30),
-        mode=ScienceMode.Normal,
-        kappa=0.25,
-        sc_interference_threshold=10.0,
-    )
+    _run_scripted_calibration(tmp_path)
 
-    # Both files must share version v001.0002
     assert (
-        layers_dir / "imap_mag_gradiometer-norm-layer_20260930_v001.0002.json"
+        layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0002.json"
     ).exists(), "JSON layer must be v001.0002"
     assert (
-        layers_dir / "imap_mag_gradiometer-norm-layer-data_20260930_v001.0002.csv"
+        layers_dir / "imap_mag_manual-norm-layer-data_20260930_v001.0002.csv"
     ).exists(), "CSV data file must also be v001.0002, not v001.0001"
 
 
 def test_calibration_layer_versioned_together_when_only_csv_exists(
-    monkeypatch,
-    temp_datastore,
-    dynamic_work_folder,
+    monkeypatch, temp_datastore, dynamic_work_folder, tmp_path
 ):
     """When only a CSV layer-data exists at v001 (no JSON), both JSON and CSV
-    output files must be versioned as v002 — not JSON=v001, CSV=v002.
+    output files must be versioned as v002 - not JSON=v001, CSV=v002.
     The sibling-check in DatastoreFileManager ensures the JSON version is
     also bumped when the companion CSV slot is already occupied."""
+    _mock_matlab_writing_layer(monkeypatch, dynamic_work_folder, seed=0)
 
-    def mock_call_matlab(command):
-        # Calibration always emits v001 — versioning is the datastore's job
-        write_calibration_layer_pair(
-            _cal_work_folder(dynamic_work_folder, datetime(2026, 9, 30)),
-            "gradiometer-norm",
-            datetime(2026, 9, 30),
-            1,
-            seed=0,
-        )
-
-    monkeypatch.setattr(
-        "mag_toolkit.calibration.calibrators.GradiometerCalibration.call_matlab",
-        mock_call_matlab,
-    )
-
-    # Pre-populate the datastore with only a CSV at v001 (no matching JSON).
     # Its content differs from the new CSV so the sibling check must block v001.
     layers_dir = temp_datastore / "calibration/layers/2026/09"
     layers_dir.mkdir(parents=True, exist_ok=True)
     existing_json, _ = write_calibration_layer_pair(
-        layers_dir, "gradiometer-norm", datetime(2026, 9, 30), 1, seed=1
+        layers_dir, DESCRIPTOR, DATE, 1, seed=1
     )
     existing_json.unlink()  # Leave only CSV at v001
 
-    gradiometry(
-        start_date=datetime(2026, 9, 30),
-        mode=ScienceMode.Normal,
-        kappa=0.25,
-        sc_interference_threshold=10.0,
-    )
+    _run_scripted_calibration(tmp_path)
 
-    # Both files must share version v001.0002
     assert (
-        layers_dir / "imap_mag_gradiometer-norm-layer_20260930_v001.0002.json"
+        layers_dir / "imap_mag_manual-norm-layer_20260930_v001.0002.json"
     ).exists(), "JSON layer must be v001.0002"
     assert (
-        layers_dir / "imap_mag_gradiometer-norm-layer-data_20260930_v001.0002.csv"
+        layers_dir / "imap_mag_manual-norm-layer-data_20260930_v001.0002.csv"
     ).exists(), "CSV data file must also be v001.0002, not v001.0001"

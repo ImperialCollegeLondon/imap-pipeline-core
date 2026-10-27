@@ -1,4 +1,4 @@
-"""Tests for CalibrationConfig, GradiometryConfig, and SetQualityAndNaNConfig."""
+"""Tests for CalibrationConfig, SetQualityAndNaNConfig and ScriptedL2CalibrationConfig."""
 
 import pytest
 import yaml
@@ -6,25 +6,9 @@ import yaml
 from mag_toolkit.calibration import CreateOffsets
 from mag_toolkit.calibration.CalibrationConfig import (
     CalibrationConfig,
-    GradiometryConfig,
     ScriptedL2CalibrationConfig,
     SetQualityAndNaNConfig,
 )
-
-
-class TestGradiometryConfig:
-    def test_default_kappa_is_zero(self):
-        config = GradiometryConfig()
-        assert config.kappa == 0.0
-
-    def test_default_sc_interference_threshold_is_zero(self):
-        config = GradiometryConfig()
-        assert config.sc_interference_threshold == 0.0
-
-    def test_custom_values_are_stored(self):
-        config = GradiometryConfig(kappa=0.5, sc_interference_threshold=10.0)
-        assert config.kappa == 0.5
-        assert config.sc_interference_threshold == 10.0
 
 
 class TestSetQualityAndNaNConfig:
@@ -38,30 +22,13 @@ class TestSetQualityAndNaNConfig:
 
 
 class TestCalibrationConfig:
-    def test_default_config_has_empty_gradiometer(self):
-        config = GradiometryConfig()
-        assert config.kappa == 0.0
-        assert config.sc_interference_threshold == 0.0
-
-    def test_from_file_loads_gradiometer_config(self, tmp_path):
-        config_data = {"kappa": 0.25, "sc_interference_threshold": 5.0}
+    def test_from_file_loads_set_quality_and_nan_config(self, tmp_path):
         config_file = tmp_path / "cal_config.yaml"
-        config_file.write_text(yaml.dump(config_data))
+        config_file.write_text(yaml.dump({"csv_file": "quality.csv"}))
 
-        config = GradiometryConfig.from_file(config_file)
+        config = SetQualityAndNaNConfig.from_file(config_file)
 
-        assert config.kappa == 0.25
-        assert config.sc_interference_threshold == 5.0
-
-    def test_from_file_with_minimal_config_uses_defaults(self, tmp_path):
-        config_data = {}
-        config_file = tmp_path / "cal_config.yaml"
-        config_file.write_text(yaml.dump(config_data))
-
-        config = GradiometryConfig.from_file(config_file)
-
-        assert config.kappa == 0.0
-        assert config.sc_interference_threshold == 0.0
+        assert config.csv_file == "quality.csv"
 
 
 class TestScriptedL2CalibrationConfig:

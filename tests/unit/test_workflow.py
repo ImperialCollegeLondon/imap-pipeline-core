@@ -4,8 +4,13 @@ import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from prefect.exceptions import ObjectNotFound
 
-from prefect_server.workflow import adeploy_flows, get_matlab_license_server
+from prefect_server.workflow import (
+    adeploy_flows,
+    delete_obsolete_deployments,
+    get_matlab_license_server,
+)
 
 _ALL_FLOW_NAMES = [
     "poll_ialirt_flow",
@@ -118,8 +123,14 @@ class TestAdDeployFlows:
                     [MagicMock() for _ in range(4)],
                 ],
             ),
+            patch(
+                "prefect_server.workflow.delete_obsolete_deployments",
+                new_callable=AsyncMock,
+            ) as mock_delete_obsolete,
         ):
             await adeploy_flows(local_debug=False)
+
+        mock_delete_obsolete.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_adeploy_flows_with_science_cron_schedules(self):
@@ -139,3 +150,38 @@ class TestAdDeployFlows:
             patch("prefect_server.workflow.aserve", new_callable=AsyncMock),
         ):
             await adeploy_flows(local_debug=True)
+
+
+def _mock_prefect_client(read_deployment_by_name):
+    client = MagicMock()
+    client.read_deployment_by_name = AsyncMock(side_effect=read_deployment_by_name)
+    client.delete_deployment = AsyncMock()
+    client_context = MagicMock()
+    client_context.__aenter__ = AsyncMock(return_value=client)
+    client_context.__aexit__ = AsyncMock(return_value=None)
+    return client, client_context
+
+
+class TestDeleteObsoleteDeployments:
+    @pytest.mark.asyncio
+    async def test_deletes_existing_gradiometry_deployment(self):
+        deployment = MagicMock()
+        client, client_context = _mock_prefect_client(lambda name: deployment)
+
+        with patch("prefect_server.workflow.get_client", return_value=client_context):
+            await delete_obsolete_deployments()
+
+        client.read_deployment_by_name.assert_any_await("gradiometry/gradiometer")
+        client.delete_deployment.assert_awaited_with(deployment.id)
+
+    @pytest.mark.asyncio
+    async def test_ignores_deployments_that_do_not_exist(self):
+        def not_found(name):
+            raise ObjectNotFound(http_exc=Exception("not found"))
+
+        client, client_context = _mock_prefect_client(not_found)
+
+        with patch("prefect_server.workflow.get_client", return_value=client_context):
+            await delete_obsolete_deployments()
+
+        client.delete_deployment.assert_not_awaited()

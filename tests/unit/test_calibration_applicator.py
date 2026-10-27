@@ -236,7 +236,7 @@ class TestCreateOffsetsFileValidation:
         mock_offsets.value_type = ValueType.VECTOR
         mock_offsets.compatible.return_value = True
         mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
-        mock_offsets.writeToFile.return_value = expected_path
+        mock_offsets.write_to_file.return_value = expected_path
 
         with patch(_CALIBRATION_LAYER_FROM_FILE, return_value=mock_offsets):
             result = _make_applicator()._create_offsets_file(
@@ -247,7 +247,7 @@ class TestCreateOffsetsFileValidation:
 
         assert result == expected_path
         mock_offsets.set_metadata.assert_called_once()
-        mock_offsets.writeToFile.assert_called_once_with(expected_path)
+        mock_offsets.write_to_file.assert_called_once_with(expected_path)
 
     def test_raises_calibration_validity_error_when_offsets_not_compatible(
         self, tmp_path
@@ -276,7 +276,7 @@ class TestCreateOffsetsFileValidation:
         mock_offsets.value_type = ValueType.BOUNDARY_CHANGES_ONLY
         mock_offsets.compatible.return_value = True
         mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
-        mock_offsets.writeToFile.return_value = expected_path
+        mock_offsets.write_to_file.return_value = expected_path
 
         applicator = _make_applicator()
         with (
@@ -302,7 +302,7 @@ class TestCreateOffsetsFileValidation:
         mock_offsets.value_type = ValueType.VECTOR
         mock_offsets.compatible.return_value = True
         mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
-        mock_offsets.writeToFile.return_value = expected_path
+        mock_offsets.write_to_file.return_value = expected_path
         mock_layer2 = MagicMock()
         mock_layer2.value_type = ValueType.VECTOR
 
@@ -327,7 +327,7 @@ class TestCreateOffsetsFileValidation:
         mock_offsets.value_type = ValueType.VECTOR
         mock_offsets.compatible.return_value = True
         mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
-        mock_offsets.writeToFile.return_value = expected_path
+        mock_offsets.write_to_file.return_value = expected_path
         mock_layer2 = MagicMock()
         mock_layer2.value_type = ValueType.BOUNDARY_CHANGES_ONLY
 

@@ -83,6 +83,9 @@ class ScienceLayer(Layer):
         # Before writing values, transofrm NaNs into CDF fill vals
         if self._contents is None:
             raise ValueError("No science data available to write to CSV.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
         self._contents.fillna(
             value={
                 CONSTANTS.CSV_VARS.X: CONSTANTS.CDF_FLOAT_FILLVAL,
@@ -93,6 +96,37 @@ class ScienceLayer(Layer):
             inplace=True,
         )
         self._contents.to_csv(filepath)
+        return filepath
+
+    def _write_to_parquet(self, filepath: Path, createDirectory=False):
+        # Before writing values, transofrm NaNs into CDF fill vals
+        if self._contents is None:
+            raise ValueError("No contents loaded to write to Parquet.")
+        if createDirectory:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Writing science layer Parquet data to {filepath!s}.")
+
+        self._contents.fillna(
+            value={
+                CONSTANTS.CSV_VARS.X: CONSTANTS.CDF_FLOAT_FILLVAL,
+                CONSTANTS.CSV_VARS.Y: CONSTANTS.CDF_FLOAT_FILLVAL,
+                CONSTANTS.CSV_VARS.Z: CONSTANTS.CDF_FLOAT_FILLVAL,
+                CONSTANTS.CSV_VARS.MAGNITUDE: CONSTANTS.CDF_FLOAT_FILLVAL,
+            },
+            inplace=True,
+        )
+
+        # The epoch column is stored as a native pandas datetime64[ns] column via
+        # pyarrow, which keeps full nanosecond precision losslessly (unlike CSV's
+        # text formatting, which truncates to microseconds). Other numeric columns
+        # are written as their native dtype for the same reason.
+        self._contents.to_parquet(
+            filepath,
+            index=False,
+            engine="pyarrow",
+            compression="zstd",
+        )
         return filepath
 
     @classmethod
@@ -209,6 +243,7 @@ class ScienceLayer(Layer):
         )
         science_layer._set_content_date_from_filepath(path)
         science_layer._set_data_path(path)
+        science_layer._local_file_path = path
         if load_contents and contents is not None:
             science_layer._set_contents(contents)
 
