@@ -28,6 +28,7 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
     SciencePathHandler,
+    SPICEPathHandler,
 )
 from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -1173,6 +1174,54 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     assert database_files[0].hash == hashlib.md5(file_contents.encode()).hexdigest()
     assert database_files[0].path == str(path_handler.get_full_path())
     assert database_files[0].deletion_date is None
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "imap_sclk_0032.tsc",
+        "imap_mag_metakernel_20260430T225959_20260502T005959_v001.tm",
+    ],
+    ids=["unversioned", "versioned"],
+)
+def test_DBIndexedDatastoreFileManager_redownloading_identical_spice_file_refreshes_metadata(
+    test_database,  # noqa: F811
+    temp_datastore,
+    file_name,
+) -> None:
+    # Set up.
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    database_manager = DBIndexedDatastoreFileManager(
+        DatastoreFileManager(mock_settings), test_database
+    )
+
+    downloaded_file = create_test_file(
+        Path(tempfile.gettempdir()) / file_name, "some spice content"
+    )
+
+    def download_with_metadata(metadata: dict) -> Path:
+        handler = SPICEPathHandler.from_filename(downloaded_file)
+        assert handler is not None
+        handler.add_metadata(metadata)
+        (destination, _, _) = database_manager.add_file(downloaded_file, handler)
+        return destination
+
+    destination_file = download_with_metadata(
+        {"ingestion_date": "2026-10-26, 14:20:16", "kernel_type": "old_type"}
+    )
+
+    # Exercise.
+    # Same content is downloaded again, but the SDC now reports different metadata.
+    new_metadata = {"ingestion_date": "2026-10-27, 09:00:00", "kernel_type": "new_type"}
+    assert download_with_metadata(new_metadata) == destination_file
+
+    # Verify.
+    database_files = test_database.get_files()
+    assert len(database_files) == 1
+    assert database_files[0].deletion_date is None
+    assert database_files[0].file_meta == new_metadata
 
 
 def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(

@@ -74,8 +74,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             actual_source, path_handler
         )
 
-        # Add file to database
-        if skip_database_insertion and not overwritten:
+        # Add file to database. An identical file that is already indexed still has its
+        # record upserted when the handler carries metadata, so redownloading refreshes it.
+        # The upsert is a no-op if the existing record is already up to date.
+        if (
+            skip_database_insertion
+            and not overwritten
+            and not path_handler.get_metadata()
+        ):
             logger.info(
                 f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
