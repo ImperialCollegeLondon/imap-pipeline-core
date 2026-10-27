@@ -179,12 +179,21 @@ async def poll_science_flow(
             }
         ),
     ] = None,
-    force_database_update: Annotated[
+    force_redownload: Annotated[
         bool,
         Field(
             json_schema_extra={
-                "title": "Force database update",
-                "description": "Whether to force an update of the database with the downloaded science. Ignored if 'start_date' and 'end_date' are not provided.",
+                "title": "Force redownload",
+                "description": "If True, download all science in the provided date window, irrespective of the current progress date in the database.",
+            }
+        ),
+    ] = False,
+    overwrite_download_progress_date: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Overwrite download progress date",
+                "description": "Whether to save the latest ingestion date of the downloaded science as the progress date in the database. Requires 'force_ingestion_date' as progress is tracked by ingestion date. Always saved for automated runs, where no dates are provided.",
             }
         ),
     ] = False,
@@ -218,7 +227,7 @@ async def poll_science_flow(
         CONSTANTS.ENV_VAR_NAMES.SDC_AUTH_CODE,
     )
 
-    if force_database_update and not force_ingestion_date:
+    if overwrite_download_progress_date and not force_ingestion_date:
         logger.warning(
             "Workflow progress in database cannot be updated without forcing ingestion date. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
         )
@@ -226,10 +235,11 @@ async def poll_science_flow(
     # If this is an automated flow run, use the database to figure out what to download,
     # and use the ingestion date to download data.
     automated_flow_run: bool = (start_date is None) and (end_date is None)
-    use_database: bool = (
-        force_database_update and force_ingestion_date
-    ) or automated_flow_run
     use_ingestion_date: bool = force_ingestion_date or automated_flow_run
+    # Progress is tracked by ingestion date, so can only be used for, or saved from, ingestion date downloads.
+    save_progress: bool = (
+        overwrite_download_progress_date and force_ingestion_date
+    ) or automated_flow_run
 
     if modes and len(modes) == 1:
         progress_item_id = f"{modes[0].packet}_{level.value.upper()}"
@@ -259,7 +269,7 @@ async def poll_science_flow(
     packet_dates = date_manager.get_dates_for_download(
         original_start_date=start_date,
         original_end_date=end_date,
-        validate_with_database=use_database,
+        validate_with_database=use_ingestion_date and not force_redownload,
     )
 
     if packet_dates is None:
@@ -280,7 +290,7 @@ async def poll_science_flow(
                 packet_end_date,
                 logger,
                 database,
-                use_database,
+                save_progress,
                 use_ingestion_date,
                 progress_item_id,
                 packet_start_timestamp,

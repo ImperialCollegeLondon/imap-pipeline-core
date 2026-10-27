@@ -145,7 +145,7 @@ class TestPollScienceFlowUnit:
     """Unit tests for poll_science_flow without Docker."""
 
     @pytest.mark.asyncio
-    async def test_logs_warning_when_force_database_update_without_force_ingestion_date(
+    async def test_logs_warning_when_overwrite_download_progress_date_without_force_ingestion_date(
         self,
     ):
         mock_logger = MagicMock()
@@ -168,7 +168,7 @@ class TestPollScienceFlowUnit:
             await poll_science_flow.fn(
                 start_date=datetime(2025, 1, 1),
                 end_date=datetime(2025, 1, 31),
-                force_database_update=True,
+                overwrite_download_progress_date=True,
                 force_ingestion_date=False,
             )
 
@@ -477,3 +477,87 @@ class TestPollScienceFlowOverwriteOption:
 
         _, kwargs = mock_batch.call_args
         assert kwargs["overwrite_option"] == DatastoreSaveOption.FILE_OVERWRITES_ALLOWED
+
+
+SCIENCE_DATES = {"start_date": datetime(2025, 6, 1), "end_date": datetime(2025, 6, 2)}
+
+
+class TestPollScienceFlowProgressOptions:
+    @pytest.mark.parametrize(
+        "params, expect_progress_validation, expect_progress_saved",
+        [
+            ({}, True, True),
+            ({**SCIENCE_DATES, "force_ingestion_date": True}, True, False),
+            (
+                {
+                    **SCIENCE_DATES,
+                    "force_ingestion_date": True,
+                    "force_redownload": True,
+                },
+                False,
+                False,
+            ),
+            (
+                {
+                    **SCIENCE_DATES,
+                    "force_ingestion_date": True,
+                    "overwrite_download_progress_date": True,
+                },
+                True,
+                True,
+            ),
+            (
+                {
+                    **SCIENCE_DATES,
+                    "force_ingestion_date": True,
+                    "force_redownload": True,
+                    "overwrite_download_progress_date": True,
+                },
+                False,
+                True,
+            ),
+            (SCIENCE_DATES, False, False),
+            ({**SCIENCE_DATES, "overwrite_download_progress_date": True}, False, False),
+        ],
+        ids=[
+            "automated",
+            "ingestion_range_respects_progress",
+            "ingestion_range_force_redownload",
+            "ingestion_range_overwrite_progress",
+            "ingestion_range_force_redownload_and_overwrite_progress",
+            "spacecraft_time_range_ignores_progress",
+            "spacecraft_time_range_never_saves_progress",
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_progress_options(
+        self, params, expect_progress_validation, expect_progress_saved
+    ):
+        mock_dm = MagicMock()
+        mock_dm.get_dates_for_download.return_value = (
+            datetime(2025, 6, 1),
+            datetime(2025, 6, 2),
+        )
+
+        with (
+            patch("prefect_server.pollScience.try_get_prefect_logger"),
+            patch("prefect_server.pollScience.Database"),
+            patch(
+                "prefect_server.pollScience.get_secret_or_env_var", return_value="code"
+            ),
+            patch(
+                "prefect_server.pollScience.DownloadDateManager", return_value=mock_dm
+            ),
+            patch(
+                "prefect_server.pollScience._download_batch_of_science",
+                return_value={},
+            ) as mock_batch,
+        ):
+            await poll_science_flow.fn(**params)
+
+        assert (
+            mock_dm.get_dates_for_download.call_args.kwargs["validate_with_database"]
+            == expect_progress_validation
+        )
+        # use_database is the 8th positional argument of the batch download
+        assert mock_batch.call_args.args[7] == expect_progress_saved

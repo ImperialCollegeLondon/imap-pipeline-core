@@ -302,12 +302,12 @@ async def test_poll_hk_autoflow_continue_from_previous_download(
     reason="Wiremock test containers will not work on Windows Github Runner",
 )
 @pytest.mark.asyncio
-@pytest.mark.parametrize("force_database_update", [True, False])
+@pytest.mark.parametrize("overwrite_download_progress_date", [True, False])
 async def test_poll_hk_specify_packets_and_start_end_dates(
     wiremock_manager,
     test_database,  # noqa: F811
     prefect_test_fixture,  # noqa: F811
-    force_database_update,
+    overwrite_download_progress_date,
     capture_cli_logs,
     dynamic_work_folder,
     clean_datastore,
@@ -360,14 +360,14 @@ async def test_poll_hk_specify_packets_and_start_end_dates(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
-            force_database_update=force_database_update,
+            overwrite_download_progress_date=overwrite_download_progress_date,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
 
     # Verify.
     check_file_existence(available_hk, actual_timestamp)
 
-    if force_database_update:
+    if overwrite_download_progress_date:
         assert (
             "Workflow progress in database cannot be updated without forcing ERT. Progress downloading any files will not be recorded so these files may be redownloaded again later in scheduled jobs."
             in capture_cli_logs.text
@@ -439,7 +439,7 @@ async def test_poll_hk_specify_ert_start_end_dates(
             start_date=start_date,
             end_date=end_date,
             hk_packets=requested_hk,
-            force_database_update=True,
+            overwrite_download_progress_date=True,
             force_ert=True,
             datetime_provider=DatetimeProvider(fixed_now=NOW),
         )
@@ -540,3 +540,65 @@ async def test_database_progress_table_not_modified_if_poll_hk_fails(
 
         assert workflow_progress.get_last_checked_date() is None
         assert workflow_progress.get_progress_timestamp() is None
+
+
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") and os.getenv("RUNNER_OS") == "Windows",
+    reason="Wiremock test containers will not work on Windows Github Runner",
+)
+@pytest.mark.asyncio
+async def test_poll_hk_forced_ert_range_ignores_database_progress(
+    wiremock_manager,
+    test_database,  # noqa: F811
+    prefect_test_fixture,  # noqa: F811
+    dynamic_work_folder,
+    clean_datastore,
+):
+    """Test that a forced ERT range is downloaded in full, even if progress is already inside it."""
+    # Set up.
+    start_date = datetime(2025, 5, 1)
+    end_date = datetime(2025, 5, 2)
+    actual_end_date_for_download = datetime(2025, 5, 3)
+
+    # Database progress is already part way through the requested range.
+    progress_timestamp = datetime(2025, 5, 1, 12, 0, 0)
+    ert_timestamp = datetime(2025, 5, 2, 13, 37, 9)
+    actual_timestamp = datetime(2025, 5, 2, 11, 37, 9)
+
+    hk = HKPacket.SID4_STATUS
+    binary_file = os.path.abspath(str(TEST_DATA / "MAG_HSK_STATUS_small.pkts"))
+
+    wiremock_manager.reset()
+
+    workflow_progress = test_database.get_workflow_progress(hk.packet_name)
+    workflow_progress.update_progress_timestamp(progress_timestamp)
+    test_database.save(workflow_progress)
+
+    # Only the user provided range is mapped, so a query from the database progress finds nothing.
+    define_available_data_webpoda_mappings(
+        wiremock_manager,
+        packet=hk.packet_name,
+        start_date=start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+        end_date=actual_end_date_for_download.strftime("%Y-%m-%dT%H:%M:%S"),
+        binary_file=binary_file,
+        ert_timestamp=ert_timestamp,
+        actual_timestamp=actual_timestamp,
+    )
+    define_unavailable_data_webpoda_mappings(wiremock_manager)
+
+    # Exercise.
+    with Environment(
+        MAG_FETCH_BINARY_API_URL_BASE=wiremock_manager.get_url(),
+        IMAP_WEBPODA_TOKEN="12345",
+    ):
+        await poll_hk_flow(
+            start_date=start_date,
+            end_date=end_date,
+            hk_packets=[hk],
+            force_redownload=True,
+            force_ert=True,
+            datetime_provider=DatetimeProvider(fixed_now=NOW),
+        )
+
+    # Verify.
+    check_file_existence([hk], actual_timestamp)
