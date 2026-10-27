@@ -6,7 +6,12 @@ from typing import TYPE_CHECKING
 from imap_mag.db.Database import Database
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.io.file.SequenceablePathHandler import SequenceablePathHandler
-from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
+from imap_mag.io.IDatastoreFileManager import (
+    DatastoreFileAction,
+    DatastoreStoreResult,
+    IDatastoreFileManager,
+    T,
+)
 from imap_mag.util.diskSpace import check_disk_space
 
 if TYPE_CHECKING:
@@ -28,9 +33,19 @@ class DatastoreFileManager(IDatastoreFileManager):
     def _check_disk_space(self) -> None:
         check_disk_space(self.location, self.disk_usage_threshold)
 
-    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
-        """Add file to output location.
-        Returns the destination file path and the path handler used to generate it and a bool indicating if an overwrite occured"""
+    def store_file(
+        self, original_file: Path, path_handler: T
+    ) -> DatastoreStoreResult[T]:
+        """Store file in the output location.
+
+        Args:
+            original_file: The file to store.
+            path_handler: The path handler describing where the file belongs.
+
+        Returns:
+            A summary of the destination file, the path handler used to generate it
+            and whether the file was created, skipped as identical or overwritten.
+        """
 
         if not original_file.exists():
             logger.error(f"File {original_file} does not exist.")
@@ -52,13 +67,21 @@ class DatastoreFileManager(IDatastoreFileManager):
             logger.info(
                 f"Source and destination files are the same ({original_file}). Skipping update."
             )
-            return (destination_file, path_handler, False)
+            return DatastoreStoreResult(
+                destination_file,
+                path_handler,
+                DatastoreFileAction.UPDATE_SKIPPED_IDENTICAL,
+            )
 
         elif skip_file_copy:
             logger.info(
                 f"File {destination_file} already exists and is the same - skip copy into datastore."
             )
-            return (destination_file, path_handler, False)
+            return DatastoreStoreResult(
+                destination_file,
+                path_handler,
+                DatastoreFileAction.UPDATE_SKIPPED_IDENTICAL,
+            )
 
         elif not destination_file.parent.exists():
             logger.debug(
@@ -85,7 +108,13 @@ class DatastoreFileManager(IDatastoreFileManager):
             ):
                 source_file_after_reversioning.unlink()
 
-        return (destination_file, path_handler, destination_overwritten)
+        return DatastoreStoreResult(
+            destination_file,
+            path_handler,
+            DatastoreFileAction.UPDATE_OVERWRITTEN
+            if destination_overwritten
+            else DatastoreFileAction.FILE_CREATED,
+        )
 
     def verify_file_delivered_to_datastore(
         self, original_file, source_file_after_reversioning, destination_file

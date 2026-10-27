@@ -10,11 +10,12 @@ from unittest.mock import patch
 
 import pytest
 
-from imap_mag.io import DatastoreFileManager
+from imap_mag.io import DatastoreFileAction, DatastoreFileManager
 from imap_mag.io.file import (
     CalibrationLayerPathHandler,
     HKDecodedPathHandler,
     IFilePathHandler,
+    SPICEPathHandler,
 )
 from mag_toolkit.calibration import LayerDataFormat
 from tests.util.miscellaneous import (
@@ -513,3 +514,63 @@ def test_add_file_uses_parent_when_datastore_not_yet_created(tmp_path):
         # Should have been called on an existing path (the tmp_path ancestor)
         called_path = mock_usage.call_args[0][0]
         assert called_path.exists()
+
+
+# ── store_file result ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "existing_content, expected_action",
+    [
+        (None, DatastoreFileAction.FILE_CREATED),
+        ("downloaded content", DatastoreFileAction.UPDATE_SKIPPED_IDENTICAL),
+        ("different content", DatastoreFileAction.UPDATE_OVERWRITTEN),
+    ],
+)
+def test_store_file_reports_action_performed(
+    temp_folder_path, existing_content, expected_action
+):
+    # Set up.
+    manager = _manager(temp_folder_path)
+    original_file = create_test_file(
+        temp_folder_path / "work" / "imap_sclk_0032.tsc", "downloaded content"
+    )
+    destination = temp_folder_path / "spice" / "sclk" / "imap_sclk_0032.tsc"
+    if existing_content is not None:
+        create_test_file(destination, existing_content)
+
+    handler = SPICEPathHandler.from_filename(original_file)
+    assert handler is not None
+
+    # Exercise.
+    result = manager.store_file(original_file, handler)
+
+    # Verify.
+    assert result.action == expected_action
+    assert result.destination == destination
+    assert result.path_handler is handler
+    assert destination.read_text() == "downloaded content"
+
+
+def test_add_file_is_deprecated_wrapper_around_store_file(temp_folder_path):
+    # Set up.
+    manager = _manager(temp_folder_path)
+    original_file = create_test_file(
+        temp_folder_path / "work" / "imap_sclk_0032.tsc", "downloaded content"
+    )
+    destination = create_test_file(
+        temp_folder_path / "spice" / "sclk" / "imap_sclk_0032.tsc", "different content"
+    )
+    handler = SPICEPathHandler.from_filename(original_file)
+    assert handler is not None
+
+    # Exercise.
+    with pytest.deprecated_call():
+        (result_path, result_handler, overwritten) = manager.add_file(
+            original_file, handler
+        )
+
+    # Verify.
+    assert result_path == destination
+    assert result_handler is handler
+    assert overwritten is True
