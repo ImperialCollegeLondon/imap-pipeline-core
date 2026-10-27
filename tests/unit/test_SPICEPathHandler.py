@@ -317,3 +317,56 @@ class TestRewriteMetakernelPathValues:
         assert "PATH_VALUES     = ( 'spice' )" in rewritten
         assert "/some/absolute/datastore/spice" not in rewritten
         assert "$KERNELS/lsk/naif0012.tls" in rewritten
+
+
+class TestSpinAndThrusterFiles:
+    def test_spin_file_goes_in_spin_folder_with_version_and_content_date(self):
+        handler = SPICEPathHandler.from_filename("imap_2026_089_2026_090_01.spin")
+
+        assert handler is not None
+        assert handler.get_folder_structure() == "spice/spin"
+        assert handler.get_filename() == "imap_2026_089_2026_090_01.spin"
+        assert handler.version == 1
+        assert handler.supports_sequencing() is False
+        assert handler.get_content_date_for_indexing() == datetime(2026, 3, 30)
+
+    def test_spin_csv_file_goes_in_spin_folder(self):
+        handler = SPICEPathHandler.from_filename("imap_2026_089_2026_090_02.spin.csv")
+
+        assert handler is not None
+        assert handler.get_folder_structure() == "spice/spin"
+        assert handler.version == 2
+
+    def test_thruster_file_goes_in_activities_folder_with_version(self):
+        handler = SPICEPathHandler.from_filename("imap_2026_036_2026_037_hist_03.sff")
+
+        assert handler is not None
+        assert handler.get_folder_structure() == "spice/activities"
+        assert handler.version == 3
+        assert handler.supports_sequencing() is False
+        assert handler.get_content_date_for_indexing() == datetime(2026, 2, 5)
+
+    def test_metadata_sets_content_date_and_version(self):
+        handler = SPICEPathHandler.from_filename("imap_2026_036_2026_037_hist_01.sff")
+        assert handler is not None
+
+        handler.add_metadata(
+            {"min_date_datetime": "2026-02-05, 00:00:00", "version": 4}
+        )
+
+        assert handler.version == 4
+        assert handler.get_content_date_for_indexing() == datetime(2026, 2, 5)
+
+    def test_kernel_types(self):
+        assert (
+            SPICEPathHandler.get_kernel_type_from_filename(
+                "imap_2026_089_2026_090_01.spin"
+            )
+            == "spin"
+        )
+        assert (
+            SPICEPathHandler.get_kernel_type_from_filename(
+                "imap_2026_036_2026_037_hist_01.sff"
+            )
+            == "thruster"
+        )
