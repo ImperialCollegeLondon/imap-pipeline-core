@@ -16,7 +16,11 @@ class PREFECT_CONSTANTS:
 
     # Deployments ("flow-name/deployment-name") created by earlier releases that
     # no longer exist; deploying removes them from the Prefect server.
-    OBSOLETE_DEPLOYMENTS = ("gradiometry/gradiometer",)
+    OBSOLETE_DEPLOYMENTS = (
+        "gradiometry/gradiometer",
+        "poll-spin-table/poll_spin_table",
+        "poll-small-forces/poll_small_forces",
+    )
 
     class EVENT:
         FLOW_RUN_COMPLETED = "prefect.flow-run.Completed"
@@ -39,12 +43,6 @@ class PREFECT_CONSTANTS:
     class POLL_WEBTCAD:
         WEBTCAD_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
-    class POLL_SPIN_TABLE:
-        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
-
-    class POLL_SMALL_FORCES:
-        SDC_AUTH_CODE_SECRET_NAME = "sdc-auth-code"
-
     class ENV_VAR_NAMES:
         DATA_STORE_OVERRIDE = "MAG_DATA_STORE"
 
@@ -59,8 +57,6 @@ class PREFECT_CONSTANTS:
         POLL_LO_PIVOT_PLATFORM_CRON = "IMAP_CRON_POLL_LO_PIVOT_PLATFORM"
         POLL_HI45_ESA_STEP_CRON = "IMAP_CRON_POLL_HI45_ESA_STEP"
         POLL_HI90_ESA_STEP_CRON = "IMAP_CRON_POLL_HI90_ESA_STEP"
-        POLL_SPIN_TABLE_CRON = "IMAP_CRON_POLL_SPIN_TABLE"
-        POLL_SMALL_FORCES_CRON = "IMAP_CRON_POLL_SMALL_FORCES"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
@@ -90,8 +86,6 @@ class PREFECT_CONSTANTS:
         POLL_LO_PIVOT_PLATFORM = "poll-lo-pivot-platform"
         POLL_HI45_ESA_STEP = "poll-hi45-esa-step"
         POLL_HI90_ESA_STEP = "poll-hi90-esa-step"
-        POLL_SPIN_TABLE = "poll-spin-table"
-        POLL_SMALL_FORCES = "poll-small-forces"
         CALIBRATE = "calibrate"
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
@@ -123,8 +117,6 @@ class PREFECT_CONSTANTS:
         POLL_LO_PIVOT_PLATFORM = "poll_lo_pivot_platform"
         POLL_HI45_ESA_STEP = "poll_hi45_esa_step"
         POLL_HI90_ESA_STEP = "poll_hi90_esa_step"
-        POLL_SPIN_TABLE = "poll_spin_table"
-        POLL_SMALL_FORCES = "poll_small_forces"
         PUBLISH = "publish"
         CHECK_IALIRT = "check_ialirt"
         QUICKLOOK_IALIRT = "quicklook_ialirt"

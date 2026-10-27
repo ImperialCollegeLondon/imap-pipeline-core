@@ -16,9 +16,7 @@ _ALL_FLOW_NAMES = [
     "poll_ialirt_flow",
     "poll_hk_flow",
     "poll_spice_flow",
-    "poll_spin_table_flow",
     "poll_science_flow",
-    "poll_small_forces_flow",
     "poll_lo_pivot_platform_flow",
     "poll_hi45_esa_step_flow",
     "poll_hi90_esa_step_flow",
@@ -173,6 +171,21 @@ class TestDeleteObsoleteDeployments:
 
         client.read_deployment_by_name.assert_any_await("gradiometry/gradiometer")
         client.delete_deployment.assert_awaited_with(deployment.id)
+
+    @pytest.mark.asyncio
+    async def test_deletes_spin_table_and_small_forces_deployments(self):
+        deployment = MagicMock()
+        client, client_context = _mock_prefect_client(lambda name: deployment)
+
+        with patch("prefect_server.workflow.get_client", return_value=client_context):
+            await delete_obsolete_deployments()
+
+        client.read_deployment_by_name.assert_any_await(
+            "poll-spin-table/poll_spin_table"
+        )
+        client.read_deployment_by_name.assert_any_await(
+            "poll-small-forces/poll_small_forces"
+        )
 
     @pytest.mark.asyncio
     async def test_ignores_deployments_that_do_not_exist(self):
