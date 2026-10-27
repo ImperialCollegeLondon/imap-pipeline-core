@@ -27,9 +27,13 @@ class FileAnalysisConfig(BaseModel):
     paths_to_match: list[str] = []  # fnmatch patterns for finding files to index
     file_patterns: list[FileAnalysisPatternConfig] = []  # per-file pattern configs
     default_gap_threshold_seconds: int = 60  # 60 seconds = 1 minute
-    # -1e31 (the CDF float fill value) as stored in float32. Each CDF variable's own
-    # FILLVAL attribute is also treated as bad data, which covers non-float types
-    # such as TT2000 epochs.
+    # A sentinel is a special value stored in place of real data to mean "no valid
+    # measurement here" (NaN itself cannot be used as it is awkward to store and
+    # compare in CDF files). Any value equal to the sentinel is bad data, not a
+    # real reading, so it must be excluded from stats and counted as bad.
+    # -1e31 (the CDF float fill value) as stored in float32, hence the odd digits.
+    # Each CDF variable's own FILLVAL attribute is also treated as bad data, which
+    # covers non-float types such as TT2000 epochs.
     nan_sentinel: float = -9.999999848243207e30
     # Maximum number of files to analyse in one automatic (scheduled) run, so a
     # large backlog is worked through over several runs. None means no limit.

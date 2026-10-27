@@ -591,7 +591,11 @@ class AnalyseFilesStage(Stage):
         self, data: np.ndarray, fill_value: float | None = None
     ) -> np.ndarray:
         """Return a mask of values matching the configured sentinel, the column fill value
-        or any large negative fill-like value."""
+        or any large negative fill-like value.
+
+        A sentinel is a placeholder value written where there is no real measurement,
+        so matching it means "missing", not a genuine reading.
+        """
         bad_mask = data < LARGE_NEGATIVE_FILL_THRESHOLD
         for sentinel in (self.settings.file_analysis.nan_sentinel, fill_value):
             if sentinel is None or np.isnan(sentinel):
@@ -599,7 +603,9 @@ class AnalyseFilesStage(Stage):
             if sentinel == 0:
                 bad_mask |= data == 0
             else:
-                # Relative tolerance so float32-stored fill values still match
+                # Compare with a relative tolerance rather than ==, because the
+                # sentinel loses precision when stored as float32 so an exact
+                # match would miss it
                 bad_mask |= np.abs(data - sentinel) / abs(sentinel) < 1e-3
         return bad_mask
 
