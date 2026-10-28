@@ -268,7 +268,9 @@ async def poll_ialirt_flow(
             )
 
             latest_ialirt_date = database.get_workflow_progress(  # type: ignore
-                CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+                CONSTANTS.IALIRT_INSTRUMENTS.IALIRT_MAG.upper()
+                + "_"
+                + CONSTANTS.DATABASE.IALIRT_PROGRESS_ID  # MAG_MAG_IALIRT is the real workflow progress ID
             )
             message_body: str = (
                 f"View the [latest I-ALiRT data on Sharepoint]({PREFECT_CONSTANTS.POLL_IALIRT.IALIRT_QUICKLOOK_SHAREPOINT_URL}).\n\n"
