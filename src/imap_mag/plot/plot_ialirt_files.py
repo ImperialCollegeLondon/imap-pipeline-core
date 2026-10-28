@@ -395,7 +395,7 @@ def set_figure_title(
     time_format = "%Y-%m-%d %H:%M:%S"
 
     latest_data_timestamp = database.get_workflow_progress(
-        CONSTANTS.DATABASE.IALIRT_PROGRESS_ID
+        CONSTANTS.IALIRT_INSTRUMENTS.IALIRT_MAG.upper() + "_" + CONSTANTS.DATABASE.IALIRT_PROGRESS_ID # MAG_MAG_IALIRT is the real workflow progress ID
     ).get_progress_timestamp()
     latest_check_timestamp = database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
