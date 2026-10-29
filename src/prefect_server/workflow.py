@@ -22,6 +22,7 @@ from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
+from prefect_server.fileAnalyserFlow import file_analyser_flow
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -441,6 +442,19 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
+    file_analysis_job_variables = shared_job_variables | {
+        "mem_limit": "4G",
+        "memswap_limit": "4G",
+    }
+
+    file_analysis_deployable = file_analyser_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
+        job_variables=file_analysis_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "12g"
     matlab_shared_job_variables["memswap_limit"] = "16g"
@@ -503,6 +517,7 @@ async def adeploy_flows(local_debug: bool = False):
         datastore_indexer_deployable,
         poll_noaa_deployable,
         database_cleanup_deployable,
+        file_analysis_deployable,
     )
 
     if local_debug:

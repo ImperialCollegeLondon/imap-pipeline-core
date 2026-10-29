@@ -1,11 +1,11 @@
 """Unit tests for Database class that do not require a real database connection."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 
-from imap_db.model import Base, File
+from imap_db.model import Base, File, FileAnalysis
 from imap_mag.db.Database import Database, update_database_with_progress
 
 
@@ -235,11 +235,53 @@ class TestDatabaseOperations:
         results = sqlite_db.get_active_files_matching_patterns(["science/mag/*"])
         assert any(f.name == "file.cdf" for f in results)
 
+    def test_get_active_files_by_path_or_modified_date_filters_by_date(self, sqlite_db):
+        for name, modified in [
+            ("early.cdf", datetime(2026, 1, 10)),
+            ("mid.cdf", datetime(2026, 2, 10)),
+            ("late.cdf", datetime(2026, 3, 10)),
+        ]:
+            f = _make_file(name, f"science/mag/l2/{name}", name)
+            sqlite_db.upsert_file(f)
+            stored = sqlite_db.get_files(name=name)[0]
+            stored.last_modified_date = modified
+            sqlite_db.save(stored)
+
+        def names(**kwargs):
+            results = sqlite_db.get_active_files_by_path_or_modified_date(
+                patterns=["science/mag/*"], **kwargs
+            )
+            return {f.name for f in results}
+
+        assert names() == {"early.cdf", "mid.cdf", "late.cdf"}
+        assert names(modified_after=datetime(2026, 2, 1)) == {"mid.cdf", "late.cdf"}
+        assert names(modified_before=datetime(2026, 2, 10)) == {"early.cdf", "mid.cdf"}
+        assert names(
+            modified_after=datetime(2026, 2, 1, tzinfo=UTC),
+            modified_before=datetime(2026, 3, 1, tzinfo=UTC),
+        ) == {"mid.cdf"}
+
+        # dates alone, without path patterns, are ordered by modified date
+        by_date = sqlite_db.get_active_files_by_path_or_modified_date(
+            modified_after=datetime(2026, 1, 15)
+        )
+        assert [f.name for f in by_date] == ["mid.cdf", "late.cdf"]
+
     def test_get_active_files_matching_patterns_empty_list_returns_empty(
         self, sqlite_db
     ):
         results = sqlite_db.get_active_files_matching_patterns([])
         assert results == []
+
+    def test_get_item_by_key_returns_matching_item_or_none(self, sqlite_db):
+        sqlite_db.save(FileAnalysis(file_id=1, record_count=5))
+
+        found = sqlite_db.get_item_by_key(FileAnalysis, {"file_id": 1})
+        missing = sqlite_db.get_item_by_key(FileAnalysis, {"file_id": 2})
+
+        assert found is not None
+        assert found.record_count == 5
+        assert missing is None
 
     def test_get_files_since_with_limit(self, sqlite_db):
         files = [

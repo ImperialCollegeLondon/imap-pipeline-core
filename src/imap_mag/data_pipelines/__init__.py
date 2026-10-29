@@ -8,6 +8,8 @@ from imap_mag.data_pipelines.Result import Result
 from imap_mag.data_pipelines.RunParameters import (
     AutomaticRunParameters,
     FetchByDatesRunParameters,
+    IndexByIdsRunParameters,
+    IndexByPathOrModifiedDateRunParameters,
     PipelineRunParameters,
     ProgressUpdateMode,
 )
@@ -21,6 +23,8 @@ __all__ = [
     "AutomaticRunParameters",
     "FetchByDatesRunParameters",
     "FileRecord",
+    "IndexByIdsRunParameters",
+    "IndexByPathOrModifiedDateRunParameters",
     "Pipeline",
     "PipelineRunParameters",
     "ProgressUpdateMode",
