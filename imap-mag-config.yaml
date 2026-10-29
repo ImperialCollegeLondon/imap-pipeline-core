@@ -200,8 +200,11 @@ file_analysis:
   paths_to_match:
     - "science/mag/**/*.cdf"
     - "hk/mag/**/*.csv"
+    - "hk/mag/**/*.parquet"
     - "hk/sc/**/*.csv"
+    - "hk/sc/**/*.parquet"
     - "hk/lo/**/*.csv"
+    - "hk/lo/**/*.parquet"
   file_patterns:
     - pattern: "science/mag/**/imap_mag_*norm*.cdf"
       datetime_column: "epoch"
@@ -257,7 +260,8 @@ file_analysis:
           check_for_empty: true
           check_for_bad_data: true
           match_as_bad_data: []
-    - pattern: "hk/mag/**/*.csv"
+    - &mag_hk_analysis
+      pattern: "hk/mag/**/*.csv"
       datetime_column: "epoch"
       expected_time_between_records: "00:01:00"
       columns_to_check:
@@ -265,7 +269,10 @@ file_analysis:
           check_for_empty: true
           check_for_bad_data: true
           match_as_bad_data: []
-    - pattern: "hk/sc/**/*.csv"
+    - <<: *mag_hk_analysis
+      pattern: "hk/mag/**/*.parquet"
+    - &sc_hk_analysis
+      pattern: "hk/sc/**/*.csv"
       datetime_column: "epoch"
       expected_time_between_records: "00:01:00"
       columns_to_check:
@@ -277,7 +284,10 @@ file_analysis:
           check_for_empty: true
           check_for_bad_data: true
           match_as_bad_data: []
-    - pattern: "hk/lo/**/*.csv"
+    - <<: *sc_hk_analysis
+      pattern: "hk/sc/**/*.parquet"
+    - &lo_hk_analysis
+      pattern: "hk/lo/**/*.csv"
       datetime_column: "time (yyyy-MM-dd'T'HH:mm:ss.SSS)"
       expected_time_between_records: "00:00:05"
       columns_to_check:
@@ -290,6 +300,8 @@ file_analysis:
           check_for_bad_data: true
           match_as_bad_data: []
           expected_range: [0, 360]
+    - <<: *lo_hk_analysis
+      pattern: "hk/lo/**/*.parquet"
 
 datastore_cleanup:
     dry_run: false

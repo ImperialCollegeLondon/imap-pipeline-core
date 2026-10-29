@@ -42,7 +42,7 @@ async def file_analyser_flow(
         ),
     ] = None,
 ):
-    """Index metadata about data files (CSV and CDF) into the file_analysis database table.
+    """Index metadata about CSV, Parquet and CDF files into the file_analysis database table.
 
     This flow:
     1. Gets files to index from the database
