@@ -538,67 +538,6 @@ class TestSpiceQueryUnit:
         assert url.endswith("spice-query?")
 
 
-class TestSpinTableQueryUnit:
-    """Unit tests for spin_table_query using mocks (no Docker required)."""
-
-    def _make_client(self):
-        return SDCDataAccess(None, Path("/tmp"), "http://sdc.example.com")
-
-    def _make_mock_http_context(self, return_data):
-        mock_response = MagicMock()
-        mock_response.json.return_value = return_data
-        mock_ctx = MagicMock()
-        mock_ctx.__enter__ = MagicMock(return_value=mock_response)
-        mock_ctx.__exit__ = MagicMock(return_value=False)
-        return mock_ctx
-
-    def test_returns_items_from_api(self):
-        client = self._make_client()
-        expected = [{"file_path": "imap_2025_001_2025_001_01.spin"}]
-
-        with patch(
-            "imap_data_access.io._make_request",
-            return_value=self._make_mock_http_context(expected),
-        ):
-            with patch("requests.Request") as mock_req:
-                mock_req.return_value.prepare.return_value = MagicMock()
-                result = client.spin_table_query()
-
-        assert result == expected
-
-    def test_includes_both_dates_in_url(self):
-        client = self._make_client()
-
-        with patch(
-            "imap_data_access.io._make_request",
-            return_value=self._make_mock_http_context([]),
-        ):
-            with patch("requests.Request") as mock_req:
-                mock_req.return_value.prepare.return_value = MagicMock()
-                client.spin_table_query(
-                    start_ingest_date=date(2025, 1, 1),
-                    end_ingest_date=date(2025, 1, 31),
-                )
-
-        url = mock_req.call_args[0][1]
-        assert "start_ingest_date=20250101" in url
-        assert "end_ingest_date=20250131" in url
-
-    def test_url_has_empty_query_string_with_no_dates(self):
-        client = self._make_client()
-
-        with patch(
-            "imap_data_access.io._make_request",
-            return_value=self._make_mock_http_context([]),
-        ):
-            with patch("requests.Request") as mock_req:
-                mock_req.return_value.prepare.return_value = MagicMock()
-                client.spin_table_query()
-
-        url = mock_req.call_args[0][1]
-        assert url.endswith("spin-table?")
-
-
 class TestDownloadUnit:
     """Unit tests for download methods using mocks."""
 

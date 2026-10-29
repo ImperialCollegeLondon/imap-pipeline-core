@@ -209,7 +209,12 @@ class TestPollIALiRTFlow:
             plot_last_3_days=False,
         )
 
-        mock_flow["sleep"].assert_called_once_with(300)
+        # asyncio.sleep is patched process-wide, so ignore sleeps from unrelated
+        # background tasks and count only the flow's own polling-interval sleep
+        polling_sleeps = [
+            c for c in mock_flow["sleep"].call_args_list if c.args == (300,)
+        ]
+        assert len(polling_sleeps) == 1
         assert mock_flow["task"].call_count == 4  # 2 instruments x 2 iterations
         assert result.is_completed()
 
