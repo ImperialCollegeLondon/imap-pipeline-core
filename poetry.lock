@@ -3628,20 +3628,20 @@ sgqlc = ">=15.0"
 
 [[package]]
 name = "prefect-managedfiletransfer"
-version = "0.7.0"
+version = "0.7.2"
 description = "Upload, download, and delete files easily between Local/SFTP/Cloud storage using rclone"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "prefect_managedfiletransfer-0.7.0-py3-none-any.whl", hash = "sha256:a981552aa817a2aecfeb592f5ffc0756511e95a18af0119fa1da77d4163a63d9"},
-    {file = "prefect_managedfiletransfer-0.7.0.tar.gz", hash = "sha256:db4c07e71db8f95bb34f2b0e55d42023337d5a02e0e6d012361935ca4ab0cdfc"},
+    {file = "prefect_managedfiletransfer-0.7.2-py3-none-any.whl", hash = "sha256:c7f9b457103f164460fce2077db7f2ac5d40018d33bc73bd9fc5d6cacf2955ca"},
+    {file = "prefect_managedfiletransfer-0.7.2.tar.gz", hash = "sha256:8323f64b64fe3d169e96fe217122b2efbff0b7fe9d0d383124853b76a8be8719"},
 ]
 
 [package.dependencies]
-paramiko = ">=5.0.0"
-prefect = ">=3.1.7"
-pydantic = ">=2.11.0a2"
+paramiko = ">=5.1.0"
+prefect = ">=3.9.0"
+pydantic = ">=2.14.1"
 
 [[package]]
 name = "prefect-shell"
@@ -6000,4 +6000,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "7a6ed9c251dcf1895156ea419d5d647724d73119e39ba62b9b1b7b97b1d7c40c"
+content-hash = "bf3f534ce6b12ca832a9648767b1d96995347aec7453766d888e605019aa146a"
