@@ -18,7 +18,9 @@ from imap_mag import __version__
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io import (
+    DatastoreFileAction,
     DatastoreFileManager,
+    DatastoreStoreResult,
     DBIndexedDatastoreFileManager,
     IDatastoreFileManager,
 )
@@ -28,6 +30,7 @@ from imap_mag.io.file import (
     HKBinaryPathHandler,
     HKDecodedPathHandler,
     SciencePathHandler,
+    SPICEPathHandler,
 )
 from mag_toolkit.calibration import CalibrationLayer
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -45,6 +48,21 @@ from tests.util.miscellaneous import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def add_result(
+    destination: Path,
+    path_handler,
+    overwritten: bool = False,
+) -> DatastoreStoreResult:
+    """Build the result of storing a file, for mocked datastore managers."""
+    return DatastoreStoreResult(
+        destination,
+        path_handler,
+        DatastoreFileAction.UPDATE_OVERWRITTEN
+        if overwritten
+        else DatastoreFileAction.FILE_CREATED,
+    )
 
 
 @pytest.fixture
@@ -93,7 +111,7 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file1.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         path_handler,
         False,
@@ -109,7 +127,9 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(original_file, path_handler)
+    mock_datastore_manager.store_file.assert_called_once_with(
+        original_file, path_handler
+    )
 
     assert actual_file == test_file
     assert actual_path_handler == path_handler
@@ -152,7 +172,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     mock_database.get_files_by_path.return_value = [existing_file]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         path_handler,
         False,
@@ -164,7 +184,9 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(original_file, path_handler)
+    mock_datastore_manager.store_file.assert_called_once_with(
+        original_file, path_handler
+    )
 
     mock_database.upsert_file.assert_not_called()
 
@@ -229,7 +251,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
     mock_database.get_files_by_path.return_value = [existing_file]
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         matched_path_handler,
         False,
@@ -241,7 +263,7 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.store_file.assert_called_once_with(
         original_file, matched_path_handler
     )
 
@@ -281,7 +303,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file3.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         unique_path_handler,
         False,
@@ -321,7 +343,7 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.store_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -356,7 +378,7 @@ def test_DBIndexedDatastoreFileManager_errors_when_destination_file_is_not_found
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
     test_file.unlink(missing_ok=True)
 
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         test_file,
         path_handler,
         False,
@@ -386,7 +408,7 @@ def test_DBIndexedDatastoreFileManager_errors_database_error(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         path_handler,
         False,
@@ -430,7 +452,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         unique_path_handler,
         False,
@@ -471,7 +493,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.store_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -516,7 +538,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_file.txt"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         unique_path_handler,
         False,
@@ -557,7 +579,7 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
     )
 
     # Verify.
-    mock_datastore_manager.add_file.assert_called_once_with(
+    mock_datastore_manager.store_file.assert_called_once_with(
         original_file, unique_path_handler
     )
 
@@ -601,7 +623,7 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
     test_file = Path(tempfile.gettempdir()) / ancillary_file_name
     unique_path_handler = AncillaryPathHandler.from_filename(ancillary_file_name)
 
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "some content"),
         unique_path_handler,
         False,
@@ -716,7 +738,7 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
     path_handler = CalibrationLayerPathHandler(
         descriptor="quality-norm", content_date=date, version=1
     )
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(
             dest_json,
             json.dumps(
@@ -811,7 +833,7 @@ def test_calibration_layer_db_dedup_multiple_records_same_hash_handled_gracefull
     path_handler = CalibrationLayerPathHandler(
         descriptor="quality-norm", content_date=date, version=1, version_major=2
     )
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(
             dest_json,
             json.dumps(
@@ -888,15 +910,15 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     # Capture source content during the mock call (before cleanup deletes the temp file)
     captured_contents: list[dict] = []
 
-    def capture_add_file(
+    def capture_store_file(
         source: Path, handler
-    ) -> tuple[Path, CalibrationLayerPathHandler, bool]:
+    ) -> DatastoreStoreResult[CalibrationLayerPathHandler]:
         captured_contents.append(json.loads(source.read_text()))
         dest = Path(tempfile.gettempdir()) / f"layer_v{handler.version:03d}.json"
         dest.write_bytes(source.read_bytes())
-        return dest, handler, False
+        return add_result(dest, handler)
 
-    mock_datastore_manager.add_file.side_effect = capture_add_file
+    mock_datastore_manager.store_file.side_effect = capture_store_file
 
     database_manager = DBIndexedDatastoreFileManager(
         mock_datastore_manager, test_database
@@ -985,7 +1007,7 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
     dest_json = (
         Path(tempfile.gettempdir()) / "imap_mag_quality-norm-layer_20260101_v001.json"
     )
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(
             dest_json,
             json.dumps(
@@ -1042,12 +1064,12 @@ def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
 
     modified_timestamp = datetime(2025, 5, 3, 12, 34, 56).timestamp()
 
-    def add_file_side_effect(*_) -> tuple[Path, HKDecodedPathHandler, bool]:
+    def store_file_side_effect(*_) -> DatastoreStoreResult[HKDecodedPathHandler]:
         created_file = create_test_file(test_file, "some content")
         os.utime(created_file, (modified_timestamp, modified_timestamp))
-        return created_file, path_handler, False
+        return add_result(created_file, path_handler)
 
-    mock_datastore_manager.add_file.side_effect = add_file_side_effect
+    mock_datastore_manager.store_file.side_effect = store_file_side_effect
 
     # Exercise.
     database_manager.add_file(original_file, path_handler)
@@ -1175,6 +1197,123 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     assert database_files[0].deletion_date is None
 
 
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "imap_sclk_0032.tsc",
+        "imap_mag_metakernel_20260430T225959_20260502T005959_v001.tm",
+    ],
+    ids=["unversioned", "versioned"],
+)
+def test_DBIndexedDatastoreFileManager_redownloading_identical_spice_file_refreshes_metadata(
+    test_database,  # noqa: F811
+    temp_datastore,
+    file_name,
+) -> None:
+    # Set up.
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    database_manager = DBIndexedDatastoreFileManager(
+        DatastoreFileManager(mock_settings), test_database
+    )
+
+    downloaded_file = create_test_file(
+        Path(tempfile.gettempdir()) / file_name, "some spice content"
+    )
+
+    def download_with_metadata(metadata: dict) -> Path:
+        handler = SPICEPathHandler.from_filename(downloaded_file)
+        assert handler is not None
+        handler.add_metadata(metadata)
+        (destination, _, _) = database_manager.add_file(downloaded_file, handler)
+        return destination
+
+    destination_file = download_with_metadata(
+        {"ingestion_date": "2026-10-26, 14:20:16", "kernel_type": "old_type"}
+    )
+
+    original_last_modified_date = test_database.get_files()[0].last_modified_date
+
+    # Exercise.
+    # Same content is downloaded again, but the SDC now reports different metadata.
+    new_metadata = {"ingestion_date": "2026-10-27, 09:00:00", "kernel_type": "new_type"}
+    assert download_with_metadata(new_metadata) == destination_file
+
+    # Verify.
+    database_files = test_database.get_files()
+    assert len(database_files) == 1
+    assert database_files[0].deletion_date is None
+    assert database_files[0].file_meta == new_metadata
+    assert database_files[0].last_modified_date > original_last_modified_date
+
+    # Downloading again with unchanged metadata does not touch the record.
+    updated_last_modified_date = database_files[0].last_modified_date
+    download_with_metadata(new_metadata)
+    assert test_database.get_files()[0].last_modified_date == updated_last_modified_date
+
+
+def test_DBIndexedDatastoreFileManager_database_error_keeps_existing_datastore_file(
+    mock_database: mock.Mock,
+    temp_datastore,
+) -> None:
+    """A database failure while refreshing an existing file must not delete the file that was already in the datastore."""
+    # Set up.
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    database_manager = DBIndexedDatastoreFileManager(
+        DatastoreFileManager(mock_settings), mock_database
+    )
+
+    downloaded_file = create_test_file(
+        Path(tempfile.gettempdir()) / "imap_sclk_0032.tsc", "some spice content"
+    )
+    existing_file = create_test_file(
+        temp_datastore / "spice" / "sclk" / "imap_sclk_0032.tsc", "some spice content"
+    )
+    handler = SPICEPathHandler.from_filename(downloaded_file)
+    assert handler is not None
+    handler.add_metadata({"ingestion_date": "2026-10-27, 09:00:00"})
+
+    mock_database.upsert_file.side_effect = ArithmeticError("Database error")
+
+    # Exercise and verify.
+    with pytest.raises(ArithmeticError):
+        database_manager.store_file(downloaded_file, handler)
+
+    assert existing_file.read_text() == "some spice content"
+
+
+def test_DBIndexedDatastoreFileManager_database_error_removes_newly_created_datastore_file(
+    mock_database: mock.Mock,
+    temp_datastore,
+) -> None:
+    # Set up.
+    mock_settings = MagicMock()
+    mock_settings.data_store = temp_datastore
+    mock_settings.disk_usage_threshold = 1.0
+    database_manager = DBIndexedDatastoreFileManager(
+        DatastoreFileManager(mock_settings), mock_database
+    )
+
+    downloaded_file = create_test_file(
+        Path(tempfile.gettempdir()) / "imap_sclk_0033.tsc", "some spice content"
+    )
+    new_file = temp_datastore / "spice" / "sclk" / "imap_sclk_0033.tsc"
+    new_file.unlink(missing_ok=True)
+    handler = SPICEPathHandler.from_filename(downloaded_file)
+    assert handler is not None
+
+    mock_database.upsert_file.side_effect = ArithmeticError("Database error")
+
+    # Exercise and verify.
+    with pytest.raises(ArithmeticError):
+        database_manager.store_file(downloaded_file, handler)
+
+    assert not new_file.exists()
+
+
 def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
     mock_datastore_manager: mock.Mock,
     mock_database: mock.Mock,
@@ -1199,7 +1338,7 @@ def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
     )
 
     test_file = Path(tempfile.gettempdir()) / "test_science_version_major.cdf"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "science content vmaj"),
         path_handler,
         False,
@@ -1271,7 +1410,7 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
     ]
 
     test_file = Path(tempfile.gettempdir()) / "test_science_mixed_fmt.cdf"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "new science content"),
         path_handler,
         False,
@@ -1333,7 +1472,7 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_
     ]
 
     test_file = Path(tempfile.gettempdir()) / "test_science_gap.cdf"
-    mock_datastore_manager.add_file.side_effect = lambda *_: (
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
         create_test_file(test_file, "new science content"),
         path_handler,
         False,

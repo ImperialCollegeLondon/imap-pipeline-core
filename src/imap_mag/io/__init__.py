@@ -5,11 +5,17 @@ from imap_mag.io.FilePathHandlerSelector import (
     FilePathHandlerSelector,
     NoProviderFoundError,
 )
-from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager
+from imap_mag.io.IDatastoreFileManager import (
+    DatastoreFileAction,
+    DatastoreStoreResult,
+    IDatastoreFileManager,
+)
 
 __all__ = [
     "DBIndexedDatastoreFileManager",
+    "DatastoreFileAction",
     "DatastoreFileManager",
+    "DatastoreStoreResult",
     "FileFinder",
     "FilePathHandlerSelector",
     "IDatastoreFileManager",

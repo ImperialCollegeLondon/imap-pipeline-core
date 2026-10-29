@@ -15,7 +15,12 @@ from imap_mag.io.file import (
     SequenceablePathHandler,
     VersionedPathHandler,
 )
-from imap_mag.io.IDatastoreFileManager import IDatastoreFileManager, T
+from imap_mag.io.IDatastoreFileManager import (
+    DatastoreFileAction,
+    DatastoreStoreResult,
+    IDatastoreFileManager,
+    T,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +58,9 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             self.__database = database
 
-    def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
+    def store_file(
+        self, original_file: Path, path_handler: T
+    ) -> DatastoreStoreResult[T]:
         # Determine the version: reuse an existing one if content is identical,
         # otherwise advance to the next available slot.
         skip_database_insertion: bool = self.__get_next_available_version(
@@ -70,12 +77,19 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         else:
             actual_source = original_file
 
-        (destination_file, path_handler, overwritten) = self.__file_manager.add_file(
-            actual_source, path_handler
-        )
+        store_result = self.__file_manager.store_file(actual_source, path_handler)
+        destination_file = store_result.destination
+        path_handler = store_result.path_handler
+        action = store_result.action
 
-        # Add file to database
-        if skip_database_insertion and not overwritten:
+        # Add file to database. An identical file that is already indexed still has its
+        # record upserted when the handler carries metadata, so redownloading refreshes it.
+        # The upsert is a no-op if the existing record is already up to date.
+        if (
+            skip_database_insertion
+            and action != DatastoreFileAction.UPDATE_OVERWRITTEN
+            and not path_handler.get_metadata()
+        ):
             logger.info(
                 f"File {destination_file} already exists in database with same hash. Skipping database update."
             )
@@ -87,10 +101,13 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 self.__database.upsert_file(new_file)
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
-                destination_file.unlink()
+                # Only remove the file if this call created it, a file that was already
+                # in the datastore must never be deleted by a failed database update.
+                if action == DatastoreFileAction.FILE_CREATED:
+                    destination_file.unlink(missing_ok=True)
                 raise e
 
-        return (destination_file, path_handler, overwritten)
+        return DatastoreStoreResult(destination_file, path_handler, action)
 
     def archive_file(
         self,
