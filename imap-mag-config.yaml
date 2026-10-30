@@ -202,8 +202,8 @@ file_analysis:
     - "hk/mag/**/*.csv"
     - "hk/sc/**/*.csv"
     - "hk/lo/**/*.csv"
-    - "calibration/layers/**/imap_mag_*-layer-data_*.csv
-    - "calibration/layers/**/imap_mag_*-layer-data_*.parquet
+    - "calibration/layers/**/imap_mag_*-layer-data_*.csv"
+    - "calibration/layers/**/imap_mag_*-layer-data_*.parquet"
   file_patterns:
     - pattern: "science/mag/**/imap_mag_*norm*.cdf"
       datetime_column: "epoch"
