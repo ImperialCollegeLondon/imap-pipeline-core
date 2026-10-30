@@ -4,11 +4,6 @@ IMAP Pipeline Core is a Python data processing pipeline for the IMAP (Interstell
 
 The project uses Prefect for workflow orchestration, Typer for CLI commands, SQLAlchemy ORM with Alembic for database management, and Pydantic for configuration management. It includes a magnetometer calibration toolkit and supports automated testing with pytest.
 
-The file analyser flow extracts record counts, timestamps, timing gaps and configured
-column-quality statistics from CDF, CSV and Parquet files. CSV and Parquet use the
-same checks; the default `file_analysis` configuration in `imap-mag-config.yaml`
-includes both formats for MAG, spacecraft and LO housekeeping files.
-
 ## Developer setup steps - option 1: Dev Container
 
 clone, install vscode, install docker desktop.
