@@ -35,7 +35,7 @@ class ColumnCheckResults:
 class AnalyseFilesStage(Stage):
     """Stage that processes each file and builds a FileAnalysis object.
 
-    Handles both CDF and CSV files, extracting:
+    Handles CDF, CSV and Parquet files, extracting:
     - Record counts
     - Timestamps (first/last)
     - Time gaps
@@ -104,8 +104,8 @@ class AnalyseFilesStage(Stage):
             result = self._index_cdf_file(
                 file_id, file_path, file_path_relative, pattern_config
             )
-        elif suffix == ".csv":
-            result = self._index_csv_file(
+        elif suffix in (".csv", ".parquet"):
+            result = self._index_tabular_file(
                 file_id, file_path, file_path_relative, pattern_config
             )
         else:
@@ -267,21 +267,24 @@ class AnalyseFilesStage(Stage):
                     cdf_attributes[attr_name] = to_serialisable(attr_val)
         return cdf_attributes
 
-    def _index_csv_file(
+    def _index_tabular_file(
         self,
         file_id: int,
         file_path: Path,
         file_path_relative: str,
         pattern_config: FileAnalysisPatternConfig | None,
     ) -> FileAnalysis:
-        """Index a CSV file."""
-        try:
-            df = pd.read_csv(file_path)
-        except pd.errors.EmptyDataError:
-            self.logger.info(f"CSV file {file_path_relative} is empty")
-            return self._build_file_analysis(
-                file_id, 0, None, pattern_config, ColumnCheckResults(), None
-            )
+        """Index a CSV or Parquet file using the same column and timing checks."""
+        if file_path.suffix.lower() == ".parquet":
+            df = pd.read_parquet(file_path)
+        else:
+            try:
+                df = pd.read_csv(file_path)
+            except pd.errors.EmptyDataError:
+                self.logger.info(f"CSV file {file_path_relative} is empty")
+                return self._build_file_analysis(
+                    file_id, 0, None, pattern_config, ColumnCheckResults(), None
+                )
 
         record_count = len(df)
         datetime_col = self._find_datetime_column_csv(
@@ -295,7 +298,7 @@ class AnalyseFilesStage(Stage):
             col_name = col_check.column_name
             if col_name not in df.columns:
                 self.logger.debug(
-                    f"Column '{col_name}' not found in CSV for {file_path_relative}"
+                    f"Column '{col_name}' not found in {file_path_relative}"
                 )
                 continue
             try:
@@ -337,7 +340,7 @@ class AnalyseFilesStage(Stage):
     def _parse_csv_timestamps(
         self, df: pd.DataFrame, datetime_col: str | None, file_path_relative: str
     ) -> pd.Series | None:
-        """Parse the datetime column of a CSV into timestamps aligned with its rows.
+        """Parse a tabular datetime column into timestamps aligned with its rows.
 
         Unparseable values appear as NaT so that row indices still line up with
         the data columns.
@@ -364,7 +367,7 @@ class AnalyseFilesStage(Stage):
             ts_series = ts_series.reset_index(drop=True)
             if ts_series.notna().any():
                 self.logger.info(
-                    f"CSV file {file_path_relative}: {len(df)} records, "
+                    f"File {file_path_relative}: {len(df)} records, "
                     f"{ts_series.min()} to {ts_series.max()}"
                 )
                 return ts_series

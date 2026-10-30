@@ -202,6 +202,8 @@ file_analysis:
     - "hk/mag/**/*.csv"
     - "hk/sc/**/*.csv"
     - "hk/lo/**/*.csv"
+    - "calibration/layers/**/imap_mag_*-layer-data_*.csv"
+    - "calibration/layers/**/imap_mag_*-layer-data_*.parquet"
   file_patterns:
     - pattern: "science/mag/**/imap_mag_*norm*.cdf"
       datetime_column: "epoch"
@@ -290,6 +292,25 @@ file_analysis:
           check_for_bad_data: true
           match_as_bad_data: []
           expected_range: [0, 360]
+    - pattern: "calibration/layers/**/imap_mag_*-layer-data_*"
+      datetime_column: "time"
+      expected_time_between_records: "00:00:01"
+      columns_to_check:
+        - column_name: "offset_x"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-1000, 1000]
+        - column_name: "offset_y"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-1000, 1000]
+        - column_name: "offset_z"
+          check_for_empty: true
+          check_for_bad_data: true
+          match_as_bad_data: []
+          expected_range: [-1000, 1000]
 
 datastore_cleanup:
     dry_run: false

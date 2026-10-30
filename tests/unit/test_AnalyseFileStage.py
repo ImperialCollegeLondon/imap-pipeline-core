@@ -1,7 +1,9 @@
 """Unit tests for AnalyseFilesStage."""
 
+import fnmatch
 from datetime import UTC, datetime, timedelta
 
+import cdflib
 import numpy as np
 import pandas as pd
 import pytest
@@ -78,6 +80,163 @@ def test_csv_timestamps_parsed_successfully():
     assert result.first_timestamp.year == 2025
     assert result.first_timestamp.month == 11
     assert result.first_timestamp.day == 2
+
+
+# ---------------------------------------------------------------------------
+# Parquet - CSV-equivalent analysis
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("timestamp_type", ["string", "datetime", "epoch"])
+@pytest.mark.parametrize("suffix", [".parquet", ".PARQUET"])
+def test_parquet_matches_csv_analysis(tmp_path, timestamp_type, suffix):
+    timestamps = pd.to_datetime(
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:01Z",
+            "2026-01-01T00:00:02Z",
+            "2026-01-01T00:00:10Z",
+            "2026-01-01T00:00:11Z",
+        ]
+    )
+    column = "epoch" if timestamp_type == "epoch" else "measurement_time"
+    if timestamp_type == "epoch":
+        times = [
+            int(cdflib.cdfepoch.compute_tt2000([2026, 1, 1, 0, 0, second, 0, 0, 0]))
+            for second in [0, 1, 2, 10, 11]
+        ]
+    elif timestamp_type == "string":
+        times = timestamps.astype(str)
+    else:
+        times = timestamps
+    data = pd.DataFrame(
+        {
+            column: times,
+            "value": [1.0, None, -1e31, 100.0, 5.0],
+        },
+        index=[10, 20, 30, 40, 50],
+    )
+    stage = _make_stage(
+        [
+            FileAnalysisPatternConfig(
+                pattern="*",
+                datetime_column=column,
+                expected_time_between_records="00:00:01",
+                columns_to_check=[
+                    ColumnCheckConfig(column_name="value", expected_range=[0, 10])
+                ],
+            )
+        ]
+    )
+    csv_path = tmp_path / "data.csv"
+    parquet_path = tmp_path / f"data{suffix}"
+    data.to_csv(csv_path, index=False)
+    data.to_parquet(parquet_path)
+
+    csv = stage._index_file(1, csv_path, csv_path.name)
+    parquet = stage._index_file(1, parquet_path, parquet_path.name)
+
+    for column_info in csv.__table__.columns:
+        if column_info.name not in ("id", "indexed_date"):
+            assert getattr(parquet, column_info.name) == getattr(csv, column_info.name)
+    assert parquet.record_count == 5
+    assert parquet.first_timestamp == timestamps[0].to_pydatetime()
+    assert parquet.last_timestamp == timestamps[-1].to_pydatetime()
+    assert parquet.has_gaps is True
+    assert parquet.total_gap_duration == timedelta(seconds=8)
+    assert parquet.min_delta_between_timestamps == timedelta(seconds=1)
+    assert parquet.max_delta_between_timestamps == timedelta(seconds=8)
+    assert parquet.has_bad_data is True
+    assert parquet.has_missing_data is True
+    assert parquet.column_stats["value"]["bad_data_count"] == 2
+    assert parquet.column_stats["value"]["null_count"] == 1
+    assert parquet.nan_gaps[0]["start_time"].startswith("2026-01-01T00:00:01")
+    assert parquet.nan_gaps[0]["end_time"].startswith("2026-01-01T00:00:02")
+    assert parquet.missing_data_gaps[0]["start_time"].startswith("2026-01-01T00:00:01")
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_parquet_without_timestamps(tmp_path, empty):
+    path = tmp_path / "data.parquet"
+    pd.DataFrame({"value": [] if empty else [1, 2, 3]}).to_parquet(path)
+
+    result = _make_stage()._index_file(1, path, path.name)
+
+    assert result.record_count == (0 if empty else 3)
+    assert result.first_timestamp is None
+    assert result.last_timestamp is None
+    assert result.has_gaps is None
+    assert result.cdf_attributes is None
+
+
+def test_parquet_nullable_columns_and_string_sentinels(tmp_path):
+    path = tmp_path / "data.parquet"
+    pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-01-01", periods=3, freq="s", tz="UTC"),
+            "value": pd.Series([1, None, 3], dtype="Int64"),
+            "status": ["1", "FILL", "2"],
+        }
+    ).to_parquet(path)
+    stage = _make_stage(
+        [
+            FileAnalysisPatternConfig(
+                pattern="*.parquet",
+                columns_to_check=[
+                    ColumnCheckConfig(column_name="value"),
+                    ColumnCheckConfig(column_name="status", match_as_bad_data=["FILL"]),
+                ],
+            )
+        ]
+    )
+
+    result = stage._index_file(1, path, path.name)
+
+    assert result.has_bad_data is True
+    assert result.has_missing_data is True
+    assert result.column_stats["value"]["null_count"] == 1
+    assert result.column_stats["status"]["bad_data_count"] == 1
+
+
+def test_default_config_matches_layer_parquet_and_csv_equally():
+    stage = _make_stage()
+    prefix = "calibration/layers/2026/01/imap_mag_noop-norm-layer-data_20260101_v001"
+    csv_config = stage._find_pattern_config(f"{prefix}.csv")
+    parquet_config = stage._find_pattern_config(f"{prefix}.parquet")
+
+    assert csv_config is not None
+    assert parquet_config is not None
+    assert csv_config.model_dump(exclude={"pattern"}) == parquet_config.model_dump(
+        exclude={"pattern"}
+    )
+    assert parquet_config.datetime_column == "time"
+    assert [check.column_name for check in parquet_config.columns_to_check] == [
+        "offset_x",
+        "offset_y",
+        "offset_z",
+    ]
+    for suffix in [".csv", ".parquet"]:
+        assert any(
+            fnmatch.fnmatch(f"{prefix}{suffix}", pattern)
+            for pattern in stage.settings.file_analysis.paths_to_match
+        )
+
+
+@pytest.mark.parametrize("instrument", ["mag", "sc", "lo"])
+def test_default_config_only_matches_csv_housekeeping(instrument):
+    stage = _make_stage()
+    prefix = f"hk/{instrument}/l1/example/2026/01/data"
+
+    assert stage._find_pattern_config(f"{prefix}.csv") is not None
+    assert stage._find_pattern_config(f"{prefix}.parquet") is None
+    assert any(
+        fnmatch.fnmatch(f"{prefix}.csv", pattern)
+        for pattern in stage.settings.file_analysis.paths_to_match
+    )
+    assert not any(
+        fnmatch.fnmatch(f"{prefix}.parquet", pattern)
+        for pattern in stage.settings.file_analysis.paths_to_match
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -578,15 +737,16 @@ def test_csv_non_epoch_column_uses_pandas_parser(tmp_path):
 
 def test_unsupported_file_type_returns_minimal_index(tmp_path):
     stage = _make_stage()
-    fake = tmp_path / "file.parquet"
+    fake = tmp_path / "file.txt"
     fake.write_bytes(b"not real data")
-    result = stage._index_file(99, fake, "file.parquet")
+    result = stage._index_file(99, fake, "file.txt")
     assert result.file_id == 99
     assert result.record_count is None
 
 
 @pytest.mark.asyncio
-async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
+@pytest.mark.parametrize("suffix", [".csv", ".parquet"])
+async def test_process_returns_minimal_index_on_parse_error(tmp_path, suffix, caplog):
     """process() must not raise even when the file cannot be parsed.
     The outer try/except in process() catches the error and produces a minimal FileAnalysis."""
 
@@ -600,13 +760,13 @@ async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
 
     stage._next_stage = _Sink()  # type: ignore[assignment]
 
-    bad = tmp_path / "bad.csv"
+    bad = tmp_path / f"bad{suffix}"
     bad.write_bytes(b"\x00\x01\x02\x03 not valid csv at all \x00")
 
     record = __import__("imap_mag.data_pipelines.Record", fromlist=["Record"]).Record(
         file_id=99,
         file_path=bad,
-        file_path_relative="bad.csv",
+        file_path_relative=bad.name,
         last_modified_date=None,
     )
 
@@ -615,6 +775,9 @@ async def test_process_returns_minimal_index_on_csv_parse_error(tmp_path):
     assert len(collected) == 1
     fi = collected[0].file_analysis
     assert fi.file_id == 99
+    if suffix == ".parquet":
+        assert fi.record_count is None
+        assert f"Failed to index file {bad.name}" in caplog.text
     # record_count may be None or an integer - the key guarantee is no exception was raised
 
 
@@ -766,7 +929,7 @@ def test_csv_string_sentinel_bad_data_detected(tmp_path):
     """match_as_bad_data string sentinels are detected and flagged as bad data.
 
     Uses sentinel strings that pandas does NOT auto-parse as NaN (unlike 'NA')
-    so the string-match path in _index_csv_file is exercised.
+    so the string-match path in _index_tabular_file is exercised.
     """
     pattern = FileAnalysisPatternConfig(
         pattern="*.csv",
