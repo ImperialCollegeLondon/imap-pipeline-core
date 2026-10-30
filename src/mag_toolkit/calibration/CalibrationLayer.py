@@ -53,6 +53,34 @@ def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
     return series.map(lambda x: f"{x:.17g}")
 
 
+def _format_timedelta_as_float32_repr(series: pd.Series) -> pd.Series:
+    """Format a timedelta series (float32 seconds) with ``%.9g``, the precision
+    that round-trips a float32 exactly. MATLAB's Layer.write uses the same format
+    so Python- and MATLAB-written CSVs are byte-identical. Integral values still
+    render as "0", "5"."""
+    return series.map(lambda x: f"{np.float32(x):.9g}")
+
+
+def _to_float32_timedelta(df: pd.DataFrame, source: str) -> None:
+    """Normalise the timedelta column of ``df`` to float32 in place.
+
+    Timedeltas are in **seconds** and float32 in the offsets CDF. Integer-typed
+    columns are only accepted when every value is zero (a bare "0" in a CSV is
+    parsed as an integer); non-zero integers are ambiguous about the unit so are
+    rejected. float64 is accepted and narrowed to float32.
+    """
+    col = CONSTANTS.CSV_VARS.TIMEDELTA
+    if col not in df.columns or df[col].dtype == np.float32:
+        return
+    if pd.api.types.is_integer_dtype(df[col]) or pd.api.types.is_bool_dtype(df[col]):
+        if (df[col] != 0).any():
+            raise ValueError(
+                f"Layer file '{source}' stores non-zero values in column '{col}' as "
+                f"integers. Timedeltas are in seconds and must be stored as floats."
+            )
+    df[col] = df[col].astype("float32")
+
+
 class CalibrationLayer(Layer):
     method: CalibrationMethod
     value_type: ValueType
@@ -70,6 +98,7 @@ class CalibrationLayer(Layer):
         # would silently truncate any sub-microsecond precision in the epoch
         # column. Format it manually with a fixed 9-digit (nanosecond) fractional
         # part instead, so CSV round-trips with the same precision as Parquet.
+        _to_float32_timedelta(self._contents, filepath.name)
         df = self._contents.copy()
         epoch_col = CONSTANTS.CSV_VARS.EPOCH
         if epoch_col in df.columns and pd.api.types.is_datetime64_any_dtype(
@@ -84,7 +113,9 @@ class CalibrationLayer(Layer):
         # Parquet round-trip vs. an int64 one written natively) produce different
         # CSV text for the same data.
         for col in df.columns:
-            if col != epoch_col and pd.api.types.is_numeric_dtype(df[col]):
+            if col == CONSTANTS.CSV_VARS.TIMEDELTA:
+                df[col] = _format_timedelta_as_float32_repr(df[col])
+            elif col != epoch_col and pd.api.types.is_numeric_dtype(df[col]):
                 df[col] = _format_numeric_as_matlab_repr(df[col])
 
         df.to_csv(
@@ -101,11 +132,13 @@ class CalibrationLayer(Layer):
             filepath.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Writing calibration layer Parquet data to {filepath!s}.")
+        _to_float32_timedelta(self._contents, filepath.name)
 
         # The epoch column is stored as a native pandas datetime64[ns] column via
         # pyarrow, which keeps full nanosecond precision losslessly (unlike CSV's
         # text formatting, which truncates to microseconds). Other numeric columns
-        # are written as their native dtype for the same reason.
+        # are written as their native dtype for the same reason (timedelta is
+        # float32 seconds, quality columns are signed int64).
         #
         # Dictionary encoding (pyarrow's default) hurts here: offset_x/y/z are
         # near-unique doubles, so paying for a dictionary + indices costs more
@@ -182,6 +215,17 @@ class CalibrationLayer(Layer):
             np.datetime_as_string(self.get_epochs(), unit="ns").tolist()
         )
 
+    def _quality_as_uint8(self, column: str) -> np.ndarray:
+        """Return a quality column as uint8 for the CDF, raising if any value does not fit."""
+        assert self._contents is not None
+        values = self._contents[column].to_numpy()
+        if ((values < 0) | (values > 255)).any():
+            raise ValueError(
+                f"Column '{column}' has values outside 0-255, which cannot be "
+                f"written as uint8 to the offsets CDF."
+            )
+        return values.astype(np.uint8)
+
     def _write_to_cdf(self, filepath: Path, createDirectory=False) -> Path:
         logger.info(f"Writing calibration layer to CDF file: {filepath!s}")
         skeleton_cdf = cdf_to_xarray(
@@ -193,17 +237,19 @@ class CalibrationLayer(Layer):
                 raise ValueError("Calibration layer has no associated path for data.")
             self._load_data_file(self._data_path)
 
+        _to_float32_timedelta(self._contents, filepath.name)
         logger.debug("Converting epoch values to raw epoch format for CDF.")
         self._convert_to_raw_epoch()
 
         offsets_values = np.nan_to_num(
+            # Explicitly float64: an all-zero CSV layer is read as integers.
             self._contents[
                 [
                     CONSTANTS.CSV_VARS.OFFSET_X,
                     CONSTANTS.CSV_VARS.OFFSET_Y,
                     CONSTANTS.CSV_VARS.OFFSET_Z,
                 ]
-            ],
+            ].astype("float64"),
             nan=CONSTANTS.CDF_FLOAT_FILLVAL,
         )
 
@@ -218,21 +264,29 @@ class CalibrationLayer(Layer):
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.OFFSETS].attrs,
         )
         offsets_data.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
+        # The types of these CDF variables are mandatory and set explicitly.
+        #
+        # timedeltas are in SECONDS (float32), even though the MAG algorithm
+        # document (issue5rev2) wrongly says milliseconds. imap_processing, the
+        # consumer of these files, multiplies them by 1e9 to get nanoseconds to add
+        # to the TT2000 epoch:
+        # https://github.com/IMAP-Science-Operations-Center/imap_processing/blob/v1.0.40/imap_processing/mag/l2/mag_l2_data.py
+        # (MagL2.shift_timestamps: ``timedelta_ns = timedelta * 1e9``).
         timedelta_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.TIMEDELTA],
+            data=self._contents[CONSTANTS.CSV_VARS.TIMEDELTA].astype("float32"),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.TIMEDELTAS].attrs,
         )
         timedelta_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qf_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_FLAG].astype(int),
+            data=self._quality_as_uint8(CONSTANTS.CSV_VARS.QUALITY_FLAG),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_FLAG].attrs,
         )
         qf_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         qb_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.QUALITY_BITMASK].astype(int),
+            data=self._quality_as_uint8(CONSTANTS.CSV_VARS.QUALITY_BITMASK),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.QUALITY_BITMASK].attrs,
         )
         qb_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
@@ -501,9 +555,28 @@ class CalibrationLayer(Layer):
             return super().from_file(path, load_contents)
 
     @classmethod
-    def _validate_contents(cls, df: pd.DataFrame, path: Path) -> pd.DataFrame:
+    def _validate_contents(
+        cls, df: pd.DataFrame, path: Path, typed_source: bool = False
+    ) -> pd.DataFrame:
+        """Validate and normalise layer contents read from a CSV/Parquet file.
+
+        Args:
+            df: The contents read from the file.
+            path: The file the contents came from.
+            typed_source: True if the format stores column types (Parquet), so a
+                float64 timedelta column is worth a warning. In a CSV, floats are
+                always parsed as float64.
+        """
         if df.columns.empty:
             raise ValueError(f"Layer data file '{path.name}' is empty or invalid")
+
+        if typed_source and df.get(CONSTANTS.CSV_VARS.TIMEDELTA) is not None:
+            if df[CONSTANTS.CSV_VARS.TIMEDELTA].dtype == np.float64:
+                logger.warning(
+                    f"Layer file '{path.name}' stores '{CONSTANTS.CSV_VARS.TIMEDELTA}' "
+                    f"as float64; it will be converted to float32."
+                )
+        _to_float32_timedelta(df, path.name)
 
         # NaN is no longer valid in quality_flag or quality_bitmask columns.
         # Use 0 for no-op, positive to set bits, negative to clear bits.
@@ -552,7 +625,7 @@ class CalibrationLayer(Layer):
         ):
             df[epoch_col] = pd.to_datetime(df[epoch_col])
 
-        return cls._validate_contents(df, path)
+        return cls._validate_contents(df, path, typed_source=True)
 
     @classmethod
     def _build_from_values(cls, df: pd.DataFrame, path: Path) -> "CalibrationLayer":
@@ -691,7 +764,7 @@ class CalibrationLayer(Layer):
                 CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
                 CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                 CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
-                CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.float32(0.0),
                 CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
                 CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
             }

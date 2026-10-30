@@ -34,6 +34,19 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
         assert "quality_flag" in offsets_cdf
         assert "quality_bitmask" in offsets_cdf
 
+    # mandatory dtypes of the offsets CDF (timedeltas are float32 seconds)
+    from cdflib.xarray import cdf_to_xarray
+
+    dataset = cdf_to_xarray(str(output_offsets_file), to_datetime=True)
+    assert dataset["offsets"].dtype == np.float64
+    assert dataset["timedeltas"].dtype == np.float32
+    assert dataset["quality_flag"].dtype == np.uint8
+    assert dataset["quality_bitmask"].dtype == np.uint8
+    assert np.issubdtype(dataset["epoch"].dtype, np.datetime64)
+    assert dataset["axis"].dtype == np.dtype("<U1")
+    assert np.issubdtype(dataset["validity_start_datetime"].dtype, np.datetime64)
+    assert np.issubdtype(dataset["validity_end_datetime"].dtype, np.datetime64)
+
     with open_cdf(output_l2_file) as cdf:
         assert f"b_{frame}" in cdf
         assert "epoch" in cdf

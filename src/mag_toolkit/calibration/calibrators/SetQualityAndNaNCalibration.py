@@ -154,7 +154,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             CONSTANTS.CSV_VARS.OFFSET_X: "float64",
             CONSTANTS.CSV_VARS.OFFSET_Y: "float64",
             CONSTANTS.CSV_VARS.OFFSET_Z: "float64",
-            CONSTANTS.CSV_VARS.TIMEDELTA: "float64",
+            CONSTANTS.CSV_VARS.TIMEDELTA: "float32",
             CONSTANTS.CSV_VARS.QUALITY_FLAG: pd.Int64Dtype(),
             CONSTANTS.CSV_VARS.QUALITY_BITMASK: pd.Int64Dtype(),
         }
@@ -176,7 +176,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.where(
                     filtered["nan_z"], float("nan"), 0.0
                 ),
-                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered)),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered), dtype=np.float32),
                 # Blank/NA in the config means "no effect" — write 0 to the layer file
                 CONSTANTS.CSV_VARS.QUALITY_FLAG: filtered["quality_flag"]
                 .fillna(0)
@@ -194,7 +194,9 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_X: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Y: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.zeros(len(end_filtered)),
-                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(
+                    len(end_filtered), dtype=np.float32
+                ),
                 CONSTANTS.CSV_VARS.QUALITY_FLAG: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.QUALITY_BITMASK: np.zeros(len(end_filtered)),
             }
