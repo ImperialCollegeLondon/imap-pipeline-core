@@ -941,9 +941,9 @@ class TestQualityColumnTypes:
 
 EXPECTED_OFFSET_CDF_DTYPES = {
     "offsets": "float64",
-    "timedeltas": "int64",
-    "quality_flag": "int64",
-    "quality_bitmask": "int64",
+    "timedeltas": "float32",
+    "quality_flag": "uint8",
+    "quality_bitmask": "uint8",
     "epoch": "datetime64",
     "axis": "<U1",
     "validity_start_datetime": "datetime64",
@@ -951,54 +951,61 @@ EXPECTED_OFFSET_CDF_DTYPES = {
 }
 
 
-class TestOffsetCdfDatatypes:
-    """The offsets CDF must have the same datatypes whatever the layer source."""
+def _contents_with_timedelta(timedelta) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                ["2025-01-01T00:00:00", "2025-01-02T00:00:00"]
+            ),
+            CONSTANTS.CSV_VARS.OFFSET_X: [0.0, 1.0],
+            CONSTANTS.CSV_VARS.OFFSET_Y: [0.0, 2.0],
+            CONSTANTS.CSV_VARS.OFFSET_Z: [0.0, 3.0],
+            CONSTANTS.CSV_VARS.TIMEDELTA: timedelta,
+            CONSTANTS.CSV_VARS.QUALITY_FLAG: np.array([0, 1], dtype="int64"),
+            CONSTANTS.CSV_VARS.QUALITY_BITMASK: np.array([0, 255], dtype="int64"),
+        }
+    )
 
-    @staticmethod
-    def _contents(timedelta_dtype: str) -> pd.DataFrame:
-        return pd.DataFrame(
-            {
-                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
-                    ["2025-01-01T00:00:00", "2025-01-02T00:00:00"]
-                ),
-                CONSTANTS.CSV_VARS.OFFSET_X: [0.0, 1.0],
-                CONSTANTS.CSV_VARS.OFFSET_Y: [0.0, 2.0],
-                CONSTANTS.CSV_VARS.OFFSET_Z: [0.0, 3.0],
-                CONSTANTS.CSV_VARS.TIMEDELTA: np.array([0, 0], dtype=timedelta_dtype),
-                CONSTANTS.CSV_VARS.QUALITY_FLAG: [0, 1],
-                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0, 0],
-            }
+
+def _read_cdf_dtypes(cdf_file: Path) -> dict[str, str]:
+    from cdflib.xarray import cdf_to_xarray
+
+    dataset = cdf_to_xarray(str(cdf_file), to_datetime=True)
+    return {name: str(dataset[name].dtype) for name in EXPECTED_OFFSET_CDF_DTYPES}
+
+
+def _assert_offset_cdf_dtypes(cdf_file: Path) -> None:
+    actual = _read_cdf_dtypes(cdf_file)
+    for name, expected in EXPECTED_OFFSET_CDF_DTYPES.items():
+        assert actual[name].startswith(expected), (
+            f"{name}: expected {expected}, got {actual[name]}"
         )
 
-    @staticmethod
-    def _read_dtypes(cdf_file: Path) -> dict[str, str]:
-        from cdflib.xarray import cdf_to_xarray
 
-        dataset = cdf_to_xarray(str(cdf_file), to_datetime=True)
-        return {name: str(dataset[name].dtype) for name in EXPECTED_OFFSET_CDF_DTYPES}
+class TestOffsetCdfDatatypes:
+    """The offsets CDF must have mandatory datatypes whatever the layer source."""
 
-    @staticmethod
-    def _assert_dtypes(actual: dict[str, str]) -> None:
-        for name, expected in EXPECTED_OFFSET_CDF_DTYPES.items():
-            assert actual[name].startswith(expected), (
-                f"{name}: expected {expected}, got {actual[name]}"
-            )
-
-    @pytest.mark.parametrize("timedelta_dtype", ["int64", "float64"])
-    def test_cdf_variable_datatypes(self, tmp_path, timedelta_dtype):
-        layer = _make_layer_with_contents(self._contents(timedelta_dtype))
+    @pytest.mark.parametrize(
+        "timedelta",
+        [
+            np.array([0, 0], dtype="int64"),
+            np.array([0.0, 0.5], dtype="float64"),
+            np.array([0.0, 0.5], dtype="float32"),
+        ],
+        ids=["int64", "float64", "float32"],
+    )
+    def test_cdf_variable_datatypes(self, tmp_path, timedelta):
+        layer = _make_layer_with_contents(_contents_with_timedelta(timedelta))
         cdf_file = tmp_path / "offsets.cdf"
         layer._write_to_cdf(cdf_file)
 
-        self._assert_dtypes(self._read_dtypes(cdf_file))
+        _assert_offset_cdf_dtypes(cdf_file)
 
     @pytest.mark.parametrize("data_format", ["csv", "parquet"])
     def test_cdf_datatypes_independent_of_layer_file_format(
         self, tmp_path, data_format
     ):
-        # Parquet written by MATLAB (or by the older converter) stores timedelta
-        # as float64, whereas read_csv infers int64 for the same data.
-        source = self._contents("float64")
+        source = _contents_with_timedelta(np.array([0.0, 0.5], dtype="float64"))
         data_file = tmp_path / f"layer.{data_format}"
         if data_format == "csv":
             source.to_csv(data_file, index=False)
@@ -1010,4 +1017,121 @@ class TestOffsetCdfDatatypes:
         cdf_file = tmp_path / "offsets.cdf"
         _make_layer_with_contents(contents)._write_to_cdf(cdf_file)
 
-        self._assert_dtypes(self._read_dtypes(cdf_file))
+        _assert_offset_cdf_dtypes(cdf_file)
+
+    def test_integer_offsets_are_written_as_float64(self, tmp_path):
+        df = _contents_with_timedelta(np.array([0.0, 0.0], dtype="float32"))
+        for col in (
+            CONSTANTS.CSV_VARS.OFFSET_X,
+            CONSTANTS.CSV_VARS.OFFSET_Y,
+            CONSTANTS.CSV_VARS.OFFSET_Z,
+        ):
+            df[col] = np.array([0, 0], dtype="int64")
+        cdf_file = tmp_path / "offsets.cdf"
+        _make_layer_with_contents(df)._write_to_cdf(cdf_file)
+
+        _assert_offset_cdf_dtypes(cdf_file)
+
+    def test_timedelta_values_are_seconds_and_survive_the_cdf(self, tmp_path):
+        layer = _make_layer_with_contents(
+            _contents_with_timedelta(np.array([0.0, 0.25], dtype="float32"))
+        )
+        cdf_file = tmp_path / "offsets.cdf"
+        layer._write_to_cdf(cdf_file)
+
+        result = CalibrationLayer._values_from_cdf(cdf_file)
+        assert result[CONSTANTS.CSV_VARS.TIMEDELTA].tolist() == [0.0, 0.25]
+
+    @pytest.mark.parametrize(
+        "column",
+        [CONSTANTS.CSV_VARS.QUALITY_FLAG, CONSTANTS.CSV_VARS.QUALITY_BITMASK],
+    )
+    @pytest.mark.parametrize("bad_value", [-1, 256])
+    def test_quality_values_not_fitting_uint8_raise(self, tmp_path, column, bad_value):
+        df = _contents_with_timedelta(np.array([0.0, 0.0], dtype="float32"))
+        df[column] = np.array([0, bad_value], dtype="int64")
+        layer = _make_layer_with_contents(df)
+
+        with pytest.raises(ValueError, match="uint8"):
+            layer._write_to_cdf(tmp_path / "offsets.cdf")
+
+
+class TestTimedeltaReading:
+    @pytest.mark.parametrize("data_format", ["csv", "parquet"])
+    def test_integer_zero_timedeltas_accepted_as_float32(self, tmp_path, data_format):
+        source = _contents_with_timedelta(np.array([0, 0], dtype="int64"))
+        data_file = tmp_path / f"layer.{data_format}"
+        if data_format == "csv":
+            source.to_csv(data_file, index=False)
+            result = CalibrationLayer._values_from_csv(data_file)
+        else:
+            source.to_parquet(data_file, index=False)
+            result = CalibrationLayer._values_from_parquet(data_file)
+
+        assert result[CONSTANTS.CSV_VARS.TIMEDELTA].dtype == np.float32
+
+    @pytest.mark.parametrize("data_format", ["csv", "parquet"])
+    def test_non_zero_integer_timedeltas_raise(self, tmp_path, data_format):
+        source = _contents_with_timedelta(np.array([0, 5], dtype="int64"))
+        data_file = tmp_path / f"layer.{data_format}"
+        if data_format == "csv":
+            source.to_csv(data_file, index=False)
+            read = CalibrationLayer._values_from_csv
+        else:
+            source.to_parquet(data_file, index=False)
+            read = CalibrationLayer._values_from_parquet
+
+        with pytest.raises(ValueError, match="timedelta"):
+            read(data_file)
+
+    def test_float64_parquet_timedeltas_warn_and_become_float32(self, tmp_path, caplog):
+        data_file = tmp_path / "layer.parquet"
+        _contents_with_timedelta(np.array([0.0, 0.5], dtype="float64")).to_parquet(
+            data_file, index=False
+        )
+
+        with caplog.at_level("WARNING"):
+            result = CalibrationLayer._values_from_parquet(data_file)
+
+        assert "float64" in caplog.text
+        assert result[CONSTANTS.CSV_VARS.TIMEDELTA].dtype == np.float32
+        assert result[CONSTANTS.CSV_VARS.TIMEDELTA].tolist() == [0.0, 0.5]
+
+    def test_float32_parquet_timedeltas_do_not_warn(self, tmp_path, caplog):
+        data_file = tmp_path / "layer.parquet"
+        _contents_with_timedelta(np.array([0.0, 0.5], dtype="float32")).to_parquet(
+            data_file, index=False
+        )
+
+        with caplog.at_level("WARNING"):
+            CalibrationLayer._values_from_parquet(data_file)
+
+        assert "float64" not in caplog.text
+
+
+class TestTimedeltaWriting:
+    def test_parquet_writes_float32_timedelta_and_signed_int64_quality(self, tmp_path):
+        layer = _make_layer_with_contents(
+            _contents_with_timedelta(np.array([0.0, 0.1], dtype="float64"))
+        )
+        data_file = tmp_path / "layer.parquet"
+        layer._write_to_parquet(data_file)
+
+        stored = pd.read_parquet(data_file)
+        assert stored[CONSTANTS.CSV_VARS.TIMEDELTA].dtype == np.float32
+        assert stored[CONSTANTS.CSV_VARS.QUALITY_FLAG].dtype == np.int64
+        assert stored[CONSTANTS.CSV_VARS.QUALITY_BITMASK].dtype == np.int64
+
+    def test_csv_writes_float32_timedelta_matching_matlab(self, tmp_path):
+        layer = _make_layer_with_contents(
+            _contents_with_timedelta(np.array([0.0, 0.1], dtype="float64"))
+        )
+        data_file = tmp_path / "layer.csv"
+        layer._write_to_csv(data_file)
+
+        lines = data_file.read_text().splitlines()
+        timedelta_idx = lines[0].split(",").index(CONSTANTS.CSV_VARS.TIMEDELTA)
+        assert [line.split(",")[timedelta_idx] for line in lines[1:]] == [
+            "0",
+            "0.100000001",
+        ]
