@@ -220,7 +220,9 @@ class CalibrationLayer(Layer):
         offsets_data.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH
         timedelta_var = xr.Variable(
             dims=[CONSTANTS.CDF_VARS.EPOCH],
-            data=self._contents[CONSTANTS.CSV_VARS.TIMEDELTA],
+            # Timedeltas are integral by definition, but Parquet/MATLAB layers (and
+            # zero-filled rows) hold them as float64, so always write int64.
+            data=self._contents[CONSTANTS.CSV_VARS.TIMEDELTA].round().astype("int64"),
             attrs=skeleton_cdf[CONSTANTS.CDF_VARS.TIMEDELTAS].attrs,
         )
         timedelta_var.attrs["DEPEND_0"] = CONSTANTS.CDF_VARS.EPOCH

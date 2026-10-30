@@ -937,3 +937,77 @@ class TestQualityColumnTypes:
 
         with pytest.raises(ValueError, match="non-integer"):
             CalibrationLayer._values_from_parquet(path)
+
+
+EXPECTED_OFFSET_CDF_DTYPES = {
+    "offsets": "float64",
+    "timedeltas": "int64",
+    "quality_flag": "int64",
+    "quality_bitmask": "int64",
+    "epoch": "datetime64",
+    "axis": "<U1",
+    "validity_start_datetime": "datetime64",
+    "validity_end_datetime": "datetime64",
+}
+
+
+class TestOffsetCdfDatatypes:
+    """The offsets CDF must have the same datatypes whatever the layer source."""
+
+    @staticmethod
+    def _contents(timedelta_dtype: str) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                CONSTANTS.CSV_VARS.EPOCH: pd.to_datetime(
+                    ["2025-01-01T00:00:00", "2025-01-02T00:00:00"]
+                ),
+                CONSTANTS.CSV_VARS.OFFSET_X: [0.0, 1.0],
+                CONSTANTS.CSV_VARS.OFFSET_Y: [0.0, 2.0],
+                CONSTANTS.CSV_VARS.OFFSET_Z: [0.0, 3.0],
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.array([0, 0], dtype=timedelta_dtype),
+                CONSTANTS.CSV_VARS.QUALITY_FLAG: [0, 1],
+                CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0, 0],
+            }
+        )
+
+    @staticmethod
+    def _read_dtypes(cdf_file: Path) -> dict[str, str]:
+        from cdflib.xarray import cdf_to_xarray
+
+        dataset = cdf_to_xarray(str(cdf_file), to_datetime=True)
+        return {name: str(dataset[name].dtype) for name in EXPECTED_OFFSET_CDF_DTYPES}
+
+    @staticmethod
+    def _assert_dtypes(actual: dict[str, str]) -> None:
+        for name, expected in EXPECTED_OFFSET_CDF_DTYPES.items():
+            assert actual[name].startswith(expected), (
+                f"{name}: expected {expected}, got {actual[name]}"
+            )
+
+    @pytest.mark.parametrize("timedelta_dtype", ["int64", "float64"])
+    def test_cdf_variable_datatypes(self, tmp_path, timedelta_dtype):
+        layer = _make_layer_with_contents(self._contents(timedelta_dtype))
+        cdf_file = tmp_path / "offsets.cdf"
+        layer._write_to_cdf(cdf_file)
+
+        self._assert_dtypes(self._read_dtypes(cdf_file))
+
+    @pytest.mark.parametrize("data_format", ["csv", "parquet"])
+    def test_cdf_datatypes_independent_of_layer_file_format(
+        self, tmp_path, data_format
+    ):
+        # Parquet written by MATLAB (or by the older converter) stores timedelta
+        # as float64, whereas read_csv infers int64 for the same data.
+        source = self._contents("float64")
+        data_file = tmp_path / f"layer.{data_format}"
+        if data_format == "csv":
+            source.to_csv(data_file, index=False)
+            contents = CalibrationLayer._values_from_csv(data_file)
+        else:
+            source.to_parquet(data_file, index=False)
+            contents = CalibrationLayer._values_from_parquet(data_file)
+
+        cdf_file = tmp_path / "offsets.cdf"
+        _make_layer_with_contents(contents)._write_to_cdf(cdf_file)
+
+        self._assert_dtypes(self._read_dtypes(cdf_file))
