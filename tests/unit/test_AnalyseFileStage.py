@@ -198,10 +198,9 @@ def test_parquet_nullable_columns_and_string_sentinels(tmp_path):
     assert result.column_stats["status"]["bad_data_count"] == 1
 
 
-@pytest.mark.parametrize("instrument", ["mag", "sc", "lo"])
-def test_default_config_matches_parquet_and_csv_equally(instrument):
+def test_default_config_matches_layer_parquet_and_csv_equally():
     stage = _make_stage()
-    prefix = f"hk/{instrument}/l1/example/2026/01/data"
+    prefix = "calibration/layers/2026/01/imap_mag_noop-norm-layer-data_20260101_v001"
     csv_config = stage._find_pattern_config(f"{prefix}.csv")
     parquet_config = stage._find_pattern_config(f"{prefix}.parquet")
 
@@ -210,7 +209,31 @@ def test_default_config_matches_parquet_and_csv_equally(instrument):
     assert csv_config.model_dump(exclude={"pattern"}) == parquet_config.model_dump(
         exclude={"pattern"}
     )
+    assert parquet_config.datetime_column == "time"
+    assert [check.column_name for check in parquet_config.columns_to_check] == [
+        "offset_x",
+        "offset_y",
+        "offset_z",
+    ]
+    for suffix in [".csv", ".parquet"]:
+        assert any(
+            fnmatch.fnmatch(f"{prefix}{suffix}", pattern)
+            for pattern in stage.settings.file_analysis.paths_to_match
+        )
+
+
+@pytest.mark.parametrize("instrument", ["mag", "sc", "lo"])
+def test_default_config_only_matches_csv_housekeeping(instrument):
+    stage = _make_stage()
+    prefix = f"hk/{instrument}/l1/example/2026/01/data"
+
+    assert stage._find_pattern_config(f"{prefix}.csv") is not None
+    assert stage._find_pattern_config(f"{prefix}.parquet") is None
     assert any(
+        fnmatch.fnmatch(f"{prefix}.csv", pattern)
+        for pattern in stage.settings.file_analysis.paths_to_match
+    )
+    assert not any(
         fnmatch.fnmatch(f"{prefix}.parquet", pattern)
         for pattern in stage.settings.file_analysis.paths_to_match
     )
