@@ -3,6 +3,8 @@
 These tests mock out the actual MATLAB call so they run without MATLAB.
 """
 
+import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -34,6 +36,16 @@ def _write_fake_offsets(output_dir: Path, date: datetime = DATE) -> None:
     for sensor in ("mago", "magi"):
         name = f"imap_mag_{sensor}-raw-leinweber-offsets-24hr_{date:%Y%m%d}_v001.csv"
         (output_dir / name).write_text(f"offsets,{sensor}\n")
+
+
+def _leinweber_output_dir_from_command(command: str) -> Path:
+    """Resolve the folder MATLAB would write into from the file_path_config it was
+    given - it derives output_folder itself from output_offsets_folder/leinweber,
+    there is no output_folder argument on the command line anymore."""
+    match = re.search(r"'file_path_config', \"(?P<path>[^\"]+)\"", command)
+    assert match
+    file_path_config = json.loads(Path(match["path"]).read_text())
+    return Path(file_path_config["output_offsets_folder"]) / "leinweber"
 
 
 @pytest.fixture
@@ -82,11 +94,7 @@ def test_generates_and_publishes_offsets(datastore_env, tmp_path, monkeypatch):
     def mock_call_matlab(command, cwd=None, **kwargs):
         captured["command"] = command
         captured["cwd"] = cwd
-        import re
-
-        match = re.search(r"'output_folder', \"(?P<path>[^\"]+)\"", command)
-        assert match
-        _write_fake_offsets(Path(match["path"]))
+        _write_fake_offsets(_leinweber_output_dir_from_command(command))
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
@@ -128,10 +136,7 @@ def test_builds_command_with_overrides(datastore_env, tmp_path, monkeypatch):
 
     def mock_call_matlab(command, **kwargs):
         captured["command"] = command
-        import re
-
-        match = re.search(r"'output_folder', \"(?P<path>[^\"]+)\"", command)
-        _write_fake_offsets(Path(match["path"]))
+        _write_fake_offsets(_leinweber_output_dir_from_command(command))
 
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 

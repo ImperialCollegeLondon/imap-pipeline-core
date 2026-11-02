@@ -178,16 +178,17 @@ def generate_leinweber_offsets(
     )  # DO NOT log anything before this point (it won't be captured in the log file)
 
     # Recreate the output folder empty on each run so a previous
-    # cleanup_temp_files_after_run=False run cannot leak stale outputs in. The
-    # produced CSVs are written into a "leinweber" subfolder (rather than directly
-    # under OUTPUT_SUBFOLDER_NAME) because CalculatedOffsetsPathHandler.from_filename
-    # identifies the offset type from the immediate parent folder name.
-    output_dir = work_folder / OUTPUT_SUBFOLDER_NAME / LEINWEBER
+    # cleanup_temp_files_after_run=False run cannot leak stale outputs in. MATLAB
+    # writes the produced CSVs into a "leinweber" subfolder of output_offsets_folder
+    output_offsets_folder = work_folder / OUTPUT_SUBFOLDER_NAME
+    output_dir = output_offsets_folder / LEINWEBER
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    user_config_path = _write_user_config(app_settings.data_store, work_folder)
+    user_config_path = _write_user_config(
+        app_settings.data_store, output_offsets_folder, work_folder
+    )
 
     command = _build_matlab_command(
         date=date,
@@ -196,7 +197,6 @@ def generate_leinweber_offsets(
         calibration_matrix_version=effective_matrix_version,
         calibration_input_json_file=effective_input_json_file,
         file_path_config=user_config_path,
-        output_folder=output_dir,
         verify=verify,
         configure_midpoint=configure_midpoint,
         allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
@@ -240,14 +240,19 @@ def generate_leinweber_offsets(
     return saved
 
 
-def _write_user_config(data_store: Path, work_folder: Path) -> Path:
-    """Write the minimal MATLAB file-path config generate_raw_leinweber_offset needs.
+def _write_user_config(
+    data_store: Path, output_offsets_folder: Path, work_folder: Path
+) -> Path:
+    """Write the MATLAB file-path config generate_raw_leinweber_offset needs.
 
-    Unlike the fuller config the scripted-L2 calibration writes, this tool only
-    reads ``sharepoint_flight_data`` (for science/spin-table data and the
-    calibration matrices), so that is the only key written.
+    ``sharepoint_flight_data`` is read for science/spin-table data and the
+    calibration matrices. ``output_offsets_folder`` is the dedicated work-folder
+    output directory
     """
-    config = {"sharepoint_flight_data": str(Path(data_store).resolve())}
+    config = {
+        "sharepoint_flight_data": str(Path(data_store).resolve()),
+        "output_offsets_folder": str(Path(output_offsets_folder).resolve()),
+    }
 
     user_config_path = work_folder / USER_CONFIG_FILENAME
     with open(user_config_path, "w") as fid:
@@ -256,6 +261,16 @@ def _write_user_config(data_store: Path, work_folder: Path) -> Path:
     logger.info(f"Wrote MATLAB file-path config to {user_config_path}: {config}")
     return user_config_path
 
+def _bool_to_matlab_str(value: bool) -> str:
+    """Convert a Python boolean to a MATLAB boolean string."""
+    return "true" if value else "false"
+
+def _datetime_to_matlab_expr(dt: datetime) -> str:
+    """Convert a Python datetime to a MATLAB datetime expression."""
+    return (
+        f"datetime({dt.year},{dt.month},{dt.day},"
+        f"{dt.hour},{dt.minute},{dt.second})"
+    )
 
 def _build_matlab_command(
     date: datetime,
@@ -264,22 +279,14 @@ def _build_matlab_command(
     calibration_matrix_version: int,
     calibration_input_json_file: str,
     file_path_config: Path,
-    output_folder: Path,
     verify: bool,
     configure_midpoint: ConfigureMidpoint | None = None,
     allow_pivot_platform_extrapolation: bool = False,
 ) -> str:
     """Build the ``generate_raw_leinweber_offset`` MATLAB command for one day.
 
-    ``date`` is passed through as-is; MATLAB derives the actual analysis
-    midpoint from it (per ``configure_midpoint``), it is not computed here.
     """
-    date_expr = (
-        f"datetime({date.year},{date.month},"
-        f"{date.day},{date.hour},"
-        f"{date.minute},{date.second})"
-    )
-    bool_str = {True: "true", False: "false"}
+    date_expr = _datetime_to_matlab_expr(date)
     sensors_expr = "[" + ", ".join(f'"{s.value}"' for s in sensors) + "]"
 
     return (
@@ -289,12 +296,11 @@ def _build_matlab_command(
         f"'calibration_matrix_version', {calibration_matrix_version}, "
         f"'calibration_input', \"{calibration_input_json_file}\", "
         f"'file_path_config', \"{file_path_config.resolve()!s}\", "
-        f"'output_folder', \"{output_folder.resolve()!s}\", "
         "'version', 1, "
         "'write', true, "
-        f"'verify', {bool_str[verify]}, "
+        f"'verify', {_bool_to_matlab_str(verify)}, "
         "'allow_pivot_platform_extrapolation', "
-        f"{bool_str[allow_pivot_platform_extrapolation]}"
+        f"{_bool_to_matlab_str(allow_pivot_platform_extrapolation)}"
         + (
             f",'configure_midpoint', \"{configure_midpoint.value}\""
             if configure_midpoint is not None
