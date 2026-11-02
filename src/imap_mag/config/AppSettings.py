@@ -25,9 +25,6 @@ from imap_mag.config.FetchConfig import (
     FetchSpiceConfig,
     FetchWebTCADLaTiSConfig,
 )
-from imap_mag.config.GenerateLeinweberOffsetsConfig import (
-    GenerateLeinweberOffsetsConfig,
-)
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
 from imap_mag.config.PublishConfig import PublishConfig
@@ -76,9 +73,6 @@ class AppSettings(BaseSettings):
     apply: CommandConfig
     calibrate: CalibrationCommandConfig = CalibrationCommandConfig()
     convert: ConvertCommandConfig = ConvertCommandConfig()
-    generate_leinweber_offsets: GenerateLeinweberOffsetsConfig = (
-        GenerateLeinweberOffsetsConfig()
-    )
     process: CommandConfig
     publish: PublishConfig
     upload: UploadConfig

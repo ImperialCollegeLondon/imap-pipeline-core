@@ -10,6 +10,7 @@ import pytest
 
 from imap_mag.cli.generateLeinweberOffsets import (
     MATLAB_SCRIPT_RELATIVE_PATH,
+    ConfigureMidpoint,
     generate_leinweber_offsets,
 )
 from imap_mag.config import SaveMode
@@ -111,10 +112,14 @@ def test_generates_and_publishes_offsets(datastore_env, tmp_path, monkeypatch):
 
     command = captured["command"]
     assert command.startswith("calibration.tools.generate_raw_leinweber_offset(")
-    assert "datetime(2026,1,30,12,0,0)" in command
+    # date is passed straight through - MATLAB derives the analysis midpoint
+    # itself, it is not computed here.
+    assert "datetime(2026,1,30,0,0,0)" in command
     assert '"MAGo", "MAGi"' in command
     assert "'calibration_matrix_version', 9" in command
     assert "'verify', true" in command
+    assert "configure_midpoint" not in command
+    assert "'allow_pivot_platform_extrapolation', false" in command
 
 
 def test_builds_command_with_overrides(datastore_env, tmp_path, monkeypatch):
@@ -137,11 +142,15 @@ def test_builds_command_with_overrides(datastore_env, tmp_path, monkeypatch):
         sensors=[Sensor.MAGO],
         calibration_matrix_version=7,
         verify=False,
+        configure_midpoint=ConfigureMidpoint.USE_MID_DAY,
+        allow_pivot_platform_extrapolation=True,
         save_mode=SaveMode.LocalOnly,
     )
 
     command = captured["command"]
-    assert "datetime(2026,1,30,6,0,0)" in command
+    assert "datetime(2026,1,30,0,0,0)" in command
     assert '["MAGo"]' in command
     assert "'calibration_matrix_version', 7" in command
     assert "'verify', false" in command
+    assert "'configure_midpoint', \"USE_MID_DAY\"" in command
+    assert "'allow_pivot_platform_extrapolation', true" in command

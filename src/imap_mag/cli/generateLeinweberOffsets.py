@@ -1,7 +1,8 @@
 import json
 import logging
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +19,21 @@ from mag_toolkit.calibration import Sensor
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
 logger = logging.getLogger(__name__)
+
+
+class ConfigureMidpoint(StrEnum):
+    """How generate_raw_leinweber_offset derives its analysis midpoint from --date.
+
+    Mirrors the ``Options.configure_midpoint`` name-value option of the MATLAB
+    tool exactly (values are passed straight through).
+    """
+
+    USE_DATE_AS_IS = "USE_DATE_AS_IS"
+    USE_MID_DAY = "USE_MID_DAY"
+    USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT = (
+        "USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT"
+    )
+
 
 # Relative path (within the MATLAB repo) of the tool we invoke. Used to fail fast if
 # the acquired repo does not actually contain the expected entry point.
@@ -38,8 +54,10 @@ def generate_leinweber_offsets(
         datetime,
         typer.Option(
             "--date",
-            help="Calendar day to generate offsets for. The MATLAB tool is run "
-            "over a window of --duration-hours centred on this day.",
+            help="Calendar day to generate offsets for. The MATLAB tool derives "
+            "its analysis midpoint from this day per --configure-midpoint (by "
+            "default, 12 hours after the IMAP-Lo pivot-platform movement time of "
+            "day), then runs over a window of --duration-hours centred on that.",
         ),
     ],
     matlab_repo: Annotated[
@@ -52,8 +70,16 @@ def generate_leinweber_offsets(
     duration_hours: Annotated[
         int | None,
         typer.Option(
-            help="Width (in hours) of the window centred on --date. Defaults to "
-            "the configured value (normally 24)."
+            help="Width (in hours) of the window centred on the derived midpoint. "
+            "Defaults to the configured value (normally 24)."
+        ),
+    ] = None,
+    configure_midpoint: Annotated[
+        ConfigureMidpoint | None,
+        typer.Option(
+            help="How to derive the analysis midpoint from --date. Left unset, "
+            "MATLAB applies its own default "
+            "(USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT)."
         ),
     ] = None,
     sensors: Annotated[
@@ -92,6 +118,14 @@ def generate_leinweber_offsets(
             "temporary files are retained in the work folder for inspection."
         ),
     ] = True,
+    allow_pivot_platform_extrapolation: Annotated[
+        bool,
+        typer.Option(
+            help="If False (default), a sensor/day is skipped rather than "
+            "corrected with extrapolated IMAP-Lo pivot-platform angles when the "
+            "available pivot-platform data doesn't cover the window."
+        ),
+    ] = False,
 ) -> list[Path]:
     """
     Generate daily Leinweber (solar-wind) offsets via the MATLAB
@@ -114,20 +148,22 @@ def generate_leinweber_offsets(
         )
 
     app_settings = AppSettings()
-    config = app_settings.generate_leinweber_offsets
+    config = app_settings.calibrate.leinweber
 
     effective_duration = (
         duration_hours if duration_hours is not None else config.duration_hours
     )
+    # calibration_matrix_version/input_json_file are shared with the scripted-L2
+    # calibration, so they live on the parent calibrate config, not here.
     effective_matrix_version = (
         calibration_matrix_version
         if calibration_matrix_version is not None
-        else config.calibration_matrix_version
+        else app_settings.calibrate.scripted_l2_calibration_matrix_version
     )
     effective_input_json_file = (
         calibration_input_json_file
         if calibration_input_json_file is not None
-        else config.calibration_input_json_file
+        else app_settings.calibrate.scripted_l2_input_json_file
     )
 
     work_folder = app_settings.setup_work_folder_for_command(
@@ -153,10 +189,8 @@ def generate_leinweber_offsets(
 
     user_config_path = _write_user_config(app_settings.data_store, work_folder)
 
-    mid_point_datetime = date + timedelta(hours=effective_duration / 2)
-
     command = _build_matlab_command(
-        mid_point_datetime=mid_point_datetime,
+        date=date,
         duration_hours=effective_duration,
         sensors=sensors,
         calibration_matrix_version=effective_matrix_version,
@@ -164,6 +198,8 @@ def generate_leinweber_offsets(
         file_path_config=user_config_path,
         output_folder=output_dir,
         verify=verify,
+        configure_midpoint=configure_midpoint,
+        allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
     )
 
     call_matlab(
@@ -222,7 +258,7 @@ def _write_user_config(data_store: Path, work_folder: Path) -> Path:
 
 
 def _build_matlab_command(
-    mid_point_datetime: datetime,
+    date: datetime,
     duration_hours: int,
     sensors: list[Sensor],
     calibration_matrix_version: int,
@@ -230,12 +266,18 @@ def _build_matlab_command(
     file_path_config: Path,
     output_folder: Path,
     verify: bool,
+    configure_midpoint: ConfigureMidpoint | None = None,
+    allow_pivot_platform_extrapolation: bool = False,
 ) -> str:
-    """Build the ``generate_raw_leinweber_offset`` MATLAB command for one window."""
+    """Build the ``generate_raw_leinweber_offset`` MATLAB command for one day.
+
+    ``date`` is passed through as-is; MATLAB derives the actual analysis
+    midpoint from it (per ``configure_midpoint``), it is not computed here.
+    """
     date_expr = (
-        f"datetime({mid_point_datetime.year},{mid_point_datetime.month},"
-        f"{mid_point_datetime.day},{mid_point_datetime.hour},"
-        f"{mid_point_datetime.minute},{mid_point_datetime.second})"
+        f"datetime({date.year},{date.month},"
+        f"{date.day},{date.hour},"
+        f"{date.minute},{date.second})"
     )
     bool_str = {True: "true", False: "false"}
     sensors_expr = "[" + ", ".join(f'"{s.value}"' for s in sensors) + "]"
@@ -250,5 +292,13 @@ def _build_matlab_command(
         f"'output_folder', \"{output_folder.resolve()!s}\", "
         "'version', 1, "
         "'write', true, "
-        f"'verify', {bool_str[verify]})"
+        f"'verify', {bool_str[verify]}, "
+        "'allow_pivot_platform_extrapolation', "
+        f"{bool_str[allow_pivot_platform_extrapolation]}"
+        + (
+            f",'configure_midpoint', \"{configure_midpoint.value}\""
+            if configure_midpoint is not None
+            else ""
+        )
+        + ")"
     )

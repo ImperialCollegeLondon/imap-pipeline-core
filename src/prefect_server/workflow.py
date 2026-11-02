@@ -481,9 +481,15 @@ async def adeploy_flows(local_debug: bool = False):
     generate_leinweber_offsets_deployable = (
         generate_leinweber_offsets_flow.to_deployment(
             name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS,
+            cron=get_cron_from_env(
+                PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_GENERATE_LEINWEBER_OFFSETS
+            ),
             job_variables=matlab_shared_job_variables,
             work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
             tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+            concurrency_limit=ConcurrencyLimitConfig(
+                limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+            ),
         )
     )
 
