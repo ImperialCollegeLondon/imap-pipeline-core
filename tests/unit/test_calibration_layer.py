@@ -1122,6 +1122,26 @@ class TestTimedeltaWriting:
         assert stored[CONSTANTS.CSV_VARS.QUALITY_FLAG].dtype == np.int64
         assert stored[CONSTANTS.CSV_VARS.QUALITY_BITMASK].dtype == np.int64
 
+    def test_csv_writes_non_finite_values_the_way_matlab_does(self, tmp_path):
+        df = _contents_with_timedelta(np.array([0.0, 0.0], dtype="float32"))
+        df[CONSTANTS.CSV_VARS.OFFSET_X] = [np.nan, np.inf]
+        df[CONSTANTS.CSV_VARS.OFFSET_Y] = [-np.inf, 1.5]
+        df[CONSTANTS.CSV_VARS.TIMEDELTA] = np.array([np.nan, np.inf], dtype="float32")
+        data_file = tmp_path / "layer.csv"
+        _make_layer_with_contents(df)._write_to_csv(data_file)
+
+        rows = [line.split(",") for line in data_file.read_text().splitlines()]
+        col = {name: i for i, name in enumerate(rows[0])}
+        assert [r[col[CONSTANTS.CSV_VARS.OFFSET_X]] for r in rows[1:]] == ["NaN", "Inf"]
+        assert [r[col[CONSTANTS.CSV_VARS.OFFSET_Y]] for r in rows[1:]] == [
+            "-Inf",
+            "1.5",
+        ]
+        assert [r[col[CONSTANTS.CSV_VARS.TIMEDELTA]] for r in rows[1:]] == [
+            "NaN",
+            "Inf",
+        ]
+
     def test_csv_writes_float32_timedelta_matching_matlab(self, tmp_path):
         layer = _make_layer_with_contents(
             _contents_with_timedelta(np.array([0.0, 0.1], dtype="float64"))

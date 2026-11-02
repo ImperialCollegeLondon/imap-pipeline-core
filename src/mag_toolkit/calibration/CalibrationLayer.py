@@ -43,6 +43,20 @@ def _format_epoch_as_nanosecond_string(epoch: pd.Series) -> pd.Series:
     )
 
 
+def _matlab_format(value: float, spec: str) -> str:
+    """Format ``value`` with printf-style ``spec`` the way MATLAB's ``compose`` does.
+
+    Python renders non-finite values as ``nan``/``inf``/``-inf`` whereas MATLAB
+    writes ``NaN``/``Inf``/``-Inf``, so these are special-cased to stay
+    byte-identical with MATLAB-written CSVs.
+    """
+    if np.isnan(value):
+        return "NaN"
+    if np.isinf(value):
+        return "Inf" if value > 0 else "-Inf"
+    return format(value, spec)
+
+
 def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
     """Format a numeric series the same way MATLAB's Layer.write does for CSV
     (``compose("%.17g", x)``), so a Python-written CSV is byte-identical to a
@@ -50,7 +64,7 @@ def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
     (e.g. a boolean quality_flag read back from Parquet must still render as
     "0"/"1", not "False"/"True", and integral floats like timedelta as "0",
     not "0.0")."""
-    return series.map(lambda x: f"{x:.17g}")
+    return series.map(lambda x: _matlab_format(x, ".17g"))
 
 
 def _format_timedelta_as_float32_repr(series: pd.Series) -> pd.Series:
@@ -58,7 +72,7 @@ def _format_timedelta_as_float32_repr(series: pd.Series) -> pd.Series:
     that round-trips a float32 exactly. MATLAB's Layer.write uses the same format
     so Python- and MATLAB-written CSVs are byte-identical. Integral values still
     render as "0", "5"."""
-    return series.map(lambda x: f"{np.float32(x):.9g}")
+    return series.map(lambda x: _matlab_format(np.float32(x), ".9g"))
 
 
 def _to_float32_timedelta(df: pd.DataFrame, source: str) -> None:
