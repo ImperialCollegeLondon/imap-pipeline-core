@@ -16,6 +16,11 @@ on:
       - "README**"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      calibration-tag:
+        description: "IMAP_MAG_Calibration tag to bake into the MATLAB image (overrides CALIBRATION_TAG repository variable)"
+        required: false
+        type: string
 
 # write to checks/pull-request extra permission needed by 5monkeys/cobertura-action to post coverage stats
 # write packages needed by docker image step
@@ -294,13 +299,30 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: bash
 
+      # A manually-dispatched run can pin a specific calibration tag instead of the
+      # CALIBRATION_TAG repository variable, e.g. to bake an on-demand combination for
+      # mag-lab-data-platform to deploy. docker_safe mirrors how docker/metadata-action
+      # sanitizes ref names (replacing anything outside [a-zA-Z0-9_.-] with '-') so the
+      # image tag built further down stays valid and predictable to callers.
+      - name: Resolve effective calibration tag
+        id: calibration_tag
+        run: |
+          CAL_TAG="${{ inputs.calibration-tag }}"
+          if [[ -z "$CAL_TAG" ]]; then
+            CAL_TAG="${{ vars.CALIBRATION_TAG }}"
+          fi
+          echo "value=$CAL_TAG" >> "$GITHUB_OUTPUT"
+          echo "docker_safe=$(printf '%s' "$CAL_TAG" | tr -c 'a-zA-Z0-9_.-' '-')" >> "$GITHUB_OUTPUT"
+          echo "ref_docker_safe=$(printf '%s' "${{ github.ref_name }}" | tr -c 'a-zA-Z0-9_.-' '-')" >> "$GITHUB_OUTPUT"
+        shell: bash
+
       # Without a tag the checkout below silently falls back to the calibration
       # repo's default branch, so the image would not contain the pinned release.
       - name: Ensure a calibration code tag is set
         if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
         run: |
-          if [[ -z "${{ vars.CALIBRATION_TAG }}" ]]; then
-            echo "The CALIBRATION_TAG repository variable must be set to the calibration code release to embed in the MATLAB image."
+          if [[ -z "${{ steps.calibration_tag.outputs.value }}" ]]; then
+            echo "The CALIBRATION_TAG repository variable (or calibration-tag input) must be set to the calibration code release to embed in the MATLAB image."
             exit 1
           fi
         shell: bash
@@ -316,12 +338,12 @@ jobs:
             external-packages
           repository: ${{ vars.CALIBRATION_REPO }}
           ssh-key: ${{ secrets.IMAP_MAG_CALIBRATION_DEPLOY_KEY }}
-          ref: ${{ vars.CALIBRATION_TAG }}
+          ref: ${{ steps.calibration_tag.outputs.value }}
 
       - name: Show embedded calibration code version
         if: github.event.pull_request.user.login != 'dependabot[bot]' && vars.CALIBRATION_REPO != ''
         run: |
-          echo "Calibration code tag: ${{ vars.CALIBRATION_TAG }}"
+          echo "Calibration code tag: ${{ steps.calibration_tag.outputs.value }}"
           cat "${{ env.CALIBRATION_CODE_LOCATION }}/+calibration/get_version.m"
         shell: bash
 
@@ -363,6 +385,9 @@ jobs:
             type=ref,event=branch,prefix=matlab-
             # pull request event
             type=ref,event=pr,prefix=matlab-pr-
+            # manual dispatch pinning a specific calibration tag (for on-demand deploys
+            # of a given ref + calibration combination, e.g. from mag-lab-data-platform)
+            type=raw,value=matlab-${{ steps.calibration_tag.outputs.ref_docker_safe }}-cal-${{ steps.calibration_tag.outputs.docker_safe }},enable=${{ inputs.calibration-tag != '' }}
 
       - name: Set Docker cache date to max 24hrs
         id: docker-cache
