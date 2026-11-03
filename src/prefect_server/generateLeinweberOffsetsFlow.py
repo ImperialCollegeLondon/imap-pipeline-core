@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
+import pandas as pd
 from prefect import flow
+from prefect.artifacts import create_table_artifact
 from prefect.client.schemas.objects import FlowRun
 from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
@@ -124,6 +126,47 @@ def _existing_offsets(
             return None
         existing.append(found)
     return existing
+
+
+def _create_offsets_table_artifact(paths: list[Path], start_date: datetime) -> None:
+    """Publish a Prefect table artifact of the Leinweber offsets in ``paths``.
+
+    Each path is a single-row CSV (one sensor/day) written by
+    generate_raw_leinweber_offset.m's ``empty_offset_table``. The key is scoped to
+    ``start_date`` so each date gets its own artifact (rather than every run of
+    the flow, for any date, piling onto one ever-growing artifact) - re-running
+    the flow for the same start_date still versions that date's artifact, so its
+    history is browsable in the Prefect UI.
+    """
+    if not paths:
+        return
+
+    rows = []
+    for path in paths:
+        row = pd.read_csv(path).iloc[0]
+        rows.append(
+            {
+                "Date": row["Date"],
+                "Sensor": row["Sensor"],
+                "Offset X (nT)": round(row["OffsetX"], 4),
+                "Offset Y (nT)": round(row["OffsetY"], 4),
+                "Offset Z (nT)": round(row["OffsetZ"], 4),
+                "Dynamic MCS": round(row["Dynamic MCS"], 4),
+                "Percent": round(row["Percent"], 4),
+                "Verify Residual (nT)": (
+                    round(row["VerifyResidual"], 4)
+                    if pd.notna(row["VerifyResidual"])
+                    else None
+                ),
+                "File": path.name,
+            }
+        )
+
+    create_table_artifact(
+        table=rows,
+        key=f"{start_date:%Y-%m-%d}-leinweber-offsets",
+        description="Leinweber (solar-wind) offsets produced by this flow run.",
+    )
 
 
 @flow(
@@ -293,33 +336,35 @@ def generate_leinweber_offsets_flow(
 
         pending_days.append(day)
 
-    if not pending_days:
-        logger.info(
-            f"Nothing to generate for {start_date} to {end_date} "
-            f"({len(produced)} already published)."
+    if pending_days:
+        matlab_repo_path = _resolve_matlab_repo_path(
+            matlab_repo, app_settings.work_folder
         )
-        return produced
+        if matlab_repo_path is None:
+            raise ValueError("matlab_repo is required to generate Leinweber offsets.")
 
-    matlab_repo_path = _resolve_matlab_repo_path(matlab_repo, app_settings.work_folder)
-    if matlab_repo_path is None:
-        raise ValueError("matlab_repo is required to generate Leinweber offsets.")
-
-    for day in pending_days:
-        produced.extend(
-            generate_leinweber_offsets(
-                date=day,
-                matlab_repo=matlab_repo_path,
-                duration_hours=duration_hours,
-                sensors=sensors,
-                configure_midpoint=configure_midpoint,
-                calibration_matrix_version=calibration_matrix_version,
-                calibration_input_json_file=calibration_input_json_file,
-                verify=verify,
-                save_mode=save_mode,
-                cleanup_temp_files_after_run=cleanup_temp_files_after_run,
-                allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
+        for day in pending_days:
+            produced.extend(
+                generate_leinweber_offsets(
+                    date=day,
+                    matlab_repo=matlab_repo_path,
+                    duration_hours=duration_hours,
+                    sensors=sensors,
+                    configure_midpoint=configure_midpoint,
+                    calibration_matrix_version=calibration_matrix_version,
+                    calibration_input_json_file=calibration_input_json_file,
+                    verify=verify,
+                    save_mode=save_mode,
+                    cleanup_temp_files_after_run=cleanup_temp_files_after_run,
+                    allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
+                )
             )
+    else:
+        logger.info(
+            f"Nothing new to generate for {start_date} to {end_date} "
+            f"({len(produced)} already published)."
         )
 
     logger.info(f"Leinweber offset generation complete - {len(produced)} file(s).")
+    _create_offsets_table_artifact(produced, start_date)
     return produced

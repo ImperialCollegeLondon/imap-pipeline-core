@@ -12,6 +12,7 @@ from imap_mag.util import DatetimeProvider
 from mag_toolkit.calibration import Sensor
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.generateLeinweberOffsetsFlow import (
+    _create_offsets_table_artifact,
     _existing_offsets,
     _science_ready,
     _window_days,
@@ -68,6 +69,15 @@ def _patch_settings(tmp_path, backfill_lookback_days: int = 14):
 
 
 class TestGenerateLeinweberOffsetsFlow:
+    @pytest.fixture(autouse=True)
+    def _mock_offsets_artifact(self):
+        # These tests pass around placeholder paths like Path("offsets.csv") that
+        # are never written to disk, so the real artifact function (which reads
+        # each path as a CSV) is mocked out here; TestCreateOffsetsTableArtifact
+        # below tests it directly against real CSV fixtures.
+        with patch(f"{MODULE}._create_offsets_table_artifact") as mock:
+            yield mock
+
     def test_raises_when_end_date_before_start_date(self, tmp_path):
         with patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)):
             with pytest.raises(ValueError, match="cannot be before start date"):
@@ -141,6 +151,28 @@ class TestGenerateLeinweberOffsetsFlow:
                     start_date=datetime(2026, 1, 30),
                     matlab_repo=None,
                 )
+
+    def test_publishes_a_table_artifact_of_the_produced_offsets(
+        self, tmp_path, _mock_offsets_artifact
+    ):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        with (
+            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(f"{MODULE}._existing_offsets", return_value=None),
+            patch(f"{MODULE}._science_ready", return_value=True),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets",
+                return_value=[Path("offsets.csv")],
+            ),
+        ):
+            result = generate_leinweber_offsets_flow.fn(
+                start_date=datetime(2026, 1, 30),
+                matlab_repo=str(repo),
+            )
+
+        _mock_offsets_artifact.assert_called_once_with(result, datetime(2026, 1, 30))
 
     def test_calls_generate_leinweber_offsets_once_per_day(self, tmp_path):
         repo = tmp_path / "repo"
@@ -363,6 +395,7 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
             patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
+            patch(f"{MODULE}._create_offsets_table_artifact"),
             patch(
                 f"{MODULE}.generate_leinweber_offsets",
                 return_value=[Path("offsets.csv")],
@@ -487,3 +520,63 @@ class TestExistingOffsets:
         finder = FileFinder(tmp_path)
 
         assert _existing_offsets(finder, DAY, 12, [Sensor.MAGO, Sensor.MAGI]) is None
+
+
+class TestCreateOffsetsTableArtifact:
+    # Mirrors the columns generate_raw_leinweber_offset.m's empty_offset_table
+    # writes - one row per sensor/day CSV.
+    _HEADER = (
+        "Date,MidPoint,StartWindow,EndWindow,OffsetX,OffsetY,OffsetZ,"
+        "Dynamic MCS,Percent,VerifyResidual,Sensor"
+    )
+
+    def _offsets_csv(
+        self, tmp_path: Path, sensor: str, verify_residual: str = "0.0162"
+    ) -> Path:
+        path = tmp_path / f"imap_mag_{sensor}-raw-leinweber-offsets-24hr_20260130.csv"
+        path.write_text(
+            self._HEADER + "\n"
+            "30-Jan-2026 22:35:00.000,30-Jan-2026 22:35:00.000,"
+            "30-Jan-2026 10:35:00.000,31-Jan-2026 10:35:00.000,"
+            f"-0.015994,6.3428,0.23549,0.88231,42.5,{verify_residual},{sensor}\n"
+        )
+        return path
+
+    def test_does_not_create_an_artifact_when_nothing_was_produced(self):
+        with patch(f"{MODULE}.create_table_artifact") as mock_create:
+            _create_offsets_table_artifact([], datetime(2026, 1, 30))
+
+        mock_create.assert_not_called()
+
+    def test_key_is_scoped_to_the_start_date(self, tmp_path):
+        csv_path = self._offsets_csv(tmp_path, "mago")
+
+        with patch(f"{MODULE}.create_table_artifact") as mock_create:
+            _create_offsets_table_artifact([csv_path], datetime(2026, 1, 30))
+
+        assert mock_create.call_args.kwargs["key"] == "2026-01-30-leinweber-offsets"
+
+    def test_publishes_one_row_per_file_with_the_expected_values(self, tmp_path):
+        mago_csv = self._offsets_csv(tmp_path, "mago")
+        magi_csv = self._offsets_csv(tmp_path, "magi", verify_residual="")
+
+        with patch(f"{MODULE}.create_table_artifact") as mock_create:
+            _create_offsets_table_artifact([mago_csv, magi_csv], datetime(2026, 1, 30))
+
+        mock_create.assert_called_once()
+        table = mock_create.call_args.kwargs["table"]
+        assert len(table) == 2
+
+        mago_row = table[0]
+        assert mago_row["Sensor"] == "mago"
+        assert mago_row["Offset X (nT)"] == -0.016
+        assert mago_row["Offset Y (nT)"] == 6.3428
+        assert mago_row["Offset Z (nT)"] == 0.2355
+        assert mago_row["Dynamic MCS"] == 0.8823
+        assert mago_row["Percent"] == 42.5
+        assert mago_row["Verify Residual (nT)"] == 0.0162
+        assert mago_row["File"] == mago_csv.name
+
+        # An empty VerifyResidual (verify=False) becomes None, not NaN, so the
+        # artifact JSON-encodes cleanly.
+        assert table[1]["Verify Residual (nT)"] is None
