@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import pyarrow.types as pa_types
 import pytest
 
 from imap_mag.io.file import CalibrationLayerPathHandler
@@ -177,6 +178,37 @@ class TestCalibrationLayerWriteToParquet:
             encodings = metadata.row_group(0).column(i).encodings
             assert "PLAIN_DICTIONARY" not in encodings
             assert "RLE_DICTIONARY" not in encodings
+
+    def test_write_to_parquet_stores_epoch_as_nanosecond_text(self, tmp_path):
+        """The epoch is the same 9-digit ISO text as the CSV (what MATLAB writes),
+        so it keeps every nanosecond and is smaller than an int64 column."""
+        import pyarrow.parquet as pq
+
+        layer = _make_layer_with_contents()
+        layer._contents = _make_precise_df()
+        output_file = tmp_path / "output.parquet"
+        layer._write_to_parquet(output_file)
+
+        table = pq.read_table(output_file)
+        assert pa_types.is_string(table.schema.field("time").type) or (
+            pa_types.is_large_string(table.schema.field("time").type)
+        )
+        assert table.column("time").to_pylist() == [
+            "2025-01-01T00:00:00.123456789",
+            "2025-06-15T12:30:45.999999999",
+            "2099-12-31T23:59:59.000000001",
+        ]
+
+    def test_csv_to_parquet_to_csv_is_byte_identical(self, tmp_path):
+        layer = _make_layer_with_contents()
+        layer._contents = _make_precise_df()
+        csv_a = tmp_path / "a.csv"
+        layer._write_to_csv(csv_a)
+        loaded = CalibrationLayer._from_csv(csv_a)
+        parquet_file = tmp_path / "a.parquet"
+        loaded._write_to_parquet(parquet_file)
+        CalibrationLayer._from_parquet(parquet_file)._write_to_csv(tmp_path / "b.csv")
+        assert (tmp_path / "b.csv").read_bytes() == csv_a.read_bytes()
 
     def test_write_to_file_dispatches_parquet_on_parquet_extension(self, tmp_path):
         layer = _make_layer_with_contents()

@@ -148,11 +148,16 @@ class CalibrationLayer(Layer):
         logger.info(f"Writing calibration layer Parquet data to {filepath!s}.")
         _to_float32_timedelta(self._contents, filepath.name)
 
-        # The epoch column is stored as a native pandas datetime64[ns] column via
-        # pyarrow, which keeps full nanosecond precision losslessly (unlike CSV's
-        # text formatting, which truncates to microseconds). Other numeric columns
-        # are written as their native dtype for the same reason (timedelta is
-        # float32 seconds, quality columns are signed int64).
+        # The epoch column is stored as the same fixed 9-digit nanosecond ISO 8601
+        # text as the CSV layers, not as a native timestamp/int64. Text is exact to
+        # the nanosecond (so it always matches a CDF epoch and round-trips the
+        # existing CSV files) and, being highly repetitive, ZSTD compresses it far
+        # smaller than a plain int64/timestamp[ns] column (~140 KB vs ~1.1 MB for a
+        # day of 0.5 s data). MATLAB can write neither a native ns timestamp (its
+        # datetime is double-backed) nor delta-encoded int64, so text is also the
+        # smallest type both apps can write. Other numeric columns are written as
+        # their native dtype (timedelta is float32 seconds, quality columns are
+        # signed int64).
         #
         # Dictionary encoding (pyarrow's default) hurts here: offset_x/y/z are
         # near-unique doubles, so paying for a dictionary + indices costs more
@@ -160,7 +165,13 @@ class CalibrationLayer(Layer):
         # smaller on real layer files - matching MATLAB's VariableEncoding="plain"
         # (Layer.write), which both apps must use identically since either can
         # write or read a layer's Parquet companion.
-        self._contents.to_parquet(
+        df = self._contents.copy()
+        epoch_col = CONSTANTS.CSV_VARS.EPOCH
+        if epoch_col in df.columns and pd.api.types.is_datetime64_any_dtype(
+            df[epoch_col]
+        ):
+            df[epoch_col] = _format_epoch_as_nanosecond_string(df[epoch_col])
+        df.to_parquet(
             filepath,
             index=False,
             engine="pyarrow",
@@ -630,9 +641,9 @@ class CalibrationLayer(Layer):
     def _values_from_parquet(cls, path: Path) -> pd.DataFrame:
         df = pd.read_parquet(path, engine="pyarrow")
 
-        # MATLAB writes the epoch column as text (to avoid parquetwrite's native
-        # datetime round-trip truncating to microsecond precision); Python writes
-        # it as a native datetime64[ns] column. Normalise both to datetime64[ns].
+        # Both apps write the epoch column as nanosecond ISO 8601 text (see
+        # _write_to_parquet); parse it to datetime64[ns]. A native timestamp
+        # column is also accepted.
         epoch_col = CONSTANTS.CSV_VARS.EPOCH
         if epoch_col in df.columns and not pd.api.types.is_datetime64_any_dtype(
             df[epoch_col]
