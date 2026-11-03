@@ -261,16 +261,16 @@ def _write_user_config(
     logger.info(f"Wrote MATLAB file-path config to {user_config_path}: {config}")
     return user_config_path
 
+
 def _bool_to_matlab_str(value: bool) -> str:
     """Convert a Python boolean to a MATLAB boolean string."""
     return "true" if value else "false"
 
+
 def _datetime_to_matlab_expr(dt: datetime) -> str:
     """Convert a Python datetime to a MATLAB datetime expression."""
-    return (
-        f"datetime({dt.year},{dt.month},{dt.day},"
-        f"{dt.hour},{dt.minute},{dt.second})"
-    )
+    return f"datetime({dt.year},{dt.month},{dt.day},{dt.hour},{dt.minute},{dt.second})"
+
 
 def _build_matlab_command(
     date: datetime,
@@ -283,9 +283,7 @@ def _build_matlab_command(
     configure_midpoint: ConfigureMidpoint | None = None,
     allow_pivot_platform_extrapolation: bool = False,
 ) -> str:
-    """Build the ``generate_raw_leinweber_offset`` MATLAB command for one day.
-
-    """
+    """Build the ``generate_raw_leinweber_offset`` MATLAB command for one day."""
     date_expr = _datetime_to_matlab_expr(date)
     sensors_expr = "[" + ", ".join(f'"{s.value}"' for s in sensors) + "]"
 
