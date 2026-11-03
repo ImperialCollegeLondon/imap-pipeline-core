@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       calibration-tag:
-        description: "IMAP_MAG_Calibration git tag/branch/commit to bake into the MATLAB image, overriding the CALIBRATION_TAG repository variable for this run. Leave blank to use CALIBRATION_TAG as normal."
+        description: "IMAP_MAG_Calibration tag to bake into the MATLAB image (overrides CALIBRATION_TAG repository variable)"
         required: false
         type: string
 
