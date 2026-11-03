@@ -23,6 +23,7 @@ from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
 from prefect_server.generateLeinweberOffsetsFlow import generate_leinweber_offsets_flow
+from prefect_server.fileAnalyserFlow import file_analyser_flow
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -32,9 +33,7 @@ from prefect_server.pollIALiRT import poll_ialirt_flow
 from prefect_server.pollLoPivotPlatform import poll_lo_pivot_platform_flow
 from prefect_server.pollNOAA import poll_noaa_flow
 from prefect_server.pollScience import poll_science_flow
-from prefect_server.pollSmallForces import poll_small_forces_flow
 from prefect_server.pollSpice import poll_spice_flow
-from prefect_server.pollSpinTable import poll_spin_table_flow
 from prefect_server.postgresUploadFlow import upload_new_files_to_postgres
 from prefect_server.prefectUtils import get_cron_from_env
 from prefect_server.publishFlow import publish_flow
@@ -183,22 +182,6 @@ async def adeploy_flows(local_debug: bool = False):
     poll_hi90_esa_step_deployable = poll_hi90_esa_step_flow.to_deployment(
         name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_HI90_ESA_STEP,
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_HI90_ESA_STEP_CRON),
-        job_variables=shared_job_variables,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
-    )
-
-    poll_spin_table_deployable = poll_spin_table_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SPIN_TABLE,
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SPIN_TABLE_CRON),
-        job_variables=shared_job_variables,
-        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
-        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
-    )
-
-    poll_small_forces_deployable = poll_small_forces_flow.to_deployment(
-        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.POLL_SMALL_FORCES,
-        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.POLL_SMALL_FORCES_CRON),
         job_variables=shared_job_variables,
         tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
@@ -442,6 +425,19 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
+    file_analysis_job_variables = shared_job_variables | {
+        "mem_limit": "4G",
+        "memswap_limit": "4G",
+    }
+
+    file_analysis_deployable = file_analyser_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.FILE_ANALYSER,
+        cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_FILE_ANALYSER),
+        job_variables=file_analysis_job_variables,
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     matlab_shared_job_variables = shared_job_variables.copy()
     matlab_shared_job_variables["mem_limit"] = "12g"
     matlab_shared_job_variables["memswap_limit"] = "16g"
@@ -509,8 +505,6 @@ async def adeploy_flows(local_debug: bool = False):
         poll_lo_pivot_platform_deployable,
         poll_hi45_esa_step_deployable,
         poll_hi90_esa_step_deployable,
-        poll_spin_table_deployable,
-        poll_small_forces_deployable,
         publish_deployable,
         check_ialirt_deployable,
         quicklook_ialirt_deployable,
@@ -520,6 +514,7 @@ async def adeploy_flows(local_debug: bool = False):
         datastore_indexer_deployable,
         poll_noaa_deployable,
         database_cleanup_deployable,
+        file_analysis_deployable,
     )
 
     if local_debug:

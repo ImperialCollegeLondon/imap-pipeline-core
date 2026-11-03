@@ -59,7 +59,7 @@ async def poll_noaa_flow(
     ] = AutomaticRunParameters(),
     use_database: bool = True,
 ):
-    """Poll small forces files from SDC API."""
+    """Poll NOAA space weather data."""
 
     database = Database() if use_database else None
     settings = AppSettings()  # type: ignore

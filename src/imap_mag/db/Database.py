@@ -2,16 +2,18 @@ import functools
 import logging
 import os
 import threading
-from datetime import datetime
-from typing import ClassVar
+from datetime import UTC, datetime
+from typing import Any, ClassVar, TypeVar
 
 from sqlalchemy import create_engine, or_, select
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from imap_db.model import Base, File, WorkflowProgress
+from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 
 logger = logging.getLogger(__name__)
+
+TBase = TypeVar("TBase", bound=Base)
 
 
 class Database:
@@ -197,6 +199,33 @@ class Database:
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
 
+    def get_files_by_ids(self, file_ids: list[int]) -> list[File]:
+        """Get files by their IDs, ordered by last modified date."""
+        statement = (
+            select(File).where(File.id.in_(file_ids)).order_by(File.last_modified_date)
+        )
+        with self.session() as session:
+            return list(session.execute(statement).scalars().all())
+
+    def get_item_by_key(
+        self, item_type: type[TBase], key: dict[str, Any]
+    ) -> TBase | None:
+        """Get the first item of the given model type whose columns equal the key.
+
+        Args:
+            item_type: The model class to query.
+            key: Column names mapped to the values they must equal, e.g. {"file_id": 7}.
+        """
+        statement = select(item_type).filter_by(**key)
+        with self.session() as session:
+            return session.execute(statement).scalars().first()
+
+    def get_file_analysis_by_file_id(self, file_id: int) -> FileAnalysis | None:
+        """Get the file index entry for a given file ID."""
+        statement = select(FileAnalysis).where(FileAnalysis.file_id == file_id)
+        with self.session() as session:
+            return session.execute(statement).scalars().first()
+
     def get_files_by_path_pattern(self, pattern: str) -> list[File]:
         """Get all active files matching a path pattern (SQL LIKE pattern)."""
         statement = select(File).where(
@@ -209,31 +238,66 @@ class Database:
     def get_active_files_matching_patterns(self, patterns: list[str]) -> list[File]:
         """Get all active files matching any of the given fnmatch patterns.
 
-        Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
-        and queries the database server-side.
-
         Args:
             patterns: List of fnmatch patterns (e.g., "*hk/mag/l1/*")
 
         Returns:
-            List of matching File objects
+            List of matching File objects. Empty if no patterns are given.
         """
         if not patterns:
             return []
 
-        # Convert fnmatch patterns to SQL LIKE patterns
-        like_patterns = [self._fnmatch_to_like(p) for p in patterns]
+        return self.get_active_files_by_path_or_modified_date(patterns=patterns)
 
-        # Build OR condition for all patterns
-        pattern_conditions = [File.path.like(p) for p in like_patterns]
+    def get_active_files_by_path_or_modified_date(
+        self,
+        patterns: list[str] | None = None,
+        modified_after: datetime | None = None,
+        modified_before: datetime | None = None,
+    ) -> list[File]:
+        """Get active files matching path patterns and/or a modified date range.
 
-        statement = select(File).where(
-            File.deletion_date.is_(None),
-            or_(*pattern_conditions),
+        Converts fnmatch patterns (using * and ?) to SQL LIKE patterns (using % and _)
+        and queries the database server-side. Each filter that is provided must match.
+
+        Args:
+            patterns: Optional fnmatch patterns (e.g., "*hk/mag/l1/*"); a file
+                matching any one of them is included.
+            modified_after: Only include files modified after this datetime.
+            modified_before: Only include files modified at or before this datetime.
+
+        Returns:
+            List of matching File objects, ordered by last modified date.
+        """
+        statement = (
+            select(File)
+            .where(File.deletion_date.is_(None))
+            .order_by(File.last_modified_date)
         )
+
+        if patterns:
+            statement = statement.where(
+                or_(*[File.path.like(self._fnmatch_to_like(p)) for p in patterns])
+            )
+
+        # last_modified_date is stored as a naive UTC datetime
+        if modified_after is not None:
+            statement = statement.where(
+                File.last_modified_date > self._to_naive_utc(modified_after)
+            )
+        if modified_before is not None:
+            statement = statement.where(
+                File.last_modified_date <= self._to_naive_utc(modified_before)
+            )
 
         with self.session() as session:
             return list(session.execute(statement).scalars().all())
+
+    @staticmethod
+    def _to_naive_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(UTC).replace(tzinfo=None)
 
     @staticmethod
     def _fnmatch_to_like(pattern: str) -> str:

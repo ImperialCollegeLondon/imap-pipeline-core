@@ -4,9 +4,7 @@ from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.fetch.ialirt import fetch_ialirt, fetch_ialirt_hk
 from imap_mag.cli.fetch.noaa import fetch_noaa
 from imap_mag.cli.fetch.science import fetch_science
-from imap_mag.cli.fetch.small_forces import fetch_small_forces
 from imap_mag.cli.fetch.spice import fetch_spice, generate_spice_metakernel
-from imap_mag.cli.fetch.spin_table import fetch_spin_tables
 from imap_mag.cli.fetch.webtcad import (
     fetch_hi45_esa_step,
     fetch_hi90_esa_step,
@@ -25,10 +23,6 @@ app.command("science", help="Download CDF science data from SDC")(fetch_science)
 app.command("spice", help="Download spice kernels from SDC")(fetch_spice)
 app.command("metakernel", help="Build a SPICE metakernel from available kernels")(
     generate_spice_metakernel
-)
-app.command("spin-tables", help="Download spin table files from SDC")(fetch_spin_tables)
-app.command("small-forces", help="Download small forces files from SDC")(
-    fetch_small_forces
 )
 app.command(
     "imap-lo-pivot-platform",

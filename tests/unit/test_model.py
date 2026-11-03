@@ -114,6 +114,44 @@ class TestFileMergeRecord:
 
         assert changed is False
 
+    def test_merge_record_logs_before_and_after_of_each_changed_field(self, caplog):
+        path = "spice/ck/test_file.cdf"
+        original = _make_file(
+            path=path,
+            size=100,
+            hash="oldhash",
+            file_meta={"ingestion_date": "2026-10-26", "kernel_type": "old_type"},
+        )
+        updated = _make_file(
+            path=path,
+            size=250,
+            hash="newhash",
+            file_meta={"ingestion_date": "2026-10-27", "kernel_type": "old_type"},
+        )
+
+        with caplog.at_level("INFO", logger="imap_db.model"):
+            original.merge_record(updated)
+
+        message = " ".join(r.getMessage() for r in caplog.records)
+        assert "size: 100 -> 250" in message
+        assert "hash: 'oldhash' -> 'newhash'" in message
+        assert "file_meta.ingestion_date: '2026-10-26' -> '2026-10-27'" in message
+        # Unchanged fields are not reported.
+        assert "descriptor" not in message
+        assert "kernel_type" not in message
+
+    def test_merge_record_logs_added_and_removed_file_meta_keys(self, caplog):
+        path = "spice/ck/test_file.cdf"
+        original = _make_file(path=path, file_meta={"removed_key": 1})
+        updated = _make_file(path=path, file_meta={"added_key": 2})
+
+        with caplog.at_level("INFO", logger="imap_db.model"):
+            original.merge_record(updated)
+
+        message = " ".join(r.getMessage() for r in caplog.records)
+        assert "file_meta.removed_key: 1 -> <missing>" in message
+        assert "file_meta.added_key: <missing> -> 2" in message
+
 
 class TestFileGetDatastoreRelativePath:
     def test_returns_relative_path_within_datastore(self):

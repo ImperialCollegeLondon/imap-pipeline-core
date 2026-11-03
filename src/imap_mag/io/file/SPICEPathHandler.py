@@ -26,7 +26,7 @@ imap_yyyy_doy_yyyy_doy_##.ah.bc and imap_yyyy_doy_yyyy_doy_##.ah.a
 imap_yyyy_doy_yyyy_doy_##.ap.bc or imap_yyyy_doy_yyyy_doy_##.ap.a
 imap_dps_yyyy_doy_yyyy_doy_v###.ah.bc
 imap_yyyy_doy_a##.spice.mk or imap_yyyy_doy_a##.stk_a.mk
-imap_yyyy_doy_yyyy_doy_##.spin.csv
+imap_yyyy_doy_yyyy_doy_##.spin.csv or imap_yyyy_doy_yyyy_doy_##.spin
 imap_yyyy_doy_##.repoint.csv
 IMAP_yyyy_doy_e##.mk
 imap_launch_yyyymmdd_yyyymmdd_v##.bsp
@@ -35,7 +35,7 @@ imap_recon_yyyymmdd_yyyymmdd_v##.bsp
 imap_pred_yyyymmdd_yyyymmdd_v  ??? bsp?
 imap_noburn_yyyymmdd_yyyymmdd_v##.bsp
 imap_long_yyyymmdd_yyyymmdd_v##.bsp
-imap_yyyy_doy_yyyy_doy_sff_hist__##.sff
+imap_yyyy_doy_yyyy_doy_hist_##.sff
 imap_###.tf
 imap_science_####.tf
 imap_sclk_####.tsc
@@ -57,6 +57,8 @@ ephemeris_reconstructed - imap_recon_yyyymmdd_yyyymmdd_v##.bsp
 ephemeris_predicted - imap_pred_yyyymmdd_yyyymmdd_v
 ephemeris_long - imap_long_yyyymmdd_yyyymmdd_v##.bsp
 ephemeris_launch - imap_launch_yyyymmdd_yyyymmdd_v##.bsp
+spin - imap_yyyy_doy_yyyy_doy_##.spin
+thruster - imap_yyyy_doy_yyyy_doy_hist_##.sff
 """
 
 
@@ -155,6 +157,7 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_.*\.spice\.mk$", "mk"),
         (r"^imap_.*\.stk_a\.mk$", "mk"),
         (r"^imap_.*\.spin\.csv$", "spin"),
+        (r"^imap_.*\.spin$", "spin"),
         (r"^imap_.*\.repoint\.csv$", "repoint"),
         (r"^IMAP_.*\.mk$", "mk"),
         (r"^imap_launch_.*\.bsp$", "spk"),
@@ -191,7 +194,17 @@ class SPICEPathHandler(VersionedPathHandler):
         (r"^imap_nom_.*\.bsp$", "ephemeris_nominal"),
         (r"^imap_noburn_.*\.bsp$", "ephemeris_nominal"),
         (r"^imap_lopivot-.*\.bc$", "lo_pivot_attitude"),
+        (r"^imap_.*\.spin(\.csv)?$", "spin"),
+        (r"^imap_.*\.sff$", "thruster"),
     ]
+
+    # Spin and thruster (small forces) files have a fixed source version and a
+    # day-of-year coverage window in the name rather than a _v### suffix, e.g.
+    # imap_2026_089_2026_090_01.spin and imap_2026_036_2026_037_hist_01.sff
+    DOY_WINDOW_FILENAME_PATTERN: typing.ClassVar[re.Pattern] = re.compile(
+        r"^imap_(?P<year>\d{4})_(?P<doy>\d{3})_\d{4}_\d{3}_(?:hist_)?(?P<version>\d{2,3})"
+        r"\.(?:spin(?:\.csv)?|sff)$"
+    )
 
     @staticmethod
     def get_kernel_type_from_filename(filename: "str | Path") -> "str | None":
@@ -342,6 +355,15 @@ class SPICEPathHandler(VersionedPathHandler):
             handler.is_versioned_spice_file = is_versioned_spice_file
             if version is not None:
                 handler.version = version
+
+            doy_window_match = cls.DOY_WINDOW_FILENAME_PATTERN.match(filename_only)
+            if doy_window_match:
+                # version is fixed by the source and the content date is the start of the window
+                handler.version = int(doy_window_match.group("version"))
+                handler.content_date = datetime.strptime(
+                    f"{doy_window_match.group('year')}-{doy_window_match.group('doy')}",
+                    "%Y-%j",
+                )
 
             logger.debug(
                 f"Created SPICEPathHandler for file {filename} with kernel type {kernel_type} and version {version if is_versioned_spice_file else 'N/A'}."

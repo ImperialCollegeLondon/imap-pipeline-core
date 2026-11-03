@@ -14,7 +14,6 @@ from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.io.file.NOAAPathHandler import NOAAPathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
-from imap_mag.io.file.SpinTablePathHandler import SpinTablePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +61,6 @@ class FilePathHandlerSelector:
             HKDecodedPathHandler,
             IALiRTPathHandler,
             SciencePathHandler,
-            SpinTablePathHandler,
             SPICEPathHandler,
             NOAAPathHandler,
         ]
