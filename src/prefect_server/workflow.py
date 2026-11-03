@@ -482,7 +482,7 @@ async def adeploy_flows(local_debug: bool = False):
             ),
             job_variables=matlab_shared_job_variables,
             work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_BIG,
-            tags=[PREFECT_CONSTANTS.PREFECT_TAG]
+            tags=[PREFECT_CONSTANTS.PREFECT_TAG],
         )
     )
 
