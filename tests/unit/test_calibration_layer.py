@@ -344,9 +344,14 @@ class TestCalibrationLayerParquetCsvPrecisionParity:
             CONSTANTS.CSV_VARS.OFFSET_X,
             CONSTANTS.CSV_VARS.OFFSET_Y,
             CONSTANTS.CSV_VARS.OFFSET_Z,
-            CONSTANTS.CSV_VARS.TIMEDELTA,
         ]:
             assert (result[col].to_numpy() == df[col].to_numpy()).all(), col
+        # Timedeltas are float32 seconds in every layer file.
+        assert result[CONSTANTS.CSV_VARS.TIMEDELTA].dtype == np.float32
+        assert (
+            result[CONSTANTS.CSV_VARS.TIMEDELTA].to_numpy()
+            == df[CONSTANTS.CSV_VARS.TIMEDELTA].to_numpy().astype("float32")
+        ).all()
 
 
 class TestCalibrationLayerCsvMatchesMatlabFormatting:
