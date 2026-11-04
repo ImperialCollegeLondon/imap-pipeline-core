@@ -57,16 +57,6 @@ def _matlab_format(value: float, spec: str) -> str:
     return format(value, spec)
 
 
-def _format_numeric_as_matlab_repr(series: pd.Series) -> pd.Series:
-    """Format a numeric series the same way MATLAB's Layer.write does for CSV
-    (``compose("%.17g", x)``), so a Python-written CSV is byte-identical to a
-    MATLAB-written one for the same values, regardless of the in-memory dtype
-    (e.g. a boolean quality_flag read back from Parquet must still render as
-    "0"/"1", not "False"/"True", and integral floats like timedelta as "0",
-    not "0.0")."""
-    return series.map(lambda x: _matlab_format(x, ".17g"))
-
-
 def _format_timedelta_as_float32_repr(series: pd.Series) -> pd.Series:
     """Format a timedelta series (float32 seconds) with ``%.9g``, the precision
     that round-trips a float32 exactly. MATLAB's Layer.write uses the same format
@@ -75,7 +65,7 @@ def _format_timedelta_as_float32_repr(series: pd.Series) -> pd.Series:
     return series.map(lambda x: _matlab_format(np.float32(x), ".9g"))
 
 
-def _as_float32_timedelta(series: pd.Series, source: str) -> pd.Series:
+def _as_float32_timedelta(series: pd.Series, file_name: str) -> pd.Series:
     """Return the timedelta column as float32.
 
     Timedeltas are in **seconds** and float32 in the offsets CDF. Integer-typed
@@ -88,38 +78,11 @@ def _as_float32_timedelta(series: pd.Series, source: str) -> pd.Series:
     if pd.api.types.is_integer_dtype(series) or pd.api.types.is_bool_dtype(series):
         if (series != 0).any():
             raise ValueError(
-                f"Layer file '{source}' stores non-zero values in column "
+                f"Layer file '{file_name}' stores non-zero values in column "
                 f"'{series.name}' as integers. Timedeltas are in seconds and must "
                 f"be stored as floats."
             )
     return series.astype("float32")
-
-
-def _serialise_column(series: pd.Series, source: str, as_text: bool) -> pd.Series:
-    """Convert one layer column to what is written to a CSV or Parquet file.
-
-    The epoch is always the fixed 9-digit nanosecond ISO 8601 text, so both
-    formats keep every nanosecond (pandas' ``to_csv(date_format=...)`` would
-    truncate to microseconds). Timedeltas are float32 seconds. Quality columns
-    are signed int64 (negatives clear bits), so are written as they are.
-
-    For CSV (``as_text``) the numeric columns are formatted the same way MATLAB's
-    Layer.write does (``%.17g``, or ``%.9g`` for the float32 timedelta), rather
-    than relying on pandas' variable-length, dtype-dependent float/bool
-    formatting. Otherwise values that are numerically identical but arrived via
-    a different dtype (e.g. a boolean quality_flag from a Parquet round-trip)
-    would produce different CSV text, and a Python-written CSV would not be
-    byte-identical to a MATLAB-written one.
-    """
-    if series.name == CONSTANTS.CSV_VARS.EPOCH:
-        # A header-only file has no inferred datetime dtype; nothing to format.
-        if not pd.api.types.is_datetime64_any_dtype(series):
-            return series
-        return _format_epoch_as_nanosecond_string(series)
-    if series.name == CONSTANTS.CSV_VARS.TIMEDELTA:
-        series = _as_float32_timedelta(series, source)
-        return _format_timedelta_as_float32_repr(series) if as_text else series
-    return _format_numeric_as_matlab_repr(series) if as_text else series
 
 
 class CalibrationLayer(Layer):
@@ -127,13 +90,22 @@ class CalibrationLayer(Layer):
     value_type: ValueType
     _contents: pd.DataFrame | None = PrivateAttr(default=None)
 
-    def _contents_for_file(self, source: str, as_text: bool) -> pd.DataFrame:
+    def _contents_for_file(self, file_name: str, as_text: bool) -> pd.DataFrame:
         """A single copy of the contents with every column ready to write."""
         if self._contents is None:
-            raise ValueError(f"No contents loaded to write to '{source}'.")
+            raise ValueError(f"No contents loaded to write to '{file_name}'.")
         df = self._contents.copy()
         for col in df.columns:
-            df[col] = _serialise_column(df[col], source, as_text)
+            if col == CONSTANTS.CSV_VARS.EPOCH:
+                if pd.api.types.is_datetime64_any_dtype(df[col]):
+                    df[col] = _format_epoch_as_nanosecond_string(df[col])
+            elif col == CONSTANTS.CSV_VARS.TIMEDELTA:
+                df[col] = _as_float32_timedelta(df[col], file_name)
+                if as_text:
+                    df[col] = _format_timedelta_as_float32_repr(df[col])
+            elif as_text and pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = df[col].map(lambda x: _matlab_format(x, ".17g"))
+
         return df
 
     def _write_to_csv(self, filepath: Path, createDirectory=False):
