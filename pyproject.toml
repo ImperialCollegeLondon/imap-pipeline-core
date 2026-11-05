@@ -31,7 +31,7 @@ dependencies = [
     "prefect[shell] (==3.9.0)",
     "prefect-docker>=0.7.3",
     "spacepy>=0.7.0",
-    "pydantic-settings>=2.15.0",
+    "pydantic-settings>=2.16.2",
     "ccsdspy>=2.0.0",
     "crump>=0.7.1,<0.8.0",
     "prefect-managedfiletransfer>=0.7.2",
