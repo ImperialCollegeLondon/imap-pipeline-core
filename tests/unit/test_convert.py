@@ -279,6 +279,49 @@ class TestConvertPatternAndDateSearch:
             )
 
 
+class TestConvertMultipleLayersVersionsAndDays:
+    def _populate(self):
+        data_store = AppSettings().data_store
+        for desc in ["quality-norm", "noop-norm"]:
+            for day in [16, 17]:
+                for version in [1, 2]:
+                    _make_layer(
+                        data_store,
+                        desc,
+                        datetime(2026, 1, day),
+                        version,
+                        FileType.CSV,
+                        seed=version,
+                    )
+
+    def test_converts_every_version_of_every_layer_on_every_day(self):
+        self._populate()
+
+        converted = convert(
+            input_layers=["*quality-norm*", "*noop-norm*"],
+            output_layer_data_format=FileType.PARQUET,
+            output_layer_versioning_strategy=ConversionStrategy.CREATE_NEW_VERSION,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        json_files = [p for p in converted if p.suffix == ".json"]
+        assert len(json_files) == 8
+
+    def test_highest_version_only_converts_one_per_layer_and_day(self):
+        self._populate()
+
+        converted = convert(
+            input_layers=["*"],
+            output_layer_data_format=FileType.PARQUET,
+            output_layer_versioning_strategy=ConversionStrategy.CREATE_NEW_VERSION,
+            highest_version_matches_only=True,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        json_files = [p for p in converted if p.suffix == ".json"]
+        assert len(json_files) == 4
+
+
 class TestConvertPublishToDataStoreFalse:
     def test_publish_false_leaves_only_work_folder_copy(self, monkeypatch):
         date = datetime(2026, 1, 16)

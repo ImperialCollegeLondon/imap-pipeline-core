@@ -49,3 +49,17 @@ class TestCalibrateConvertFlow:
         )
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
+
+    def test_highest_version_matches_only_defaults_false_and_is_forwarded(self):
+        with patch(
+            "prefect_server.calibrateConvertFlow.convert", return_value=[]
+        ) as mock_convert:
+            calibrate_convert_flow.fn(input_layers=["*"])
+            assert (
+                mock_convert.call_args.kwargs["highest_version_matches_only"] is False
+            )
+
+            calibrate_convert_flow.fn(
+                input_layers=["*"], highest_version_matches_only=True
+            )
+            assert mock_convert.call_args.kwargs["highest_version_matches_only"] is True
