@@ -1,9 +1,10 @@
 import logging
 import re
-import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 from imap_mag.util.DataVersion import get_cdf_data_version, get_gse_version_string
@@ -98,28 +99,23 @@ class AncillaryPathHandler(VersionedPathHandler):
             # no change in version
             return source_file
 
-        from spacepy import (
-            pycdf,  # imported locally, see tests.util.miscellaneous.open_cdf
-        )
-
         new_version_path = source_file.parent / self.get_filename()
 
         logger.info(
-            f"Copying {source_file} to {new_version_path} then setting version attributes"
+            f"Rewriting {source_file} as {new_version_path} with updated version attributes"
         )
-        shutil.copy2(source_file, new_version_path)
+        # raw epochs are kept (to_datetime=False) so the round trip does not alter the data
+        dataset = cdf_to_xarray(str(source_file), to_datetime=False)
+        dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+            self.version, self.version_major
+        )
+        dataset.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = new_version_path.stem
+        dataset.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
+            get_gse_version_string()
+        )
 
         try:
-            with pycdf.CDF(str(new_version_path), readonly=False) as cdf:
-                cdf.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
-                    self.version, self.version_major
-                )
-                cdf.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(
-                    new_version_path.name
-                ).stem
-                cdf.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
-                    get_gse_version_string()
-                )
+            xarray_to_cdf(dataset, str(new_version_path), istp=True, compression=6)
         except Exception:
             new_version_path.unlink(missing_ok=True)
             raise

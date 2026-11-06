@@ -543,13 +543,9 @@ class TestOffsetsFileDataVersion:
         data_version = dataset.attrs["Data_version"]
         return data_version[0] if isinstance(data_version, list) else data_version
 
-    def test_data_version_increments_for_each_offsets_file_in_a_day(
-        self, temp_datastore, dynamic_work_folder
-    ):
-        layers_dir = temp_datastore / "calibration/layers/2026/09"
-        layers_dir.mkdir(parents=True, exist_ok=True)
+    def _write_boundary_layer(self, layers_dir: Path, version: int, seed: int):
         json_path, _ = write_calibration_layer_pair(
-            layers_dir, "manual-norm", self.DATE, 1
+            layers_dir, "manual-norm", self.DATE, version, seed=seed
         )
         # a boundary-changes layer is expanded onto the science epochs, so it is
         # compatible with whatever science file is in the datastore
@@ -557,9 +553,20 @@ class TestOffsetsFileDataVersion:
         layer_json["value_type"] = ValueType.BOUNDARY_CHANGES_ONLY.value
         json_path.write_text(json.dumps(layer_json))
 
+    def test_data_version_increments_for_each_offsets_file_in_a_day(
+        self, temp_datastore, dynamic_work_folder
+    ):
+        layers_dir = temp_datastore / "calibration/layers/2026/09"
+        layers_dir.mkdir(parents=True, exist_ok=True)
+
+        self._write_boundary_layer(layers_dir, version=1, seed=0)
         first = self._apply_and_read_data_version(temp_datastore)
+
+        # identical offsets would be deduplicated by the datastore, so the second
+        # offsets file comes from a newer layer with different values
+        self._write_boundary_layer(layers_dir, version=2, seed=1)
         second = self._apply_and_read_data_version(temp_datastore)
 
-        # offsets files have no major version, so the string is just vNNN
+        # offsets files have no major version, so the string is just NNN
         assert first == "001"
         assert second == "002"
