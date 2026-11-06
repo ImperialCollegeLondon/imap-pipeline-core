@@ -116,3 +116,86 @@ class TestAncillaryPathHandler:
             "imap_mag_l2_norm-mago_20251017_v001.cdf"
         )
         assert handler is None
+
+
+def _write_offsets_cdf(folder: Path, filename: str) -> Path:
+    from mag_toolkit.calibration import CalibrationLayer
+    from tests.util.miscellaneous import write_calibration_layer_pair
+
+    json_path, _ = write_calibration_layer_pair(
+        folder, "manual-norm", datetime(2025, 10, 17), 1
+    )
+    layer = CalibrationLayer.from_file(json_path, load_contents=True)
+    return layer.write_to_file(folder / filename)
+
+
+def _read_cdf_global_attrs(cdf_file: Path) -> dict[str, str]:
+    from tests.util.miscellaneous import open_cdf
+
+    with open_cdf(cdf_file) as cdf:
+        return {
+            name: str(cdf.attrs[name][0]) if len(cdf.attrs[name]) else ""
+            for name in cdf.attrs
+        }
+
+
+class TestPrepareForVersion:
+    def test_stamps_data_version_and_logical_file_id_on_offsets_cdf(self, tmp_path):
+        source = _write_offsets_cdf(
+            tmp_path, "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+        )
+        handler = _offsets_handler(
+            start=datetime(2025, 10, 17), end=datetime(2025, 10, 17), version=7
+        )
+
+        stamped = handler.prepare_for_version(source)
+
+        attrs = _read_cdf_global_attrs(stamped)
+        assert attrs["Data_version"] == "007"
+        assert (
+            attrs["Logical_file_id"]
+            == "imap_mag_l2-norm-offsets_20251017_20251017_v007"
+        )
+
+    def test_uses_major_version_when_set(self, tmp_path):
+        source = _write_offsets_cdf(
+            tmp_path, "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+        )
+        handler = _offsets_handler(version=3)
+        handler.version_major = 2
+
+        stamped = handler.prepare_for_version(source)
+
+        assert _read_cdf_global_attrs(stamped)["Data_version"] == "002.0003"
+
+    def test_returns_a_copy_and_leaves_source_untouched(self, tmp_path):
+        source = _write_offsets_cdf(
+            tmp_path, "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"
+        )
+        before = _read_cdf_global_attrs(source)
+
+        stamped = _offsets_handler(version=5).prepare_for_version(source)
+
+        assert stamped != source
+        assert stamped.exists()
+        assert _read_cdf_global_attrs(source) == before
+
+    def test_returns_source_unchanged_for_non_offsets_ancillary_file(self, tmp_path):
+        source = tmp_path / "imap_mag_l2-calibration_20251017_v001.cdf"
+        source.write_bytes(b"not touched")
+        handler = AncillaryPathHandler(
+            descriptor="l2-calibration",
+            start_date=datetime(2025, 10, 17),
+            version=2,
+            extension="cdf",
+        )
+
+        assert handler.prepare_for_version(source) == source
+
+    def test_returns_source_unchanged_for_non_cdf_offsets_file(self, tmp_path):
+        source = tmp_path / "imap_mag_l2-norm-offsets_20251017_v001.csv"
+        source.write_text("a,b")
+        handler = _offsets_handler(version=2)
+        handler.extension = "csv"
+
+        assert handler.prepare_for_version(source) == source

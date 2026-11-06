@@ -1,10 +1,13 @@
 import logging
 import re
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.util.DataVersion import get_cdf_data_version, get_gse_version_string
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +77,53 @@ class AncillaryPathHandler(VersionedPathHandler):
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
+
+    def prepare_for_version(self, source_file: Path) -> Path:
+        """Stamp an offsets CDF with the version and name it is being saved under.
+
+        The offsets file is written before the datastore assigns its final version,
+        so the CDF ``Data_version`` and ``Logical_file_id`` attributes are rewritten
+        here on a temporary copy. Returns the copy, which the caller must delete;
+        other ancillary files are returned unchanged.
+        """
+        if not self._is_offsets_file() or self.extension != "cdf":
+            return source_file
+
+        current = self.from_filename(source_file)
+        assert current is not None
+        if (
+            current.version_major == self.version_major
+            and current.version == self.version
+        ):
+            # no change in version
+            return source_file
+
+        from spacepy import (
+            pycdf,  # imported locally, see tests.util.miscellaneous.open_cdf
+        )
+
+        new_version_path = source_file.parent / self.get_filename()
+
+        logger.info(
+            f"Copying {source_file} to {new_version_path} then setting version attributes"
+        )
+        shutil.copy2(source_file, new_version_path)
+
+        try:
+            with pycdf.CDF(str(new_version_path), readonly=False) as cdf:
+                cdf.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+                    self.version, self.version_major
+                )
+                cdf.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(
+                    new_version_path.name
+                ).stem
+                cdf.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
+                    get_gse_version_string()
+                )
+        except Exception:
+            new_version_path.unlink(missing_ok=True)
+            raise
+        return new_version_path
 
     def get_unsequenced_pattern(self) -> re.Pattern:
         super()._check_property_values(

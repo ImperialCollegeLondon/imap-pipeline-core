@@ -74,11 +74,12 @@ class CalibrationApplicator:
             raise ValueError("Offsets layer contents not loaded")
 
         offsets.set_metadata(
-            [science.science_file],
-            science,
-            outputCalibrationFile.name,
+            dependencies=[science.science_file],
+            original_science=science,
+            calibration_id=outputCalibrationFile.name,
             method=CalibrationMethod.SUM,
-            version_major=self.app_settings.version_major,
+            version_major=0,  # offsets files do NOT have major versions - setting this to 0 makes it write CDF Data_version as minor only
+            version=1,
         )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)

@@ -1192,3 +1192,41 @@ class TestTimedeltaWriting:
             "0",
             "0.100000001",
         ]
+
+
+class TestWriteToCdfIdentityAttributes:
+    def _write(self, tmp_path, version: int, version_major: int) -> Path:
+        json_path, _ = write_calibration_layer_pair(
+            tmp_path, "manual-norm", datetime(2025, 10, 17), 1
+        )
+        layer = CalibrationLayer.from_file(json_path, load_contents=True)
+        layer.version = version
+        layer.version_major = version_major
+        return layer.write_to_file(
+            tmp_path / "imap_mag_l2-norm-offsets_20251017_20251017_v004.cdf"
+        )
+
+    def _attrs(self, cdf_file: Path) -> dict:
+        from cdflib.xarray import cdf_to_xarray
+
+        attrs = cdf_to_xarray(str(cdf_file), to_datetime=True).attrs
+        return {k: v[0] if isinstance(v, list) else v for k, v in attrs.items()}
+
+    def test_logical_file_id_is_filename_without_extension(self, tmp_path):
+        attrs = self._attrs(self._write(tmp_path, version=4, version_major=0))
+
+        assert (
+            attrs["Logical_file_id"]
+            == "imap_mag_l2-norm-offsets_20251017_20251017_v004"
+        )
+
+    @pytest.mark.parametrize(
+        ("version", "version_major", "expected"),
+        [(4, 0, "004"), (4, 1, "001.0004")],
+    )
+    def test_data_version_follows_layer_version(
+        self, tmp_path, version, version_major, expected
+    ):
+        attrs = self._attrs(self._write(tmp_path, version, version_major))
+
+        assert attrs["Data_version"] == expected

@@ -13,6 +13,7 @@ from pydantic import PrivateAttr
 from imap_mag import get_version
 from imap_mag.config import AppSettings
 from imap_mag.io.file import CalibrationLayerPathHandler, IFilePathHandler
+from imap_mag.util import get_cdf_data_version
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -313,13 +314,17 @@ class CalibrationLayer(Layer):
         offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GENERATION_DATE] = str(
             np.datetime64("now")
         )
-        if self.version_major > 0:
-            data_version = f"v{self.version_major:03d}.{self.version:04d}"
-        else:
-            data_version = f"v{self.version:03d}"
-        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = data_version
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+            self.version, self.version_major
+        )
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = filepath.stem
 
-        offsets_dataset.attrs["Parents"] = deepcopy(self.metadata.dependencies)
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.PARENTS] = deepcopy(
+            self.metadata.dependencies
+        )
+        offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
+            f"MAG imap-pipeline v{get_version()}"
+        )
 
         xarray_to_cdf(offsets_dataset, str(filepath), istp=True, compression=6)
 
@@ -332,6 +337,7 @@ class CalibrationLayer(Layer):
         calibration_id: str,
         method: CalibrationMethod = CalibrationMethod.SUM,
         version_major: int = 0,
+        version: int = 1,
     ):
         """Set the metadata for the offsets layer based on the original science layer."""
         if self._contents is None:
@@ -348,8 +354,10 @@ class CalibrationLayer(Layer):
             creation_timestamp=np.datetime64("now"),
             content_date=original_science.metadata.content_date,
         )
+        self._ensure_metadata_has_software_dependency()
+
         self.id = calibration_id
-        self.version = 1
+        self.version = version
         self.version_major = version_major
         self.method = method
         self.value_type = ValueType.VECTOR
@@ -378,6 +386,9 @@ class CalibrationLayer(Layer):
             filepath, createDirectory, save_contents=True
         )
 
+    def _ensure_metadata_has_software_dependency(self):
+        self.metadata.ground_software_version = f"imap-pipeline-core v{get_version()}"
+
     def save_calibration_layer(self, filepath, createDirectory, save_contents=True):
         if self._contents is not None:
             if self.metadata.data_filename is None:
@@ -403,11 +414,7 @@ class CalibrationLayer(Layer):
                 f"Wrote data hash for {data_file_path!s} as {self.metadata.data_hash!s}."
             )
 
-        dependency = f"imap-pipeline-core version {get_version()}"
-        if self.metadata.dependencies is None:
-            self.metadata.dependencies = []
-        if dependency not in self.metadata.dependencies:
-            self.metadata.dependencies.append(dependency)
+        self._ensure_metadata_has_software_dependency()
 
         created = super()._write_to_json(filepath, createDirectory)
 
