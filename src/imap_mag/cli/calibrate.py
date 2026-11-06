@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.cli import apply, convert
+from imap_mag.cli import apply, convert, generateLeinweberOffsets
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import (
     AppSettings,
@@ -41,6 +41,9 @@ logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
 app.command(name="convert")(convert.convert)
+app.command(name="generate-leinweber-offsets")(
+    generateLeinweberOffsets.generate_leinweber_offsets
+)
 
 
 def _validate_version_number_override(

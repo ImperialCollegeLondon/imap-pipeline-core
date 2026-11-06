@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from imap_mag.io.file.CalculatedOffsetsPathHandler import (
+    LEINWEBER,
     SPIN_OPTIMISED,
     SPIN_PLANE,
     CalculatedOffsetsPathHandler,
@@ -18,12 +19,14 @@ def _handler(
     sensor: str = "mago",
     offset_type: str = SPIN_PLANE,
     version: int = 24,
+    duration_hours: int | None = None,
 ) -> CalculatedOffsetsPathHandler:
     return CalculatedOffsetsPathHandler(
         sensor=sensor,
         offset_type=offset_type,
         content_date=DATE,
         version=version,
+        duration_hours=duration_hours,
     )
 
 
@@ -158,3 +161,44 @@ class TestCalculatedOffsetsPathHandler:
         f.write_text("data")
 
         assert CalculatedOffsetsPathHandler.from_filename(f) is None
+
+    def test_folder_structure_leinweber(self):
+        assert (
+            _handler(offset_type=LEINWEBER, duration_hours=24).get_folder_structure()
+            == "calibration/calculated_offsets/leinweber"
+        )
+
+    def test_filename_leinweber(self):
+        assert (
+            _handler(
+                sensor="magi", offset_type=LEINWEBER, duration_hours=24, version=3
+            ).get_filename()
+            == "imap_mag_magi-raw-leinweber-offsets-24hr_20260114_v003.csv"
+        )
+
+    def test_filename_leinweber_requires_duration_hours(self):
+        with pytest.raises(ValueError):
+            _handler(offset_type=LEINWEBER).get_filename()
+
+    def test_from_filename_roundtrip_leinweber(self):
+        handler = CalculatedOffsetsPathHandler.from_filename(
+            "calculated_offsets/leinweber/"
+            "imap_mag_mago-raw-leinweber-offsets-24hr_20260114_v007.csv"
+        )
+        assert handler is not None
+        assert handler.sensor == "mago"
+        assert handler.offset_type == LEINWEBER
+        assert handler.duration_hours == 24
+        assert handler.content_date == DATE
+        assert handler.version == 7
+
+    def test_from_filename_rejects_leinweber_folder_mismatch(self, tmp_path):
+        f = (
+            tmp_path
+            / SPIN_PLANE
+            / "imap_mag_mago-raw-leinweber-offsets-24hr_20260114_v000.csv"
+        )
+        f.parent.mkdir(parents=True)
+        f.write_text("data")
+        with pytest.raises(ValueError, match="implies offset type"):
+            CalculatedOffsetsPathHandler.from_filename(f)

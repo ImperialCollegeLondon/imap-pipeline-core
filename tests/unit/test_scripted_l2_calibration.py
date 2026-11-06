@@ -12,7 +12,7 @@ import pytest
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config import AppSettings, SetQualityAndNaNConfig
 from imap_mag.io.file import CalculatedOffsetsPathHandler, CalibrationLayerPathHandler
-from imap_mag.io.file.CalculatedOffsetsPathHandler import OFFSET_TYPES
+from imap_mag.io.file.CalculatedOffsetsPathHandler import SPIN_OPTIMISED, SPIN_PLANE
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
 from imap_mag.util import ScienceMode
 from mag_toolkit.calibration import (
@@ -42,6 +42,11 @@ MODULE_CALL_MATLAB = (
     "mag_toolkit.calibration.calibrators.ScriptedL2Calibration.call_matlab"
 )
 DATE = datetime(2026, 1, 30)
+
+# The scripted-L2 calibration writes exactly these two offset types as a byproduct;
+# CalculatedOffsetsPathHandler.OFFSET_TYPES also includes other types (e.g.
+# leinweber) produced by unrelated tools, so that broader set is not used here.
+SCRIPTED_L2_OFFSET_TYPES = (SPIN_PLANE, SPIN_OPTIMISED)
 
 
 def _make_matlab_repo(tmp_path: Path, version: str | None = None) -> Path:
@@ -105,7 +110,7 @@ def _write_work_offsets(
     the per-type file name is derived from the path handler so it matches production.
     Content is tagged so tests can force identical vs changed content.
     """
-    for offset_type in OFFSET_TYPES:
+    for offset_type in SCRIPTED_L2_OFFSET_TYPES:
         folder = output_dir / offset_type
         folder.mkdir(parents=True, exist_ok=True)
         for sensor in ("mago", "magi"):
@@ -509,9 +514,9 @@ def test_run_calibration_collects_files_in_offset_directories(tmp_path, monkeypa
     assert captured["config"]["output_offsets_folder"] == str(output_dir.resolve())
     # Six files total: layer JSON + CSV + 4 offsets (mago/magi x spin_plane/spin_optimised).
     assert len(items) == 6
-    assert {f.parent.name for f in items if f.parent.name in OFFSET_TYPES} == set(
-        OFFSET_TYPES
-    )
+    assert {
+        f.parent.name for f in items if f.parent.name in SCRIPTED_L2_OFFSET_TYPES
+    } == set(SCRIPTED_L2_OFFSET_TYPES)
     expected = {
         "outputs/imap_mag_manual-norm-layer-data_20260130_v001.0001.csv",
         "outputs/imap_mag_manual-norm-layer_20260130_v001.0001.json",
