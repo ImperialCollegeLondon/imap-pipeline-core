@@ -708,3 +708,55 @@ class TestFindLayersByPatterns:
             "imap_mag_noop-layer_20251215_v001.json",
             "imap_mag_noop-layer_20260101_v001.json",
         ]
+
+
+class TestFindLayersMultipleLayersVersionsDays:
+    """Several layers, each with several versions, over several days."""
+
+    @pytest.fixture
+    def multi(self, tmp_path):
+        layer_dir = tmp_path / "calibration" / "layers" / "2026" / "01"
+        layer_dir.mkdir(parents=True)
+        for desc in ["noop-norm", "quality-norm"]:
+            for day in ["20260116", "20260117", "20260118"]:
+                for v in [1, 2]:
+                    (layer_dir / f"imap_mag_{desc}-layer_{day}_v00{v}.json").touch()
+        return tmp_path
+
+    def test_all_versions_returned_when_highest_only_false(self, multi):
+        result = FileFinder(multi).find_layers_by_date_and_patterns(
+            ["*"], highest_version_matches_only=False
+        )
+        assert len(result) == 12
+
+    def test_highest_only_returns_one_per_descriptor_and_day(self, multi):
+        result = FileFinder(multi).find_layers_by_date_and_patterns(
+            ["*"], highest_version_matches_only=True
+        )
+        assert len(result) == 6
+        assert all(name.endswith("_v002.json") for name in result)
+
+    def test_pattern_highest_only_keeps_every_day(self, multi):
+        result = FileFinder(multi).find_layers_by_date_and_patterns(
+            ["*noop-norm*"], highest_version_matches_only=True
+        )
+        assert sorted(result) == [
+            f"imap_mag_noop-norm-layer_{d}_v002.json"
+            for d in ["20260116", "20260117", "20260118"]
+        ]
+
+    def test_multiple_patterns_with_date_range_and_all_versions(self, multi):
+        result = FileFinder(multi).find_layers_by_date_and_patterns(
+            ["*noop-norm*", "*quality-norm*"],
+            start_date=datetime(2026, 1, 16),
+            end_date=datetime(2026, 1, 17),
+            highest_version_matches_only=False,
+        )
+        assert len(result) == 8
+        assert not any("20260118" in n for n in result)
+
+    def test_overlapping_patterns_do_not_duplicate(self, multi):
+        result = FileFinder(multi).find_layers_by_date_and_patterns(
+            ["*noop*", "*norm*"], highest_version_matches_only=False
+        )
+        assert len(result) == len(set(result))

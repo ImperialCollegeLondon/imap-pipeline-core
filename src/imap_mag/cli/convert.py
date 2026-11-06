@@ -49,6 +49,12 @@ def convert(
         ScienceMode | None,
         typer.Option(help="Restrict conversion to layers for this science mode"),
     ] = None,
+    highest_version_matches_only: Annotated[
+        bool,
+        typer.Option(
+            help="If True, only the highest version of each matching layer is converted"
+        ),
+    ] = False,
     output_layer_data_format: Annotated[
         FileType,
         typer.Option(help="Target format to convert the matched layers to"),
@@ -102,6 +108,7 @@ def convert(
         end_date=end_date,
         mode=mode,
         throw_if_not_found=True,
+        highest_version_matches_only=highest_version_matches_only,
     )
     logger.info(f"Found {len(resolved_layers)} layer(s) to convert: {resolved_layers}")
 
