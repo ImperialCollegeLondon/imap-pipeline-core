@@ -43,6 +43,8 @@ class CONSTANTS:
         LOGICAL_FILE_ID = "Logical_file_id"
         MISSION_GROUP = "Mission_group"
         IS_MAGO = "is_mago"
+        PARENTS = "Parents"
+        GROUND_SOFTWARE_VERSION_MAG = "ground_software_version_mag"
 
     class CSV_VARS:
         EPOCH = "time"
@@ -195,6 +197,7 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
         PlainSerializer(serialize_dt, return_type=str),
     ]
     comment: str | None = None
+    ground_software_version: str | None = None
 
 
 class Value(ArbitraryTypesAllowedBaseModel, ABC):

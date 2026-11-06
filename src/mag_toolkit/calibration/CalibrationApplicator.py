@@ -74,11 +74,12 @@ class CalibrationApplicator:
             raise ValueError("Offsets layer contents not loaded")
 
         offsets.set_metadata(
-            [science.science_file],
-            science,
-            outputCalibrationFile.name,
+            dependencies=[science.science_file],
+            original_science=science,
+            calibration_id=outputCalibrationFile.name,
             method=CalibrationMethod.SUM,
-            version_major=self.app_settings.version_major,
+            version_major=0,  # offsets files do NOT have major versions - setting this to 0 makes it write CDF Data_version as minor only
+            version=1,
         )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
@@ -326,7 +327,7 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
-                    CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                    CONSTANTS.CSV_VARS.TIMEDELTA: np.float32(0.0),
                     CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
                     CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
                 },
@@ -347,7 +348,7 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_X: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
-                    CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+                    CONSTANTS.CSV_VARS.TIMEDELTA: np.array([0.0], dtype=np.float32),
                     CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
                     CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
                 },
