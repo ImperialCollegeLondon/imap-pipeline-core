@@ -1,0 +1,9 @@
+ALTER TABLE IF EXISTS solar_wind_noaa
+    ALTER COLUMN density DROP NOT NULL,
+    ALTER COLUMN speed DROP NOT NULL,
+    ALTER COLUMN temperature DROP NOT NULL;
+
+ALTER TABLE IF EXISTS ace_wind_noaa
+    ALTER COLUMN density DROP NOT NULL,
+    ALTER COLUMN speed DROP NOT NULL,
+    ALTER COLUMN temperature DROP NOT NULL;

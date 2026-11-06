@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
@@ -221,6 +222,73 @@ async def test_upload_new_files_to_postgres_allows_empty_noaa_wind_values(
             assert null_row_count == 1, (
                 "Expected one NOAA wind row with null density, speed, and temperature"
             )
+
+
+@pytest.mark.parametrize(
+    ("prefix", "table"),
+    [("SOLAR1", "solar_wind_noaa"), ("ACE", "ace_wind_noaa")],
+)
+@pytest.mark.asyncio
+async def test_upload_noaa_wind_after_nullable_schema_update(
+    prefix,
+    table,
+    capture_cli_logs,
+    test_database,
+    test_database_server_engine,
+    test_database_container,
+    tmp_path,
+):
+    filename = f"noaa/2026/11/{prefix}_wind_noaa_20261106.csv"
+    test_file = tmp_path / filename
+    test_file.parent.mkdir(parents=True, exist_ok=True)
+    test_file.write_text(
+        "time_tag,density,speed,temperature\n"
+        "2026-11-06T04:35:00,,,\n"
+        "2026-11-06T04:36:00,1.2,,12345\n"
+    )
+
+    migration = (
+        Path(__file__).resolve().parents[2] / "deploy/relax_noaa_wind_nullability.sql"
+    ).read_text()
+    with test_database_server_engine.begin() as conn:
+        conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
+        conn.execute(
+            text(
+                f"CREATE TABLE {table} (id timestamp PRIMARY KEY, "
+                "density double precision NOT NULL, speed double precision NOT NULL, "
+                "temperature integer NOT NULL, file_date date NOT NULL)"
+            )
+        )
+        conn.execute(
+            text(
+                f"INSERT INTO {table} VALUES "
+                "('2026-11-05 04:35:00', 1, 2, 3, '2026-11-05')"
+            )
+        )
+        for _ in range(2):
+            for statement in migration.split(";"):
+                if statement.strip():
+                    conn.execute(text(statement))
+
+    with Environment(
+        MAG_DATA_STORE=str(tmp_path),
+        TARGET_DATABASE_URL=test_database_container.get_connection_url(),
+        PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW="ignore",
+    ):
+        insert_test_files_into_database(
+            test_database, [filename], AppSettings(), datastore_root=tmp_path
+        )
+        await upload_new_files_to_postgres.fn(
+            find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
+            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
+        )
+
+    assert f"Synced 2 rows from {filename}" in capture_cli_logs.text
+    with test_database_server_engine.connect() as conn:
+        rows = conn.execute(
+            text(f"SELECT density, speed, temperature FROM {table} ORDER BY id")
+        ).all()
+    assert rows == [(1, 2, 3), (None, None, None), (1.2, None, 12345)]
 
 
 def insert_test_files_into_database(
