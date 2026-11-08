@@ -127,8 +127,12 @@ def convert(
 
     converted: list[Path] = []
     for layer_name in resolved_layers:
-        converted.extend(
-            _convert_layer(
+        # Layers can be large: remove each layer's work files once it has been
+        # processed so the work folder does not fill up over many layers.
+        files_before = set(work_folder.iterdir())
+        layer_outputs: list[Path] = []
+        try:
+            layer_outputs = _convert_layer(
                 layer_name=layer_name,
                 datastore_finder=datastore_finder,
                 work_folder=work_folder,
@@ -139,9 +143,24 @@ def convert(
                 save_mode=save_mode,
                 db=db,
             )
-        )
+            converted.extend(layer_outputs)
+        finally:
+            _cleanup_work_files(work_folder, files_before, keep=layer_outputs)
 
     return converted
+
+
+def _cleanup_work_files(work_folder: Path, files_before: set[Path], keep: list[Path]):
+    """Delete files added to the work folder since ``files_before``, except ``keep``."""
+    keep_resolved = {p.resolve() for p in keep}
+    for path in work_folder.iterdir():
+        if (
+            path not in files_before
+            and path.is_file()
+            and path.resolve() not in keep_resolved
+        ):
+            logger.debug(f"Removing work file {path.name}.")
+            path.unlink(missing_ok=True)
 
 
 def _convert_layer(

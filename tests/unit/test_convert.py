@@ -349,3 +349,31 @@ class TestConvertPublishToDataStoreFalse:
             "imap_mag_quality-norm-layer-data_20260116_v001.0001.parquet"
         )
         assert not published_companion.exists()
+
+
+class TestConvertCleansUpWorkFolder:
+    def test_work_folder_only_holds_log_after_publishing(self):
+        data_store = AppSettings().data_store
+        for day in [16, 17]:
+            _make_layer(
+                data_store,
+                "quality-norm",
+                datetime(2026, 1, day),
+                1,
+                FileType.CSV,
+            )
+
+        converted = convert(
+            input_layers=["*quality-norm*"],
+            output_layer_data_format=FileType.PARQUET,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        assert converted
+        work_folder = AppSettings().work_folder / "convert"
+        leftover = [
+            p
+            for p in work_folder.rglob("*")
+            if p.is_file() and p.suffix in (".json", ".csv", ".parquet")
+        ]
+        assert leftover == []
