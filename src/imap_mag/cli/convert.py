@@ -130,22 +130,21 @@ def convert(
         # Layers can be large: remove each layer's work files once it has been
         # processed so the work folder does not fill up over many layers.
         files_before = set(work_folder.iterdir())
-        layer_outputs: list[Path] = []
-        try:
-            layer_outputs = _convert_layer(
-                layer_name=layer_name,
-                datastore_finder=datastore_finder,
-                work_folder=work_folder,
-                output_layer_data_format=output_layer_data_format,
-                output_layer_versioning_strategy=output_layer_versioning_strategy,
-                outputManager=outputManager,
-                app_settings=app_settings,
-                save_mode=save_mode,
-                db=db,
-            )
-            converted.extend(layer_outputs)
-        finally:
-            _cleanup_work_files(work_folder, files_before, keep=layer_outputs)
+        layer_outputs = _convert_layer(
+            layer_name=layer_name,
+            datastore_finder=datastore_finder,
+            work_folder=work_folder,
+            output_layer_data_format=output_layer_data_format,
+            output_layer_versioning_strategy=output_layer_versioning_strategy,
+            outputManager=outputManager,
+            app_settings=app_settings,
+            save_mode=save_mode,
+            db=db,
+        )
+        converted.extend(layer_outputs)
+        # Only clean up on success: if conversion fails, leave the work files
+        # in place to help diagnose the problem.
+        _cleanup_work_files(work_folder, files_before, keep=layer_outputs)
 
     return converted
 
