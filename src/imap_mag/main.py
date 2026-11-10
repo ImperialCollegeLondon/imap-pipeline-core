@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.cli import calibrate, clean, process, publish
+from imap_mag.cli import calibrate, clean, heliopuddle, process, publish
 from imap_mag.cli.check import check
 from imap_mag.cli.cliUtils import globalState
 from imap_mag.cli.fetch import fetch
@@ -27,6 +27,11 @@ app.add_typer(calibrate.app, name="calibration", help="Generate calibration para
 app.add_typer(check.app, name="check", help="Check data from the datastore")
 app.add_typer(plot.app, name="plot", help="Plot data from the datastore")
 app.add_typer(clean.app, name="clean", help="Delete data from database")
+app.add_typer(
+    heliopuddle.app,
+    name="heliopuddle",
+    help="Sync the files database with heliopuddle",
+)
 
 
 @app.callback()

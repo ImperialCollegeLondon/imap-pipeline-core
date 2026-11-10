@@ -23,6 +23,7 @@ from prefect_server.databaseCleanupFlow import database_cleanup_flow
 from prefect_server.datastoreCleanupFlow import cleanup_datastore_flow
 from prefect_server.datastoreIndexerFlow import index_datastore_flow
 from prefect_server.fileAnalyserFlow import file_analyser_flow
+from prefect_server.heliopuddleSyncFlow import heliopuddle_sync_flow
 from prefect_server.pollHiEsaStep import (
     poll_hi45_esa_step_flow,
     poll_hi90_esa_step_flow,
@@ -424,6 +425,19 @@ async def adeploy_flows(local_debug: bool = False):
         cron=get_cron_from_env(PREFECT_CONSTANTS.ENV_VAR_NAMES.DATABASE_CLEANUP_CRON),
     )
 
+    heliopuddle_sync_deployable = heliopuddle_sync_flow.to_deployment(
+        name=PREFECT_CONSTANTS.DEPLOYMENT_NAMES.HELIOPUDDLE_SYNC,
+        cron=get_cron_from_env(
+            PREFECT_CONSTANTS.ENV_VAR_NAMES.IMAP_CRON_HELIOPUDDLE_SYNC
+        ),
+        job_variables=shared_job_variables,
+        concurrency_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
+        work_queue_name=PREFECT_CONSTANTS.QUEUES.LOW_SMALL,
+        tags=[PREFECT_CONSTANTS.PREFECT_TAG],
+    )
+
     file_analysis_job_variables = shared_job_variables | {
         "mem_limit": "4G",
         "memswap_limit": "4G",
@@ -498,6 +512,7 @@ async def adeploy_flows(local_debug: bool = False):
         poll_noaa_deployable,
         database_cleanup_deployable,
         file_analysis_deployable,
+        heliopuddle_sync_deployable,
     )
 
     if local_debug:

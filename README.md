@@ -215,6 +215,25 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --list-files
 ```
 
+### Sync the files database with heliopuddle
+
+Optionally, the `files` table can be mirrored into a [heliopuddle](https://github.com/alastairtree/heliopuddle) project. Turn it on in the `heliopuddle` section of `imap-mag-config.yaml` (or `MAG_HELIOPUDDLE_ENABLED=true`) and give credentials with `MAG_HELIOPUDDLE_USERNAME`/`MAG_HELIOPUDDLE_PASSWORD`, `MAG_HELIOPUDDLE_TOKEN` or `MAG_HELIOPUDDLE_CLIENT_ID`/`MAG_HELIOPUDDLE_CLIENT_SECRET`. With `shared_datastore: true` the heliopuddle storage location must point at the same data store, and files are registered in place; otherwise their content is uploaded.
+
+Once enabled, every insert, update and soft delete of a file record is repeated in heliopuddle as soon as the database commits it. If heliopuddle cannot be updated the operation fails (`fail_on_error`) but the database change is kept, and the next sync repairs it. Removing a file in heliopuddle also deletes it from its storage location, so with a shared data store a soft-deleted record's file is removed from disk (as the cleanup, archive and convert commands already do).
+
+Tests use heliopuddle's in-memory `FakeHelioPuddleClient` (`heliopuddle.testing`, also available as the `heliopuddle_fake` pytest fixture), so no heliopuddle server is needed.
+
+```bash
+# one-off migration of every file record (add --dry-run first to see what would change)
+imap-mag heliopuddle sync --full
+
+# re-sync files modified since the last sync (what the heliopuddle-sync flow runs, on IMAP_CRON_HELIOPUDDLE_SYNC)
+imap-mag heliopuddle sync
+
+# also remove files that are in heliopuddle but not in the database
+imap-mag heliopuddle sync --full --remove-untracked
+```
+
 ## Running the pipeline locally + mounting data like
 
 It is possible to mount the data store folder from a local folder such as on box.com and run the pipeline locally with access to real data. This is useful for testing and debugging.

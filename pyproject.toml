@@ -43,6 +43,8 @@ dependencies = [
     "prefect-github (>=0.4.3,<0.4.4)",
     "pyarrow (>=21.0.0,<27.0.0)",
     "certifi>=2026.10.23",
+    # Client only (no server dependencies); used when heliopuddle.enabled is set.
+    "heliopuddle @ git+https://github.com/alastairtree/heliopuddle.git@task/trusting-euler-ch4t6r",
 ]
 
 

@@ -389,3 +389,26 @@ database_delete_rows:
           table: "solar_wind_noaa"
           datetime_column: "id"
           older_than: "7d"
+
+# Mirror the files table into a heliopuddle project. When enabled, every insert,
+# update and soft delete of a file record is repeated in heliopuddle as soon as it
+# is committed. Run `imap-mag heliopuddle sync --full` once to migrate existing
+# files; the heliopuddle-sync flow then keeps both in sync.
+# Credentials come from the environment: MAG_HELIOPUDDLE_USERNAME and
+# MAG_HELIOPUDDLE_PASSWORD, MAG_HELIOPUDDLE_TOKEN, or MAG_HELIOPUDDLE_CLIENT_ID and
+# MAG_HELIOPUDDLE_CLIENT_SECRET.
+heliopuddle:
+    enabled: false
+    url: "http://localhost:8080/api/v1"
+    project: "imap-mag"
+    # storage location in the project; empty means the project's first
+    storage_location:
+    # true: the heliopuddle storage location is this data store, files are registered in place
+    # false: file content is uploaded to heliopuddle
+    shared_datastore: true
+    # fail the operation (after the IMAP database commit) if heliopuddle cannot be updated
+    fail_on_error: true
+    request_timeout: "5m"
+    busy_retries: 3
+    incremental_overlap: "1h"
+    work_sub_folder: "heliopuddle_sync"

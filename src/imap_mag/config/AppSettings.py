@@ -27,6 +27,7 @@ from imap_mag.config.FetchConfig import (
     FetchWebTCADLaTiSConfig,
 )
 from imap_mag.config.FileAnalysisConfig import FileAnalysisConfig
+from imap_mag.config.HeliopuddleConfig import HeliopuddleConfig
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PostgresUploadConfig import PostgresUploadConfig
 from imap_mag.config.PublishConfig import PublishConfig
@@ -82,6 +83,7 @@ class AppSettings(BaseSettings):
     datastore_cleanup: DatastoreCleanupConfig
     database_delete_rows: DeleteDatabaseRowsConfig
     file_analysis: FileAnalysisConfig = Field(default_factory=FileAnalysisConfig)
+    heliopuddle: HeliopuddleConfig = Field(default_factory=HeliopuddleConfig)
 
     # functions
     def setup_work_folder_for_command(

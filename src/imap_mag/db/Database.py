@@ -1,29 +1,52 @@
 import functools
+import itertools
 import logging
 import os
 import threading
 from datetime import UTC, datetime
 from typing import Any, ClassVar, TypeVar
 
-from sqlalchemy import create_engine, or_, select
+from sqlalchemy import create_engine, event, or_, select
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
+from imap_mag.db.HeliopuddleSync import (
+    FileSnapshot,
+    HeliopuddleSync,
+    HeliopuddleSyncError,
+)
 
 logger = logging.getLogger(__name__)
 
 TBase = TypeVar("TBase", bound=Base)
 
 
+_FILE_CHANGES_KEY = "heliopuddle_file_changes"
+
+
 class Database:
-    """Database manager."""
+    """Database manager.
+
+    When the heliopuddle integration is enabled, every committed change to a
+    ``File`` row is also applied to heliopuddle (see HeliopuddleSync).
+
+    Args:
+        db_url: database URL; defaults to the SQLALCHEMY_URL environment variable.
+        heliopuddle_sync: the sync to apply file changes with. None (the default)
+            builds it from AppSettings when the first file change is committed,
+            False disables it.
+    """
 
     _engine_cache: ClassVar[dict[str, Engine]] = {}
     _engine_lock: ClassVar[threading.Lock] = threading.Lock()
     __active_session: Session | None
 
-    def __init__(self, db_url=None):
+    def __init__(
+        self,
+        db_url=None,
+        heliopuddle_sync: HeliopuddleSync | bool | None = None,
+    ):
         env_url = self.get_environment_url()
         if db_url is None and env_url is not None:
             db_url = env_url
@@ -43,9 +66,48 @@ class Database:
         self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
 
+        self.__heliopuddle_sync: HeliopuddleSync | bool | None = heliopuddle_sync
+        self.__heliopuddle_lock = threading.Lock()
+        event.listen(self.session, "after_flush", _collect_file_changes)
+        event.listen(self.session, "after_commit", self.__apply_file_changes)
+        event.listen(self.session, "after_rollback", _discard_file_changes)
+
     @classmethod
     def get_environment_url(cls) -> str | None:
         return os.getenv("SQLALCHEMY_URL")
+
+    def get_heliopuddle_sync(self) -> HeliopuddleSync | None:
+        """The heliopuddle sync for this database, or None when the integration is disabled."""
+        with self.__heliopuddle_lock:
+            if self.__heliopuddle_sync is None:
+                from imap_mag.config.AppSettings import AppSettings
+
+                try:
+                    settings = AppSettings()  # type: ignore
+                except Exception as e:
+                    logger.warning(
+                        f"Could not load settings to check the heliopuddle integration, so it is off: {e}"
+                    )
+                    self.__heliopuddle_sync = False
+                else:
+                    self.__heliopuddle_sync = (
+                        HeliopuddleSync.from_settings(settings) or False
+                    )
+
+            sync = self.__heliopuddle_sync
+            return sync if isinstance(sync, HeliopuddleSync) else None
+
+    def __apply_file_changes(self, session: Session) -> None:
+        """Repeat the file changes just committed in heliopuddle."""
+        changes: dict[str, FileSnapshot] = session.info.pop(_FILE_CHANGES_KEY, {})
+        if not changes:
+            return
+
+        sync = self.get_heliopuddle_sync()
+        if sync is None:
+            return
+
+        sync.apply_changes(changes.values())
 
     @staticmethod
     def __session_manager(readonly=False, **session_kwargs):
@@ -64,6 +126,9 @@ class Database:
                         logger.debug("Database session committed.")
 
                     return value
+                except HeliopuddleSyncError:
+                    # The database change is committed; only heliopuddle is behind.
+                    raise
                 except Exception as e:
                     if not readonly:
                         session.rollback()
@@ -319,6 +384,22 @@ class Database:
         # Convert fnmatch wildcards to SQL LIKE wildcards
         result = result.replace("**", "%").replace("*", "%").replace("?", "_")
         return result
+
+
+def _collect_file_changes(session: Session, flush_context: Any) -> None:
+    """Snapshot every File row this flush inserts, changes or deletes."""
+    changes: dict[str, FileSnapshot] = session.info.setdefault(_FILE_CHANGES_KEY, {})
+    for obj in itertools.chain(session.new, session.dirty, session.deleted):
+        if not isinstance(obj, File):
+            continue
+        deleted = obj in session.deleted
+        if obj in session.new or deleted or session.is_modified(obj):
+            snapshot = FileSnapshot.from_file(obj, hard_deleted=deleted)
+            changes[snapshot.path] = snapshot
+
+
+def _discard_file_changes(session: Session) -> None:
+    session.info.pop(_FILE_CHANGES_KEY, None)
 
 
 def update_database_with_progress(
