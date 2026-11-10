@@ -1936,19 +1936,19 @@ files = []
 develop = false
 
 [package.dependencies]
-fsspec = ">=2026.9.0"
-httpx = ">=0.28.1"
-pydantic = ">=2.14.3"
-pydantic-settings = ">=2.16.2"
-pyyaml = ">=6.0.3"
+fsspec = ">=2023.1.0"
+httpx = ">=0.24.0"
+pydantic = ">=2.5.0"
+pydantic-settings = ">=2.1.0"
+pyyaml = ">=6.0.1"
 
 [package.extras]
 all = ["heliopuddle[azure,cli,gcs,s3,server,sftp,smb]"]
 azure = ["adlfs (>=2026.8.0)"]
-cli = ["typer (>=0.29.0)"]
+cli = ["typer (>=0.13.0)"]
 gcs = ["gcsfs (>=2026.10.1)"]
 s3 = ["s3fs (>=2026.9.0)"]
-server = ["alembic (>=1.20.1)", "cdflib (>=1.3.16)", "crump (>=0.8.0)", "fastapi (>=0.150.0)", "heliopuddle[cli]", "ijson (>=3.6.0)", "itsdangerous (>=2.2.0)", "jinja2 (>=3.1.6)", "markdown-it-py (>=4.2.0)", "prefect (>=3.9.2,<4)", "psycopg[binary] (>=3.3.8)", "pwdlib[argon2] (>=0.3.1)", "pyarrow (>=26.0.1)", "pyjwt[crypto] (>=2.15.1)", "pysqlite3 (>=0.6.2) ; sys_platform == \"linux\" and platform_machine == \"x86_64\" or sys_platform == \"darwin\" and platform_machine == \"arm64\" or sys_platform == \"win32\"", "python-multipart (>=0.0.33)", "sqlalchemy (>=2.1.8)", "uvicorn (>=0.54.0)"]
+server = ["alembic (>=1.20.1)", "cdflib (>=1.3.16)", "crump (>=0.8.0)", "fastapi (>=0.150.0)", "fsspec (>=2026.9.0)", "heliopuddle[cli]", "httpx (>=0.28.1)", "ijson (>=3.6.0)", "itsdangerous (>=2.2.0)", "jinja2 (>=3.1.6)", "markdown-it-py (>=4.2.0)", "prefect (>=3.9.2,<4)", "psycopg[binary] (>=3.3.8)", "pwdlib[argon2] (>=0.3.1)", "pyarrow (>=26.0.1)", "pydantic (>=2.14.3)", "pydantic-settings (>=2.16.2)", "pyjwt[crypto] (>=2.15.1)", "pysqlite3 (>=0.6.2) ; sys_platform == \"linux\" and platform_machine == \"x86_64\" or sys_platform == \"darwin\" and platform_machine == \"arm64\" or sys_platform == \"win32\"", "python-multipart (>=0.0.33)", "pyyaml (>=6.0.3)", "sqlalchemy (>=2.1.8)", "typer (>=0.29.0)", "uvicorn (>=0.54.0)"]
 sftp = ["paramiko (>=5.1.0)"]
 smb = ["smbprotocol (>=1.17.0)"]
 
@@ -1956,7 +1956,7 @@ smb = ["smbprotocol (>=1.17.0)"]
 type = "git"
 url = "https://github.com/alastairtree/heliopuddle.git"
 reference = "task/trusting-euler-ch4t6r"
-resolved_reference = "ee5a8b04f3d7b74b1c6812b87707373598c99293"
+resolved_reference = "d44f7e2584e92f0eb1f595a63f446cf7f8ccd09e"
 
 [[package]]
 name = "hpack"
