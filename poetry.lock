@@ -4330,14 +4330,14 @@ testing = ["process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-env"
-version = "1.8.4"
+version = "1.8.5"
 description = "Set environment variables for pytest sessions."
 optional = false
 python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "pytest_env-1.8.4-py3-none-any.whl", hash = "sha256:5b2d0685f3075ce7edce79d45a3cfa1117f01ec2098d209d1de15765fe3e8105"},
-    {file = "pytest_env-1.8.4.tar.gz", hash = "sha256:1054caabdbcc6d6ef1b06b010413f8bd482f7ea19487b27cd61e3385f5262bc1"},
+    {file = "pytest_env-1.8.5-py3-none-any.whl", hash = "sha256:0e3b3a4c84d3303904005e3b62eab51e197c36735f5862bed229c0ac6f1fd739"},
+    {file = "pytest_env-1.8.5.tar.gz", hash = "sha256:992c37efdc1bde2f0783975080ac4cdcea85f36df9d6fe3a835edd01a7e06584"},
 ]
 
 [package.dependencies]
@@ -6003,4 +6003,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "8a5df42f8cc185aa24dad469a4040243db1783a5ab530b380342421aebe7b982"
+content-hash = "b0f46dbe79384bb4b2a236236d790e6175b800539c504c6a720d822d8ccb8d5a"
