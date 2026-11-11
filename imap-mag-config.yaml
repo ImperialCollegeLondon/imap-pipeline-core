@@ -94,6 +94,9 @@ calibrate:
     output_folder_override: null
     scripted_l2_timeout_seconds_per_day_norm: 600    # 10 minutes per day of norm data
     scripted_l2_timeout_seconds_per_day_burst: 3600  # 60 minutes per day of burst data
+    # Defaults for the scripted-L2 calibration flow's pre-filled configuration.
+    scripted_l2_calibration_matrix_version: 9
+    scripted_l2_input_json_file: '+calibration/calibration/input_files/template.json'
     # Files copied into the sparse datastore (LOCAL_WORK_FOLDER_COPY mode). Paths are
     # relative to the datastore root; dates use strftime codes (%Y/%m/%d), and
     # {level}/{mode}/{matrix_version} are filled from the run. days_before/days_after
@@ -141,6 +144,18 @@ calibrate:
             - pattern: 'spice/activities/imap_{from_doy}_{to_doy}_hist_{sequence}.sff'
               highest_sequence_only: true
 
+    # Configuration for the generate-leinweber-offsets flow, which runs the MATLAB
+    # generate_raw_leinweber_offset tool and publishes the resulting daily
+    # solar-wind offset CSVs to calibration/calculated_offsets/leinweber. It shares
+    # scripted_l2_calibration_matrix_version/scripted_l2_input_json_file above
+    # rather than duplicating them. work_sub_folder supports {date}/{duration}
+    # placeholders so each run gets its own uniquely named work folder.
+    leinweber:
+        work_sub_folder: 'leinweber_{date}_{duration}hr'
+        duration_hours: 24
+        timeout_seconds_per_day: 600  # 10 minutes per day
+        backfill_lookback_days: 14  # backfill 2 weeks by default if no date is specified
+
 publish:
     api:
         <<: *sdc_creds
@@ -168,6 +183,7 @@ upload:
         - "*spice/*"
         - "*calibration/calculated_offsets/spin_plane/*"
         - "*calibration/calculated_offsets/spin_optimised/*"
+        - "*calibration/calculated_offsets/leinweber/*"
 
 postgres_upload:
     crump_config_path: imap-db-ingest-config.yaml
