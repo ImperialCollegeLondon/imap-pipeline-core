@@ -330,39 +330,38 @@ class CalibrationLayer(Layer):
 
         return filepath
 
-    def set_metadata(
-        self,
-        dependencies: list[str],
-        original_science: ScienceLayer,
-        calibration_id: str,
-        method: CalibrationMethod = CalibrationMethod.SUM,
-        version_major: int = 0,
-        version: int = 1,
-    ):
-        """Set the metadata for the offsets layer based on the original science layer."""
+    def prepare_for_offsets_write(
+        self, science: ScienceLayer, output_file: Path, version: int = 1
+    ) -> None:
+        """Make this layer (the sum of all applied layers) the offsets layer
+        for science, ready for ``write_to_file(output_file)``.
+
+        Offsets files have no major version, so version_major is 0, which makes
+        the CDF Data_version the minor version only.
+        """
         if self._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
         self.validity = Validity(
-            start=original_science.validity.start,
-            end=original_science.validity.end,
+            start=science.validity.start,
+            end=science.validity.end,
         )
 
         self.metadata = CalibrationMetadata(
-            dependencies=dependencies,
-            science=[original_science.science_file],
+            dependencies=[science.science_file],
+            science=[science.science_file],
             creation_timestamp=np.datetime64("now"),
-            content_date=original_science.metadata.content_date,
+            content_date=science.metadata.content_date,
         )
         self._ensure_metadata_has_software_dependency()
 
-        self.id = calibration_id
+        self.id = self.id_from_filename(output_file)
         self.version = version
-        self.version_major = version_major
-        self.method = method
+        self.version_major = 0
+        self.method = CalibrationMethod.SUM
         self.value_type = ValueType.VECTOR
-        self.sensor = original_science.sensor
-        self.mission = original_science.mission
+        self.sensor = science.sensor
+        self.mission = science.mission
 
     def _load_data_file(self, path: Path) -> "CalibrationLayer":
         logger.debug(f"Loading calibration layer data from {path!s}.")
@@ -563,6 +562,44 @@ class CalibrationLayer(Layer):
         ``get_file_id``), so both produce the same ids.
         """
         return Path(filename).stem
+
+    @classmethod
+    def create_for_method(
+        cls,
+        method: CalibrationMethod,
+        value_type: ValueType,
+        cal_handler: CalibrationLayerPathHandler,
+        data_handler: CalibrationLayerPathHandler,
+        sensor: Sensor,
+        validity: Validity,
+        contents: pd.DataFrame | None = None,
+    ) -> "CalibrationLayer":
+        """Create a new layer to be written to ``cal_handler.get_filename()``,
+        with its values in the companion file named by ``data_handler``.
+
+        The id, version and content date all come from cal_handler.
+        """
+        layer = cls(
+            id=cls.id_from_filename(cal_handler.get_filename()),
+            mission=Mission.IMAP,
+            validity=validity,
+            sensor=sensor,
+            version=cal_handler.version,
+            version_major=cal_handler.version_major,
+            metadata=CalibrationMetadata(
+                dependencies=[],
+                science=[],
+                creation_timestamp=np.datetime64("now"),
+                data_filename=Path(data_handler.get_filename()),
+                content_date=np.datetime64(cal_handler.content_date)
+                if cal_handler.content_date is not None
+                else None,
+            ),
+            value_type=value_type,
+            method=method,
+        )
+        layer._contents = contents
+        return layer
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":
@@ -805,6 +842,7 @@ class CalibrationLayer(Layer):
             if science_layer.metadata.content_date is not None
             else None
         )
+        layer_id = ""
         datefilename = None
         if content_date:
             calibration_handler = CalibrationLayerPathHandler.from_method(
@@ -818,6 +856,7 @@ class CalibrationLayer(Layer):
                 else LayerDataFormat.PARQUET
             )
             datefilename = Path(datefilehandler.get_filename())
+            layer_id = cls.id_from_filename(calibration_handler.get_filename())
 
         metadata = CalibrationMetadata(
             dependencies=[],
@@ -828,7 +867,7 @@ class CalibrationLayer(Layer):
         )
 
         zero_offset_layer = cls(
-            id="",
+            id=layer_id,
             mission=science_layer.mission,
             validity=validity,
             sensor=science_layer.sensor,

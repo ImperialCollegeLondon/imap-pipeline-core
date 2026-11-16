@@ -365,7 +365,6 @@ class TestSetupZeroCalibrationLayer:
 
         mock_zero_layer.write_to_file.assert_called_once()
         assert result == work_folder / "noop_layer.json"
-        assert mock_zero_layer.id == "noop_layer"
 
     def test_overwrites_existing_layer_file(self, tmp_path):
         work_folder = tmp_path / "work"

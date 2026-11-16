@@ -546,8 +546,8 @@ class TestCalibrationLayerConvertToRawEpoch:
             layer._convert_to_raw_epoch()
 
 
-class TestCalibrationLayerSetMetadata:
-    def test_set_metadata_updates_validity_from_science_layer(self):
+class TestCalibrationLayerPrepareForOffsetsWrite:
+    def test_sets_offsets_metadata_from_science_layer(self):
 
         layer = _make_layer_with_contents()
         science = ScienceLayer(
@@ -568,18 +568,22 @@ class TestCalibrationLayerSetMetadata:
             value_type=ValueType.VECTOR,
         )
 
-        layer.set_metadata(
-            dependencies=["dep.csv"],
-            original_science=science,
-            calibration_id="cal-001",
+        layer.prepare_for_offsets_write(
+            science, Path("imap_mag_l2-norm-offsets_20250601_v001.cdf"), version=2
         )
 
-        assert layer.id == "cal-001"
+        assert layer.id == "imap_mag_l2-norm-offsets_20250601_v001"
+        assert layer.version == 2
+        assert layer.version_major == 0
+        assert layer.method == CalibrationMethod.SUM
+        assert layer.value_type == ValueType.VECTOR
+        assert "sci.csv" in layer.metadata.dependencies
+        assert layer.metadata.science == ["sci.csv"]
         assert layer.validity.start == np.datetime64("2025-06-01")
         assert layer.sensor == Sensor.MAGO
         assert layer.mission == Mission.IMAP
 
-    def test_set_metadata_raises_when_contents_none(self):
+    def test_raises_when_contents_none(self):
 
         layer = _make_layer_with_contents()
         layer._contents = None
@@ -602,11 +606,7 @@ class TestCalibrationLayerSetMetadata:
         )
 
         with pytest.raises(ValueError, match="contents not loaded"):
-            layer.set_metadata(
-                dependencies=[],
-                original_science=science,
-                calibration_id="cal-001",
-            )
+            layer.prepare_for_offsets_write(science, Path("offsets.cdf"))
 
 
 class TestCalibrationLayerCreateZeroOffsetLayer:
@@ -745,6 +745,12 @@ class TestCreateZeroOffsetLayerWithContentDate:
 
         assert result is not None
         assert result.metadata.data_filename is not None
+        # The id is the layer JSON filename without extension, matching the
+        # companion data filename apart from the "-data" descriptor.
+        assert result.id == result.metadata.data_filename.stem.replace(
+            "-layer-data_", "-layer_"
+        )
+        assert result.id.startswith("imap_mag_noop-layer_20250315_v")
 
     def test_raises_when_science_contents_none_after_load(self):
 
@@ -814,6 +820,45 @@ class TestIdFromFilename:
             CalibrationLayer.id_from_filename(filename)
             == "imap_mag_manual-norm-layer_20260130_v001.0007"
         )
+
+
+class TestCreateForMethod:
+    def test_builds_layer_from_handlers(self):
+        cal_handler = CalibrationLayerPathHandler(
+            descriptor="quality-norm",
+            content_date=datetime(2026, 1, 16),
+            version=7,
+            version_major=1,
+        )
+        data_handler = cal_handler.create_new_datafile_handler(LayerDataFormat.CSV)
+        validity = Validity(
+            start=np.datetime64("2026-01-16T00:00:00"),
+            end=np.datetime64("2026-01-17T00:00:00"),
+        )
+        contents = pd.DataFrame({CONSTANTS.CSV_VARS.EPOCH: [validity.start]})
+
+        layer = CalibrationLayer.create_for_method(
+            CalibrationMethod.SET_QUALITY_AND_NAN,
+            ValueType.BOUNDARY_CHANGES_ONLY,
+            cal_handler,
+            data_handler,
+            Sensor.MAGI,
+            validity,
+            contents=contents,
+        )
+
+        assert layer.id == "imap_mag_quality-norm-layer_20260116_v001.0007"
+        assert layer.version == 7
+        assert layer.version_major == 1
+        assert layer.method == CalibrationMethod.SET_QUALITY_AND_NAN
+        assert layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY
+        assert layer.sensor == Sensor.MAGI
+        assert layer.validity == validity
+        assert layer.metadata.data_filename == Path(
+            "imap_mag_quality-norm-layer-data_20260116_v001.0007.csv"
+        )
+        assert layer.metadata.content_date == np.datetime64("2026-01-16")
+        assert layer._contents is contents
 
 
 class TestPrepareMetadataForOutputFormat:

@@ -524,7 +524,6 @@ def _setup_zero_calibration_layer(
         science_layer, app_settings
     )
     del science_layer
-    zero_offset_layer.id = CalibrationLayer.id_from_filename(new_layer_file)
 
     zero_offset_layer.write_to_file(
         new_layer_file, False
