@@ -247,6 +247,7 @@ class TestCreateOffsetsFileValidation:
 
         assert result == expected_path
         mock_offsets.set_metadata.assert_called_once()
+        assert mock_offsets.set_metadata.call_args.kwargs["calibration_id"] == "offsets"
         mock_offsets.write_to_file.assert_called_once_with(expected_path)
 
     def test_raises_calibration_validity_error_when_offsets_not_compatible(

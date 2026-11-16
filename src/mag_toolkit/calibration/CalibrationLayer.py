@@ -492,9 +492,13 @@ class CalibrationLayer(Layer):
         used to build the equivalent companion data file handler, clearing
         any stale hash so it is recomputed for the new content.
 
+        Also sets the layer id to match the output filename.
+
         Returns the companion data file's filename, or ``None`` for
         self-contained formats.
         """
+        self.id = self.id_from_filename(output_handler.get_filename())
+
         if self.is_self_contained_format(output_handler.extension):
             self.metadata.data_filename = None
             self.metadata.data_hash = None
@@ -512,8 +516,8 @@ class CalibrationLayer(Layer):
     def update_file_contents_based_on_version(
         self, handler: CalibrationLayerPathHandler, source_file: Path
     ) -> Path:
-        """Rewrite this layer's data_filename to match handler's current version,
-        if the datastore assigned a different version than source_file was
+        """Rewrite this layer's data_filename and id to match handler's current
+        version, if the datastore assigned a different version than source_file was
         originally generated at (e.g. v001 -> v002 because v001 already exists
         with different content).
 
@@ -540,6 +544,7 @@ class CalibrationLayer(Layer):
         self.metadata.data_filename = Path(expected_data_filename)
         self.version = handler.version
         self.version_major = handler.version_major
+        self.id = self.id_from_filename(handler.get_filename())
         new_version_path = source_file.parent / handler.get_filename()
         self.write_to_file(new_version_path)
 
@@ -548,6 +553,16 @@ class CalibrationLayer(Layer):
             f"{expected_data_filename!r} in {new_version_path.name}."
         )
         return new_version_path
+
+    @staticmethod
+    def id_from_filename(filename: str | Path) -> str:
+        """Layer id for a layer saved as filename: the file name without its
+        extension, e.g. ``imap_mag_manual-norm-layer_20260130_v001.0007``.
+
+        Matches how the MATLAB calibration code sets ``Layer.id`` (via
+        ``get_file_id``), so both produce the same ids.
+        """
+        return Path(filename).stem
 
     @classmethod
     def from_file(cls, path: Path, load_contents=True) -> "CalibrationLayer":

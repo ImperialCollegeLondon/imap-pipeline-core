@@ -15,6 +15,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
     CalibrationMethod,
+    LayerDataFormat,
     Mission,
     Sensor,
     Validity,
@@ -798,6 +799,47 @@ class TestValuesFromCsvEmpty:
         assert output_file.exists()
 
 
+class TestIdFromFilename:
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "imap_mag_manual-norm-layer_20260130_v001.0007.json",
+            Path("/some/folder/imap_mag_manual-norm-layer_20260130_v001.0007.json"),
+            "imap_mag_manual-norm-layer_20260130_v001.0007.cdf",
+        ],
+    )
+    def test_id_is_filename_without_extension(self, filename):
+        """Same as MATLAB's get_file_id, including the dotted minor version."""
+        assert (
+            CalibrationLayer.id_from_filename(filename)
+            == "imap_mag_manual-norm-layer_20260130_v001.0007"
+        )
+
+
+class TestPrepareMetadataForOutputFormat:
+    @pytest.mark.parametrize(
+        ("extension", "data_format"),
+        [("json", LayerDataFormat.CSV), ("cdf", None)],
+    )
+    def test_sets_id_from_output_filename(self, tmp_path, extension, data_format):
+        json_path, _ = write_calibration_layer_pair(
+            tmp_path, "manual-norm", datetime(2026, 5, 1), version=1
+        )
+        layer = CalibrationLayer.from_file(json_path, load_contents=False)
+        layer.id = "old-id"
+        output_handler = CalibrationLayerPathHandler(
+            descriptor="manual-norm",
+            content_date=datetime(2026, 5, 1),
+            version=2,
+            version_major=1,
+            extension=extension,
+        )
+
+        layer.prepare_metadata_for_output_format(output_handler, data_format)
+
+        assert layer.id == "imap_mag_manual-norm-layer_20260501_v001.0002"
+
+
 class TestUpdateFileContentsBasedOnVersion:
     def test_rewrites_version_fields_to_match_handler(self, tmp_path):
         """When the datastore assigns a different version than the layer was
@@ -824,6 +866,40 @@ class TestUpdateFileContentsBasedOnVersion:
         rewritten = CalibrationLayer.from_file(result_path, load_contents=False)
         assert rewritten.version == 3
         assert rewritten.version_major == 1
+
+    @pytest.mark.parametrize(
+        "original_id",
+        [
+            "imap_mag_manual-norm-layer_20260501_v001.0001",
+            "imap_mag_manual-norm-layer_20260501v001.0001",
+            "",
+        ],
+    )
+    def test_rewrites_layer_id_to_new_filename(self, tmp_path, original_id):
+        """The layer id is the filename without extension, which embeds the
+        version, so it must follow the file when it is given a new version."""
+        json_path, _ = write_calibration_layer_pair(
+            tmp_path, "manual-norm", datetime(2026, 5, 1), version=1
+        )
+        layer = CalibrationLayer.from_file(json_path, load_contents=False)
+        layer.id = original_id
+        layer.write_to_file(json_path)
+        layer = CalibrationLayer.from_file(json_path, load_contents=False)
+
+        new_version_handler = CalibrationLayerPathHandler(
+            descriptor="manual-norm",
+            content_date=datetime(2026, 5, 1),
+            version=3,
+            version_major=1,
+        )
+
+        result_path = layer.update_file_contents_based_on_version(
+            new_version_handler, json_path
+        )
+
+        rewritten = CalibrationLayer.from_file(result_path, load_contents=False)
+        assert rewritten.id == "imap_mag_manual-norm-layer_20260501_v001.0003"
+        assert rewritten.id == result_path.stem
 
     def test_returns_source_unchanged_when_version_already_matches(self, tmp_path):
         json_path, _ = write_calibration_layer_pair(

@@ -223,7 +223,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         datafile = self.work_folder / data_handler.get_filename()
 
         layer = CalibrationLayer(
-            id="",
+            id=CalibrationLayer.id_from_filename(calfile),
             mission=Mission.IMAP,
             validity=validity,
             sensor=self.calibration_job_parameters.sensor,

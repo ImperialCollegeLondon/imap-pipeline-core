@@ -76,7 +76,7 @@ class CalibrationApplicator:
         offsets.set_metadata(
             dependencies=[science.science_file],
             original_science=science,
-            calibration_id=outputCalibrationFile.name,
+            calibration_id=CalibrationLayer.id_from_filename(outputCalibrationFile),
             method=CalibrationMethod.SUM,
             version_major=0,  # offsets files do NOT have major versions - setting this to 0 makes it write CDF Data_version as minor only
             version=1,
