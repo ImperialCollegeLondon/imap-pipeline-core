@@ -1493,6 +1493,107 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_
     assert captured_files[0].version == 3
 
 
+def _l1d_burst_rtn_db_record(
+    version: int, file_hash: str, deletion_date: datetime | None = None
+) -> File:
+    name = f"imap_mag_l1d_burst-rtn_20261109_v002.{version:04d}.cdf"
+    return File(
+        name=name,
+        path=f"science/mag/l1d/2026/11/{name}",
+        descriptor="imap_mag_l1d_burst-rtn",
+        version=version,
+        version_major=2,
+        hash=file_hash,
+        size=100,
+        content_date=datetime(2026, 11, 9),
+        software_version=__version__,
+        deletion_date=deletion_date,
+    )
+
+
+def test_DBIndexedDatastoreFileManager_locked_science_file_arriving_out_of_sequence_is_added(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """A locked SDC science file whose version has never been seen is added at its own
+    version, even when a higher version is already in the database.
+
+    Reproduces prod: v002.0001 (soft-deleted) and v002.0003 are in the database, then the
+    SDC publishes v002.0002 as latest. It is not an overwrite and must not be re-versioned.
+    """
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    file_name = "imap_mag_l1d_burst-rtn_20261109_v002.0002.cdf"
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / file_name, "sdc l1d v0002 content"
+    )
+    path_handler = SciencePathHandler.from_filename(file_name, version_is_locked=True)
+    assert path_handler is not None
+
+    mock_database.get_files.return_value = [
+        _l1d_burst_rtn_db_record(1, "hash_v0001", deletion_date=datetime(2026, 11, 13)),
+        _l1d_burst_rtn_db_record(3, "hash_v0003"),
+    ]
+
+    test_file = Path(tempfile.gettempdir()) / "stored_l1d_v0002.cdf"
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
+        create_test_file(test_file, "sdc l1d v0002 content"),
+        path_handler,
+        False,
+    )
+
+    captured_files: list[File] = []
+    mock_database.upsert_file.side_effect = lambda f: captured_files.append(f)
+
+    # Exercise.
+    database_manager.store_file(original_file, path_handler)
+
+    # Verify: stored and indexed at its own version, v002.0002.
+    assert path_handler.version == 2
+    assert path_handler.get_filename() == file_name
+    mock_datastore_manager.store_file.assert_called_once()
+    assert len(captured_files) == 1
+    assert captured_files[0].version == 2
+    assert captured_files[0].version_major == 2
+
+
+def test_DBIndexedDatastoreFileManager_locked_science_file_with_same_version_different_content_errors(
+    mock_datastore_manager: mock.Mock,
+    mock_database: mock.Mock,
+) -> None:
+    """A locked SDC science file must never overwrite an existing version that has
+    different content."""
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+
+    file_name = "imap_mag_l1d_burst-rtn_20261109_v002.0002.cdf"
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / file_name, "sdc l1d v0002 content"
+    )
+    path_handler = SciencePathHandler.from_filename(file_name, version_is_locked=True)
+    assert path_handler is not None
+
+    mock_database.get_files.return_value = [
+        _l1d_burst_rtn_db_record(2, "different_hash_v0002"),
+        _l1d_burst_rtn_db_record(3, "hash_v0003"),
+    ]
+
+    # Exercise and verify.
+    with pytest.raises(
+        ValueError,
+        match=r"Cannot proceed with adding file imap_mag_l1d_burst-rtn_20261109_v002\.0002\.cdf",
+    ):
+        database_manager.store_file(original_file, path_handler)
+
+    mock_datastore_manager.store_file.assert_not_called()
+    mock_database.upsert_file.assert_not_called()
+
+
 class TestDBIndexedDatastoreFileManagerUnit:
     """Unit tests for DBIndexedDatastoreFileManager without Docker."""
 
