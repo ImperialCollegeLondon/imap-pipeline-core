@@ -22,7 +22,6 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
 
 from .CalibrationDefinitions import (
-    CalibrationMethod,
     ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
@@ -73,14 +72,7 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
-        offsets.set_metadata(
-            dependencies=[science.science_file],
-            original_science=science,
-            calibration_id=outputCalibrationFile.name,
-            method=CalibrationMethod.SUM,
-            version_major=0,  # offsets files do NOT have major versions - setting this to 0 makes it write CDF Data_version as minor only
-            version=1,
-        )
+        offsets.prepare_for_offsets_write(science, outputCalibrationFile, version=1)
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
