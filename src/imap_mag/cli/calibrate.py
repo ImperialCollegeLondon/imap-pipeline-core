@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
 app.command(name="convert")(convert.convert)
-app.command(name="generate-leinweber-offsets")(
+app.command(name="leinweber")(
     generateLeinweberOffsets.generate_leinweber_offsets
 )
 
