@@ -167,18 +167,30 @@ def _configuration_for_deployment(
     if not isinstance(configuration, PrefectScriptedL2CalibrationConfig):
         return configuration
 
-    matlab_repo = configuration.matlab_repo
+    config_dict = configuration.model_dump()
+    config_dict["matlab_repo"] = _swap_matlab_repo_for_block_ref(
+        configuration.matlab_repo
+    )
+    return config_dict
+
+def _swap_matlab_repo_for_block_ref(
+    matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
+) -> dict:
+    """Return a block reference for the given ``matlab_repo``.
+
+    Args:
+        matlab_repo: The original ``matlab_repo`` value passed.
+
+    Returns:
+        ``matlab_repo`` either as original string or as a block reference.
+    """
     if isinstance(matlab_repo, (GitHubRepository, LocalFileSystem)):
         block_doc_id = getattr(matlab_repo, "_block_document_id", None)
         if block_doc_id:
-            config_dict = configuration.model_dump()
-            config_dict["matlab_repo"] = {
+            matlab_repo = {
                 "$ref": {"block_document_id": str(block_doc_id)}
             }
-            return config_dict
-
-    return configuration
-
+    return matlab_repo
 
 def _resolve_matlab_repo_path(
     matlab_repo: "LocalFileSystem | GitHubRepository | str | None",

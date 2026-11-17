@@ -31,6 +31,7 @@ from prefect_server.calibrationFlowCommon import (
     _days_in_range,
     _resolve_matlab_repo_path,
     _submit_days_as_deployment_runs,
+    _swap_matlab_repo_for_block_ref,
     logger,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -302,7 +303,7 @@ def generate_leinweber_offsets_flow(
             base_parameters={
                 "duration_hours": duration_hours,
                 "sensors": sensors,
-                "matlab_repo": matlab_repo,
+                "matlab_repo": _swap_matlab_repo_for_block_ref(matlab_repo),
                 "configure_midpoint": configure_midpoint,
                 "calibration_matrix_version": calibration_matrix_version,
                 "calibration_input_json_file": calibration_input_json_file,
