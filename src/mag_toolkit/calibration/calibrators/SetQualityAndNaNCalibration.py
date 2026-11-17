@@ -14,10 +14,8 @@ from mag_toolkit.calibration.CalibrationConfig import (
 )
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
-    CalibrationMetadata,
     CalibrationMethod,
     LayerDataFormat,
-    Mission,
     ValueType,
 )
 from mag_toolkit.calibration.CalibrationJobParameters import CalibrationJobParameters
@@ -154,7 +152,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
             CONSTANTS.CSV_VARS.OFFSET_X: "float64",
             CONSTANTS.CSV_VARS.OFFSET_Y: "float64",
             CONSTANTS.CSV_VARS.OFFSET_Z: "float64",
-            CONSTANTS.CSV_VARS.TIMEDELTA: "float64",
+            CONSTANTS.CSV_VARS.TIMEDELTA: "float32",
             CONSTANTS.CSV_VARS.QUALITY_FLAG: pd.Int64Dtype(),
             CONSTANTS.CSV_VARS.QUALITY_BITMASK: pd.Int64Dtype(),
         }
@@ -176,7 +174,7 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.where(
                     filtered["nan_z"], float("nan"), 0.0
                 ),
-                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered)),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(filtered), dtype=np.float32),
                 # Blank/NA in the config means "no effect" — write 0 to the layer file
                 CONSTANTS.CSV_VARS.QUALITY_FLAG: filtered["quality_flag"]
                 .fillna(0)
@@ -194,7 +192,9 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
                 CONSTANTS.CSV_VARS.OFFSET_X: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Y: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.OFFSET_Z: np.zeros(len(end_filtered)),
-                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(len(end_filtered)),
+                CONSTANTS.CSV_VARS.TIMEDELTA: np.zeros(
+                    len(end_filtered), dtype=np.float32
+                ),
                 CONSTANTS.CSV_VARS.QUALITY_FLAG: np.zeros(len(end_filtered)),
                 CONSTANTS.CSV_VARS.QUALITY_BITMASK: np.zeros(len(end_filtered)),
             }
@@ -220,23 +220,15 @@ class SetQualityAndNaNCalibrationJob(CalibrationJob):
         data_handler = cal_handler.create_new_datafile_handler(layer_data_format)
         datafile = self.work_folder / data_handler.get_filename()
 
-        layer = CalibrationLayer(
-            id="",
-            mission=Mission.IMAP,
-            validity=validity,
-            sensor=self.calibration_job_parameters.sensor,
-            version=cal_handler.version,
-            metadata=CalibrationMetadata(
-                dependencies=[],
-                science=[],
-                creation_timestamp=np.datetime64("now"),
-                data_filename=Path(data_handler.get_filename()),
-                content_date=np.datetime64(date),
-            ),
-            value_type=ValueType.BOUNDARY_CHANGES_ONLY,
-            method=CalibrationMethod.SET_QUALITY_AND_NAN,
+        layer = CalibrationLayer.create_for_method(
+            CalibrationMethod.SET_QUALITY_AND_NAN,
+            ValueType.BOUNDARY_CHANGES_ONLY,
+            cal_handler,
+            data_handler,
+            self.calibration_job_parameters.sensor,
+            validity,
+            contents=df,
         )
-        layer._contents = df
 
         layer.write_to_file(calfile)
 

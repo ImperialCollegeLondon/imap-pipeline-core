@@ -1,5 +1,6 @@
 """Unit tests for apply CLI command helper functions."""
 
+import json
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -19,7 +20,7 @@ from imap_mag.cli.apply import (
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import FileFinder
 from imap_mag.io.file import CalibrationLayerPathHandler
-from imap_mag.util import ReferenceFrame
+from imap_mag.util import ReferenceFrame, ScienceMode
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
     CalibrationMetadata,
@@ -512,3 +513,60 @@ class TestCleanupWorkfolderParquetCompanion:
 
         assert not parquet_companion.exists()
         assert not json_path.exists()
+
+
+class TestOffsetsFileDataVersion:
+    """The data_version attribute inside an offsets CDF must match its file version."""
+
+    DATE = datetime(2026, 9, 30)
+
+    def _apply_and_read_data_version(self, datastore: Path) -> str:
+        from cdflib.xarray import cdf_to_xarray
+
+        _apply_for_date(
+            layers=["*"],
+            date=self.DATE,
+            mode=ScienceMode.Normal,
+            input=None,
+            offset_file_output_type="cdf",
+            l2_output_type="cdf",
+            rotation=None,
+            save_mode=SaveMode.LocalOnly,
+            spice_metakernel=None,
+            reference_frames=[],
+        )
+        offsets_files = sorted(
+            datastore.glob("**/imap_mag_l2-norm-offsets_20260930_20260930_v*.cdf")
+        )
+        assert offsets_files, "no offsets file was written to the datastore"
+        dataset = cdf_to_xarray(str(offsets_files[-1]), to_datetime=True)
+        data_version = dataset.attrs["Data_version"]
+        return data_version[0] if isinstance(data_version, list) else data_version
+
+    def _write_boundary_layer(self, layers_dir: Path, version: int, seed: int):
+        json_path, _ = write_calibration_layer_pair(
+            layers_dir, "manual-norm", self.DATE, version, seed=seed
+        )
+        # a boundary-changes layer is expanded onto the science epochs, so it is
+        # compatible with whatever science file is in the datastore
+        layer_json = json.loads(json_path.read_text())
+        layer_json["value_type"] = ValueType.BOUNDARY_CHANGES_ONLY.value
+        json_path.write_text(json.dumps(layer_json))
+
+    def test_data_version_increments_for_each_offsets_file_in_a_day(
+        self, temp_datastore, dynamic_work_folder
+    ):
+        layers_dir = temp_datastore / "calibration/layers/2026/09"
+        layers_dir.mkdir(parents=True, exist_ok=True)
+
+        self._write_boundary_layer(layers_dir, version=1, seed=0)
+        first = self._apply_and_read_data_version(temp_datastore)
+
+        # identical offsets would be deduplicated by the datastore, so the second
+        # offsets file comes from a newer layer with different values
+        self._write_boundary_layer(layers_dir, version=2, seed=1)
+        second = self._apply_and_read_data_version(temp_datastore)
+
+        # offsets files have no major version, so the string is just NNN
+        assert first == "001"
+        assert second == "002"

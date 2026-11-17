@@ -64,6 +64,7 @@ def calibrate_convert_flow(
         ),
     ] = None,
     mode: ScienceMode | None = None,
+    highest_version_matches_only: bool = False,
     output_layer_data_format: FileType = FileType.PARQUET,
     output_layer_versioning_strategy: ConversionStrategy = ConversionStrategy.OVERWRITE,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
@@ -77,5 +78,6 @@ def calibrate_convert_flow(
         mode=mode,
         output_layer_data_format=output_layer_data_format,
         output_layer_versioning_strategy=output_layer_versioning_strategy,
+        highest_version_matches_only=highest_version_matches_only,
         save_mode=save_mode,
     )

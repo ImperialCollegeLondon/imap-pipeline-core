@@ -22,7 +22,6 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 from mag_toolkit.calibration.CalibrationExceptions import CalibrationValidityError
 
 from .CalibrationDefinitions import (
-    CalibrationMethod,
     ValueType,
 )
 from .CalibrationLayer import CalibrationLayer
@@ -73,13 +72,7 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
-        offsets.set_metadata(
-            [science.science_file],
-            science,
-            outputCalibrationFile.name,
-            method=CalibrationMethod.SUM,
-            version_major=self.app_settings.version_major,
-        )
+        offsets.prepare_for_offsets_write(science, outputCalibrationFile, version=1)
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
@@ -326,7 +319,7 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_X: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Y: 0.0,
                     CONSTANTS.CSV_VARS.OFFSET_Z: 0.0,
-                    CONSTANTS.CSV_VARS.TIMEDELTA: 0.0,
+                    CONSTANTS.CSV_VARS.TIMEDELTA: np.float32(0.0),
                     CONSTANTS.CSV_VARS.QUALITY_FLAG: 0,
                     CONSTANTS.CSV_VARS.QUALITY_BITMASK: 0,
                 },
@@ -347,7 +340,7 @@ class CalibrationApplicator:
                     CONSTANTS.CSV_VARS.OFFSET_X: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Y: [0.0],
                     CONSTANTS.CSV_VARS.OFFSET_Z: [0.0],
-                    CONSTANTS.CSV_VARS.TIMEDELTA: [0.0],
+                    CONSTANTS.CSV_VARS.TIMEDELTA: np.array([0.0], dtype=np.float32),
                     CONSTANTS.CSV_VARS.QUALITY_FLAG: [0],
                     CONSTANTS.CSV_VARS.QUALITY_BITMASK: [0],
                 },

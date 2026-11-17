@@ -71,6 +71,7 @@ def test_calibration_job_creates_quality_flag_layer_file_json_and_csv_with_corre
     layer = CalibrationLayer.from_file(calfile, load_contents=True)
     assert layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY
     assert layer.method == CalibrationMethod.SET_QUALITY_AND_NAN
+    assert layer.id == calfile.stem
 
     df = pd.read_csv(datafile, parse_dates=[CONSTANTS.CSV_VARS.EPOCH])
     assert len(df) == 2
@@ -948,3 +949,4 @@ def test_calibrate_with_different_config_creates_v002_layer_and_data_files(
     assert layer.metadata.data_filename.name == v002_csv.name, (
         "v001.0002 JSON must reference v001.0002 CSV"
     )
+    assert layer.id == v002_json.stem, "Layer id must follow the reassigned version"

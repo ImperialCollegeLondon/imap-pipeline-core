@@ -279,6 +279,49 @@ class TestConvertPatternAndDateSearch:
             )
 
 
+class TestConvertMultipleLayersVersionsAndDays:
+    def _populate(self):
+        data_store = AppSettings().data_store
+        for desc in ["quality-norm", "noop-norm"]:
+            for day in [16, 17]:
+                for version in [1, 2]:
+                    _make_layer(
+                        data_store,
+                        desc,
+                        datetime(2026, 1, day),
+                        version,
+                        FileType.CSV,
+                        seed=version,
+                    )
+
+    def test_converts_every_version_of_every_layer_on_every_day(self):
+        self._populate()
+
+        converted = convert(
+            input_layers=["*quality-norm*", "*noop-norm*"],
+            output_layer_data_format=FileType.PARQUET,
+            output_layer_versioning_strategy=ConversionStrategy.CREATE_NEW_VERSION,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        json_files = [p for p in converted if p.suffix == ".json"]
+        assert len(json_files) == 8
+
+    def test_highest_version_only_converts_one_per_layer_and_day(self):
+        self._populate()
+
+        converted = convert(
+            input_layers=["*"],
+            output_layer_data_format=FileType.PARQUET,
+            output_layer_versioning_strategy=ConversionStrategy.CREATE_NEW_VERSION,
+            highest_version_matches_only=True,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        json_files = [p for p in converted if p.suffix == ".json"]
+        assert len(json_files) == 4
+
+
 class TestConvertPublishToDataStoreFalse:
     def test_publish_false_leaves_only_work_folder_copy(self, monkeypatch):
         date = datetime(2026, 1, 16)
@@ -306,3 +349,89 @@ class TestConvertPublishToDataStoreFalse:
             "imap_mag_quality-norm-layer-data_20260116_v001.0001.parquet"
         )
         assert not published_companion.exists()
+
+
+class TestConvertCleansUpWorkFolder:
+    def test_work_folder_only_holds_log_after_publishing(self):
+        data_store = AppSettings().data_store
+        for day in [16, 17]:
+            _make_layer(
+                data_store,
+                "quality-norm",
+                datetime(2026, 1, day),
+                1,
+                FileType.CSV,
+            )
+
+        converted = convert(
+            input_layers=["*quality-norm*"],
+            output_layer_data_format=FileType.PARQUET,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        assert converted
+        work_folder = AppSettings().work_folder / "convert"
+        leftover = [
+            p
+            for p in work_folder.rglob("*")
+            if p.is_file() and p.suffix in (".json", ".csv", ".parquet")
+        ]
+        assert leftover == []
+
+
+class TestConvertWorkFolderWithoutPublishing:
+    def test_publish_false_keeps_only_converted_outputs_in_work_folder(
+        self, monkeypatch
+    ):
+        data_store = AppSettings().data_store
+        for day in [16, 17]:
+            _make_layer(
+                data_store, "quality-norm", datetime(2026, 1, day), 1, FileType.CSV
+            )
+
+        settings = AppSettings(
+            convert=ConvertCommandConfig(publish_to_data_store=False)
+        )
+        monkeypatch.setattr("imap_mag.cli.convert.AppSettings", lambda: settings)
+
+        converted = convert(
+            input_layers=["*quality-norm*"],
+            output_layer_data_format=FileType.PARQUET,
+            save_mode=SaveMode.LocalOnly,
+        )
+
+        # json + parquet companion for each of the two layers
+        assert len(converted) == 4
+        work_files = {
+            p for p in (settings.work_folder / "convert").rglob("*") if p.is_file()
+        }
+        for path in converted:
+            assert path.exists()
+        # Fetched source copies (csv) are removed; only converted outputs and the log remain.
+        assert not [p for p in work_files if p.suffix == ".csv"]
+        assert {p for p in work_files if p.suffix in (".json", ".parquet")} == set(
+            converted
+        )
+
+
+class TestConvertFailureKeepsWorkFolder:
+    def test_work_files_kept_when_conversion_fails(self, monkeypatch):
+        data_store = AppSettings().data_store
+        _make_layer(data_store, "quality-norm", datetime(2026, 1, 16), 1, FileType.CSV)
+
+        def _fail(*args, **kwargs):
+            raise ValueError("boom")
+
+        monkeypatch.setattr("imap_mag.cli.convert._verify_matching_contents", _fail)
+
+        with pytest.raises(ValueError, match="boom"):
+            convert(
+                input_layers=["*quality-norm*"],
+                output_layer_data_format=FileType.PARQUET,
+                save_mode=SaveMode.LocalOnly,
+            )
+
+        work_files = [
+            p for p in (AppSettings().work_folder / "convert").rglob("*") if p.is_file()
+        ]
+        assert any(p.suffix == ".csv" for p in work_files)

@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from cdflib.xarray import cdf_to_xarray, xarray_to_cdf
+
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
+from imap_mag.util.DataVersion import get_cdf_data_version, get_gse_version_string
+from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +78,48 @@ class AncillaryPathHandler(VersionedPathHandler):
             valid_date_range = f"{self.start_date.strftime('%Y%m%d')}_{self.end_date.strftime('%Y%m%d')}"
 
         return f"{self.mission}_{self.instrument}_{self.descriptor}_{valid_date_range}_v{self.version:03}.{self.extension}"
+
+    def prepare_for_version(self, source_file: Path) -> Path:
+        """Stamp an offsets CDF with the version and name it is being saved under.
+
+        The offsets file is written before the datastore assigns its final version,
+        so the CDF ``Data_version`` and ``Logical_file_id`` attributes are rewritten
+        here on a temporary copy. Returns the copy, which the caller must delete;
+        other ancillary files are returned unchanged.
+        """
+        if not self._is_offsets_file() or self.extension != "cdf":
+            return source_file
+
+        current = self.from_filename(source_file)
+        assert current is not None
+        if (
+            current.version_major == self.version_major
+            and current.version == self.version
+        ):
+            # no change in version
+            return source_file
+
+        new_version_path = source_file.parent / self.get_filename()
+
+        logger.info(
+            f"Rewriting {source_file} as {new_version_path} with updated version attributes"
+        )
+        # raw epochs are kept (to_datetime=False) so the round trip does not alter the data
+        dataset = cdf_to_xarray(str(source_file), to_datetime=False)
+        dataset.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+            self.version, self.version_major
+        )
+        dataset.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = new_version_path.stem
+        dataset.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
+            get_gse_version_string()
+        )
+
+        try:
+            xarray_to_cdf(dataset, str(new_version_path), istp=True, compression=6)
+        except Exception:
+            new_version_path.unlink(missing_ok=True)
+            raise
+        return new_version_path
 
     def get_unsequenced_pattern(self) -> re.Pattern:
         super()._check_property_values(

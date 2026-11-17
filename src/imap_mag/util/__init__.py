@@ -1,5 +1,6 @@
 from imap_mag.util.CCSDSBinaryPacketFile import CCSDSBinaryPacketFile
 from imap_mag.util.constants import CONSTANTS
+from imap_mag.util.DataVersion import get_cdf_data_version, get_gse_version_string
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from imap_mag.util.Environment import Environment
 from imap_mag.util.HKPacket import HKPacket
@@ -27,4 +28,6 @@ __all__ = [
     "ScienceMode",
     "Subsystem",
     "TimeConversion",
+    "get_cdf_data_version",
+    "get_gse_version_string",
 ]

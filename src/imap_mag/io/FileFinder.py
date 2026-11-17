@@ -131,6 +131,7 @@ class FileFinder:
         end_date: datetime | None = None,
         mode: ScienceMode | None = None,
         throw_if_not_found: bool = False,
+        highest_version_matches_only: bool = True,
     ) -> list[str]:
         """Resolve layer pattern strings to actual layer filenames, optionally
         restricted to a date range and/or science mode. Expect one layer file
@@ -145,14 +146,17 @@ class FileFinder:
         layer) are matched - companion CSV/Parquet data files are not layer
         identifiers in their own right.
 
-        For the literal pattern ``"*"``, the highest version per descriptor+date
-        is returned; for any other pattern, only the single highest-version
-        match overall is returned (matching a specific layer's history).
+        With ``highest_version_matches_only`` the highest version per
+        descriptor+date is returned for each pattern; otherwise every matching
+        version of every layer on every matching day is returned.
 
         ``start_date``/``end_date``/``mode`` are only applied when provided;
         omitting all three searches the entire calibration layers datastore -
         useful for flows (like calibrate-convert) that may operate across many
         days or the whole datastore history at once.
+
+        :param highest_version_matches_only: If True, and multiple versions of a
+        layer match the pattern, only the highest version is returned.
         """
         # Listed once up front rather than per pattern: with no date range this
         # walks the whole layers tree, which may be on a network mount.
@@ -192,15 +196,18 @@ class FileFinder:
                 candidates.append((path.name, handler.version))
 
             if candidates:
-                if layer == "*":
+                if highest_version_matches_only:
                     resolved.extend(
                         self._keep_highest_version_layers_only(
                             [name for name, _ in candidates]
                         )
                     )
                 else:
-                    candidates.sort(key=lambda x: x[1], reverse=True)
-                    resolved.append(candidates[0][0])
+                    resolved.extend(
+                        name
+                        for name, _ in sorted(candidates, key=lambda c: c[1])
+                        if name not in resolved
+                    )
             elif throw_if_not_found:
                 logger.error(f"No layer files found matching pattern '{layer}'.")
                 raise FileNotFoundError(
