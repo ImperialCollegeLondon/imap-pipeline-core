@@ -89,8 +89,7 @@ def generate_leinweber_offsets(
     calibration_matrix_version: Annotated[
         int | None,
         typer.Option(
-            help="Version of the calibration matrices to load. Defaults to the "
-            "configured value."
+            help="Version of the calibration matrices to load"
         ),
     ] = None,
     calibration_input_json_file: Annotated[
