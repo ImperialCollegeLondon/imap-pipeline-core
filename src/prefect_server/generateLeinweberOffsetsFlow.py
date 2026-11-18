@@ -16,6 +16,7 @@ from pydantic import Field
 
 from imap_mag.cli.generateLeinweberOffsets import (
     ConfigureMidpoint,
+    NoOffsetsProducedError,
     generate_leinweber_offsets,
 )
 from imap_mag.config import AppSettings, SaveMode
@@ -54,6 +55,18 @@ class BackfillLeinweberRunParameters:
             }
         ),
     ] = None
+    fail_on_missing_offsets: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Fail on missing offsets",
+                "description": "If True, raise if MATLAB produces no offsets "
+                "for a day. Defaults to False for a backfill sweep - science "
+                "readiness is already checked per day, so one day in the "
+                "window still not producing offsets shouldn't fail the run.",
+            }
+        ),
+    ] = False
 
 
 @dataclass
@@ -82,6 +95,16 @@ class LeinweberByDateRunParameters:
             }
         ),
     ] = None
+    fail_on_missing_offsets: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Fail on missing offsets",
+                "description": "If True (default), raise if MATLAB produces "
+                "no offsets for a day in this explicit range.",
+            }
+        ),
+    ] = True
 
 
 def _assume_utc(value: datetime) -> datetime:
@@ -317,19 +340,15 @@ def _create_offsets_table_artifact(paths: list[Path], start_date: datetime) -> N
 def _submit_leinweber_days_as_deployment_runs(
     deployment_name: str,
     days: list[datetime],
+    fail_on_missing_offsets: bool,
     base_parameters: dict,
 ) -> list[FlowRun]:
     """Resubmit one deployment flow run per day so a date range fans out across
     workers.
 
     This is the Leinweber-flow analogue of
-    ``calibrationFlowCommon._submit_days_as_deployment_runs`` - that helper
-    injects flat ``start_date``/``end_date`` parameters, but this flow takes a
-    single ``run_parameters`` instead, so each per-day run is given its own
-    ``LeinweberByDateRunParameters(start_date=day, end_date=day)``.
-
-    Runs are submitted without waiting for completion (``timeout=0``) so all
-    days are enqueued and picked up in parallel by the worker pool.
+    ``calibrationFlowCommon._submit_days_as_deployment_runs`` - 
+    ``fail_on_missing_offsets`` carries over the parent run's effective value
     """
     flow_runs: list[FlowRun] = []
     for day in days:
@@ -338,7 +357,9 @@ def _submit_leinweber_days_as_deployment_runs(
             parameters={
                 **base_parameters,
                 "run_parameters": LeinweberByDateRunParameters(
-                    start_date=day, end_date=day
+                    start_date=day,
+                    end_date=day,
+                    fail_on_missing_offsets=fail_on_missing_offsets,
                 ),
                 "split_by_day": False,
             },
@@ -477,15 +498,9 @@ def generate_leinweber_offsets_flow(
     """
     app_settings = AppSettings()  # type: ignore
 
-    # Everything downstream (the window check, the published-offsets lookup, and
-    # the MATLAB call) works in whole hours - the file-name convention embeds an
-    # integer hour count, so a sub-hour duration_str is rounded here, once, rather
-    # than at each place that reads it.
     duration_hours = round(parse_duration(duration_str).total_seconds() / 3600)
 
-    # Log the values this run will actually use, live from AppSettings() at this
-    # run's own execution time - whether that's an explicit override or the
-    # configured default, so a user never has to guess.
+    # Log values this run actually uses
     effective_matrix_version = (
         calibration_matrix_version
         if calibration_matrix_version is not None
@@ -498,6 +513,8 @@ def generate_leinweber_offsets_flow(
     )
     logger.info(f"Calibration Matrix Version: {effective_matrix_version}")
     logger.info(f"Calibration Input File: {effective_input_json_file}")
+
+    fail_on_missing_offsets = run_parameters.fail_on_missing_offsets
 
     if isinstance(run_parameters, LeinweberByDateRunParameters):
         start_date = run_parameters.start_date
@@ -521,6 +538,7 @@ def generate_leinweber_offsets_flow(
         return _submit_leinweber_days_as_deployment_runs(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}",
             days=days,
+            fail_on_missing_offsets=fail_on_missing_offsets,
             base_parameters={
                 "duration_str": duration_str,
                 "sensors": sensors,
@@ -574,21 +592,26 @@ def generate_leinweber_offsets_flow(
             raise ValueError("matlab_repo is required to generate Leinweber offsets.")
 
         for day in pending_days:
-            produced.extend(
-                generate_leinweber_offsets(
-                    date=day,
-                    matlab_repo=matlab_repo_path,
-                    duration_hours=duration_hours,
-                    sensors=sensors,
-                    configure_midpoint=configure_midpoint,
-                    calibration_matrix_version=calibration_matrix_version,
-                    calibration_input_json_file=calibration_input_json_file,
-                    verify=verify,
-                    save_mode=save_mode,
-                    cleanup_temp_files_after_run=cleanup_temp_files_after_run,
-                    allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
+            try:
+                produced.extend(
+                    generate_leinweber_offsets(
+                        date=day,
+                        matlab_repo=matlab_repo_path,
+                        duration_hours=duration_hours,
+                        sensors=sensors,
+                        configure_midpoint=configure_midpoint,
+                        calibration_matrix_version=calibration_matrix_version,
+                        calibration_input_json_file=calibration_input_json_file,
+                        verify=verify,
+                        save_mode=save_mode,
+                        cleanup_temp_files_after_run=cleanup_temp_files_after_run,
+                        allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
+                    )
                 )
-            )
+            except NoOffsetsProducedError:
+                if fail_on_missing_offsets:
+                    raise
+                logger.warning(f"No Leinweber offsets were produced for {day}")
     else:
         logger.info(
             f"Nothing new to generate for {start_date} to {end_date} "

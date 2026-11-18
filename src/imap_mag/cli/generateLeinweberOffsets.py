@@ -22,6 +22,15 @@ from mag_toolkit.calibration.MatlabWrapper import call_matlab
 logger = logging.getLogger(__name__)
 
 
+class NoOffsetsProducedError(FileNotFoundError):
+    """Raised specifically when MATLAB ran but produced no offset CSVs - as
+    opposed to the other ``FileNotFoundError``s this command raises for a
+    missing MATLAB repository/script, which are setup failures rather than a
+    "no offsets for this day" outcome. Callers (e.g. the Prefect flow) can
+    catch this specific type to tell the two apart.
+    """
+
+
 class ConfigureMidpoint(StrEnum):
     """How generate_raw_leinweber_offset derives its analysis midpoint from --date.
 
@@ -217,7 +226,7 @@ def generate_leinweber_offsets(
 
     produced = sorted(p for p in output_dir.glob("*.csv") if p.is_file())
     if not produced:
-        raise FileNotFoundError(
+        raise NoOffsetsProducedError(
             f"MATLAB Leinweber offset generation produced no output files in {output_dir}."
         )
     logger.info(

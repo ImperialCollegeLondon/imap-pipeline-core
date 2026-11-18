@@ -7,7 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from imap_mag.cli.generateLeinweberOffsets import ConfigureMidpoint
+from imap_mag.cli.generateLeinweberOffsets import (
+    ConfigureMidpoint,
+    NoOffsetsProducedError,
+)
 from imap_mag.io import FileFinder
 from imap_mag.util import DatetimeProvider
 from mag_toolkit.calibration import Sensor
@@ -68,7 +71,7 @@ class TestGenerateLeinweberOffsetsFlowRunName:
             }
             result = generate_leinweber_offsets_flow_run_name()
 
-        assert result == "Leinweber-offsets-auto-backfill-24h"
+        assert result == "Leinweber-offsets-auto-backfill-24h-window-duration"
 
 
 def _patch_settings(tmp_path, backfill_lookback_days: int = 14):
@@ -403,6 +406,88 @@ class TestGenerateLeinweberOffsetsFlow:
         assert mock_generate.call_args.kwargs["date"] == datetime(2026, 1, 31)
         assert result == [existing_path, Path("generated.csv")]
 
+    def test_default_run_parameters_have_correct_fail_on_missing_offsets(self):
+        # Backfill tolerates a day not producing offsets; an explicit range does not.
+        assert BackfillLeinweberRunParameters().fail_on_missing_offsets is False
+        assert (
+            LeinweberByDateRunParameters(start_date=DAY).fail_on_missing_offsets is True
+        )
+
+    def test_explicit_range_fails_when_offsets_are_missing(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        with (
+            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(f"{MODULE}._existing_offsets", return_value=None),
+            patch(f"{MODULE}._science_ready", return_value=True),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets",
+                side_effect=NoOffsetsProducedError("no outputs"),
+            ),
+        ):
+            with pytest.raises(NoOffsetsProducedError):
+                generate_leinweber_offsets_flow.fn(
+                    run_parameters=LeinweberByDateRunParameters(
+                        start_date=datetime(2026, 1, 30)
+                    ),
+                    matlab_repo=str(repo),
+                )
+
+    def test_backfill_tolerates_missing_offsets_and_continues(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        def fake_generate(date, **kwargs):
+            if date == datetime(2026, 1, 30):
+                raise NoOffsetsProducedError("no outputs")
+            return [Path("generated.csv")]
+
+        with (
+            patch(
+                f"{MODULE}.AppSettings",
+                return_value=_patch_settings(tmp_path, backfill_lookback_days=2),
+            ),
+            patch(f"{MODULE}.DatetimeProvider") as mock_provider,
+            patch(f"{MODULE}._existing_offsets", return_value=None),
+            patch(f"{MODULE}._science_ready", return_value=True),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets", side_effect=fake_generate
+            ) as mock_generate,
+        ):
+            mock_provider.return_value.yesterday.return_value = datetime(2026, 1, 31)
+            result = generate_leinweber_offsets_flow.fn(
+                run_parameters=BackfillLeinweberRunParameters(),
+                matlab_repo=str(repo),
+            )
+
+        # Both days attempted; the first's missing offsets didn't stop the second.
+        assert mock_generate.call_count == 2
+        assert result == [Path("generated.csv")]
+
+    def test_explicit_range_can_opt_into_tolerating_missing_offsets(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        with (
+            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(f"{MODULE}._existing_offsets", return_value=None),
+            patch(f"{MODULE}._science_ready", return_value=True),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets",
+                side_effect=NoOffsetsProducedError("no outputs"),
+            ),
+        ):
+            result = generate_leinweber_offsets_flow.fn(
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30),
+                    fail_on_missing_offsets=False,
+                ),
+                matlab_repo=str(repo),
+            )
+
+        assert result == []
+
 
 class TestGenerateLeinweberOffsetsFlowSplitByDay:
     def _make_flow_run(self, name):
@@ -442,6 +527,9 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
             run_parameters = call.kwargs["parameters"]["run_parameters"]
             assert run_parameters.start_date == day
             assert run_parameters.end_date == day
+            # Explicit ranges default to failing on missing offsets; that
+            # carries over to each per-day sub-run.
+            assert run_parameters.fail_on_missing_offsets is True
             assert call.kwargs["parameters"]["split_by_day"] is False
             assert call.kwargs["parameters"]["configure_midpoint"] == DEFAULT_MIDPOINT
             assert call.kwargs["parameters"]["force_regenerate"] is False
@@ -449,6 +537,34 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
                 call.kwargs["parameters"]["allow_pivot_platform_extrapolation"] is False
             )
         assert len(result) == 3
+
+    def test_backfill_split_carries_tolerant_fail_on_missing_offsets(self, tmp_path):
+        # A day split off from a backfill sweep must stay tolerant of missing
+        # offsets, even though it becomes an ordinary LeinweberByDateRunParameters.
+        fixed_provider = DatetimeProvider(fixed_now=datetime(2026, 3, 10))
+
+        with (
+            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(f"{MODULE}.DatetimeProvider", return_value=fixed_provider),
+            patch(
+                f"{MODULE}.run_deployment",
+                side_effect=lambda **kwargs: self._make_flow_run(
+                    str(kwargs["parameters"]["run_parameters"].start_date)
+                ),
+            ) as mock_run_deployment,
+            patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
+        ):
+            generate_leinweber_offsets_flow.fn(
+                run_parameters=BackfillLeinweberRunParameters(backfill_lookback_days=2),
+                matlab_repo="some-repo",
+                split_by_day=True,
+            )
+
+        assert mock_generate.call_count == 0
+        assert mock_run_deployment.call_count == 2
+        for call in mock_run_deployment.call_args_list:
+            run_parameters = call.kwargs["parameters"]["run_parameters"]
+            assert run_parameters.fail_on_missing_offsets is False
 
     def test_single_day_does_not_split(self, tmp_path):
         repo = tmp_path / "repo"
