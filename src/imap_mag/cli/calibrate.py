@@ -41,9 +41,7 @@ logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
 app.command(name="convert")(convert.convert)
-app.command(name="leinweber")(
-    generateLeinweberOffsets.generate_leinweber_offsets
-)
+app.command(name="leinweber")(generateLeinweberOffsets.generate_leinweber_offsets)
 
 
 def _validate_version_number_override(

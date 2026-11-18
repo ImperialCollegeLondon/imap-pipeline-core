@@ -186,7 +186,10 @@ def _file_has_gap_in_window(
         # No usable timestamp range recorded at all - coverage can't be confirmed.
         return True
 
-    if _assume_utc(analysis.first_timestamp) > window_start or _assume_utc(analysis.last_timestamp) < window_end:
+    if (
+        _assume_utc(analysis.first_timestamp) > window_start
+        or _assume_utc(analysis.last_timestamp) < window_end
+    ):
         return True
 
     for gap in analysis.gaps or []:
@@ -223,11 +226,14 @@ def _science_ready(
             except FileNotFoundError:
                 return False
 
-            
-            # Give some leeway at the start and end of the day, to allow for occasional small gaps at the 
+            # Give some leeway at the start and end of the day, to allow for occasional small gaps at the
             # beginning and end of the day that shouldn't be a blocker for Leinweber offset generation
-            start_of_day = datetime.combine(touched_day.date(), datetime.min.time()) + timedelta(minutes=1)
-            end_of_day = datetime.combine(touched_day.date(), datetime.max.time()) - timedelta(minutes=1)
+            start_of_day = datetime.combine(
+                touched_day.date(), datetime.min.time()
+            ) + timedelta(minutes=1)
+            end_of_day = datetime.combine(
+                touched_day.date(), datetime.max.time()
+            ) - timedelta(minutes=1)
 
             if _file_has_gap_in_window(database, filename, start_of_day, end_of_day):
                 logger.info(
@@ -264,8 +270,12 @@ def _pivot_platform_complete(
 
         # Give leeway for ILO Hk pivot platform angle files,
         # which do not have samples overlapping day boundaries
-        start_of_day = datetime.combine(touched_day.date(), datetime.min.time()) + timedelta(minutes=1)
-        end_of_day = datetime.combine(touched_day.date(), datetime.max.time()) - timedelta(minutes=1)
+        start_of_day = datetime.combine(
+            touched_day.date(), datetime.min.time()
+        ) + timedelta(minutes=1)
+        end_of_day = datetime.combine(
+            touched_day.date(), datetime.max.time()
+        ) - timedelta(minutes=1)
         if found is None:
             return False
         if _file_has_gap_in_window(database, found.name, start_of_day, end_of_day):
@@ -347,7 +357,7 @@ def _submit_leinweber_days_as_deployment_runs(
     workers.
 
     This is the Leinweber-flow analogue of
-    ``calibrationFlowCommon._submit_days_as_deployment_runs`` - 
+    ``calibrationFlowCommon._submit_days_as_deployment_runs`` -
     ``fail_on_missing_offsets`` carries over the parent run's effective value
     """
     flow_runs: list[FlowRun] = []

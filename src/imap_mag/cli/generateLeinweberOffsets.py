@@ -98,9 +98,7 @@ def generate_leinweber_offsets(
     ] = [Sensor.MAGO, Sensor.MAGI],
     calibration_matrix_version: Annotated[
         int | None,
-        typer.Option(
-            help="Version of the calibration matrices to load"
-        ),
+        typer.Option(help="Version of the calibration matrices to load"),
     ] = None,
     calibration_input_json_file: Annotated[
         str | None,

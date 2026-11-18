@@ -218,7 +218,7 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 ### Generating Leinweber Offset
 
 ```bash
-imap-mag calibration leinweber 
+imap-mag calibration leinweber
 ```
 
 ## Running the pipeline locally + mounting data like

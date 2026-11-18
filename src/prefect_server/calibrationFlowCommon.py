@@ -173,6 +173,7 @@ def _configuration_for_deployment(
     )
     return config_dict
 
+
 def _swap_matlab_repo_for_block_ref(
     matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
 ) -> dict:
@@ -187,10 +188,9 @@ def _swap_matlab_repo_for_block_ref(
     if isinstance(matlab_repo, (GitHubRepository, LocalFileSystem)):
         block_doc_id = getattr(matlab_repo, "_block_document_id", None)
         if block_doc_id:
-            matlab_repo = {
-                "$ref": {"block_document_id": str(block_doc_id)}
-            }
+            matlab_repo = {"$ref": {"block_document_id": str(block_doc_id)}}
     return matlab_repo
+
 
 def _resolve_matlab_repo_path(
     matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
