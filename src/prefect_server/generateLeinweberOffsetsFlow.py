@@ -38,10 +38,6 @@ from prefect_server.durationUtils import parse_duration
 
 logger = logging.getLogger(__name__)
 
-# generate-leinweber-offsets is another MATLAB tool under the calibrate umbrella,
-# so it shares calibrate's calibration_matrix_version/input_json_file defaults
-# (DEFAULT_CALIBRATION_MATRIX_VERSION/DEFAULT_INPUT_JSON_FILE above) rather than
-# having its own. Only backfill_lookback_days is genuinely leinweber-specific.
 DEFAULT_BACKFILL_LOOKBACK_DAYS = (
     CalibrationCommandConfig().leinweber.backfill_lookback_days
 )
@@ -353,7 +349,16 @@ def generate_leinweber_offsets_flow(
             }
         ),
     ] = None,
-    verify: bool = True,
+    verify: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Verify",
+                "description": "Whether to run post generation verification of the offsets, by rerunning Leinweber with the generated offsets and checking the residuals. "
+                "Writes the VerifyResidual (the highest verification residual of the three axes) to the offsets file. Slower, but recommended.",
+            }
+        ),
+    ] = True,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     cleanup_temp_files_after_run: bool = True,
     split_by_day: SplitByDay = False,
