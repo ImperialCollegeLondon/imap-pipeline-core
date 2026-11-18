@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -7,6 +8,7 @@ import pandas as pd
 from prefect import flow
 from prefect.artifacts import create_table_artifact
 from prefect.client.schemas.objects import FlowRun
+from prefect.deployments import run_deployment
 from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
 from prefect_github import GitHubRepository
@@ -16,7 +18,7 @@ from imap_mag.cli.generateLeinweberOffsets import (
     ConfigureMidpoint,
     generate_leinweber_offsets,
 )
-from imap_mag.config import AppSettings, CalibrationCommandConfig, SaveMode
+from imap_mag.config import AppSettings, SaveMode
 from imap_mag.db.Database import Database
 from imap_mag.io import FileFinder
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
@@ -24,13 +26,10 @@ from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHan
 from imap_mag.util import DatetimeProvider, MAGSensor, ScienceMode, Subsystem
 from mag_toolkit.calibration import Sensor
 from prefect_server.calibrationFlowCommon import (
-    DEFAULT_CALIBRATION_MATRIX_VERSION,
-    DEFAULT_INPUT_JSON_FILE,
     DEFAULT_MATLAB_REPO_PATH,
     SplitByDay,
     _days_in_range,
     _resolve_matlab_repo_path,
-    _submit_days_as_deployment_runs,
     _swap_matlab_repo_for_block_ref,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -38,9 +37,52 @@ from prefect_server.durationUtils import parse_duration
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BACKFILL_LOOKBACK_DAYS = (
-    CalibrationCommandConfig().leinweber.backfill_lookback_days
-)
+
+@dataclass
+class BackfillLeinweberRunParameters:
+    """Sweep a rolling backfill window ending yesterday, sized from config (or
+    overridden here) rather than an explicit date range."""
+
+    backfill_lookback_days: Annotated[
+        int | None,
+        Field(
+            json_schema_extra={
+                "title": "Backfill lookback (days)",
+                "description": "How many days (ending yesterday) to generate "
+                "offsets for. Left unset, uses the configured default "
+                "(calibrate.leinweber.backfill_lookback_days).",
+            }
+        ),
+    ] = None
+
+
+@dataclass
+class LeinweberByDateRunParameters:
+    """Generate offsets for an explicit day, or an inclusive range of days."""
+
+    start_date: Annotated[
+        datetime,
+        Field(
+            json_schema_extra={
+                "title": "Start date / single day",
+                "description": "Day (optionally with a time) to generate "
+                "Leinweber offsets for. If end_date is not given, only this "
+                "day is processed. The time of day only matters when "
+                "configure_midpoint is USE_DATE_AS_IS.",
+            }
+        ),
+    ]
+    end_date: Annotated[
+        datetime | None,
+        Field(
+            json_schema_extra={
+                "title": "End date",
+                "description": "Ending day (inclusive). If not specified, "
+                "only the start date is processed.",
+            }
+        ),
+    ] = None
+
 
 def _assume_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
@@ -50,15 +92,15 @@ def _assume_utc(value: datetime) -> datetime:
 
 def generate_leinweber_offsets_flow_run_name() -> str:
     parameters = flow_run.parameters
-    start_date = parameters.get("start_date")
+    run_parameters = parameters.get("run_parameters")
     duration_str = parameters.get("duration_str", "24h")
 
+    start_date = getattr(run_parameters, "start_date", None)
     if start_date is None:
-        # No explicit date(s): the flow sweeps a rolling backfill window computed
-        # from config, which isn't known yet at this point - label generically.
-        return f"Leinweber-offsets-auto-backfill-{duration_str}"
+        # BackfillLeinweberRunParameters in use
+        return f"Leinweber-offsets-auto-backfill-{duration_str}-window-duration"
 
-    end_date = parameters.get("end_date")
+    end_date = getattr(run_parameters, "end_date", None)
     date_str = start_date.strftime("%d-%m-%Y")
     if end_date and end_date != start_date:
         date_str = (
@@ -69,13 +111,10 @@ def generate_leinweber_offsets_flow_run_name() -> str:
 
 
 def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
-    """Precise (not rounded to whole days) start/end of the conservative Leinweber
+    """Start and end of a conservative Leinweber
     window for ``day``, for any ``configure_midpoint`` strategy. See ``_window_days``
-    for the whole-calendar-day version of this."""
+    for the whole-calendar-day version."""
     day_midday = day.replace(hour=12, minute=0, second=0, microsecond=0)
-    # The midpoint could fall anywhere within `day` depending on configure_midpoint,
-    # not just at noon - so even a short duration must keep the window at least 24h
-    # wide (centred on noon) to stay conservative across every midpoint placement.
     half = timedelta(hours=max(duration_hours, 24) / 2)
     return (
         day_midday - half - timedelta(minutes=1),
@@ -275,44 +314,70 @@ def _create_offsets_table_artifact(paths: list[Path], start_date: datetime) -> N
     )
 
 
+def _submit_leinweber_days_as_deployment_runs(
+    deployment_name: str,
+    days: list[datetime],
+    base_parameters: dict,
+) -> list[FlowRun]:
+    """Resubmit one deployment flow run per day so a date range fans out across
+    workers.
+
+    This is the Leinweber-flow analogue of
+    ``calibrationFlowCommon._submit_days_as_deployment_runs`` - that helper
+    injects flat ``start_date``/``end_date`` parameters, but this flow takes a
+    single ``run_parameters`` instead, so each per-day run is given its own
+    ``LeinweberByDateRunParameters(start_date=day, end_date=day)``.
+
+    Runs are submitted without waiting for completion (``timeout=0``) so all
+    days are enqueued and picked up in parallel by the worker pool.
+    """
+    flow_runs: list[FlowRun] = []
+    for day in days:
+        flow_run_result: FlowRun = run_deployment(
+            name=deployment_name,
+            parameters={
+                **base_parameters,
+                "run_parameters": LeinweberByDateRunParameters(
+                    start_date=day, end_date=day
+                ),
+                "split_by_day": False,
+            },
+            as_subflow=True,
+            timeout=0,  # submit and return immediately; do not wait for the day to finish
+        )
+        logger.info(
+            f"Submitted {deployment_name} run for {day} as flow run "
+            f"'{flow_run_result.name}' ({flow_run_result.id})"
+        )
+        flow_runs.append(flow_run_result)
+    return flow_runs
+
+
 @flow(
     name=PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS,
     log_prints=True,
     flow_run_name=generate_leinweber_offsets_flow_run_name,
 )
 def generate_leinweber_offsets_flow(
-    start_date: Annotated[
-        datetime | None,
+    run_parameters: Annotated[
+        BackfillLeinweberRunParameters | LeinweberByDateRunParameters,
         Field(
             json_schema_extra={
-                "title": "Start date / single day",
-                "description": "Day (optionally with a time) to generate Leinweber "
-                "offsets for. If end date is not specified, only this day is "
-                "processed. The time of day only matters when configure_midpoint "
-                "is USE_DATE_AS_IS. If omitted "
-                "entirely, defaults to a backfill window ending yesterday.",
+                "title": "Run parameters",
+                "description": "Either a rolling backfill window sized from "
+                "config (BackfillLeinweberRunParameters), or an explicit day/"
+                "date range to generate offsets for (LeinweberByDateRunParameters).",
                 "position": 1,
             }
         ),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Field(
-            json_schema_extra={
-                "title": "End date",
-                "description": "Ending day (inclusive). If not specified, only the "
-                "start date is processed.",
-                "position": 2,
-            }
-        ),
-    ] = None,
+    ] = BackfillLeinweberRunParameters(),
     duration_str: Annotated[
         str,
         Field(
             json_schema_extra={
                 "title": "Duration",
                 "description": "Duration for the analysis window. Sub-hour fields will be rounded to the nearest hour",
-                "position": 3,
+                "position": 2,
             }
         ),
     ] = "24h",
@@ -335,17 +400,25 @@ def generate_leinweber_offsets_flow(
             }
         ),
     ] = ConfigureMidpoint.USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT,
-    calibration_matrix_version: int = DEFAULT_CALIBRATION_MATRIX_VERSION,
-    calibration_input_json_file: str = DEFAULT_INPUT_JSON_FILE,
-    backfill_lookback_days: Annotated[
+    calibration_matrix_version: Annotated[
         int | None,
         Field(
             json_schema_extra={
-                "title": "Backfill lookback (days)",
-                "description": "Only used when start_date is omitted: how many "
-                "days (ending yesterday) to generate offsets for. Left unset, uses the configured default "
-                "(calibrate.leinweber.backfill_lookback_days, currently "
-                f"{DEFAULT_BACKFILL_LOOKBACK_DAYS}).",
+                "title": "Calibration matrix version",
+                "description": "Version of the calibration matrices to load. Left "
+                "unset, uses the configured default "
+                "(calibrate.scripted_l2_calibration_matrix_version).",
+            }
+        ),
+    ] = None,
+    calibration_input_json_file: Annotated[
+        str | None,
+        Field(
+            json_schema_extra={
+                "title": "Calibration input JSON",
+                "description": "Calibration input JSON (path relative to the "
+                "MATLAB repo), for the IMAP-Lo pivot-platform deltas. Left unset, "
+                "uses the configured default (calibrate.scripted_l2_input_json_file).",
             }
         ),
     ] = None,
@@ -398,7 +471,9 @@ def generate_leinweber_offsets_flow(
 
     IMAP-Lo pivot-platform HK data is checked but only as a warning. MATLAB performs fuller validation.
 
-    When ``start_date`` is omitted it defaults to a rolling ``backfill_lookback_days``
+    ``run_parameters`` selects the mode: ``BackfillLeinweberRunParameters`` sweeps
+    a rolling backfill window ending yesterday, ``LeinweberByDateRunParameters``
+    processes an explicit day or date range.
     """
     app_settings = AppSettings()  # type: ignore
 
@@ -408,23 +483,42 @@ def generate_leinweber_offsets_flow(
     # than at each place that reads it.
     duration_hours = round(parse_duration(duration_str).total_seconds() / 3600)
 
-    if start_date is None:
+    # Log the values this run will actually use, live from AppSettings() at this
+    # run's own execution time - whether that's an explicit override or the
+    # configured default, so a user never has to guess.
+    effective_matrix_version = (
+        calibration_matrix_version
+        if calibration_matrix_version is not None
+        else app_settings.calibrate.scripted_l2_calibration_matrix_version
+    )
+    effective_input_json_file = (
+        calibration_input_json_file
+        if calibration_input_json_file is not None
+        else app_settings.calibrate.scripted_l2_input_json_file
+    )
+    logger.info(f"Calibration Matrix Version: {effective_matrix_version}")
+    logger.info(f"Calibration Input File: {effective_input_json_file}")
+
+    if isinstance(run_parameters, LeinweberByDateRunParameters):
+        start_date = run_parameters.start_date
+        end_date = run_parameters.end_date
+        if end_date and end_date < start_date:
+            raise ValueError(
+                f"End date {end_date} cannot be before start date {start_date}."
+            )
+    else:
         lookback_days = (
-            backfill_lookback_days
-            if backfill_lookback_days is not None
+            run_parameters.backfill_lookback_days
+            if run_parameters.backfill_lookback_days is not None
             else app_settings.calibrate.leinweber.backfill_lookback_days
         )
-        end_date = end_date or DatetimeProvider().yesterday(datetime)
+        logger.info(f"Backfill Days: {lookback_days}")
+        end_date = DatetimeProvider().yesterday(datetime)
         start_date = end_date - timedelta(days=lookback_days - 1)
-
-    if end_date and end_date < start_date:
-        raise ValueError(
-            f"End date {end_date} cannot be before start date {start_date}."
-        )
 
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
-        return _submit_days_as_deployment_runs(
+        return _submit_leinweber_days_as_deployment_runs(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}",
             days=days,
             base_parameters={
@@ -434,7 +528,6 @@ def generate_leinweber_offsets_flow(
                 "configure_midpoint": configure_midpoint,
                 "calibration_matrix_version": calibration_matrix_version,
                 "calibration_input_json_file": calibration_input_json_file,
-                "backfill_lookback_days": backfill_lookback_days,
                 "verify": verify,
                 "save_mode": save_mode,
                 "cleanup_temp_files_after_run": cleanup_temp_files_after_run,

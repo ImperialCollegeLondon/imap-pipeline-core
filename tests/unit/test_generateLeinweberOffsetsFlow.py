@@ -13,6 +13,8 @@ from imap_mag.util import DatetimeProvider
 from mag_toolkit.calibration import Sensor
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.generateLeinweberOffsetsFlow import (
+    BackfillLeinweberRunParameters,
+    LeinweberByDateRunParameters,
     _create_offsets_table_artifact,
     _existing_offsets,
     _file_has_gap_in_window,
@@ -32,8 +34,9 @@ DEFAULT_MIDPOINT = ConfigureMidpoint.USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT
 class TestGenerateLeinweberOffsetsFlowRunName:
     def test_with_date_range(self):
         mock_params = {
-            "start_date": date(2025, 1, 1),
-            "end_date": date(2025, 1, 31),
+            "run_parameters": LeinweberByDateRunParameters(
+                start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
+            ),
             "duration_str": "24h",
         }
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
@@ -46,8 +49,9 @@ class TestGenerateLeinweberOffsetsFlowRunName:
 
     def test_without_end_date(self):
         mock_params = {
-            "start_date": date(2025, 1, 15),
-            "end_date": None,
+            "run_parameters": LeinweberByDateRunParameters(
+                start_date=date(2025, 1, 15)
+            ),
             "duration_str": "24h",
         }
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
@@ -58,7 +62,10 @@ class TestGenerateLeinweberOffsetsFlowRunName:
 
     def test_auto_backfill_label_when_start_date_omitted(self):
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
-            mock_flow_run.parameters = {"duration_str": "24h"}
+            mock_flow_run.parameters = {
+                "run_parameters": BackfillLeinweberRunParameters(),
+                "duration_str": "24h",
+            }
             result = generate_leinweber_offsets_flow_run_name()
 
         assert result == "Leinweber-offsets-auto-backfill-24h"
@@ -86,8 +93,10 @@ class TestGenerateLeinweberOffsetsFlow:
         with patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)):
             with pytest.raises(ValueError, match="cannot be before start date"):
                 generate_leinweber_offsets_flow.fn(
-                    start_date=datetime(2025, 1, 5),
-                    end_date=datetime(2025, 1, 1),
+                    run_parameters=LeinweberByDateRunParameters(
+                        start_date=datetime(2025, 1, 5),
+                        end_date=datetime(2025, 1, 1),
+                    ),
                 )
 
     def test_defaults_to_rolling_backfill_window_when_no_dates_given(self, tmp_path):
@@ -140,7 +149,9 @@ class TestGenerateLeinweberOffsetsFlow:
             patch(f"{MODULE}._science_ready", return_value=False),
             patch(f"{MODULE}.DatetimeProvider", return_value=fixed_provider),
         ):
-            generate_leinweber_offsets_flow.fn(backfill_lookback_days=2)
+            generate_leinweber_offsets_flow.fn(
+                run_parameters=BackfillLeinweberRunParameters(backfill_lookback_days=2)
+            )
 
         assert checked_days == [datetime(2026, 3, 8), datetime(2026, 3, 9)]
 
@@ -152,7 +163,9 @@ class TestGenerateLeinweberOffsetsFlow:
         ):
             with pytest.raises(TypeError, match="Unsupported matlab_repo type"):
                 generate_leinweber_offsets_flow.fn(
-                    start_date=datetime(2026, 1, 30),
+                    run_parameters=LeinweberByDateRunParameters(
+                        start_date=datetime(2026, 1, 30)
+                    ),
                     matlab_repo=None,
                 )
 
@@ -172,7 +185,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ),
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
             )
 
@@ -192,8 +207,10 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
-                end_date=datetime(2026, 2, 1),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30),
+                    end_date=datetime(2026, 2, 1),
+                ),
                 matlab_repo=str(repo),
             )
 
@@ -222,7 +239,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
                 configure_midpoint=ConfigureMidpoint.USE_DATE_AS_IS,
             )
@@ -241,7 +260,9 @@ class TestGenerateLeinweberOffsetsFlow:
             patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
             )
 
         # Already-published short-circuits before the readiness check or any
@@ -267,7 +288,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
                 force_regenerate=True,
             )
@@ -291,7 +314,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
                 allow_pivot_platform_extrapolation=True,
             )
@@ -309,7 +334,9 @@ class TestGenerateLeinweberOffsetsFlow:
             patch(f"{MODULE}._resolve_matlab_repo_path") as mock_resolve,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
             )
 
         mock_generate.assert_not_called()
@@ -334,7 +361,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
             )
 
@@ -362,8 +391,10 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
-                end_date=datetime(2026, 2, 1),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30),
+                    end_date=datetime(2026, 2, 1),
+                ),
                 matlab_repo=str(repo),
             )
 
@@ -382,30 +413,37 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
     def test_splits_range_into_per_day_deployment_runs(self):
         with (
             patch(
-                "prefect_server.calibrationFlowCommon.run_deployment",
+                f"{MODULE}.run_deployment",
                 side_effect=lambda **kwargs: self._make_flow_run(
-                    str(kwargs["parameters"]["start_date"])
+                    str(kwargs["parameters"]["run_parameters"].start_date)
                 ),
             ) as mock_run_deployment,
             patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2025, 1, 1),
-                end_date=datetime(2025, 1, 3),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2025, 1, 1),
+                    end_date=datetime(2025, 1, 3),
+                ),
                 matlab_repo="some-repo",
                 split_by_day=True,
             )
 
         assert mock_generate.call_count == 0
         assert mock_run_deployment.call_count == 3
-        for call in mock_run_deployment.call_args_list:
+        for day, call in zip(
+            [datetime(2025, 1, 1), datetime(2025, 1, 2), datetime(2025, 1, 3)],
+            mock_run_deployment.call_args_list,
+        ):
             assert call.kwargs["name"] == (
                 f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/"
                 f"{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}"
             )
+            run_parameters = call.kwargs["parameters"]["run_parameters"]
+            assert run_parameters.start_date == day
+            assert run_parameters.end_date == day
             assert call.kwargs["parameters"]["split_by_day"] is False
             assert call.kwargs["parameters"]["configure_midpoint"] == DEFAULT_MIDPOINT
-            assert call.kwargs["parameters"]["backfill_lookback_days"] is None
             assert call.kwargs["parameters"]["force_regenerate"] is False
             assert (
                 call.kwargs["parameters"]["allow_pivot_platform_extrapolation"] is False
@@ -417,9 +455,7 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
         repo.mkdir()
 
         with (
-            patch(
-                "prefect_server.calibrationFlowCommon.run_deployment"
-            ) as mock_run_deployment,
+            patch(f"{MODULE}.run_deployment") as mock_run_deployment,
             patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
@@ -430,7 +466,9 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
             ) as mock_generate,
         ):
             generate_leinweber_offsets_flow.fn(
-                start_date=datetime(2026, 1, 30),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=datetime(2026, 1, 30)
+                ),
                 matlab_repo=str(repo),
                 split_by_day=True,
             )
