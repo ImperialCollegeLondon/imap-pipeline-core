@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,7 +15,10 @@ from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.generateLeinweberOffsetsFlow import (
     _create_offsets_table_artifact,
     _existing_offsets,
+    _file_has_gap_in_window,
+    _pivot_platform_complete,
     _science_ready,
+    _window_bounds,
     _window_days,
     generate_leinweber_offsets_flow,
     generate_leinweber_offsets_flow_run_name,
@@ -313,6 +317,30 @@ class TestGenerateLeinweberOffsetsFlow:
         mock_resolve.assert_not_called()
         assert result == []
 
+    def test_proceeds_despite_incomplete_pivot_platform_data(self, tmp_path):
+        # Pivot-platform incompleteness is advisory only - unlike _science_ready,
+        # it must not skip the day.
+        repo = tmp_path / "repo"
+        repo.mkdir()
+
+        with (
+            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(f"{MODULE}._existing_offsets", return_value=None),
+            patch(f"{MODULE}._science_ready", return_value=True),
+            patch(f"{MODULE}._pivot_platform_complete", return_value=False),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets",
+                return_value=[Path("offsets.csv")],
+            ) as mock_generate,
+        ):
+            result = generate_leinweber_offsets_flow.fn(
+                start_date=datetime(2026, 1, 30),
+                matlab_repo=str(repo),
+            )
+
+        mock_generate.assert_called_once()
+        assert result == [Path("offsets.csv")]
+
     def test_mixed_batch_only_generates_pending_days(self, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -321,7 +349,7 @@ class TestGenerateLeinweberOffsetsFlow:
         def fake_existing(datastore_finder, day, duration_hours, sensors):
             return [existing_path] if day == datetime(2026, 1, 30) else None
 
-        def fake_ready(datastore_finder, day, duration_hours, sensors):
+        def fake_ready(datastore_finder, database, day, duration_hours, sensors):
             return day == datetime(2026, 1, 31)
 
         with (
@@ -457,32 +485,416 @@ class TestScienceReady:
 
     def test_false_when_datastore_empty(self, tmp_path):
         finder = FileFinder(tmp_path)
-        assert _science_ready(finder, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        assert (
+            _science_ready(finder, None, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        )
 
     def test_false_when_only_target_day_present_not_neighbours(self, tmp_path):
         self._science_file(tmp_path, "mago", DAY)
         self._science_file(tmp_path, "magi", DAY)
         finder = FileFinder(tmp_path)
-        assert _science_ready(finder, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        assert (
+            _science_ready(finder, None, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        )
 
     def test_false_when_only_one_sensor_present_for_all_touched_days(self, tmp_path):
         for day in self._TOUCHED_DAYS:
             self._science_file(tmp_path, "mago", day)
         finder = FileFinder(tmp_path)
-        assert _science_ready(finder, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        assert (
+            _science_ready(finder, None, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is False
+        )
 
     def test_true_when_all_touched_days_present_for_all_sensors(self, tmp_path):
         for day in self._TOUCHED_DAYS:
             self._science_file(tmp_path, "mago", day)
             self._science_file(tmp_path, "magi", day)
         finder = FileFinder(tmp_path)
-        assert _science_ready(finder, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is True
+        assert _science_ready(finder, None, DAY, 24, [Sensor.MAGO, Sensor.MAGI]) is True
 
     def test_true_when_only_requesting_the_sensor_present(self, tmp_path):
         for day in self._TOUCHED_DAYS:
             self._science_file(tmp_path, "mago", day)
         finder = FileFinder(tmp_path)
-        assert _science_ready(finder, DAY, 24, [Sensor.MAGO]) is True
+        assert _science_ready(finder, None, DAY, 24, [Sensor.MAGO]) is True
+
+    # A range that comfortably covers every window these tests check (DAY=
+    # 2026-01-30 with duration_hours=24 spans 2026-01-29 23:59..2026-01-31 00:01).
+    _FULL_COVERAGE: ClassVar[dict] = {
+        "first_timestamp": datetime(2026, 1, 29),
+        "last_timestamp": datetime(2026, 2, 1),
+    }
+
+    def test_false_when_database_has_a_gap_overlapping_the_window(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._science_file(tmp_path, "mago", day)
+        finder = FileFinder(tmp_path)
+
+        mock_file = MagicMock(id=1)
+        mock_analysis = MagicMock(
+            gaps=[
+                {
+                    "start_time": "2026-01-30T10:00:00",
+                    "end_time": "2026-01-30T10:05:00",
+                    "duration_seconds": 300,
+                }
+            ],
+            has_missing_data=True,
+            has_bad_data=True,
+            **self._FULL_COVERAGE,
+        )
+        database = MagicMock()
+        database.get_files.return_value = [mock_file]
+        database.get_file_analysis_by_file_id.return_value = mock_analysis
+
+        assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is False
+
+    def test_true_when_only_missing_or_bad_data_flags_are_set(self, tmp_path):
+        # has_missing_data/has_bad_data are unreliable and must not gate readiness
+        # on their own - only an actual gap overlapping the window should.
+        for day in self._TOUCHED_DAYS:
+            self._science_file(tmp_path, "mago", day)
+        finder = FileFinder(tmp_path)
+
+        mock_file = MagicMock(id=1)
+        mock_analysis = MagicMock(
+            gaps=[],
+            has_missing_data=True,
+            has_bad_data=True,
+            **self._FULL_COVERAGE,
+        )
+        database = MagicMock()
+        database.get_files.return_value = [mock_file]
+        database.get_file_analysis_by_file_id.return_value = mock_analysis
+
+        assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is True
+
+    def test_true_when_a_recorded_gap_does_not_overlap_the_window(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._science_file(tmp_path, "mago", day)
+        finder = FileFinder(tmp_path)
+
+        mock_file = MagicMock(id=1)
+        mock_analysis = MagicMock(
+            gaps=[
+                {
+                    # Well outside the 24h window around DAY (2026-01-30).
+                    "start_time": "2026-02-15T10:00:00",
+                    "end_time": "2026-02-15T10:05:00",
+                    "duration_seconds": 300,
+                }
+            ],
+            has_missing_data=False,
+            has_bad_data=False,
+            **self._FULL_COVERAGE,
+        )
+        database = MagicMock()
+        database.get_files.return_value = [mock_file]
+        database.get_file_analysis_by_file_id.return_value = mock_analysis
+
+        assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is True
+
+    def test_false_when_file_data_ends_before_the_window_does(self, tmp_path):
+        # The file's own last record is well before the window's end, with no
+        # later record to diff against - a trailing gap `gaps` can't see.
+        for day in self._TOUCHED_DAYS:
+            self._science_file(tmp_path, "mago", day)
+        finder = FileFinder(tmp_path)
+
+        mock_file = MagicMock(id=1)
+        mock_analysis = MagicMock(
+            gaps=[],
+            has_missing_data=False,
+            has_bad_data=False,
+            first_timestamp=datetime(2026, 1, 29),
+            last_timestamp=datetime(2026, 1, 30, 18, 0),
+        )
+        database = MagicMock()
+        database.get_files.return_value = [mock_file]
+        database.get_file_analysis_by_file_id.return_value = mock_analysis
+
+        assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is False
+
+    def test_true_when_database_has_no_analysis_yet_for_the_file(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._science_file(tmp_path, "mago", day)
+        finder = FileFinder(tmp_path)
+
+        database = MagicMock()
+        database.get_files.return_value = []
+
+        assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is True
+
+
+class TestWindowBounds:
+    def test_matches_the_rounded_window_days_span(self):
+        window_start, window_end = _window_bounds(DAY, 24)
+        assert window_start == datetime(2026, 1, 29, 23, 59)
+        assert window_end == datetime(2026, 1, 31, 0, 1)
+
+
+class TestFileHasGapInWindow:
+    WINDOW_START = datetime(2026, 1, 29, 23, 59)
+    WINDOW_END = datetime(2026, 1, 31, 0, 1)
+
+    # Comfortably covers WINDOW_START..WINDOW_END, so tests using this isolate
+    # the behaviour under test (gaps list, or lack of a database/analysis) from
+    # the first/last-timestamp edge-coverage check.
+    _FULL_COVERAGE: ClassVar[dict] = {
+        "first_timestamp": datetime(2026, 1, 29),
+        "last_timestamp": datetime(2026, 2, 1),
+    }
+
+    def test_false_when_no_database(self):
+        assert (
+            _file_has_gap_in_window(
+                None, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is False
+        )
+
+    def test_false_when_file_not_found(self):
+        database = MagicMock()
+        database.get_files.return_value = []
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is False
+        )
+
+    def test_false_when_no_analysis_record(self):
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = None
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is False
+        )
+
+    def test_false_when_no_gaps_recorded_and_coverage_spans_the_window(self):
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[], **self._FULL_COVERAGE
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is False
+        )
+
+    def test_false_when_recorded_gap_is_outside_the_window(self):
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[
+                {
+                    "start_time": "2026-02-15T10:00:00",
+                    "end_time": "2026-02-15T10:05:00",
+                    "duration_seconds": 300,
+                }
+            ],
+            **self._FULL_COVERAGE,
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is False
+        )
+
+    def test_true_when_recorded_gap_overlaps_the_window(self):
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[
+                {
+                    "start_time": "2026-01-30T10:00:00",
+                    "end_time": "2026-01-30T10:05:00",
+                    "duration_seconds": 300,
+                }
+            ],
+            **self._FULL_COVERAGE,
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is True
+        )
+
+    def test_true_when_recorded_gap_only_partially_overlaps_the_window(self):
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[
+                {
+                    # Starts before the window and ends just inside it.
+                    "start_time": "2026-01-29T20:00:00",
+                    "end_time": "2026-01-30T00:00:01",
+                    "duration_seconds": 14401,
+                }
+            ],
+            **self._FULL_COVERAGE,
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is True
+        )
+
+    def test_true_when_no_timestamps_recorded_at_all(self):
+        # Analysis ran but found 0-1 usable timestamps - coverage can't be
+        # confirmed, so treat as incomplete rather than assuming the best.
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[], first_timestamp=None, last_timestamp=None
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is True
+        )
+
+    def test_true_when_data_starts_after_the_window_start(self):
+        # The file's first record is after the window needs coverage from - a
+        # leading gap `gaps` can't see, since there's no earlier record to diff
+        # against.
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[],
+            first_timestamp=datetime(2026, 1, 30, 6, 0),
+            last_timestamp=datetime(2026, 2, 1),
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is True
+        )
+
+    def test_true_when_data_ends_before_the_window_end(self):
+        # The file's last record is before the window needs coverage until - a
+        # trailing gap at the end of the day/window `gaps` can't see, since
+        # there's no later record to diff against.
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[],
+            first_timestamp=datetime(2026, 1, 29),
+            last_timestamp=datetime(2026, 1, 30, 18, 0),
+        )
+        assert (
+            _file_has_gap_in_window(
+                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
+            )
+            is True
+        )
+
+
+class TestPivotPlatformComplete:
+    def _pivot_file(self, datastore: Path, day: datetime) -> None:
+        folder = (
+            datastore
+            / "hk"
+            / "lo"
+            / "l1"
+            / "pivot-platform-angle"
+            / f"{day:%Y}"
+            / f"{day:%m}"
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"imap_lo_l1_pivot-platform-angle_{day:%Y%m%d}_v001.csv").write_text(
+            "x"
+        )
+
+    _TOUCHED_DAYS = (
+        datetime(2026, 1, 29),
+        datetime(2026, 1, 30),
+        datetime(2026, 1, 31),
+    )
+
+    def test_false_when_datastore_empty(self, tmp_path):
+        finder = FileFinder(tmp_path)
+        assert _pivot_platform_complete(finder, None, DAY, 24) is False
+
+    def test_false_when_only_some_touched_days_present(self, tmp_path):
+        self._pivot_file(tmp_path, DAY)
+        finder = FileFinder(tmp_path)
+        assert _pivot_platform_complete(finder, None, DAY, 24) is False
+
+    def test_true_when_all_touched_days_present_and_no_database(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._pivot_file(tmp_path, day)
+        finder = FileFinder(tmp_path)
+        assert _pivot_platform_complete(finder, None, DAY, 24) is True
+
+    # Comfortably covers the 24h window around DAY (2026-01-29 23:59..
+    # 2026-01-31 00:01), isolating the behaviour under test from the
+    # first/last-timestamp edge-coverage check.
+    _FULL_COVERAGE: ClassVar[dict] = {
+        "first_timestamp": datetime(2026, 1, 29),
+        "last_timestamp": datetime(2026, 2, 1),
+    }
+
+    def test_false_when_database_has_a_gap_overlapping_the_window(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._pivot_file(tmp_path, day)
+        finder = FileFinder(tmp_path)
+
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[
+                {
+                    "start_time": "2026-01-30T10:00:00",
+                    "end_time": "2026-01-30T10:05:00",
+                    "duration_seconds": 300,
+                }
+            ],
+            **self._FULL_COVERAGE,
+        )
+
+        assert _pivot_platform_complete(finder, database, DAY, 24) is False
+
+    def test_true_when_only_missing_or_bad_data_flags_are_set(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._pivot_file(tmp_path, day)
+        finder = FileFinder(tmp_path)
+
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[],
+            has_missing_data=True,
+            has_bad_data=True,
+            **self._FULL_COVERAGE,
+        )
+
+        assert _pivot_platform_complete(finder, database, DAY, 24) is True
+
+    def test_false_when_pivot_file_data_ends_before_the_window_does(self, tmp_path):
+        for day in self._TOUCHED_DAYS:
+            self._pivot_file(tmp_path, day)
+        finder = FileFinder(tmp_path)
+
+        database = MagicMock()
+        database.get_files.return_value = [MagicMock(id=1)]
+        database.get_file_analysis_by_file_id.return_value = MagicMock(
+            gaps=[],
+            first_timestamp=datetime(2026, 1, 29),
+            last_timestamp=datetime(2026, 1, 30, 18, 0),
+        )
+
+        assert _pivot_platform_complete(finder, database, DAY, 24) is False
 
 
 class TestExistingOffsets:

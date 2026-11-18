@@ -130,12 +130,14 @@ def generate_leinweber_offsets(
     Generate daily Leinweber (solar-wind) offsets via the MATLAB
     generate_raw_leinweber_offset tool, and publish them to the datastore.
 
-    e.g. imap-mag calibration generate-leinweber-offsets --date 2026-08-01 --matlab-repo /app/matlab/calibration
+    e.g. imap-mag calibration leinweber --date 2026-08-01 --matlab-repo /app/matlab/calibration
     """
     if matlab_repo is None:
         raise ValueError(
             "A valid MATLAB repository path is required to generate Leinweber offsets."
         )
+
+    date = date.replace(tzinfo=None)
     matlab_repo_path = Path(matlab_repo)
     if not matlab_repo_path.is_dir():
         raise FileNotFoundError(f"MATLAB repository not found at {matlab_repo_path}.")

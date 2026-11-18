@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -16,12 +16,14 @@ from imap_mag.cli.generateLeinweberOffsets import (
     generate_leinweber_offsets,
 )
 from imap_mag.config import AppSettings, CalibrationCommandConfig, SaveMode
+from imap_mag.db.Database import Database
 from imap_mag.io import FileFinder
 from imap_mag.io.file.CalculatedOffsetsPathHandler import (
     LEINWEBER,
     CalculatedOffsetsPathHandler,
 )
-from imap_mag.util import DatetimeProvider, MAGSensor, ScienceMode
+from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.util import DatetimeProvider, MAGSensor, ScienceMode, Subsystem
 from mag_toolkit.calibration import Sensor
 from prefect_server.calibrationFlowCommon import (
     DEFAULT_CALIBRATION_MATRIX_VERSION,
@@ -44,6 +46,11 @@ DEFAULT_BACKFILL_LOOKBACK_DAYS = (
     CalibrationCommandConfig().leinweber.backfill_lookback_days
 )
 
+def _assume_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.replace(tzinfo=None)
+
 
 def generate_leinweber_offsets_flow_run_name() -> str:
     parameters = flow_run.parameters
@@ -65,16 +72,25 @@ def generate_leinweber_offsets_flow_run_name() -> str:
     return f"Leinweber-offsets-{date_str}-{duration_hours}hr"
 
 
+def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
+    """Precise (not rounded to whole days) start/end of the conservative Leinweber
+    window for ``day``, for any ``configure_midpoint`` strategy. See ``_window_days``
+    for the whole-calendar-day version of this."""
+    day_midday = day.replace(hour=12, minute=0, second=0, microsecond=0)
+    half = timedelta(hours=duration_hours / 2)
+    return (
+        day_midday - half - timedelta(minutes=1),
+        day_midday + half + timedelta(minutes=1),
+    )
+
+
 def _window_days(day: datetime, duration_hours: int) -> list[datetime]:
     """Calendar days that could plausibly be touched by the Leinweber window for
     ``day``, for any ``configure_midpoint`` strategy.
 
     A conservative science readiness check for L1C norm science
     """
-    day_midnight = day.replace(hour=0, minute=0, second=0, microsecond=0)
-    half = timedelta(hours=duration_hours / 2)
-    window_start = day_midnight - half - timedelta(minutes=1)
-    window_end = day_midnight + timedelta(hours=24) + half + timedelta(minutes=1)
+    window_start, window_end = _window_bounds(day, duration_hours)
 
     first_day = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
     last_day = window_end.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -83,25 +99,117 @@ def _window_days(day: datetime, duration_hours: int) -> list[datetime]:
     return [first_day + timedelta(days=i) for i in range(num_days)]
 
 
+def _file_has_gap_in_window(
+    database: Database | None,
+    filename: str,
+    window_start: datetime,
+    window_end: datetime,
+) -> bool:
+    """Whether the database's FileAnalysis record for ``filename`` shows the file
+    failing to cover ``[window_start, window_end]`` - either via a recorded gap
+    overlapping the window, or via the file's own recorded coverage
+    (``first_timestamp``/``last_timestamp``) falling short of it.
+
+    """
+    if database is None:
+        return False
+
+    files = database.get_files(name=filename, deletion_date=None)
+    if not files:
+        return False
+
+    analysis = database.get_file_analysis_by_file_id(files[0].id)
+    if analysis is None:
+        return False
+
+    if analysis.first_timestamp is None or analysis.last_timestamp is None:
+        # No usable timestamp range recorded at all - coverage can't be confirmed.
+        return True
+
+    if _assume_utc(analysis.first_timestamp) > window_start or _assume_utc(analysis.last_timestamp) < window_end:
+        return True
+
+    for gap in analysis.gaps or []:
+        gap_start = _assume_utc(datetime.fromisoformat(gap["start_time"]))
+        gap_end = _assume_utc(datetime.fromisoformat(gap["end_time"]))
+        if gap_start < window_end and gap_end > window_start:
+            return True
+    return False
+
+
 def _science_ready(
     datastore_finder: FileFinder,
+    database: Database | None,
     day: datetime,
     duration_hours: int,
     sensors: list[Sensor],
 ) -> bool:
-    """Whether L1C norm science covers the full window for every requested sensor.
+    """Whether L1C norm science covers the full window, with no known gap
+    overlapping it, for every requested sensor.
 
     Checks every calendar day the (conservatively estimated) window touches
     """
+
     for sensor in sensors:
         mag_sensor = MAGSensor(sensor.value.lower())
         for touched_day in _window_days(day, duration_hours):
             try:
-                datastore_finder.find_latest_science_by_date(
-                    touched_day, ScienceMode.Normal, mag_sensor
+                filename = datastore_finder.find_latest_science_by_date(
+                    touched_day,
+                    ScienceMode.Normal,
+                    mag_sensor,
+                    levels_to_search=["l1c"],
                 )
             except FileNotFoundError:
                 return False
+
+            
+            # Give some leeway at the start and end of the day, to allow for occasional small gaps at the 
+            # beginning and end of the day that shouldn't be a blocker for Leinweber offset generation
+            start_of_day = datetime.combine(touched_day.date(), datetime.min.time()) + timedelta(minutes=1)
+            end_of_day = datetime.combine(touched_day.date(), datetime.max.time()) - timedelta(minutes=1)
+
+            if _file_has_gap_in_window(database, filename, start_of_day, end_of_day):
+                logger.info(
+                    f"L1C norm science file {filename} has a gap "
+                    f"overlapping the {duration_hours}h window around {day}."
+                )
+                return False
+    return True
+
+
+def _pivot_platform_complete(
+    datastore_finder: FileFinder,
+    database: Database | None,
+    day: datetime,
+    duration_hours: int,
+) -> bool:
+    """Whether IMAP-Lo pivot-platform-angle HK data covers the window, with
+    no known gap overlapping it, for every calendar day the window touches.
+
+    This is advisory only (unlike ``_science_ready``): generate_raw_leinweber_offset.m
+    can extrapolate pivot-platform angles and also performs it's own pivot platform validation.
+    """
+
+    for touched_day in _window_days(day, duration_hours):
+        handler = HKDecodedPathHandler(
+            instrument=Subsystem.LO.short_name,
+            descriptor="pivot-platform-angle",
+            content_date=touched_day,
+            extension="csv",
+        )
+        found = datastore_finder.find_latest_version_by_handler(
+            handler, throw_if_not_found=False
+        )
+
+        # Give leeway for ILO Hk pivot platform angle files,
+        # which do not have samples overlapping day boundaries
+        start_of_day = datetime.combine(touched_day.date(), datetime.min.time()) + timedelta(minutes=1)
+        end_of_day = datetime.combine(touched_day.date(), datetime.max.time()) - timedelta(minutes=1)
+        if found is None:
+            return False
+        if _file_has_gap_in_window(database, found.name, start_of_day, end_of_day):
+            return False
     return True
 
 
@@ -264,20 +372,18 @@ def generate_leinweber_offsets_flow(
 ) -> list[Path] | list[FlowRun]:
     """Generate daily Leinweber (solar-wind) offsets for a date range.
 
-    Wraps ``imap-mag calibration generate-leinweber-offsets``, running it once per
+    Wraps ``imap-mag calibration leinweber``, running it once per
     day in the range and publishing each day's offsets to the datastore.
 
-    Each day is skipped rather than run when either:
+    Each day is skipped if:
     - Leinweber offsets are already published for that day, for every requested
-      sensor - unless ``force_regenerate`` is set, which generates (and publishes,
-      subject to the usual content-hash dedup) regardless.
-    - The L1C norm science input does not yet cover the full window for every
-      requested sensor
+      sensor - unless ``force_regenerate`` is set
+    - The L1C norm science input does not yet cover the full window, or has known
+      gap (per the database's file-analysis records) overlapping the window
 
-    When ``start_date`` is omitted (e.g. the daily schedule, which passes no
-    parameters), it defaults to a rolling backfill window ending yesterday rather
-    than just yesterday - the window size is ``backfill_lookback_days`` if given, else the configured
-    default (``calibrate.leinweber.backfill_lookback_days``).
+    IMAP-Lo pivot-platform HK data is checked but only as a warning. MATLAB performs fuller validation.
+
+    When ``start_date`` is omitted it defaults to a rolling ``backfill_lookback_days``
     """
     app_settings = AppSettings()  # type: ignore
 
@@ -316,7 +422,8 @@ def generate_leinweber_offsets_flow(
             },
         )
 
-    datastore_finder = FileFinder(app_settings.data_store)
+    database = Database() if Database.get_environment_url() else None
+    datastore_finder = FileFinder(app_settings.data_store, database=database)
 
     produced: list[Path] = []
     pending_days: list[datetime] = []
@@ -328,12 +435,20 @@ def generate_leinweber_offsets_flow(
                 produced.extend(existing)
                 continue
 
-        if not _science_ready(datastore_finder, day, duration_hours, sensors):
+        if not _science_ready(datastore_finder, database, day, duration_hours, sensors):
             logger.info(
-                f"L1C norm science not yet available for all sensors on {day}; "
-                "skipping for now (will be picked up by a later run)."
+                f"L1C norm science not yet available (or incomplete) for all "
+                f"sensors on {day}; skipping."
             )
             continue
+
+        if not _pivot_platform_complete(
+            datastore_finder, database, day, duration_hours
+        ):
+            logger.warning(
+                f"IMAP-Lo pivot-platform data is missing or has known gaps for "
+                f"the window around {day}; proceeding anyway"
+            )
 
         pending_days.append(day)
 
