@@ -16,6 +16,7 @@ from imap_mag.io.file.LeinweberOffsetsPathHandler import (
     LEINWEBER,
     LeinweberOffsetsPathHandler,
 )
+from imap_mag.util.constants import CONSTANTS
 from mag_toolkit.calibration import Sensor
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
 
@@ -76,7 +77,7 @@ def generate_leinweber_offsets(
             help="Path to the IMAP_MAG_Calibration MATLAB repository containing "
             "generate_raw_leinweber_offset."
         ),
-    ] = None,
+    ] = Path(CONSTANTS.DEFAULT_MATLAB_REPO_PATH),
     duration_hours: Annotated[
         int,
         typer.Option(

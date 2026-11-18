@@ -217,8 +217,22 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 
 ### Generating Leinweber Offset
 
+Runs the MATLAB `generate_raw_leinweber_offset` tool for one day and publishes the resulting offsets to `calibration/calculated_offsets/leinweber` in the datastore. Needs the L1C norm science and IMAP-Lo pivot-platform HK covering the window to already be in the datastore.
+
 ```bash
-imap-mag calibration leinweber
+# Generate MAGo and MAGi offsets for a 24h window around 1 Aug 2026,
+# using the MATLAB repo at the default path in the docker image (/app/matlab/calibration)
+imap-mag calibration leinweber --date 2026-08-01
+
+# Point at a local checkout of the MATLAB repo, use a 48h window for MAGo only,
+# skip verification for a quicker run, and keep the work folder to inspect afterwards
+imap-mag calibration leinweber --date 2026-08-01 \
+    --matlab-repo ~/repos/IMAP_MAG_Calibration \
+    --duration-hours 48 \
+    --sensors MAGo \
+    --no-verify \
+    --save-mode LocalOnly \
+    --no-cleanup-temp-files-after-run
 ```
 
 ## Running the pipeline locally + mounting data like

@@ -14,6 +14,7 @@ from pydantic import Field
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.CalibrationCommandConfig import CalibrationCommandConfig
+from imap_mag.util.constants import CONSTANTS
 from mag_toolkit.calibration import LayerDataFormat
 from mag_toolkit.calibration.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 # matlab_repo isn't an AppSettings/CommandConfig setting - it's a Prefect
 # block/path resolved only at this flow layer (the CLI always requires it
 # explicitly) - so it stays a plain constant here, same as before.
-DEFAULT_MATLAB_REPO_PATH = "/app/matlab/calibration"
+DEFAULT_MATLAB_REPO_PATH = CONSTANTS.DEFAULT_MATLAB_REPO_PATH
 
 # The other two defaults are only used to pre-fill the calibrate_flow's
 # configuration parameter in the Prefect UI, but are genuine tunables, so they
