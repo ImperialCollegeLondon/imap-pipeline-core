@@ -11,6 +11,7 @@ from prefect.client.schemas.objects import FlowRun
 from prefect.deployments import run_deployment
 from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
+from prefect.variables import Variable
 from prefect_github import GitHubRepository
 from pydantic import Field
 
@@ -41,8 +42,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class BackfillLeinweberRunParameters:
-    """Sweep a rolling backfill window ending yesterday, sized from config (or
-    overridden here) rather than an explicit date range."""
+    """Sweep a rolling backfill window ending yesterday, sized from the
+    ``leinweber_backfill_lookback_days`` Prefect variable (or overridden here)
+    rather than an explicit date range."""
 
     backfill_lookback_days: Annotated[
         int | None,
@@ -50,8 +52,8 @@ class BackfillLeinweberRunParameters:
             json_schema_extra={
                 "title": "Backfill lookback (days)",
                 "description": "How many days (ending yesterday) to generate "
-                "offsets for. Left unset, uses the configured default "
-                "(calibrate.leinweber.backfill_lookback_days).",
+                "offsets for. Left unset, uses the "
+                "leinweber_backfill_lookback_days Prefect variable.",
             }
         ),
     ] = None
@@ -64,6 +66,16 @@ class BackfillLeinweberRunParameters:
                 "for a day. Defaults to False for a backfill sweep - science "
                 "readiness is already checked per day, so one day in the "
                 "window still not producing offsets shouldn't fail the run.",
+            }
+        ),
+    ] = False
+    force_regenerate: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force regenerate",
+                "description": "Generate and publish offsets even for days that "
+                "already have them.",
             }
         ),
     ] = False
@@ -105,6 +117,16 @@ class LeinweberByDateRunParameters:
             }
         ),
     ] = True
+    force_regenerate: Annotated[
+        bool,
+        Field(
+            json_schema_extra={
+                "title": "Force regenerate",
+                "description": "Generate and publish offsets even for days that "
+                "already have them.",
+            }
+        ),
+    ] = True
 
 
 def _assume_utc(value: datetime) -> datetime:
@@ -118,7 +140,7 @@ def generate_leinweber_offsets_flow_run_name() -> str:
     run_parameters = parameters.get("run_parameters")
     duration_str = parameters.get("duration_str")
     if duration_str is None:
-        duration_str = f"{_resolve_duration_hours(None, AppSettings())}h"  # type: ignore
+        duration_str = f"{_resolve_duration_hours(None)}h"
 
     start_date = getattr(run_parameters, "start_date", None)
     if start_date is None:
@@ -135,12 +157,32 @@ def generate_leinweber_offsets_flow_run_name() -> str:
     return f"Leinweber-offsets-{date_str}-{duration_str}"
 
 
-def _resolve_duration_hours(duration_str: str | None, app_settings: AppSettings) -> int:
+def _resolve_duration_hours(duration_str: str | None) -> int:
     """Window width in whole hours: the explicit per-run override if given,
-    otherwise ``calibrate.leinweber.duration_hours`` from config."""
+    otherwise the ``leinweber_duration_hours`` Prefect variable."""
     if duration_str is None:
-        return app_settings.calibrate.leinweber.duration_hours
+        constants = PREFECT_CONSTANTS.GENERATE_LEINWEBER_OFFSETS
+        return int(
+            Variable.get(  # type: ignore[arg-type]
+                constants.DURATION_HOURS_VARIABLE,
+                default=constants.DEFAULT_DURATION_HOURS,
+            )
+        )
     return round(parse_duration(duration_str).total_seconds() / 3600)
+
+
+def _resolve_backfill_lookback_days(override: int | None) -> int:
+    """Backfill sweep length: the explicit per-run override if given, otherwise
+    the ``leinweber_backfill_lookback_days`` Prefect variable."""
+    if override is not None:
+        return override
+    constants = PREFECT_CONSTANTS.GENERATE_LEINWEBER_OFFSETS
+    return int(
+        Variable.get(  # type: ignore[arg-type]
+            constants.BACKFILL_LOOKBACK_DAYS_VARIABLE,
+            default=constants.DEFAULT_BACKFILL_LOOKBACK_DAYS,
+        )
+    )
 
 
 def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
@@ -361,6 +403,7 @@ def _submit_leinweber_days_as_deployment_runs(
     deployment_name: str,
     days: list[datetime],
     fail_on_missing_offsets: bool,
+    force_regenerate: bool,
     base_parameters: dict,
 ) -> list[FlowRun]:
     """Resubmit one deployment flow run per day so a date range fans out across
@@ -368,7 +411,8 @@ def _submit_leinweber_days_as_deployment_runs(
 
     This is the Leinweber-flow analogue of
     ``calibrationFlowCommon._submit_days_as_deployment_runs`` -
-    ``fail_on_missing_offsets`` carries over the parent run's effective value
+    ``fail_on_missing_offsets`` and ``force_regenerate`` carry over the parent
+    run's effective values`.
     """
     flow_runs: list[FlowRun] = []
     for day in days:
@@ -380,6 +424,7 @@ def _submit_leinweber_days_as_deployment_runs(
                     start_date=day,
                     end_date=day,
                     fail_on_missing_offsets=fail_on_missing_offsets,
+                    force_regenerate=force_regenerate,
                 ),
                 "split_by_day": False,
             },
@@ -419,7 +464,7 @@ def generate_leinweber_offsets_flow(
                 "title": "Duration",
                 "description": "Duration for the analysis window. Sub-hour fields "
                 "will be rounded to the nearest hour. Left unset, uses the "
-                "configured default (calibrate.leinweber.duration_hours).",
+                "leinweber_duration_hours Prefect variable.",
                 "position": 2,
             }
         ),
@@ -478,16 +523,6 @@ def generate_leinweber_offsets_flow(
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
     cleanup_temp_files_after_run: bool = True,
     split_by_day: SplitByDay = False,
-    force_regenerate: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Force regenerate",
-                "description": "Generate and publish offsets even for days that "
-                "already have them. The normal content-hash dedup still applies.",
-            }
-        ),
-    ] = False,
     allow_pivot_platform_extrapolation: Annotated[
         bool,
         Field(
@@ -508,7 +543,7 @@ def generate_leinweber_offsets_flow(
 
     Each day is skipped if:
     - Leinweber offsets are already published for that day, for every requested
-      sensor - unless ``force_regenerate`` is set
+      sensor - unless ``run_parameters.force_regenerate`` is set
     - The L1C norm science input does not yet cover the full window, or has known
       gap (per the database's file-analysis records) overlapping the window
 
@@ -520,7 +555,7 @@ def generate_leinweber_offsets_flow(
     """
     app_settings = AppSettings()  # type: ignore
 
-    duration_hours = _resolve_duration_hours(duration_str, app_settings)
+    duration_hours = _resolve_duration_hours(duration_str)
     logger.info(f"Window Duration: {duration_hours}h")
 
     # Log values this run actually uses
@@ -538,6 +573,7 @@ def generate_leinweber_offsets_flow(
     logger.info(f"Calibration Input File: {effective_input_json_file}")
 
     fail_on_missing_offsets = run_parameters.fail_on_missing_offsets
+    force_regenerate = run_parameters.force_regenerate
 
     if isinstance(run_parameters, LeinweberByDateRunParameters):
         start_date = run_parameters.start_date
@@ -547,10 +583,8 @@ def generate_leinweber_offsets_flow(
                 f"End date {end_date} cannot be before start date {start_date}."
             )
     else:
-        lookback_days = (
+        lookback_days = _resolve_backfill_lookback_days(
             run_parameters.backfill_lookback_days
-            if run_parameters.backfill_lookback_days is not None
-            else app_settings.calibrate.leinweber.backfill_lookback_days
         )
         logger.info(f"Backfill Days: {lookback_days}")
         end_date = DatetimeProvider().yesterday(datetime)
@@ -562,6 +596,7 @@ def generate_leinweber_offsets_flow(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}",
             days=days,
             fail_on_missing_offsets=fail_on_missing_offsets,
+            force_regenerate=force_regenerate,
             base_parameters={
                 "duration_str": duration_str,
                 "sensors": sensors,
@@ -572,7 +607,6 @@ def generate_leinweber_offsets_flow(
                 "verify": verify,
                 "save_mode": save_mode,
                 "cleanup_temp_files_after_run": cleanup_temp_files_after_run,
-                "force_regenerate": force_regenerate,
                 "allow_pivot_platform_extrapolation": allow_pivot_platform_extrapolation,
             },
         )

@@ -152,9 +152,7 @@ calibrate:
     # placeholders so each run gets its own uniquely named work folder.
     leinweber:
         work_sub_folder: 'leinweber_{date}_{duration}hr'
-        duration_hours: 24
         timeout_seconds_per_day: 1200  # 20 minutes per day
-        backfill_lookback_days: 14  # backfill 2 weeks by default if no date is specified
 
 publish:
     api:

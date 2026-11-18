@@ -73,13 +73,34 @@ class TestCreateQueues:
 
 class TestCreateVariables:
     @pytest.mark.asyncio
-    async def test_does_not_call_create_when_no_default_variables(self):
+    async def test_creates_leinweber_variables_with_defaults_when_missing(self):
+        from prefect_server.constants import PREFECT_CONSTANTS
+
+        leinweber = PREFECT_CONSTANTS.GENERATE_LEINWEBER_OFFSETS
         mock_client = AsyncMock()
+        mock_client.read_variable_by_name = AsyncMock(return_value=None)
+
+        await ServerConfig._create_variables(mock_client)
+
+        created = {
+            call.args[0].name: call.args[0].value
+            for call in mock_client.create_variable.call_args_list
+        }
+        assert created == {
+            leinweber.DURATION_HOURS_VARIABLE: leinweber.DEFAULT_DURATION_HOURS,
+            leinweber.BACKFILL_LOOKBACK_DAYS_VARIABLE: (
+                leinweber.DEFAULT_BACKFILL_LOOKBACK_DAYS
+            ),
+        }
+
+    @pytest.mark.asyncio
+    async def test_does_not_overwrite_existing_variables(self):
+        mock_client = AsyncMock()
+        mock_client.read_variable_by_name = AsyncMock(return_value=MagicMock())
 
         await ServerConfig._create_variables(mock_client)
 
         mock_client.create_variable.assert_not_called()
-        mock_client.read_variable_by_name.assert_not_called()
 
 
 class TestCreateBlocks:

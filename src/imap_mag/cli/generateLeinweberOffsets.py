@@ -78,12 +78,11 @@ def generate_leinweber_offsets(
         ),
     ] = None,
     duration_hours: Annotated[
-        int | None,
+        int,
         typer.Option(
-            help="Width (in hours) of the window centred on the derived midpoint. "
-            "Defaults to the configured value (normally 24)."
+            help="Width (in hours) of the window centred on the derived midpoint."
         ),
-    ] = None,
+    ] = 24,
     configure_midpoint: Annotated[
         ConfigureMidpoint | None,
         typer.Option(
@@ -159,9 +158,6 @@ def generate_leinweber_offsets(
     app_settings = AppSettings()
     config = app_settings.calibrate.leinweber
 
-    effective_duration = (
-        duration_hours if duration_hours is not None else config.duration_hours
-    )
     # calibration_matrix_version/input_json_file are shared with the scripted-L2
     # calibration, so they live on the parent calibrate config, not here.
     effective_matrix_version = (
@@ -179,7 +175,7 @@ def generate_leinweber_offsets(
         config,
         name_context={
             "date": date.strftime("%Y%m%d"),
-            "duration": str(effective_duration),
+            "duration": str(duration_hours),
         },
     )
 
@@ -205,7 +201,7 @@ def generate_leinweber_offsets(
 
     command = _build_matlab_command(
         date=date,
-        duration_hours=effective_duration,
+        duration_hours=duration_hours,
         sensors=sensors,
         calibration_matrix_version=effective_matrix_version,
         calibration_input_json_file=effective_input_json_file,

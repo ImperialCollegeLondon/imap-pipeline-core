@@ -34,6 +34,13 @@ class PREFECT_CONSTANTS:
             "https://imperialcollegelondon.box.com/s/jwwydh31hpb6a96t2agqht88vmmc5iah"
         )
 
+    class GENERATE_LEINWEBER_OFFSETS:
+        # Prefect variables (editable in the Prefect UI) and their seeded defaults.
+        DURATION_HOURS_VARIABLE = "leinweber_duration_hours"
+        DEFAULT_DURATION_HOURS = 24
+        BACKFILL_LOOKBACK_DAYS_VARIABLE = "leinweber_backfill_lookback_days"
+        DEFAULT_BACKFILL_LOOKBACK_DAYS = 14
+
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 

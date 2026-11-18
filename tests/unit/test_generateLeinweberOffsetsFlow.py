@@ -32,6 +32,20 @@ from prefect_server.generateLeinweberOffsetsFlow import (
 MODULE = "prefect_server.generateLeinweberOffsetsFlow"
 DAY = datetime(2026, 1, 30)
 DEFAULT_MIDPOINT = ConfigureMidpoint.USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT
+LEINWEBER_VARIABLES = PREFECT_CONSTANTS.GENERATE_LEINWEBER_OFFSETS
+
+
+@pytest.fixture(autouse=True)
+def prefect_variables():
+    """Stand-in for the Prefect variable store: tests set values by name here,
+    and unset names fall back to the default passed to ``Variable.get``."""
+    values: dict[str, object] = {}
+
+    def fake_get(name, default=None):
+        return values.get(name, default)
+
+    with patch(f"{MODULE}.Variable.get", side_effect=fake_get):
+        yield values
 
 
 class TestGenerateLeinweberOffsetsFlowRunName:
@@ -73,14 +87,9 @@ class TestGenerateLeinweberOffsetsFlowRunName:
 
         assert result == "Leinweber-offsets-auto-backfill-24h-window-duration"
 
-    def test_falls_back_to_configured_duration_when_unset(self, tmp_path):
-        with (
-            patch(f"{MODULE}.flow_run") as mock_flow_run,
-            patch(
-                f"{MODULE}.AppSettings",
-                return_value=_patch_settings(tmp_path, duration_hours=36),
-            ),
-        ):
+    def test_falls_back_to_duration_variable_when_unset(self, prefect_variables):
+        prefect_variables[LEINWEBER_VARIABLES.DURATION_HOURS_VARIABLE] = 36
+        with patch(f"{MODULE}.flow_run") as mock_flow_run:
             mock_flow_run.parameters = {
                 "run_parameters": LeinweberByDateRunParameters(
                     start_date=date(2025, 1, 15)
@@ -91,14 +100,10 @@ class TestGenerateLeinweberOffsetsFlowRunName:
         assert result == "Leinweber-offsets-15-01-2025-36h"
 
 
-def _patch_settings(
-    tmp_path, backfill_lookback_days: int = 14, duration_hours: int = 24
-):
+def _patch_settings(tmp_path):
     mock_settings = MagicMock()
-    mock_settings.calibrate.leinweber.duration_hours = duration_hours
     mock_settings.work_folder = tmp_path
     mock_settings.data_store = tmp_path / "datastore"
-    mock_settings.calibrate.leinweber.backfill_lookback_days = backfill_lookback_days
     return mock_settings
 
 
@@ -122,7 +127,10 @@ class TestGenerateLeinweberOffsetsFlow:
                     ),
                 )
 
-    def test_defaults_to_rolling_backfill_window_when_no_dates_given(self, tmp_path):
+    def test_defaults_to_rolling_backfill_window_when_no_dates_given(
+        self, tmp_path, prefect_variables
+    ):
+        prefect_variables[LEINWEBER_VARIABLES.BACKFILL_LOOKBACK_DAYS_VARIABLE] = 5
         fixed_provider = DatetimeProvider(fixed_now=datetime(2026, 3, 10))
         checked_days: list[datetime] = []
 
@@ -133,7 +141,7 @@ class TestGenerateLeinweberOffsetsFlow:
         with (
             patch(
                 f"{MODULE}.AppSettings",
-                return_value=_patch_settings(tmp_path, backfill_lookback_days=5),
+                return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
             patch(f"{MODULE}._science_ready", return_value=False),
@@ -152,9 +160,11 @@ class TestGenerateLeinweberOffsetsFlow:
         ]
         assert result == []
 
-    def test_backfill_lookback_days_parameter_overrides_the_config_default(
-        self, tmp_path
+    def test_backfill_lookback_days_parameter_overrides_the_variable(
+        self, tmp_path, prefect_variables
     ):
+        # Variable is 5, but the explicit parameter below (2) should win.
+        prefect_variables[LEINWEBER_VARIABLES.BACKFILL_LOOKBACK_DAYS_VARIABLE] = 5
         fixed_provider = DatetimeProvider(fixed_now=datetime(2026, 3, 10))
         checked_days: list[datetime] = []
 
@@ -163,10 +173,9 @@ class TestGenerateLeinweberOffsetsFlow:
             return None
 
         with (
-            # Config default is 5, but the explicit parameter below (2) should win.
             patch(
                 f"{MODULE}.AppSettings",
-                return_value=_patch_settings(tmp_path, backfill_lookback_days=5),
+                return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
             patch(f"{MODULE}._science_ready", return_value=False),
@@ -178,7 +187,10 @@ class TestGenerateLeinweberOffsetsFlow:
 
         assert checked_days == [datetime(2026, 3, 8), datetime(2026, 3, 9)]
 
-    def _run_single_day_recording_durations(self, tmp_path, config_hours, **kwargs):
+    def _run_single_day_recording_durations(
+        self, tmp_path, prefect_variables, variable_hours, **kwargs
+    ):
+        prefect_variables[LEINWEBER_VARIABLES.DURATION_HOURS_VARIABLE] = variable_hours
         repo = tmp_path / "repo"
         repo.mkdir()
         seen: dict[str, int] = {}
@@ -194,7 +206,7 @@ class TestGenerateLeinweberOffsetsFlow:
         with (
             patch(
                 f"{MODULE}.AppSettings",
-                return_value=_patch_settings(tmp_path, duration_hours=config_hours),
+                return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
             patch(f"{MODULE}._science_ready", side_effect=record_ready),
@@ -204,7 +216,9 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             generate_leinweber_offsets_flow.fn(
-                run_parameters=LeinweberByDateRunParameters(start_date=DAY),
+                run_parameters=LeinweberByDateRunParameters(
+                    start_date=DAY, force_regenerate=False
+                ),
                 matlab_repo=str(repo),
                 **kwargs,
             )
@@ -212,14 +226,20 @@ class TestGenerateLeinweberOffsetsFlow:
         seen["cli"] = mock_generate.call_args.kwargs["duration_hours"]
         return seen
 
-    def test_uses_configured_duration_when_duration_str_unset(self, tmp_path):
-        seen = self._run_single_day_recording_durations(tmp_path, config_hours=48)
+    def test_uses_duration_variable_when_duration_str_unset(
+        self, tmp_path, prefect_variables
+    ):
+        seen = self._run_single_day_recording_durations(
+            tmp_path, prefect_variables, variable_hours=48
+        )
 
         assert seen == {"existing": 48, "science": 48, "cli": 48}
 
-    def test_explicit_duration_str_overrides_configured_duration(self, tmp_path):
+    def test_explicit_duration_str_overrides_duration_variable(
+        self, tmp_path, prefect_variables
+    ):
         seen = self._run_single_day_recording_durations(
-            tmp_path, config_hours=48, duration_str="12h"
+            tmp_path, prefect_variables, variable_hours=48, duration_str="12h"
         )
 
         assert seen == {"existing": 12, "science": 12, "cli": 12}
@@ -319,7 +339,17 @@ class TestGenerateLeinweberOffsetsFlow:
             ConfigureMidpoint.USE_DATE_AS_IS
         )
 
-    def test_skips_days_with_offsets_already_published(self, tmp_path):
+    @pytest.mark.parametrize(
+        "run_parameters",
+        [
+            BackfillLeinweberRunParameters(backfill_lookback_days=1),
+            LeinweberByDateRunParameters(
+                start_date=datetime(2026, 1, 30), force_regenerate=False
+            ),
+        ],
+        ids=["backfill-default", "by-date-opted-out"],
+    )
+    def test_skips_days_with_offsets_already_published(self, tmp_path, run_parameters):
         existing_path = Path("already-there.csv")
 
         with (
@@ -328,11 +358,7 @@ class TestGenerateLeinweberOffsetsFlow:
             patch(f"{MODULE}._science_ready") as mock_ready,
             patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
         ):
-            result = generate_leinweber_offsets_flow.fn(
-                run_parameters=LeinweberByDateRunParameters(
-                    start_date=datetime(2026, 1, 30)
-                ),
-            )
+            result = generate_leinweber_offsets_flow.fn(run_parameters=run_parameters)
 
         # Already-published short-circuits before the readiness check or any
         # MATLAB invocation.
@@ -340,7 +366,19 @@ class TestGenerateLeinweberOffsetsFlow:
         mock_generate.assert_not_called()
         assert result == [existing_path]
 
-    def test_force_regenerate_bypasses_the_already_published_skip(self, tmp_path):
+    @pytest.mark.parametrize(
+        "run_parameters",
+        [
+            LeinweberByDateRunParameters(start_date=datetime(2026, 1, 30)),
+            BackfillLeinweberRunParameters(
+                backfill_lookback_days=1, force_regenerate=True
+            ),
+        ],
+        ids=["by-date-default", "backfill-opted-in"],
+    )
+    def test_force_regenerate_bypasses_the_already_published_skip(
+        self, tmp_path, run_parameters
+    ):
         repo = tmp_path / "repo"
         repo.mkdir()
         existing_path = Path("already-there.csv")
@@ -357,11 +395,8 @@ class TestGenerateLeinweberOffsetsFlow:
             ) as mock_generate,
         ):
             result = generate_leinweber_offsets_flow.fn(
-                run_parameters=LeinweberByDateRunParameters(
-                    start_date=datetime(2026, 1, 30)
-                ),
+                run_parameters=run_parameters,
                 matlab_repo=str(repo),
-                force_regenerate=True,
             )
 
         # _existing_offsets is never even consulted when forcing.
@@ -463,6 +498,7 @@ class TestGenerateLeinweberOffsetsFlow:
                 run_parameters=LeinweberByDateRunParameters(
                     start_date=datetime(2026, 1, 30),
                     end_date=datetime(2026, 2, 1),
+                    force_regenerate=False,
                 ),
                 matlab_repo=str(repo),
             )
@@ -471,6 +507,10 @@ class TestGenerateLeinweberOffsetsFlow:
         mock_generate.assert_called_once()
         assert mock_generate.call_args.kwargs["date"] == datetime(2026, 1, 31)
         assert result == [existing_path, Path("generated.csv")]
+
+    def test_default_run_parameters_have_correct_force_regenerate(self):
+        assert BackfillLeinweberRunParameters().force_regenerate is False
+        assert LeinweberByDateRunParameters(start_date=DAY).force_regenerate is True
 
     def test_default_run_parameters_have_correct_fail_on_missing_offsets(self):
         # Backfill tolerates a day not producing offsets; an explicit range does not.
@@ -512,7 +552,7 @@ class TestGenerateLeinweberOffsetsFlow:
         with (
             patch(
                 f"{MODULE}.AppSettings",
-                return_value=_patch_settings(tmp_path, backfill_lookback_days=2),
+                return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}.DatetimeProvider") as mock_provider,
             patch(f"{MODULE}._existing_offsets", return_value=None),
@@ -523,7 +563,7 @@ class TestGenerateLeinweberOffsetsFlow:
         ):
             mock_provider.return_value.yesterday.return_value = datetime(2026, 1, 31)
             result = generate_leinweber_offsets_flow.fn(
-                run_parameters=BackfillLeinweberRunParameters(),
+                run_parameters=BackfillLeinweberRunParameters(backfill_lookback_days=2),
                 matlab_repo=str(repo),
             )
 
@@ -598,15 +638,19 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
             assert run_parameters.fail_on_missing_offsets is True
             assert call.kwargs["parameters"]["split_by_day"] is False
             assert call.kwargs["parameters"]["configure_midpoint"] == DEFAULT_MIDPOINT
-            assert call.kwargs["parameters"]["force_regenerate"] is False
+            # Explicit ranges default to regenerating; that also carries over.
+            assert run_parameters.force_regenerate is True
+            assert "force_regenerate" not in call.kwargs["parameters"]
             assert (
                 call.kwargs["parameters"]["allow_pivot_platform_extrapolation"] is False
             )
         assert len(result) == 3
 
-    def test_backfill_split_carries_tolerant_fail_on_missing_offsets(self, tmp_path):
+    def test_backfill_split_carries_backfill_defaults_to_each_day(self, tmp_path):
         # A day split off from a backfill sweep must stay tolerant of missing
-        # offsets, even though it becomes an ordinary LeinweberByDateRunParameters.
+        # offsets and keep skipping already-published days, even though it
+        # becomes an ordinary LeinweberByDateRunParameters (whose own defaults
+        # are the opposite).
         fixed_provider = DatetimeProvider(fixed_now=datetime(2026, 3, 10))
 
         with (
@@ -631,6 +675,7 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
         for call in mock_run_deployment.call_args_list:
             run_parameters = call.kwargs["parameters"]["run_parameters"]
             assert run_parameters.fail_on_missing_offsets is False
+            assert run_parameters.force_regenerate is False
 
     def test_single_day_does_not_split(self, tmp_path):
         repo = tmp_path / "repo"
