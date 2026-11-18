@@ -29,6 +29,30 @@ _LEINWEBER_DESCRIPTOR_PATTERN = re.compile(
     r"^raw-leinweber-offsets-(?P<duration>\d+)hr$"
 )
 
+@dataclass
+class LeinweberOffsetsPathHandler(CalculatedOffsetsPathHandler):
+    """Path handler for Leinweber offsets CSVs.
+
+    These live in ``calibration/calculated_offsets/leinweber/`` and have a distinct
+    file-name descriptor that embeds the window duration (in hours):
+
+    - ``imap_mag_<sensor>-raw-leinweber-offsets-<duration>_<date>_vNNN.csv``
+    """
+
+    duration_str: str | None = None  # leinweber only: window width, formatted by duration_utils.format_duration()
+
+    def _descriptor(self) -> str:
+        super()._check_property_values("descriptor", ["offset_type", "duration_str"])
+        assert self.offset_type and self.duration_str
+
+        if self.offset_type != LEINWEBER:
+            raise ValueError(
+                f"LeinweberOffsetsPathHandler can only handle offset_type '{LEINWEBER}', "
+                f"but got '{self.offset_type}'."
+            )
+
+        return f"raw-leinweber-offsets-{self.duration_str}"
+
 
 @dataclass
 class CalculatedOffsetsPathHandler(VersionedPathHandler):
@@ -41,7 +65,6 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
 
     - ``spin_plane``     -> ``imap_mag_<sensor>-spin-plane-offsets_<date>_vNNN.csv``
     - ``spin_optimised`` -> ``imap_mag_<sensor>-spin-plane-optimised-offsets_<date>_vNNN.csv``
-    - ``leinweber``      -> ``imap_mag_<sensor>-raw-leinweber-offsets-<duration>hr_<date>_vNNN.csv``
     """
 
     mission: str = "imap"
@@ -49,17 +72,11 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
     sensor: str | None = None  # "mago" or "magi"
     offset_type: str | None = None  # one of OFFSET_TYPES
     content_date: datetime | None = None  # date the offsets belong to
-    duration_hours: int | None = None  # leinweber only: window width, in hours
     extension: str = "csv"
 
     def _descriptor(self) -> str:
         super()._check_property_values("descriptor", ["offset_type"])
         assert self.offset_type
-
-        if self.offset_type == LEINWEBER:
-            super()._check_property_values("descriptor", ["duration_hours"])
-            assert self.duration_hours is not None
-            return f"raw-leinweber-offsets-{self.duration_hours}hr"
 
         if self.offset_type not in _DESCRIPTOR_BY_OFFSET_TYPE:
             raise ValueError(
