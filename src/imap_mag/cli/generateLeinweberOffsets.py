@@ -1,6 +1,7 @@
 import json
 import logging
 import shutil
+import uuid
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -174,6 +175,10 @@ def generate_leinweber_offsets(
             "duration": str(effective_duration),
         },
     )
+
+    work_folder = work_folder / uuid.uuid4().hex
+    work_folder.mkdir(parents=True)
+
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
