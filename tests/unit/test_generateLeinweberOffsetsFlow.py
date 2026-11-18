@@ -73,9 +73,29 @@ class TestGenerateLeinweberOffsetsFlowRunName:
 
         assert result == "Leinweber-offsets-auto-backfill-24h-window-duration"
 
+    def test_falls_back_to_configured_duration_when_unset(self, tmp_path):
+        with (
+            patch(f"{MODULE}.flow_run") as mock_flow_run,
+            patch(
+                f"{MODULE}.AppSettings",
+                return_value=_patch_settings(tmp_path, duration_hours=36),
+            ),
+        ):
+            mock_flow_run.parameters = {
+                "run_parameters": LeinweberByDateRunParameters(
+                    start_date=date(2025, 1, 15)
+                ),
+            }
+            result = generate_leinweber_offsets_flow_run_name()
 
-def _patch_settings(tmp_path, backfill_lookback_days: int = 14):
+        assert result == "Leinweber-offsets-15-01-2025-36h"
+
+
+def _patch_settings(
+    tmp_path, backfill_lookback_days: int = 14, duration_hours: int = 24
+):
     mock_settings = MagicMock()
+    mock_settings.calibrate.leinweber.duration_hours = duration_hours
     mock_settings.work_folder = tmp_path
     mock_settings.data_store = tmp_path / "datastore"
     mock_settings.calibrate.leinweber.backfill_lookback_days = backfill_lookback_days
@@ -157,6 +177,52 @@ class TestGenerateLeinweberOffsetsFlow:
             )
 
         assert checked_days == [datetime(2026, 3, 8), datetime(2026, 3, 9)]
+
+    def _run_single_day_recording_durations(self, tmp_path, config_hours, **kwargs):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        seen: dict[str, int] = {}
+
+        def record_existing(datastore_finder, day, duration_hours, sensors):
+            seen["existing"] = duration_hours
+            return None
+
+        def record_ready(datastore_finder, database, day, duration_hours, sensors):
+            seen["science"] = duration_hours
+            return True
+
+        with (
+            patch(
+                f"{MODULE}.AppSettings",
+                return_value=_patch_settings(tmp_path, duration_hours=config_hours),
+            ),
+            patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
+            patch(f"{MODULE}._science_ready", side_effect=record_ready),
+            patch(
+                f"{MODULE}.generate_leinweber_offsets",
+                return_value=[Path("offsets.csv")],
+            ) as mock_generate,
+        ):
+            generate_leinweber_offsets_flow.fn(
+                run_parameters=LeinweberByDateRunParameters(start_date=DAY),
+                matlab_repo=str(repo),
+                **kwargs,
+            )
+
+        seen["cli"] = mock_generate.call_args.kwargs["duration_hours"]
+        return seen
+
+    def test_uses_configured_duration_when_duration_str_unset(self, tmp_path):
+        seen = self._run_single_day_recording_durations(tmp_path, config_hours=48)
+
+        assert seen == {"existing": 48, "science": 48, "cli": 48}
+
+    def test_explicit_duration_str_overrides_configured_duration(self, tmp_path):
+        seen = self._run_single_day_recording_durations(
+            tmp_path, config_hours=48, duration_str="12h"
+        )
+
+        assert seen == {"existing": 12, "science": 12, "cli": 12}
 
     def test_requires_matlab_repo_when_a_day_needs_generating(self, tmp_path):
         with (

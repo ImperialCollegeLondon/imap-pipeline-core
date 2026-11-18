@@ -116,7 +116,9 @@ def _assume_utc(value: datetime) -> datetime:
 def generate_leinweber_offsets_flow_run_name() -> str:
     parameters = flow_run.parameters
     run_parameters = parameters.get("run_parameters")
-    duration_str = parameters.get("duration_str", "24h")
+    duration_str = parameters.get("duration_str")
+    if duration_str is None:
+        duration_str = f"{_resolve_duration_hours(None, AppSettings())}h"  # type: ignore
 
     start_date = getattr(run_parameters, "start_date", None)
     if start_date is None:
@@ -131,6 +133,14 @@ def generate_leinweber_offsets_flow_run_name() -> str:
         )
 
     return f"Leinweber-offsets-{date_str}-{duration_str}"
+
+
+def _resolve_duration_hours(duration_str: str | None, app_settings: AppSettings) -> int:
+    """Window width in whole hours: the explicit per-run override if given,
+    otherwise ``calibrate.leinweber.duration_hours`` from config."""
+    if duration_str is None:
+        return app_settings.calibrate.leinweber.duration_hours
+    return round(parse_duration(duration_str).total_seconds() / 3600)
 
 
 def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
@@ -403,15 +413,17 @@ def generate_leinweber_offsets_flow(
         ),
     ] = BackfillLeinweberRunParameters(),
     duration_str: Annotated[
-        str,
+        str | None,
         Field(
             json_schema_extra={
                 "title": "Duration",
-                "description": "Duration for the analysis window. Sub-hour fields will be rounded to the nearest hour",
+                "description": "Duration for the analysis window. Sub-hour fields "
+                "will be rounded to the nearest hour. Left unset, uses the "
+                "configured default (calibrate.leinweber.duration_hours).",
                 "position": 2,
             }
         ),
-    ] = "24h",
+    ] = None,
     sensors: list[Sensor] = [Sensor.MAGO, Sensor.MAGI],
     matlab_repo: LocalFileSystem
     | GitHubRepository
@@ -508,7 +520,8 @@ def generate_leinweber_offsets_flow(
     """
     app_settings = AppSettings()  # type: ignore
 
-    duration_hours = round(parse_duration(duration_str).total_seconds() / 3600)
+    duration_hours = _resolve_duration_hours(duration_str, app_settings)
+    logger.info(f"Window Duration: {duration_hours}h")
 
     # Log values this run actually uses
     effective_matrix_version = (
