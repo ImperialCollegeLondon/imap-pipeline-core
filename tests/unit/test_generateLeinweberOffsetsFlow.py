@@ -1,6 +1,6 @@
 """Unit tests for generate_leinweber_offsets_flow."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
@@ -14,6 +14,7 @@ from imap_mag.cli.generateLeinweberOffsets import (
 from imap_mag.io import FileFinder
 from imap_mag.util import DatetimeProvider
 from mag_toolkit.calibration import Sensor
+from prefect_server.calibrationFlowCommon import _days_in_range
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.generateLeinweberOffsetsFlow import (
     BackfillLeinweberRunParameters,
@@ -23,7 +24,6 @@ from prefect_server.generateLeinweberOffsetsFlow import (
     _file_has_gap_in_window,
     _pivot_platform_complete,
     _science_ready,
-    _window_bounds,
     _window_days,
     generate_leinweber_offsets_flow,
     generate_leinweber_offsets_flow_run_name,
@@ -706,9 +706,9 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
 
 class TestWindowDays:
     # Strategy-agnostic and deliberately conservative: the midpoint could fall
-    # anywhere within [day's midnight, day's midnight + 24h) depending on
-    # configure_midpoint, so the window always spans at least the day before and
-    # the day after `day`, regardless of duration.
+    # anywhere within `day` depending on configure_midpoint, so the window is the
+    # whole day widened by half the duration either side - always at least the
+    # day before and the day after `day`.
 
     def test_24_hour_duration_touches_the_day_before_and_after(self):
         assert _window_days(DAY, 24) == [
@@ -718,22 +718,48 @@ class TestWindowDays:
         ]
 
     def test_short_duration_still_touches_the_day_before_and_after(self):
-        # A 1-hour window doesn't shrink the touched days below the 3-day
-        # baseline: the midpoint alone could already be anywhere within `day`.
         assert _window_days(DAY, 1) == [
             datetime(2026, 1, 29),
             datetime(2026, 1, 30),
             datetime(2026, 1, 31),
         ]
 
-    def test_long_duration_widens_the_touched_days_further(self):
-        assert _window_days(DAY, 72) == [
+    def test_48_hour_duration_stays_within_the_day_before_and_after(self):
+        # Midpoint anywhere in 2026-01-30 +/- 24h spans exactly 01-29..01-31.
+        assert _window_days(DAY, 48) == [
+            datetime(2026, 1, 29),
+            datetime(2026, 1, 30),
+            datetime(2026, 1, 31),
+        ]
+
+    @pytest.mark.parametrize("duration_hours", [50, 60, 72])
+    def test_longer_durations_widen_the_touched_days_further(self, duration_hours):
+        assert _window_days(DAY, duration_hours) == [
             datetime(2026, 1, 28),
             datetime(2026, 1, 29),
             datetime(2026, 1, 30),
             datetime(2026, 1, 31),
             datetime(2026, 2, 1),
         ]
+
+    @pytest.mark.parametrize("duration_hours", [1, 12, 24, 36, 48, 50, 60, 72, 96])
+    @pytest.mark.parametrize(
+        "midpoint_time",
+        [
+            timedelta(0),  # USE_DATE_AS_IS at midnight
+            timedelta(hours=12),  # USE_MID_DAY
+            timedelta(hours=22, minutes=35),  # default: pivot movement + 12h
+            timedelta(hours=23, minutes=59),  # USE_DATE_AS_IS late in the day
+        ],
+    )
+    def test_covers_every_day_matlabs_window_needs(self, duration_hours, midpoint_time):
+        midpoint = DAY + midpoint_time
+        half = timedelta(hours=duration_hours / 2)
+        start_day = (midpoint - half).replace(hour=0, minute=0)
+        end_day = (midpoint + half).replace(hour=0, minute=0)
+        needed = _days_in_range(start_day, end_day)
+
+        assert set(needed) <= set(_window_days(DAY, duration_hours))
 
 
 class TestScienceReady:
@@ -784,7 +810,7 @@ class TestScienceReady:
         assert _science_ready(finder, None, DAY, 24, [Sensor.MAGO]) is True
 
     # A range that comfortably covers every window these tests check (DAY=
-    # 2026-01-30 with duration_hours=24 spans 2026-01-29 23:59..2026-01-31 00:01).
+    # 2026-01-30 with duration_hours=24 touches 2026-01-29..2026-01-31).
     _FULL_COVERAGE: ClassVar[dict] = {
         "first_timestamp": datetime(2026, 1, 29),
         "last_timestamp": datetime(2026, 2, 1),
@@ -889,13 +915,6 @@ class TestScienceReady:
         database.get_files.return_value = []
 
         assert _science_ready(finder, database, DAY, 24, [Sensor.MAGO]) is True
-
-
-class TestWindowBounds:
-    def test_matches_the_rounded_window_days_span(self):
-        window_start, window_end = _window_bounds(DAY, 24)
-        assert window_start == datetime(2026, 1, 29, 23, 59)
-        assert window_end == datetime(2026, 1, 31, 0, 1)
 
 
 class TestFileHasGapInWindow:

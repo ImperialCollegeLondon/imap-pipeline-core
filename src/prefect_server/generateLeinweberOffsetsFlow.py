@@ -185,30 +185,32 @@ def _resolve_backfill_lookback_days(override: int | None) -> int:
     )
 
 
-def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
-    """Start and end of a conservative Leinweber
-    window for ``day``, for any ``configure_midpoint`` strategy. See ``_window_days``
-    for the whole-calendar-day version."""
-    day_midday = day.replace(hour=12, minute=0, second=0, microsecond=0)
-    half = timedelta(hours=max(duration_hours, 24) / 2)
-    return (
-        day_midday - half - timedelta(minutes=1),
-        day_midday + half + timedelta(minutes=1),
-    )
+def _start_of_day(moment: datetime) -> datetime:
+    """Midnight at the start of ``moment``'s calendar day."""
+    return datetime.combine(moment.date(), datetime.min.time())
+
+
+def _end_of_day(moment: datetime) -> datetime:
+    """The last representable instant (23:59:59.999999) of ``moment``'s calendar day."""
+    return datetime.combine(moment.date(), datetime.max.time())
 
 
 def _window_days(day: datetime, duration_hours: int) -> list[datetime]:
-    """Calendar days that could plausibly be touched by the Leinweber window for
-    ``day``, for any ``configure_midpoint`` strategy.
+    """Calendar days the Leinweber window for ``day`` could touch, for any
+    ``configure_midpoint`` strategy.
 
-    A conservative science readiness check for L1C norm science
+    MATLAB centres a ``duration_hours`` window on a midpoint that, depending on
+    the strategy, can fall anywhere within ``day`` (e.g. 22:35 for the default
+    USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT, or any time for USE_DATE_AS_IS), so
+    this is every day from the start of ``day`` minus half the duration to the
+    end of ``day`` plus half the duration - always at least the day before, the
+    day itself and the day after. Each is then checked for full-day coverage.
     """
-    window_start, window_end = _window_bounds(day, duration_hours)
-
-    first_day = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
-    last_day = window_end.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    return _days_in_range(first_day, last_day)
+    half = timedelta(hours=duration_hours / 2)
+    return _days_in_range(
+        _start_of_day(_start_of_day(day) - half),
+        _start_of_day(_end_of_day(day) + half),
+    )
 
 
 def _file_has_gap_in_window(
@@ -278,14 +280,8 @@ def _science_ready(
             except FileNotFoundError:
                 return False
 
-            # Give some leeway at the start and end of the day, to allow for occasional small gaps at the
-            # beginning and end of the day that shouldn't be a blocker for Leinweber offset generation
-            start_of_day = datetime.combine(
-                touched_day.date(), datetime.min.time()
-            ) + timedelta(minutes=1)
-            end_of_day = datetime.combine(
-                touched_day.date(), datetime.max.time()
-            ) - timedelta(minutes=1)
+            start_of_day = _start_of_day(touched_day)
+            end_of_day = _end_of_day(touched_day)
 
             if _file_has_gap_in_window(database, filename, start_of_day, end_of_day):
                 logger.info(
@@ -322,12 +318,8 @@ def _pivot_platform_complete(
 
         # Give leeway for ILO Hk pivot platform angle files,
         # which do not have samples overlapping day boundaries
-        start_of_day = datetime.combine(
-            touched_day.date(), datetime.min.time()
-        ) + timedelta(minutes=1)
-        end_of_day = datetime.combine(
-            touched_day.date(), datetime.max.time()
-        ) - timedelta(minutes=1)
+        start_of_day = _start_of_day(touched_day) + timedelta(minutes=1)
+        end_of_day = _end_of_day(touched_day) - timedelta(minutes=1)
         if found is None:
             return False
         if _file_has_gap_in_window(database, found.name, start_of_day, end_of_day):
