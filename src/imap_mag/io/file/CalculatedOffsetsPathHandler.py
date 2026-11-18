@@ -12,46 +12,15 @@ logger = logging.getLogger(__name__)
 # per-day offset CSVs produced by the various MATLAB calibration tools.
 SPIN_PLANE = "spin_plane"  # spin-averaged offsets, from the scripted-L2 calibration
 SPIN_OPTIMISED = "spin_optimised"  # spin-tone-corrected ("optimised") offsets
-LEINWEBER = "leinweber"  # solar-wind offsets, from generate_raw_leinweber_offset
-OFFSET_TYPES = (SPIN_PLANE, SPIN_OPTIMISED, LEINWEBER)
+OFFSET_TYPES = (SPIN_PLANE, SPIN_OPTIMISED)
 
 # Each offset type has its own file-name descriptor so the products are uniquely
 # named (and not just distinguished by their folder). This mirrors what MATLAB writes.
-# Leinweber's descriptor also embeds the window duration (in hours), so it is built
-# dynamically in _descriptor() rather than listed here.
 _DESCRIPTOR_BY_OFFSET_TYPE = {
     SPIN_PLANE: "spin-plane-offsets",
     SPIN_OPTIMISED: "spin-plane-optimised-offsets",
 }
 _OFFSET_TYPE_BY_DESCRIPTOR = {v: k for k, v in _DESCRIPTOR_BY_OFFSET_TYPE.items()}
-
-_LEINWEBER_DESCRIPTOR_PATTERN = re.compile(
-    r"^raw-leinweber-offsets-(?P<duration>\d+)hr$"
-)
-
-@dataclass
-class LeinweberOffsetsPathHandler(CalculatedOffsetsPathHandler):
-    """Path handler for Leinweber offsets CSVs.
-
-    These live in ``calibration/calculated_offsets/leinweber/`` and have a distinct
-    file-name descriptor that embeds the window duration (in hours):
-
-    - ``imap_mag_<sensor>-raw-leinweber-offsets-<duration>_<date>_vNNN.csv``
-    """
-
-    duration_str: str | None = None  # leinweber only: window width, formatted by duration_utils.format_duration()
-
-    def _descriptor(self) -> str:
-        super()._check_property_values("descriptor", ["offset_type", "duration_str"])
-        assert self.offset_type and self.duration_str
-
-        if self.offset_type != LEINWEBER:
-            raise ValueError(
-                f"LeinweberOffsetsPathHandler can only handle offset_type '{LEINWEBER}', "
-                f"but got '{self.offset_type}'."
-            )
-
-        return f"raw-leinweber-offsets-{self.duration_str}"
 
 
 @dataclass
@@ -65,6 +34,9 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
 
     - ``spin_plane``     -> ``imap_mag_<sensor>-spin-plane-offsets_<date>_vNNN.csv``
     - ``spin_optimised`` -> ``imap_mag_<sensor>-spin-plane-optimised-offsets_<date>_vNNN.csv``
+
+    Leinweber (solar-wind) offsets are a distinct product with their own
+    file-name convention and are handled by ``LeinweberOffsetsPathHandler``.
     """
 
     mission: str = "imap"
@@ -127,18 +99,17 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
 
         The descriptor uniquely identifies the offset type, so ``offset_type`` is set
         (``spin-plane-optimised-offsets`` -> ``spin_optimised``, ``spin-plane-offsets``
-        -> ``spin_plane``, ``raw-leinweber-offsets-<N>hr`` -> ``leinweber``).
+        -> ``spin_plane``).
         """
 
         if isinstance(filename, str):
             filename = Path(filename)
 
-        # Match the more specific (optimised) descriptor first. Leinweber's descriptor
-        # embeds a variable duration, so it is matched separately via its own pattern.
+        # Match the more specific (optimised) descriptor first.
         descriptors = "|".join(re.escape(d) for d in _OFFSET_TYPE_BY_DESCRIPTOR)
         match = re.match(
             rf"imap_mag_(?P<sensor>mago|magi)-"
-            rf"(?P<descr>{descriptors}|raw-leinweber-offsets-\d+hr)_"
+            rf"(?P<descr>{descriptors})_"
             r"(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             filename.name,
         )
@@ -153,13 +124,7 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
         if offset_type_from_folder not in OFFSET_TYPES:
             return None
 
-        duration_hours: int | None = None
-        leinweber_match = _LEINWEBER_DESCRIPTOR_PATTERN.match(match["descr"])
-        if leinweber_match:
-            offset_type = LEINWEBER
-            duration_hours = int(leinweber_match["duration"])
-        else:
-            offset_type = _OFFSET_TYPE_BY_DESCRIPTOR[match["descr"]]
+        offset_type = _OFFSET_TYPE_BY_DESCRIPTOR[match["descr"]]
 
         if offset_type != offset_type_from_folder:
             raise ValueError(
@@ -171,7 +136,6 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
             sensor=match["sensor"],
             offset_type=offset_type,
             content_date=datetime.strptime(match["date"], "%Y%m%d"),
-            duration_hours=duration_hours,
             version=int(match["version"]),
             extension=match["ext"],
         )

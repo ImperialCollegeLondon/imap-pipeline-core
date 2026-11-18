@@ -11,9 +11,9 @@ import typer
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import AppSettings, SaveMode
 from imap_mag.io import DatastoreFileManager
-from imap_mag.io.file.CalculatedOffsetsPathHandler import (
+from imap_mag.io.file.LeinweberOffsetsPathHandler import (
     LEINWEBER,
-    CalculatedOffsetsPathHandler,
+    LeinweberOffsetsPathHandler,
 )
 from mag_toolkit.calibration import Sensor
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
@@ -225,12 +225,13 @@ def generate_leinweber_offsets(
 
     saved: list[Path] = []
     for path in produced:
-        handler = CalculatedOffsetsPathHandler.from_filename(path)
+        handler = LeinweberOffsetsPathHandler.from_filename(path)
         if handler is None:
             raise ValueError(
                 f"Could not parse a Leinweber offsets path handler from {path.name}."
             )
-        destination, _, _ = outputManager.add_file(path, path_handler=handler)
+        result = outputManager.store_file(path, path_handler=handler)
+        destination = result.destination
         saved.append(destination)
         logger.info(f"Published Leinweber offsets to {destination}.")
 

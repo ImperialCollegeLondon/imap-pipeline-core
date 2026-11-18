@@ -34,7 +34,7 @@ class TestGenerateLeinweberOffsetsFlowRunName:
         mock_params = {
             "start_date": date(2025, 1, 1),
             "end_date": date(2025, 1, 31),
-            "duration_hours": 24,
+            "duration_str": "24h",
         }
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
@@ -42,26 +42,26 @@ class TestGenerateLeinweberOffsetsFlowRunName:
 
         assert "01-01-2025" in result
         assert "31-01-2025" in result
-        assert "24hr" in result
+        assert "24h" in result
 
     def test_without_end_date(self):
         mock_params = {
             "start_date": date(2025, 1, 15),
             "end_date": None,
-            "duration_hours": 24,
+            "duration_str": "24h",
         }
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
             mock_flow_run.parameters = mock_params
             result = generate_leinweber_offsets_flow_run_name()
 
-        assert result == "Leinweber-offsets-15-01-2025-24hr"
+        assert result == "Leinweber-offsets-15-01-2025-24h"
 
     def test_auto_backfill_label_when_start_date_omitted(self):
         with patch(f"{MODULE}.flow_run") as mock_flow_run:
-            mock_flow_run.parameters = {"duration_hours": 24}
+            mock_flow_run.parameters = {"duration_str": "24h"}
             result = generate_leinweber_offsets_flow_run_name()
 
-        assert result == "Leinweber-offsets-auto-backfill-24hr"
+        assert result == "Leinweber-offsets-auto-backfill-24h"
 
 
 def _patch_settings(tmp_path, backfill_lookback_days: int = 14):

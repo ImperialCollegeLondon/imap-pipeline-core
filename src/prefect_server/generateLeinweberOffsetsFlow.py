@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -18,11 +18,8 @@ from imap_mag.cli.generateLeinweberOffsets import (
 from imap_mag.config import AppSettings, CalibrationCommandConfig, SaveMode
 from imap_mag.db.Database import Database
 from imap_mag.io import FileFinder
-from imap_mag.io.file.CalculatedOffsetsPathHandler import (
-    LEINWEBER,
-    CalculatedOffsetsPathHandler,
-)
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
+from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHandler
 from imap_mag.util import DatetimeProvider, MAGSensor, ScienceMode, Subsystem
 from mag_toolkit.calibration import Sensor
 from prefect_server.calibrationFlowCommon import (
@@ -37,7 +34,7 @@ from prefect_server.calibrationFlowCommon import (
     logger,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
-from prefect_server.durationUtils import duration_utils
+from prefect_server.durationUtils import parse_duration
 
 # generate-leinweber-offsets is another MATLAB tool under the calibrate umbrella,
 # so it shares calibrate's calibration_matrix_version/input_json_file defaults
@@ -73,25 +70,28 @@ def generate_leinweber_offsets_flow_run_name() -> str:
     return f"Leinweber-offsets-{date_str}-{duration_str}"
 
 
-def _window_bounds(day: datetime, duration: timedelta) -> tuple[datetime, datetime]:
+def _window_bounds(day: datetime, duration_hours: int) -> tuple[datetime, datetime]:
     """Precise (not rounded to whole days) start/end of the conservative Leinweber
     window for ``day``, for any ``configure_midpoint`` strategy. See ``_window_days``
     for the whole-calendar-day version of this."""
     day_midday = day.replace(hour=12, minute=0, second=0, microsecond=0)
-    half = duration / 2
+    # The midpoint could fall anywhere within `day` depending on configure_midpoint,
+    # not just at noon - so even a short duration must keep the window at least 24h
+    # wide (centred on noon) to stay conservative across every midpoint placement.
+    half = timedelta(hours=max(duration_hours, 24) / 2)
     return (
         day_midday - half - timedelta(minutes=1),
         day_midday + half + timedelta(minutes=1),
     )
 
 
-def _window_days(day: datetime, duration: timedelta) -> list[datetime]:
+def _window_days(day: datetime, duration_hours: int) -> list[datetime]:
     """Calendar days that could plausibly be touched by the Leinweber window for
     ``day``, for any ``configure_midpoint`` strategy.
 
     A conservative science readiness check for L1C norm science
     """
-    window_start, window_end = _window_bounds(day, duration)
+    window_start, window_end = _window_bounds(day, duration_hours)
 
     first_day = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
     last_day = window_end.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -141,7 +141,7 @@ def _science_ready(
     datastore_finder: FileFinder,
     database: Database | None,
     day: datetime,
-    duration: timedelta,
+    duration_hours: int,
     sensors: list[Sensor],
 ) -> bool:
     """Whether L1C norm science covers the full window, with no known gap
@@ -152,7 +152,7 @@ def _science_ready(
 
     for sensor in sensors:
         mag_sensor = MAGSensor(sensor.value.lower())
-        for touched_day in _window_days(day, duration):
+        for touched_day in _window_days(day, duration_hours):
             try:
                 filename = datastore_finder.find_latest_science_by_date(
                     touched_day,
@@ -172,7 +172,7 @@ def _science_ready(
             if _file_has_gap_in_window(database, filename, start_of_day, end_of_day):
                 logger.info(
                     f"L1C norm science file {filename} has a gap "
-                    f"overlapping the {duration} window around {day}."
+                    f"overlapping the {duration_hours}h window around {day}."
                 )
                 return False
     return True
@@ -182,7 +182,7 @@ def _pivot_platform_complete(
     datastore_finder: FileFinder,
     database: Database | None,
     day: datetime,
-    duration: timedelta,
+    duration_hours: int,
 ) -> bool:
     """Whether IMAP-Lo pivot-platform-angle HK data covers the window, with
     no known gap overlapping it, for every calendar day the window touches.
@@ -191,7 +191,7 @@ def _pivot_platform_complete(
     can extrapolate pivot-platform angles and also performs it's own pivot platform validation.
     """
 
-    for touched_day in _window_days(day, duration):
+    for touched_day in _window_days(day, duration_hours):
         handler = HKDecodedPathHandler(
             instrument=Subsystem.LO.short_name,
             descriptor="pivot-platform-angle",
@@ -216,17 +216,16 @@ def _pivot_platform_complete(
 def _existing_offsets(
     datastore_finder: FileFinder,
     day: datetime,
-    duration: timedelta,
+    duration_hours: int,
     sensors: list[Sensor],
 ) -> list[Path] | None:
     """Already-published offset files for this day, or None if any sensor is missing one."""
     existing: list[Path] = []
     for sensor in sensors:
-        handler = CalculatedOffsetsPathHandler(
+        handler = LeinweberOffsetsPathHandler(
             sensor=sensor.value.lower(),
-            offset_type=LEINWEBER,
             content_date=day,
-            duration_str=duration_utils.format_duration(duration),
+            duration_hours=duration_hours,
         )
         found = datastore_finder.find_latest_version_by_handler(
             handler, throw_if_not_found=False
@@ -396,7 +395,11 @@ def generate_leinweber_offsets_flow(
     """
     app_settings = AppSettings()  # type: ignore
 
-    duration = duration_utils.parse_duration(duration_str)
+    # Everything downstream (the window check, the published-offsets lookup, and
+    # the MATLAB call) works in whole hours - the file-name convention embeds an
+    # integer hour count, so a sub-hour duration_str is rounded here, once, rather
+    # than at each place that reads it.
+    duration_hours = round(parse_duration(duration_str).total_seconds() / 3600)
 
     if start_date is None:
         lookback_days = (
@@ -412,16 +415,13 @@ def generate_leinweber_offsets_flow(
             f"End date {end_date} cannot be before start date {start_date}."
         )
 
-    # Convert to hours to pass to MATLAB
-    duration_hours = duration.total_seconds()
-
     days = _days_in_range(start_date, end_date)
     if split_by_day and len(days) > 1:
         return _submit_days_as_deployment_runs(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}",
             days=days,
             base_parameters={
-                "duration": duration,
+                "duration_str": duration_str,
                 "sensors": sensors,
                 "matlab_repo": _swap_matlab_repo_for_block_ref(matlab_repo),
                 "configure_midpoint": configure_midpoint,
@@ -443,13 +443,13 @@ def generate_leinweber_offsets_flow(
     pending_days: list[datetime] = []
     for day in days:
         if not force_regenerate:
-            existing = _existing_offsets(datastore_finder, day, duration, sensors)
+            existing = _existing_offsets(datastore_finder, day, duration_hours, sensors)
             if existing is not None:
                 logger.info(f"Leinweber offsets already published for {day}; skipping.")
                 produced.extend(existing)
                 continue
 
-        if not _science_ready(datastore_finder, database, day, duration, sensors):
+        if not _science_ready(datastore_finder, database, day, duration_hours, sensors):
             logger.info(
                 f"L1C norm science not yet available (or incomplete) for all "
                 f"sensors on {day}; skipping."
@@ -457,7 +457,7 @@ def generate_leinweber_offsets_flow(
             continue
 
         if not _pivot_platform_complete(
-            datastore_finder, database, day, duration
+            datastore_finder, database, day, duration_hours
         ):
             logger.warning(
                 f"IMAP-Lo pivot-platform data is missing or has known gaps for "
