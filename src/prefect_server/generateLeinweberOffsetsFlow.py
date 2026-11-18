@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -31,10 +32,11 @@ from prefect_server.calibrationFlowCommon import (
     _resolve_matlab_repo_path,
     _submit_days_as_deployment_runs,
     _swap_matlab_repo_for_block_ref,
-    logger,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.durationUtils import parse_duration
+
+logger = logging.getLogger(__name__)
 
 # generate-leinweber-offsets is another MATLAB tool under the calibrate umbrella,
 # so it shares calibrate's calibration_matrix_version/input_json_file defaults
