@@ -417,21 +417,25 @@ def _apply_for_date(
             )
         ]
 
-    def store_offsets(offsets_file: Path) -> Path:
-        # Stored before the L2 files are generated so that the version the
-        # datastore assigns is the one they record in their Parents.
-        return outputManager.store_file(offsets_file, offset_file_handler).destination
-
-    (L2_files, offset_file) = applier.apply(
-        day_to_process=date,
+    offset_file = applier.create_offsets(
         layer_files=workLayers,
         rotation=workRotationFile,
         dataFile=workScienceFile,
         outputOffsetsFile=offset_file_path,
+    )
+    # Stored before the L2 files are generated so that they record the
+    # version the datastore assigns to the offsets in their Parents.
+    stored_offset_file = outputManager.store_file(
+        offset_file, offset_file_handler
+    ).destination
+    L2_files = applier.create_l2(
+        day_to_process=date,
+        offsets_file=stored_offset_file,
+        rotation=workRotationFile,
+        dataFile=workScienceFile,
         outputScienceFolder=app_settings.work_folder,
         spice_metakernel=spice_metakernel,
         reference_frames=reference_frames,
-        store_offsets=store_offsets,
     )
     for L2_file in L2_files:
         l2_handler = SciencePathHandler.from_filename(L2_file.name)

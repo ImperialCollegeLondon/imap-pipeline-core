@@ -437,15 +437,15 @@ def test_apply_does_not_delete_files_outside_work_folder(
     external_file = temp_datastore / "should_not_be_deleted.cdf"
     external_file.touch()
 
-    original_apply = CalibrationApplicator.apply
+    original_create_l2 = CalibrationApplicator.create_l2
 
-    def _patched_apply(self, *args, **kwargs):
-        l2_files, offset_file = original_apply(self, *args, **kwargs)
+    def _patched_create_l2(self, *args, **kwargs):
+        l2_files = original_create_l2(self, *args, **kwargs)
         # Inject the external file so the cleanup loop encounters a path
         # that lives outside the work folder.
-        return [*l2_files, external_file], offset_file
+        return [*l2_files, external_file]
 
-    with patch.object(CalibrationApplicator, "apply", _patched_apply):
+    with patch.object(CalibrationApplicator, "create_l2", _patched_create_l2):
         apply(
             layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
             input="imap_mag_l1c_norm-mago_20260116_v001.cdf",

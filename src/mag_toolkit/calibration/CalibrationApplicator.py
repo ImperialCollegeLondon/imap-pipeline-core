@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -103,34 +102,35 @@ class CalibrationApplicator:
             ReferenceFrame.RTN,
             ReferenceFrame.DSRF,
         ],
-        store_offsets: Callable[[Path], Path] | None = None,
     ) -> tuple[list[Path], Path]:
-        """Create the offsets file from the layers, then the L2 files from it.
+        """Currently operating on unprocessed data."""
+        self._check_output_science_folder(outputScienceFolder)
+        offsets_file = self.create_offsets(
+            layer_files, rotation, dataFile, outputOffsetsFile
+        )
+        l2_files = self.create_l2(
+            day_to_process,
+            offsets_file,
+            rotation,
+            dataFile,
+            outputScienceFolder,
+            spice_metakernel,
+            reference_frames,
+        )
+        return (l2_files, offsets_file)
 
-        Args:
-            store_offsets: Called with the new offsets file before any L2 file
-                is generated. Returns the datastore path it was stored at, whose name
-                (and so final version) the L2 files record in their Parents.
-                Without it the L2 files name the offsets file as created.
-        """
-        from imap_mag.io.file import SciencePathHandler
-        from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
-
+    def create_offsets(
+        self,
+        layer_files: list[Path],
+        rotation: Path | None,
+        dataFile: Path,
+        outputOffsetsFile: Path,
+    ) -> Path:
+        """Sum the calibration layers into an offsets file for dataFile."""
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
 
-        if not outputScienceFolder.exists():
-            raise ValueError(
-                f"Output science folder does not exist: {outputScienceFolder}"
-            )
-
-        science_handler = SciencePathHandler.from_filename(dataFile.name)
-        # resolve datafile to an absolute path to ensure it exists in the datastore
-        dataFile = dataFile.resolve()
-        if not dataFile.exists() or not science_handler:
-            raise ValueError(
-                f"Input science file does not exist or could not be parsed: {dataFile}"
-            )
+        dataFile = self._resolve_science_file(dataFile)
 
         if outputOffsetsFile.exists():
             logger.warning(
@@ -147,20 +147,45 @@ class CalibrationApplicator:
             outputOffsetsFile,
             science=science,
         )
-        created_offsets_filepath = created_offsets_filepath.resolve()
-        stored_offsets_filepath = (
-            store_offsets(created_offsets_filepath)
-            if store_offsets is not None
-            else created_offsets_filepath
-        )
+        return created_offsets_filepath.resolve()
 
-        del science
+    def create_l2(
+        self,
+        day_to_process: datetime,
+        offsets_file: Path,
+        rotation: Path | None,
+        dataFile: Path,
+        outputScienceFolder: Path,
+        spice_metakernel: Path | None = None,
+        reference_frames: list[ReferenceFrame] = [
+            ReferenceFrame.SRF,
+            ReferenceFrame.GSE,
+            ReferenceFrame.GSM,
+            ReferenceFrame.RTN,
+            ReferenceFrame.DSRF,
+        ],
+    ) -> list[Path]:
+        """Apply offsets_file (and rotation) to dataFile to create L2 files.
+
+        offsets_file is recorded by name in the L2 files' Parents, so pass the
+        offsets file as stored in the datastore to record its final version.
+        """
+        from imap_mag.io.file import SciencePathHandler
+        from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
+
+        self._check_output_science_folder(outputScienceFolder)
+
+        dataFile = self._resolve_science_file(dataFile)
+        science_handler = SciencePathHandler.from_filename(dataFile.name)
+        assert science_handler is not None
+        # resolved so it can still be read after changing directory to the datastore
+        offsets_file = offsets_file.resolve()
 
         if not reference_frames:
             logger.info(
                 "No reference frames specified, only offsets have been created, skipping L2 file generation"
             )
-            return [], created_offsets_filepath
+            return []
 
         if rotation is None:
             rotationCalibrationDataset = CalibrationMatrix.get_zero_rotation_dataset()
@@ -221,9 +246,7 @@ class CalibrationApplicator:
             # The finally block below performs the restore after computation ends.
             logger.info("Kernels furnished. Loading data ready for L2 file generation")
             science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
-            created_offsets_data = cdf_to_xarray(
-                str(created_offsets_filepath), to_datetime=False
-            )
+            created_offsets_data = cdf_to_xarray(str(offsets_file), to_datetime=False)
             mode = (
                 mag_l2_data.DataMode.NORM
                 if science_handler.get_mode() == ScienceMode.Normal
@@ -296,11 +319,7 @@ class CalibrationApplicator:
             )
             ds.attrs[CONSTANTS.CDF_ATTRS.PARENTS] = self._get_l2_parents(
                 ds,
-                [
-                    f
-                    for f in (rotation, stored_offsets_filepath, dataFile)
-                    if f is not None
-                ],
+                [f for f in (rotation, offsets_file, dataFile) if f is not None],
             )
             logger.info(f"Writing output science file to {filepath}")
             if filepath.exists():
@@ -313,7 +332,27 @@ class CalibrationApplicator:
             xarray_to_cdf(ds, str(filepath))
             files_created.append(filepath)
 
-        return (files_created, created_offsets_filepath)
+        return files_created
+
+    @staticmethod
+    def _check_output_science_folder(outputScienceFolder: Path) -> None:
+        if not outputScienceFolder.exists():
+            raise ValueError(
+                f"Output science folder does not exist: {outputScienceFolder}"
+            )
+
+    @staticmethod
+    def _resolve_science_file(dataFile: Path) -> Path:
+        from imap_mag.io.file import SciencePathHandler
+
+        science_handler = SciencePathHandler.from_filename(dataFile.name)
+        # resolve datafile to an absolute path to ensure it exists in the datastore
+        dataFile = dataFile.resolve()
+        if not dataFile.exists() or not science_handler:
+            raise ValueError(
+                f"Input science file does not exist or could not be parsed: {dataFile}"
+            )
+        return dataFile
 
     @staticmethod
     def _get_l2_parents(ds: Dataset, parent_files: list[Path]) -> list[str]:
