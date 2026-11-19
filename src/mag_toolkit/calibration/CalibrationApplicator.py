@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from imap_processing.mag.l2.mag_l2_data import ValidFrames
 from xarray import Dataset
 
 from imap_mag.config import AppSettings
-from imap_mag.util import ScienceMode
+from imap_mag.util import ScienceMode, get_cdf_data_version
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -48,6 +49,7 @@ class CalibrationApplicator:
         science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
 
         offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
+        calibration_dependencies = list(offsets.metadata.dependencies)
         if offsets.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
             offsets = self._expand_boundary_changes_to_every_epoch(
                 offsets, science_epochs
@@ -62,6 +64,7 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
+            calibration_dependencies.extend(layer.metadata.dependencies)
             if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
                 layer = self._expand_boundary_changes_to_every_epoch(
                     layer, science_epochs
@@ -72,7 +75,13 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
-        offsets.prepare_for_offsets_write(science, outputCalibrationFile, version=1)
+        offsets.prepare_for_offsets_write(
+            science,
+            outputCalibrationFile,
+            version=1,
+            # dict.fromkeys de-duplicates while keeping the layers' order
+            calibration_dependencies=list(dict.fromkeys(calibration_dependencies)),
+        )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
@@ -94,8 +103,16 @@ class CalibrationApplicator:
             ReferenceFrame.RTN,
             ReferenceFrame.DSRF,
         ],
+        publish_offsets: Callable[[Path], Path] | None = None,
     ) -> tuple[list[Path], Path]:
-        """Currently operating on unprocessed data."""
+        """Create the offsets file from the layers, then the L2 files from it.
+
+        Args:
+            publish_offsets: Called with the new offsets file before any L2 file
+                is generated. Returns the path it was published to, whose name
+                (and so final version) the L2 files record in their Parents.
+                Without it the L2 files name the offsets file as created.
+        """
         from imap_mag.io.file import SciencePathHandler
         from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 
@@ -131,6 +148,11 @@ class CalibrationApplicator:
             science=science,
         )
         created_offsets_filepath = created_offsets_filepath.resolve()
+        published_offsets_filepath = (
+            publish_offsets(created_offsets_filepath)
+            if publish_offsets is not None
+            else created_offsets_filepath
+        )
 
         del science
 
@@ -267,6 +289,19 @@ class CalibrationApplicator:
             filepath = outputScienceFolder / filename
 
             ds.attrs["Logical_file_id"] = filename
+            # mag_l2 leaves Data_version as None, and cdflib silently stops
+            # writing global attributes at the first None value.
+            ds.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+                1, self.app_settings.version_major
+            )
+            ds.attrs[CONSTANTS.CDF_ATTRS.PARENTS] = self._get_l2_parents(
+                ds,
+                [
+                    f
+                    for f in (rotation, published_offsets_filepath, dataFile)
+                    if f is not None
+                ],
+            )
             logger.info(f"Writing output science file to {filepath}")
             if filepath.exists():
                 logger.warning(
@@ -279,6 +314,19 @@ class CalibrationApplicator:
             files_created.append(filepath)
 
         return (files_created, created_offsets_filepath)
+
+    @staticmethod
+    def _get_l2_parents(ds: Dataset, parent_files: list[Path]) -> list[str]:
+        """Parents of an L2 dataset: any it already has, plus the names of
+        parent_files (rotation, offsets and L1c input, in the official L2 order)."""
+        existing = ds.attrs.get(CONSTANTS.CDF_ATTRS.PARENTS) or []
+        if isinstance(existing, str):
+            existing = [existing]
+        parents = list(existing)
+        for parent_file in parent_files:
+            if parent_file.name not in parents:
+                parents.append(parent_file.name)
+        return parents
 
     @staticmethod
     def _get_l2_frames(reference_frames: list[ReferenceFrame]) -> list[ValidFrames]:

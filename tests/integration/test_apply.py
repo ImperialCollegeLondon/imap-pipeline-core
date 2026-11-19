@@ -47,6 +47,13 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     assert np.issubdtype(dataset["validity_start_datetime"].dtype, np.datetime64)
     assert np.issubdtype(dataset["validity_end_datetime"].dtype, np.datetime64)
 
+    import cdflib
+
+    l2_attrs = cdflib.CDF(str(output_l2_file)).globalattsget()
+    assert output_offsets_file.name in l2_attrs["Parents"]
+    # every global attribute is written, not just those before a None value
+    assert l2_attrs["Logical_file_id"] == [output_l2_file.name]
+
     with open_cdf(output_l2_file) as cdf:
         assert f"b_{frame}" in cdf
         assert "epoch" in cdf
@@ -67,6 +74,17 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
         start_date=datetime(2026, 1, 16),
     )
     verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))
+
+    import cdflib
+
+    l2_file = (
+        temp_datastore
+        / "science/mag/l2-pre/2026/01/imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
+    )
+    assert cdflib.CDF(str(l2_file)).globalattsget()["Parents"] == [
+        "imap_mag_l2-norm-offsets_20260116_20260116_v001.cdf",
+        "imap_mag_l1c_norm-mago_20260116_v001.cdf",
+    ]
 
     assert re.search(
         r"Calibration layer data defined in separate file: /.*/calibration/layers/2026/01/imap_mag_noop-norm-layer-data_20260116_v001.csv",
@@ -177,6 +195,14 @@ def test_apply_performs_correct_rotation(
     )
 
     assert output_file.exists()
+
+    import cdflib
+
+    assert cdflib.CDF(str(output_file)).globalattsget()["Parents"] == [
+        "imap_mag_l2-calibration_20250926_v002.cdf",
+        "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf",
+        "imap_mag_l1c_norm-mago_20251017_v000.cdf",
+    ]
 
     correct_vecs = [
         [23218.328, 9613.938, 36211.18],
@@ -585,3 +611,71 @@ def test_apply_l2_version_override_overwrites_existing_file(
     assert existing.stat().st_mtime != original_mtime, (
         "Existing L2 file at the forced version must have been overwritten"
     )
+
+
+def test_apply_records_layer_dependencies_in_offsets_file(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    import json
+
+    import cdflib
+
+    layer_file = (
+        temp_datastore
+        / "calibration/layers/2026/01/imap_mag_noop-norm-layer_20260116_v001.json"
+    )
+    layer_json = json.loads(layer_file.read_text())
+    layer_json["metadata"]["dependencies"] = [
+        "IMAP MAG Calibration Software Version v1.0.0",
+        "calibration_input_file.json",
+        "imap_mag_mago-spin-axis-offsets_v001.csv",
+    ]
+    layer_file.write_text(json.dumps(layer_json))
+
+    apply(
+        layers=[layer_file.name],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+    )
+
+    offsets_file = (
+        temp_datastore
+        / "science-ancillary/l2-offsets/2026/01/imap_mag_l2-norm-offsets_20260116_20260116_v001.cdf"
+    )
+    attrs = cdflib.CDF(str(offsets_file)).globalattsget()
+    assert attrs["Calibration_Dependencies"] == layer_json["metadata"]["dependencies"]
+
+
+def test_apply_l2_parents_name_the_offsets_version_assigned_by_the_datastore(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """When v001 of the offsets already exists with different content the new
+    offsets are saved as v002, and the L2-pre Parents must name v002."""
+    import cdflib
+
+    offsets_dir = temp_datastore / "science-ancillary/l2-offsets/2026/01"
+    offsets_dir.mkdir(parents=True, exist_ok=True)
+    (offsets_dir / "imap_mag_l2-norm-offsets_20260116_20260116_v001.cdf").write_bytes(
+        b"old content"
+    )
+
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+    )
+
+    new_offsets = offsets_dir / "imap_mag_l2-norm-offsets_20260116_20260116_v002.cdf"
+    assert new_offsets.exists()
+    l2_file = (
+        temp_datastore
+        / "science/mag/l2-pre/2026/01/imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
+    )
+    assert cdflib.CDF(str(l2_file)).globalattsget()["Parents"] == [
+        new_offsets.name,
+        "imap_mag_l1c_norm-mago_20260116_v001.cdf",
+    ]

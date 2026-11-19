@@ -92,6 +92,47 @@ def _patch_apply_base_deps(tmp_path):
         yield
 
 
+class TestGetL2Parents:
+    def test_adds_parent_file_names_in_order_when_no_parents(self):
+        ds = MagicMock()
+        ds.attrs = {}
+
+        result = CalibrationApplicator._get_l2_parents(
+            ds,
+            [
+                Path("/work/imap_mag_l2-calibration_20251017_v001.cdf"),
+                Path("/data/imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf"),
+                Path("/work/imap_mag_l1c_norm-mago_20251017_v001.cdf"),
+            ],
+        )
+
+        assert result == [
+            "imap_mag_l2-calibration_20251017_v001.cdf",
+            "imap_mag_l2-norm-offsets_20251017_20251017_v001.cdf",
+            "imap_mag_l1c_norm-mago_20251017_v001.cdf",
+        ]
+
+    def test_keeps_existing_parents_and_appends_parent_files(self):
+        ds = MagicMock()
+        ds.attrs = {CONSTANTS.CDF_ATTRS.PARENTS: ["a.cdf", "b.tf"]}
+
+        result = CalibrationApplicator._get_l2_parents(
+            ds, [Path("offsets.cdf"), Path("l1c.cdf")]
+        )
+
+        assert result == ["a.cdf", "b.tf", "offsets.cdf", "l1c.cdf"]
+
+    def test_does_not_duplicate_parent_files(self):
+        ds = MagicMock()
+        ds.attrs = {CONSTANTS.CDF_ATTRS.PARENTS: "offsets.cdf"}
+
+        result = CalibrationApplicator._get_l2_parents(
+            ds, [Path("offsets.cdf"), Path("l1c.cdf")]
+        )
+
+        assert result == ["offsets.cdf", "l1c.cdf"]
+
+
 class TestGetL2Frames:
     def test_returns_empty_list_for_empty_input(self):
         result = CalibrationApplicator._get_l2_frames([])
@@ -248,9 +289,46 @@ class TestCreateOffsetsFileValidation:
 
         assert result == expected_path
         mock_offsets.prepare_for_offsets_write.assert_called_once_with(
-            science, expected_path, version=1
+            science, expected_path, version=1, calibration_dependencies=[]
         )
         mock_offsets.write_to_file.assert_called_once_with(expected_path)
+
+    def test_records_dependencies_of_every_layer_without_duplicates(self, tmp_path):
+        expected_path = tmp_path / "offsets.cdf"
+        mock_offsets = MagicMock()
+        mock_offsets.value_type = ValueType.VECTOR
+        mock_offsets.compatible.return_value = True
+        mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
+        mock_offsets.metadata.dependencies = ["software v1", "config.json"]
+        mock_offsets.write_to_file.return_value = expected_path
+        mock_layer2 = MagicMock()
+        mock_layer2.value_type = ValueType.VECTOR
+        mock_layer2.metadata.dependencies = ["config.json", "offsets_v001.csv"]
+
+        science = _make_mock_science()
+        applicator = _make_applicator()
+        with (
+            patch(
+                _CALIBRATION_LAYER_FROM_FILE, side_effect=[mock_offsets, mock_layer2]
+            ),
+            patch.object(applicator, "_sum_layers", return_value=mock_offsets),
+        ):
+            applicator._create_offsets_file(
+                layers=[tmp_path / "layer1.json", tmp_path / "layer2.json"],
+                outputCalibrationFile=expected_path,
+                science=science,
+            )
+
+        mock_offsets.prepare_for_offsets_write.assert_called_once_with(
+            science,
+            expected_path,
+            version=1,
+            calibration_dependencies=[
+                "software v1",
+                "config.json",
+                "offsets_v001.csv",
+            ],
+        )
 
     def test_raises_calibration_validity_error_when_offsets_not_compatible(
         self, tmp_path
@@ -451,6 +529,52 @@ class TestApplyPostValidation:
             )
 
         assert files == []
+
+
+class TestApplyPublishesOffsets:
+    def test_l2_parents_name_the_published_offsets_file(self, tmp_path):
+        science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
+        science_file.write_bytes(b"fake cdf data")
+        spice_mk = tmp_path / "metakernel.tm"
+        spice_mk.write_text("SPICE")
+        dataset = MagicMock()
+        dataset.attrs = {"Logical_source": "imap_mag_l2_norm-srf"}
+        published = tmp_path / "datastore" / "offsets_v002.cdf"
+        publish_offsets = MagicMock(return_value=published)
+
+        with (
+            _patch_apply_base_deps(tmp_path),
+            patch("mag_toolkit.calibration.CalibrationApplicator.spiceypy.kclear"),
+            patch("mag_toolkit.calibration.CalibrationApplicator.spiceypy.furnsh"),
+            patch("mag_toolkit.calibration.CalibrationApplicator.os.chdir"),
+            patch(
+                "mag_toolkit.calibration.CalibrationApplicator.cdf_to_xarray",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "mag_toolkit.calibration.CalibrationApplicator.mag_l2.mag_l2",
+                return_value=[dataset],
+            ),
+            patch("mag_toolkit.calibration.CalibrationApplicator.xarray_to_cdf"),
+        ):
+            applicator = CalibrationApplicator(app_settings=MagicMock(version_major=1))
+            _, offsets_file = applicator.apply(
+                day_to_process=datetime(2025, 10, 17),
+                layer_files=[tmp_path / "layer.json"],
+                rotation=None,
+                dataFile=science_file,
+                outputOffsetsFile=tmp_path / "new_offsets.cdf",
+                outputScienceFolder=tmp_path,
+                spice_metakernel=spice_mk,
+                reference_frames=[ReferenceFrame.SRF],
+                publish_offsets=publish_offsets,
+            )
+
+        publish_offsets.assert_called_once_with(offsets_file)
+        assert dataset.attrs[CONSTANTS.CDF_ATTRS.PARENTS] == [
+            "offsets_v002.cdf",
+            science_file.name,
+        ]
 
 
 class TestApplyEarlyReturn:

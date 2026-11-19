@@ -44,6 +44,7 @@ class CONSTANTS:
         MISSION_GROUP = "Mission_group"
         IS_MAGO = "is_mago"
         PARENTS = "Parents"
+        CALIBRATION_DEPENDENCIES = "Calibration_Dependencies"
         GROUND_SOFTWARE_VERSION_MAG = "ground_software_version_mag"
 
     class CSV_VARS:
@@ -185,6 +186,9 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     data_filename: Path | None = None
     data_hash: str | None = None
     dependencies: list[str] = []
+    # Dependencies of the layers summed into an offsets file, written to the
+    # offsets CDF as the Calibration_Dependencies global attribute.
+    calibration_dependencies: list[str] = []
     science: list[str]
     content_date: Annotated[
         np.datetime64 | None,
