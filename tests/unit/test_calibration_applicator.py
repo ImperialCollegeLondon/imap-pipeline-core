@@ -531,16 +531,16 @@ class TestApplyPostValidation:
         assert files == []
 
 
-class TestApplyPublishesOffsets:
-    def test_l2_parents_name_the_published_offsets_file(self, tmp_path):
+class TestApplyStoresOffsets:
+    def test_l2_parents_name_the_stored_offsets_file(self, tmp_path):
         science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
         spice_mk = tmp_path / "metakernel.tm"
         spice_mk.write_text("SPICE")
         dataset = MagicMock()
         dataset.attrs = {"Logical_source": "imap_mag_l2_norm-srf"}
-        published = tmp_path / "datastore" / "offsets_v002.cdf"
-        publish_offsets = MagicMock(return_value=published)
+        stored = tmp_path / "datastore" / "offsets_v002.cdf"
+        store_offsets = MagicMock(return_value=stored)
 
         with (
             _patch_apply_base_deps(tmp_path),
@@ -567,10 +567,10 @@ class TestApplyPublishesOffsets:
                 outputScienceFolder=tmp_path,
                 spice_metakernel=spice_mk,
                 reference_frames=[ReferenceFrame.SRF],
-                publish_offsets=publish_offsets,
+                store_offsets=store_offsets,
             )
 
-        publish_offsets.assert_called_once_with(offsets_file)
+        store_offsets.assert_called_once_with(offsets_file)
         assert dataset.attrs[CONSTANTS.CDF_ATTRS.PARENTS] == [
             "offsets_v002.cdf",
             science_file.name,

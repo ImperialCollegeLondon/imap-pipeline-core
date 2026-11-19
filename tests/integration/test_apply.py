@@ -52,7 +52,7 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     l2_attrs = cdflib.CDF(str(output_l2_file)).globalattsget()
     assert output_offsets_file.name in l2_attrs["Parents"]
     # every global attribute is written, not just those before a None value
-    assert l2_attrs["Logical_file_id"] == [output_l2_file.name]
+    assert l2_attrs["Logical_file_id"] == [output_l2_file.stem]
 
     with open_cdf(output_l2_file) as cdf:
         assert f"b_{frame}" in cdf
@@ -586,6 +586,12 @@ def test_apply_l2_version_override_forces_specific_version(
         "Default v001.0001 must not be created when the L2 version override is active"
     )
 
+    import cdflib
+
+    attrs = cdflib.CDF(str(forced_srf)).globalattsget()
+    assert attrs["Data_version"] == ["002.0005"]
+    assert attrs["Logical_file_id"] == [forced_srf.stem]
+
 
 def test_apply_l2_version_override_overwrites_existing_file(
     temp_datastore,
@@ -679,3 +685,33 @@ def test_apply_l2_parents_name_the_offsets_version_assigned_by_the_datastore(
         new_offsets.name,
         "imap_mag_l1c_norm-mago_20260116_v001.cdf",
     ]
+
+
+def test_apply_stamps_l2_pre_with_the_version_assigned_by_the_datastore(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    """When v001.0001 of the L2-pre already exists with different content the
+    new file is saved as v001.0002, and its Data_version and Logical_file_id
+    must say v001.0002 too."""
+    import cdflib
+
+    l2_dir = temp_datastore / "science/mag/l2-pre/2026/01"
+    l2_dir.mkdir(parents=True, exist_ok=True)
+    (l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf").write_bytes(
+        b"old content"
+    )
+
+    apply(
+        layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+        input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+        start_date=datetime(2026, 1, 16),
+    )
+
+    new_l2 = l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf"
+    assert new_l2.exists()
+    attrs = cdflib.CDF(str(new_l2)).globalattsget()
+    assert attrs["Data_version"] == ["001.0002"]
+    assert attrs["Logical_file_id"] == [new_l2.stem]
+    assert "imap_mag_l1c_norm-mago_20260116_v001.cdf" in attrs["Parents"]

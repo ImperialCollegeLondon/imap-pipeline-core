@@ -44,6 +44,7 @@ from mag_toolkit.calibration.CalibrationDefinitions import (
 from mag_toolkit.calibration.Layer import Validity
 from tests.util.database import test_database  # noqa: F401  # noqa: F401
 from tests.util.miscellaneous import (
+    create_test_cdf_file,
     create_test_file,
 )
 
@@ -1324,8 +1325,10 @@ def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
         mock_datastore_manager, mock_database
     )
 
-    original_file = create_test_file(
-        Path(tempfile.gettempdir()) / "some_science_file_vmaj", "science content vmaj"
+    # L2-pre files are CDFs, which are re-stamped when re-versioned
+    original_file = create_test_cdf_file(
+        Path(tempfile.gettempdir()) / "some_science_file_vmaj.cdf",
+        "science content vmaj",
     )
     path_handler = SciencePathHandler(
         level="l2-pre",
@@ -1368,8 +1371,10 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
         mock_datastore_manager, mock_database
     )
 
-    original_file = create_test_file(
-        Path(tempfile.gettempdir()) / "some_science_mixed_fmt", "new science content"
+    # L2-pre files are CDFs, which are re-stamped when re-versioned
+    original_file = create_test_cdf_file(
+        Path(tempfile.gettempdir()) / "some_science_mixed_fmt.cdf",
+        "new science content",
     )
     path_handler = SciencePathHandler(
         level="l2-pre",
@@ -1442,8 +1447,9 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_
         mock_datastore_manager, mock_database
     )
 
-    original_file = create_test_file(
-        Path(tempfile.gettempdir()) / "some_science_gap", "new science content"
+    # L2-pre files are CDFs, which are re-stamped when re-versioned
+    original_file = create_test_cdf_file(
+        Path(tempfile.gettempdir()) / "some_science_gap.cdf", "new science content"
     )
     path_handler = SciencePathHandler(
         level="l2-pre",

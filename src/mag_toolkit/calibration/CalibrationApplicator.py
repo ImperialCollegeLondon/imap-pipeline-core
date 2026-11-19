@@ -103,13 +103,13 @@ class CalibrationApplicator:
             ReferenceFrame.RTN,
             ReferenceFrame.DSRF,
         ],
-        publish_offsets: Callable[[Path], Path] | None = None,
+        store_offsets: Callable[[Path], Path] | None = None,
     ) -> tuple[list[Path], Path]:
         """Create the offsets file from the layers, then the L2 files from it.
 
         Args:
-            publish_offsets: Called with the new offsets file before any L2 file
-                is generated. Returns the path it was published to, whose name
+            store_offsets: Called with the new offsets file before any L2 file
+                is generated. Returns the datastore path it was stored at, whose name
                 (and so final version) the L2 files record in their Parents.
                 Without it the L2 files name the offsets file as created.
         """
@@ -148,9 +148,9 @@ class CalibrationApplicator:
             science=science,
         )
         created_offsets_filepath = created_offsets_filepath.resolve()
-        published_offsets_filepath = (
-            publish_offsets(created_offsets_filepath)
-            if publish_offsets is not None
+        stored_offsets_filepath = (
+            store_offsets(created_offsets_filepath)
+            if store_offsets is not None
             else created_offsets_filepath
         )
 
@@ -288,7 +288,7 @@ class CalibrationApplicator:
             )
             filepath = outputScienceFolder / filename
 
-            ds.attrs["Logical_file_id"] = filename
+            ds.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(filename).stem
             # mag_l2 leaves Data_version as None, and cdflib silently stops
             # writing global attributes at the first None value.
             ds.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
@@ -298,7 +298,7 @@ class CalibrationApplicator:
                 ds,
                 [
                     f
-                    for f in (rotation, published_offsets_filepath, dataFile)
+                    for f in (rotation, stored_offsets_filepath, dataFile)
                     if f is not None
                 ],
             )
