@@ -70,14 +70,7 @@ class SciencePathHandler(StandardSPDFPathHandler):
         super().increase_sequence()
 
     def prepare_for_version(self, source_file: Path) -> Path:
-        """Stamp an L2-pre CDF with the version it is being saved under.
-
-        L2-pre files are written before the datastore assigns their final
-        version, so the CDF ``Data_version`` and ``Logical_file_id`` global
-        attributes are updated in the source file here, before it is copied
-        into the datastore. Other science files (e.g. those downloaded from
-        the SDC) are never changed. Always returns source_file.
-        """
+        """Stamp an L2-pre CDF with the version it is being saved under."""
         if self.level != "l2-pre" or self.get_extension_or_default() != "cdf":
             return source_file
 

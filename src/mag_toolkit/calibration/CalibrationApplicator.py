@@ -63,7 +63,9 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
-            calibration_dependencies.extend(layer.metadata.dependencies)
+            for dependency in layer.metadata.dependencies:
+                if dependency not in calibration_dependencies:
+                    calibration_dependencies.append(dependency)
             if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
                 layer = self._expand_boundary_changes_to_every_epoch(
                     layer, science_epochs
@@ -78,8 +80,7 @@ class CalibrationApplicator:
             science,
             outputCalibrationFile,
             version=1,
-            # dict.fromkeys de-duplicates while keeping the layers' order
-            calibration_dependencies=list(dict.fromkeys(calibration_dependencies)),
+            calibration_dependencies=calibration_dependencies,
         )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
@@ -165,11 +166,7 @@ class CalibrationApplicator:
             ReferenceFrame.DSRF,
         ],
     ) -> list[Path]:
-        """Apply offsets_file (and rotation) to dataFile to create L2 files.
-
-        offsets_file is recorded by name in the L2 files' Parents, so pass the
-        offsets file as stored in the datastore to record its final version.
-        """
+        """Apply offsets_file (and rotation) to dataFile to create L2 files."""
         from imap_mag.io.file import SciencePathHandler
         from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 
