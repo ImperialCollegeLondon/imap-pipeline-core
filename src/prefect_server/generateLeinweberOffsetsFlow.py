@@ -513,7 +513,9 @@ def generate_leinweber_offsets_flow(
         end_date = DatetimeProvider().yesterday(datetime)
         start_date = end_date - timedelta(days=lookback_days - 1)
 
-    days = _days_in_range(start_date, end_date)
+    range_end = datetime.combine((end_date or start_date).date(), start_date.timetz())
+    days = _days_in_range(start_date, range_end)
+
     if split_by_day and len(days) > 1:
         return _submit_leinweber_days_as_deployment_runs(
             deployment_name=f"{PREFECT_CONSTANTS.FLOW_NAMES.GENERATE_LEINWEBER_OFFSETS}/{PREFECT_CONSTANTS.DEPLOYMENT_NAMES.GENERATE_LEINWEBER_OFFSETS}",
