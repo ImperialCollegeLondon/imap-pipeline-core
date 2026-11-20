@@ -59,19 +59,21 @@ def datastore_env(tmp_path):
 
 def test_requires_matlab_repo(datastore_env):
     with pytest.raises(ValueError, match="MATLAB repository path is required"):
-        generate_leinweber_offsets(date=DATE, matlab_repo=None)
+        generate_leinweber_offsets(date=DATE, duration_hours=24, matlab_repo=None)
 
 
 def test_raises_if_matlab_repo_missing(datastore_env, tmp_path):
     with pytest.raises(FileNotFoundError, match="repository not found"):
-        generate_leinweber_offsets(date=DATE, matlab_repo=tmp_path / "nope")
+        generate_leinweber_offsets(
+            date=DATE, duration_hours=24, matlab_repo=tmp_path / "nope"
+        )
 
 
 def test_raises_if_matlab_script_missing(datastore_env, tmp_path):
     empty_repo = tmp_path / "empty_repo"
     empty_repo.mkdir()
     with pytest.raises(FileNotFoundError, match="generate_raw_leinweber_offset"):
-        generate_leinweber_offsets(date=DATE, matlab_repo=empty_repo)
+        generate_leinweber_offsets(date=DATE, duration_hours=24, matlab_repo=empty_repo)
 
 
 def test_raises_if_no_outputs_produced(datastore_env, tmp_path, monkeypatch):
@@ -83,7 +85,7 @@ def test_raises_if_no_outputs_produced(datastore_env, tmp_path, monkeypatch):
     monkeypatch.setattr(MODULE_CALL_MATLAB, mock_call_matlab)
 
     with pytest.raises(FileNotFoundError, match="produced no output files"):
-        generate_leinweber_offsets(date=DATE, matlab_repo=repo)
+        generate_leinweber_offsets(date=DATE, duration_hours=24, matlab_repo=repo)
 
 
 def test_generates_and_publishes_offsets(datastore_env, tmp_path, monkeypatch):
@@ -100,6 +102,7 @@ def test_generates_and_publishes_offsets(datastore_env, tmp_path, monkeypatch):
 
     saved = generate_leinweber_offsets(
         date=DATE,
+        duration_hours=24,
         matlab_repo=repo,
         save_mode=SaveMode.LocalOnly,
     )

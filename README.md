@@ -222,7 +222,7 @@ Runs the MATLAB `generate_raw_leinweber_offset` tool for one day and publishes t
 ```bash
 # Generate MAGo and MAGi offsets for a 24h window around 1 Aug 2026,
 # using the MATLAB repo at the default path in the docker image (/app/matlab/calibration)
-imap-mag calibration leinweber --date 2026-08-01
+imap-mag calibration leinweber --date 2026-08-01 --duration-hours 24
 
 # Point at a local checkout of the MATLAB repo, use a 48h window for MAGo only,
 # skip verification for a quicker run, and keep the work folder to inspect afterwards

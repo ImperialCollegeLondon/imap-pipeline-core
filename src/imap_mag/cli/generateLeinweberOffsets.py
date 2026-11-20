@@ -3,7 +3,6 @@ import logging
 import shutil
 import uuid
 from datetime import datetime
-from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -18,7 +17,10 @@ from imap_mag.io.file.LeinweberOffsetsPathHandler import (
 )
 from imap_mag.util.constants import CONSTANTS
 from mag_toolkit.calibration import Sensor
+from mag_toolkit.calibration.CalibrationDefinitions import ConfigureMidpoint
 from mag_toolkit.calibration.MatlabWrapper import call_matlab
+
+__all__ = ["ConfigureMidpoint", "NoOffsetsProducedError", "generate_leinweber_offsets"]
 
 logger = logging.getLogger(__name__)
 
@@ -30,20 +32,6 @@ class NoOffsetsProducedError(FileNotFoundError):
     "no offsets for this day" outcome. Callers (e.g. the Prefect flow) can
     catch this specific type to tell the two apart.
     """
-
-
-class ConfigureMidpoint(StrEnum):
-    """How generate_raw_leinweber_offset derives its analysis midpoint from --date.
-
-    Mirrors the ``Options.configure_midpoint`` name-value option of the MATLAB
-    tool exactly (values are passed straight through).
-    """
-
-    USE_DATE_AS_IS = "USE_DATE_AS_IS"
-    USE_MID_DAY = "USE_MID_DAY"
-    USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT = (
-        "USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT"
-    )
 
 
 # Relative path (within the MATLAB repo) of the tool we invoke. Used to fail fast if
@@ -71,6 +59,12 @@ def generate_leinweber_offsets(
             "day), then runs over a window of --duration-hours centred on that.",
         ),
     ],
+    duration_hours: Annotated[
+        int,
+        typer.Option(
+            help="Width (in hours) of the window centred on the derived midpoint."
+        ),
+    ],
     matlab_repo: Annotated[
         Path | None,
         typer.Option(
@@ -78,12 +72,6 @@ def generate_leinweber_offsets(
             "generate_raw_leinweber_offset."
         ),
     ] = Path(CONSTANTS.DEFAULT_MATLAB_REPO_PATH),
-    duration_hours: Annotated[
-        int,
-        typer.Option(
-            help="Width (in hours) of the window centred on the derived midpoint."
-        ),
-    ] = 24,
     configure_midpoint: Annotated[
         ConfigureMidpoint | None,
         typer.Option(
@@ -138,7 +126,7 @@ def generate_leinweber_offsets(
     Generate daily Leinweber (solar-wind) offsets via the MATLAB
     generate_raw_leinweber_offset tool, and publish them to the datastore.
 
-    e.g. imap-mag calibration leinweber --date 2026-08-01 --matlab-repo /app/matlab/calibration
+    e.g. imap-mag calibration leinweber --date 2026-08-01 --duration-hours 24 --matlab-repo /app/matlab/calibration
     """
     if matlab_repo is None:
         raise ValueError(

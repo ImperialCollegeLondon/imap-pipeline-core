@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated
@@ -15,18 +16,17 @@ from mag_toolkit.calibration.CalibrationConfig import (
     SetQualityAndNaNConfig,
 )
 from prefect_server.calibrationFlowCommon import (
-    DEFAULT_CALIBRATION_MATRIX_VERSION,
-    DEFAULT_INPUT_JSON_FILE,
-    DEFAULT_MATLAB_REPO_PATH,
+    APP_SETTINGS_DEFAULT_INSTANCE,
     PrefectScriptedL2CalibrationConfig,
     SplitByDay,
     _configuration_for_deployment,
     _days_in_range,
     _run_calibration,
     _submit_days_as_deployment_runs,
-    logger,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
+
+logger = logging.getLogger(__name__)
 
 
 def generate_calibration_flow_run_name() -> str:
@@ -83,10 +83,8 @@ def calibrate_flow(
                 "position": 3,
             }
         ),
-    ] = PrefectScriptedL2CalibrationConfig(
-        calibration_matrix_version=DEFAULT_CALIBRATION_MATRIX_VERSION,
-        input_json_file=DEFAULT_INPUT_JSON_FILE,
-        matlab_repo=DEFAULT_MATLAB_REPO_PATH,
+    ] = PrefectScriptedL2CalibrationConfig.build_with_defaults_from_app_settings(
+        APP_SETTINGS_DEFAULT_INSTANCE
     ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,

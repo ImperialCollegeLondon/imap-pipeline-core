@@ -9,17 +9,14 @@ from prefect import flow
 from prefect.artifacts import create_table_artifact
 from prefect.client.schemas.objects import FlowRun
 from prefect.deployments import run_deployment
-from prefect.filesystems import LocalFileSystem
 from prefect.runtime import flow_run
 from prefect.variables import Variable
-from prefect_github import GitHubRepository
 from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import (
     force_utc_timezone,
 )
 from imap_mag.cli.generateLeinweberOffsets import (
-    ConfigureMidpoint,
     NoOffsetsProducedError,
     generate_leinweber_offsets,
 )
@@ -31,11 +28,12 @@ from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHan
 from imap_mag.util import DatetimeProvider, MAGSensor, ScienceMode, Subsystem
 from mag_toolkit.calibration import Sensor
 from prefect_server.calibrationFlowCommon import (
-    DEFAULT_MATLAB_REPO_PATH,
+    APP_SETTINGS_DEFAULT_INSTANCE,
+    PrefectScriptedLeinweberCalibrationConfig,
     SplitByDay,
+    _configuration_for_deployment,
     _days_in_range,
     _resolve_matlab_repo_path,
-    _swap_matlab_repo_for_block_ref,
 )
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.durationUtils import parse_duration
@@ -135,7 +133,12 @@ class LeinweberByDateRunParameters:
 def generate_leinweber_offsets_flow_run_name() -> str:
     parameters = flow_run.parameters
     run_parameters = parameters.get("run_parameters")
-    duration_str = parameters.get("duration_str")
+    calibration_configuration = parameters.get("calibration_configuration")
+    # Prefect may hand this over as the model or as its raw dict form.
+    if isinstance(calibration_configuration, dict):
+        duration_str = calibration_configuration.get("duration")
+    else:
+        duration_str = getattr(calibration_configuration, "duration", None)
     if duration_str is None:
         duration_str = f"{_resolve_duration_hours(None)}h"
 
@@ -446,84 +449,22 @@ def generate_leinweber_offsets_flow(
             }
         ),
     ] = BackfillLeinweberRunParameters(),
-    duration_str: Annotated[
-        str | None,
+    calibration_configuration: Annotated[
+        PrefectScriptedLeinweberCalibrationConfig,
         Field(
             json_schema_extra={
-                "title": "Duration",
-                "description": "Duration for the analysis window. Sub-hour fields "
-                "will be rounded to the nearest hour. Left unset, uses the "
-                "leinweber_duration_hours Prefect variable.",
+                "title": "Calibration configuration",
+                "description": "MATLAB repo, calibration matrix version, window "
+                "duration, midpoint, verification and pivot-platform options.",
                 "position": 2,
             }
         ),
-    ] = None,
+    ] = PrefectScriptedLeinweberCalibrationConfig.build_with_defaults_from_app_settings(
+        APP_SETTINGS_DEFAULT_INSTANCE
+    ),
     sensors: list[Sensor] = [Sensor.MAGO, Sensor.MAGI],
-    matlab_repo: LocalFileSystem
-    | GitHubRepository
-    | str
-    | None = DEFAULT_MATLAB_REPO_PATH,
-    configure_midpoint: Annotated[
-        ConfigureMidpoint,
-        Field(
-            json_schema_extra={
-                "title": "Configure midpoint",
-                "description": "How generate_raw_leinweber_offset derives its "
-                "analysis midpoint from the date: USE_DATE_AS_IS uses the date "
-                "(and time) exactly as given; USE_MID_DAY uses noon on that day; "
-                "USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT (MATLAB's own default) "
-                "uses 12 hours after the IMAP-Lo pivot-platform movement time of "
-                "day.",
-            }
-        ),
-    ] = ConfigureMidpoint.USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT,
-    calibration_matrix_version: Annotated[
-        int | None,
-        Field(
-            json_schema_extra={
-                "title": "Calibration matrix version",
-                "description": "Version of the calibration matrices to load. Left "
-                "unset, uses the configured default "
-                "(calibrate.scripted_l2_calibration_matrix_version).",
-            }
-        ),
-    ] = None,
-    calibration_input_json_file: Annotated[
-        str | None,
-        Field(
-            json_schema_extra={
-                "title": "Calibration input JSON",
-                "description": "Calibration input JSON (path relative to the "
-                "MATLAB repo), for the IMAP-Lo pivot-platform deltas. Left unset, "
-                "uses the configured default (calibrate.scripted_l2_input_json_file).",
-            }
-        ),
-    ] = None,
-    verify: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Verify",
-                "description": "Whether to run post generation verification of the offsets, by rerunning Leinweber with the generated offsets and checking the residuals. "
-                "Writes the VerifyResidual (the highest verification residual of the three axes) to the offsets file. Slower, but recommended.",
-            }
-        ),
-    ] = True,
     save_mode: SaveMode = SaveMode.LocalAndDatabase,
-    cleanup_temp_files_after_run: bool = True,
     split_by_day: SplitByDay = False,
-    allow_pivot_platform_extrapolation: Annotated[
-        bool,
-        Field(
-            json_schema_extra={
-                "title": "Allow pivot-platform extrapolation",
-                "description": "If False (default), generate_raw_leinweber_offset "
-                "skips a sensor/day rather than correcting it with extrapolated "
-                "IMAP-Lo pivot-platform angles when the available pivot-platform "
-                "data doesn't cover the window.",
-            }
-        ),
-    ] = False,
 ) -> list[Path] | list[FlowRun]:
     """Generate daily Leinweber (solar-wind) offsets for a date range.
 
@@ -544,20 +485,13 @@ def generate_leinweber_offsets_flow(
     """
     app_settings = AppSettings()  # type: ignore
 
-    duration_hours = _resolve_duration_hours(duration_str)
+    duration_hours = _resolve_duration_hours(calibration_configuration.duration)
     logger.info(f"Window Duration: {duration_hours}h")
 
     # Log values this run actually uses
-    effective_matrix_version = (
-        calibration_matrix_version
-        if calibration_matrix_version is not None
-        else app_settings.calibrate.scripted_l2_calibration_matrix_version
-    )
-    effective_input_json_file = (
-        calibration_input_json_file
-        if calibration_input_json_file is not None
-        else app_settings.calibrate.scripted_l2_input_json_file
-    )
+    effective_matrix_version = calibration_configuration.calibration_matrix_version
+    effective_input_json_file = calibration_configuration.input_json_file
+
     logger.info(f"Calibration Matrix Version: {effective_matrix_version}")
     logger.info(f"Calibration Input File: {effective_input_json_file}")
 
@@ -587,16 +521,11 @@ def generate_leinweber_offsets_flow(
             fail_on_missing_offsets=fail_on_missing_offsets,
             force_regenerate=force_regenerate,
             base_parameters={
-                "duration_str": duration_str,
                 "sensors": sensors,
-                "matlab_repo": _swap_matlab_repo_for_block_ref(matlab_repo),
-                "configure_midpoint": configure_midpoint,
-                "calibration_matrix_version": calibration_matrix_version,
-                "calibration_input_json_file": calibration_input_json_file,
-                "verify": verify,
+                "calibration_configuration": _configuration_for_deployment(
+                    calibration_configuration
+                ),
                 "save_mode": save_mode,
-                "cleanup_temp_files_after_run": cleanup_temp_files_after_run,
-                "allow_pivot_platform_extrapolation": allow_pivot_platform_extrapolation,
             },
         )
 
@@ -632,7 +561,7 @@ def generate_leinweber_offsets_flow(
 
     if pending_days:
         matlab_repo_path = _resolve_matlab_repo_path(
-            matlab_repo, app_settings.work_folder
+            calibration_configuration.matlab_repo, app_settings.work_folder
         )
         if matlab_repo_path is None:
             raise ValueError("matlab_repo is required to generate Leinweber offsets.")
@@ -645,13 +574,13 @@ def generate_leinweber_offsets_flow(
                         matlab_repo=matlab_repo_path,
                         duration_hours=duration_hours,
                         sensors=sensors,
-                        configure_midpoint=configure_midpoint,
-                        calibration_matrix_version=calibration_matrix_version,
-                        calibration_input_json_file=calibration_input_json_file,
-                        verify=verify,
+                        configure_midpoint=calibration_configuration.configure_midpoint,
+                        calibration_matrix_version=calibration_configuration.calibration_matrix_version,
+                        calibration_input_json_file=calibration_configuration.input_json_file,
+                        verify=calibration_configuration.verify,
                         save_mode=save_mode,
-                        cleanup_temp_files_after_run=cleanup_temp_files_after_run,
-                        allow_pivot_platform_extrapolation=allow_pivot_platform_extrapolation,
+                        cleanup_temp_files_after_run=calibration_configuration.cleanup_temp_files_after_run,
+                        allow_pivot_platform_extrapolation=calibration_configuration.allow_pivot_platform_extrapolation,
                     )
                 )
             except NoOffsetsProducedError:
