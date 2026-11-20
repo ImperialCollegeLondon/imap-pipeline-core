@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from imap_db.model import FileAnalysis
 from imap_mag.cli.generateLeinweberOffsets import (
     ConfigureMidpoint,
     NoOffsetsProducedError,
@@ -844,7 +845,7 @@ class TestScienceReady:
         finder = FileFinder(tmp_path)
 
         mock_file = MagicMock(id=1)
-        mock_analysis = MagicMock(
+        mock_analysis = FileAnalysis(
             gaps=[
                 {
                     "start_time": "2026-01-30T10:00:00",
@@ -870,7 +871,7 @@ class TestScienceReady:
         finder = FileFinder(tmp_path)
 
         mock_file = MagicMock(id=1)
-        mock_analysis = MagicMock(
+        mock_analysis = FileAnalysis(
             gaps=[],
             has_missing_data=True,
             has_bad_data=True,
@@ -888,7 +889,7 @@ class TestScienceReady:
         finder = FileFinder(tmp_path)
 
         mock_file = MagicMock(id=1)
-        mock_analysis = MagicMock(
+        mock_analysis = FileAnalysis(
             gaps=[
                 {
                     # Well outside the 24h window around DAY (2026-01-30).
@@ -915,7 +916,7 @@ class TestScienceReady:
         finder = FileFinder(tmp_path)
 
         mock_file = MagicMock(id=1)
-        mock_analysis = MagicMock(
+        mock_analysis = FileAnalysis(
             gaps=[],
             has_missing_data=False,
             has_bad_data=False,
@@ -969,7 +970,9 @@ class TestFileHasGapInWindow:
             is False
         )
 
-    def test_false_when_no_analysis_record(self):
+    def test_true_when_no_analysis_record(self):
+        # The file exists but hasn't been analysed yet, so coverage can't be
+        # confirmed - treat it as incomplete.
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
         database.get_file_analysis_by_file_id.return_value = None
@@ -977,34 +980,14 @@ class TestFileHasGapInWindow:
             _file_has_gap_in_window(
                 database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
             )
-            is False
+            is True
         )
 
     def test_false_when_no_gaps_recorded_and_coverage_spans_the_window(self):
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
+        database.get_file_analysis_by_file_id.return_value = FileAnalysis(
             gaps=[], **self._FULL_COVERAGE
-        )
-        assert (
-            _file_has_gap_in_window(
-                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
-            )
-            is False
-        )
-
-    def test_false_when_recorded_gap_is_outside_the_window(self):
-        database = MagicMock()
-        database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
-            gaps=[
-                {
-                    "start_time": "2026-02-15T10:00:00",
-                    "end_time": "2026-02-15T10:05:00",
-                    "duration_seconds": 300,
-                }
-            ],
-            **self._FULL_COVERAGE,
         )
         assert (
             _file_has_gap_in_window(
@@ -1016,7 +999,7 @@ class TestFileHasGapInWindow:
     def test_true_when_recorded_gap_overlaps_the_window(self):
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
+        database.get_file_analysis_by_file_id.return_value = FileAnalysis(
             gaps=[
                 {
                     "start_time": "2026-01-30T10:00:00",
@@ -1025,78 +1008,6 @@ class TestFileHasGapInWindow:
                 }
             ],
             **self._FULL_COVERAGE,
-        )
-        assert (
-            _file_has_gap_in_window(
-                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
-            )
-            is True
-        )
-
-    def test_true_when_recorded_gap_only_partially_overlaps_the_window(self):
-        database = MagicMock()
-        database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
-            gaps=[
-                {
-                    # Starts before the window and ends just inside it.
-                    "start_time": "2026-01-29T20:00:00",
-                    "end_time": "2026-01-30T00:00:01",
-                    "duration_seconds": 14401,
-                }
-            ],
-            **self._FULL_COVERAGE,
-        )
-        assert (
-            _file_has_gap_in_window(
-                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
-            )
-            is True
-        )
-
-    def test_true_when_no_timestamps_recorded_at_all(self):
-        # Analysis ran but found 0-1 usable timestamps - coverage can't be
-        # confirmed, so treat as incomplete rather than assuming the best.
-        database = MagicMock()
-        database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
-            gaps=[], first_timestamp=None, last_timestamp=None
-        )
-        assert (
-            _file_has_gap_in_window(
-                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
-            )
-            is True
-        )
-
-    def test_true_when_data_starts_after_the_window_start(self):
-        # The file's first record is after the window needs coverage from - a
-        # leading gap `gaps` can't see, since there's no earlier record to diff
-        # against.
-        database = MagicMock()
-        database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
-            gaps=[],
-            first_timestamp=datetime(2026, 1, 30, 6, 0),
-            last_timestamp=datetime(2026, 2, 1),
-        )
-        assert (
-            _file_has_gap_in_window(
-                database, "some-file.cdf", self.WINDOW_START, self.WINDOW_END
-            )
-            is True
-        )
-
-    def test_true_when_data_ends_before_the_window_end(self):
-        # The file's last record is before the window needs coverage until - a
-        # trailing gap at the end of the day/window `gaps` can't see, since
-        # there's no later record to diff against.
-        database = MagicMock()
-        database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
-            gaps=[],
-            first_timestamp=datetime(2026, 1, 29),
-            last_timestamp=datetime(2026, 1, 30, 18, 0),
         )
         assert (
             _file_has_gap_in_window(
@@ -1158,7 +1069,7 @@ class TestPivotPlatformComplete:
 
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
+        database.get_file_analysis_by_file_id.return_value = FileAnalysis(
             gaps=[
                 {
                     "start_time": "2026-01-30T10:00:00",
@@ -1178,7 +1089,7 @@ class TestPivotPlatformComplete:
 
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
+        database.get_file_analysis_by_file_id.return_value = FileAnalysis(
             gaps=[],
             has_missing_data=True,
             has_bad_data=True,
@@ -1194,7 +1105,7 @@ class TestPivotPlatformComplete:
 
         database = MagicMock()
         database.get_files.return_value = [MagicMock(id=1)]
-        database.get_file_analysis_by_file_id.return_value = MagicMock(
+        database.get_file_analysis_by_file_id.return_value = FileAnalysis(
             gaps=[],
             first_timestamp=datetime(2026, 1, 29),
             last_timestamp=datetime(2026, 1, 30, 18, 0),

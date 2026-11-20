@@ -13,9 +13,6 @@ from prefect.runtime import flow_run
 from prefect.variables import Variable
 from pydantic import Field
 
-from imap_mag.cli.fetch.DownloadDateManager import (
-    force_utc_timezone,
-)
 from imap_mag.cli.generateLeinweberOffsets import (
     NoOffsetsProducedError,
     generate_leinweber_offsets,
@@ -224,6 +221,8 @@ def _file_has_gap_in_window(
     overlapping the window, or via the file's own recorded coverage
     (``first_timestamp``/``last_timestamp``) falling short of it.
 
+    If there is no FileAnalysis record for the file, it is treated as a gap
+
     """
     if database is None:
         return False
@@ -233,25 +232,11 @@ def _file_has_gap_in_window(
         return False
 
     analysis = database.get_file_analysis_by_file_id(files[0].id)
+
     if analysis is None:
-        return False
-
-    if analysis.first_timestamp is None or analysis.last_timestamp is None:
-        # No usable timestamp range recorded at all - coverage can't be confirmed.
         return True
 
-    if (
-        force_utc_timezone(analysis.first_timestamp) > window_start
-        or force_utc_timezone(analysis.last_timestamp) < window_end
-    ):
-        return True
-
-    for gap in analysis.gaps or []:
-        gap_start = force_utc_timezone(datetime.fromisoformat(gap["start_time"]))
-        gap_end = force_utc_timezone(datetime.fromisoformat(gap["end_time"]))
-        if gap_start < window_end and gap_end > window_start:
-            return True
-    return False
+    return analysis.gap_in_window(window_start, window_end)
 
 
 def _science_ready(

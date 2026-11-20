@@ -21,7 +21,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, rela
 from sqlalchemy.sql import func
 
 from imap_mag import __version__
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import DatetimeProvider, TimeConversion
 
 if TYPE_CHECKING:
     from imap_mag.config.AppSettings import AppSettings
@@ -360,6 +360,38 @@ class FileAnalysis(Base):
 
     def __repr__(self) -> str:
         return f"<FileAnalysis {self.id} (file_id={self.file_id}, record_count={self.record_count})>"
+
+    def gap_in_window(self, window_start: datetime, window_end: datetime) -> bool:
+        """Check for coverage gaps within the specified window.
+
+        Args:
+            window_start: Start of the coverage window (naive UTC).
+            window_end: End of the coverage window (naive UTC).
+
+        Returns:
+            True if the file has gaps within the window, False otherwise.
+        """
+
+        if self.first_timestamp is None or self.last_timestamp is None:
+            # No usable timestamp range recorded at all - coverage can't be confirmed.
+            return True
+
+        if (
+            TimeConversion.force_utc_timezone(self.first_timestamp) > window_start
+            or TimeConversion.force_utc_timezone(self.last_timestamp) < window_end
+        ):
+            return True
+
+        for gap in self.gaps or []:
+            gap_start = TimeConversion.force_utc_timezone(
+                datetime.fromisoformat(gap["start_time"])
+            )
+            gap_end = TimeConversion.force_utc_timezone(
+                datetime.fromisoformat(gap["end_time"])
+            )
+            if gap_start < window_end and gap_end > window_start:
+                return True
+        return False
 
 
 class WorkflowProgress(Base):
