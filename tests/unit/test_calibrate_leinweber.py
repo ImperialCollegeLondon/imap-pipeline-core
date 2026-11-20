@@ -148,3 +148,22 @@ def test_calibrate_leinweber_requires_duration():
             configuration=_config(duration=None),
         )
     mock_generate.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("cli_cleanup", "config_cleanup", "expected"),
+    [(True, True, True), (True, False, False), (False, True, False)],
+    ids=["both-clean", "config-keeps", "cli-keeps"],
+)
+def test_calibrate_leinweber_keeps_temp_files_if_cli_or_config_asks(
+    cli_cleanup, config_cleanup, expected
+):
+    with patch(GENERATE, return_value=[Path("offsets.csv")]) as mock_generate:
+        calibrate(
+            start_date=DATE,
+            method=CalibrationMethod.SCRIPTED_LEINWEBER_CALIBRATION,
+            configuration=_config(cleanup_temp_files_after_run=config_cleanup),
+            cleanup_temp_files_after_run=cli_cleanup,
+        )
+
+    assert mock_generate.call_args.kwargs["cleanup_temp_files_after_run"] is expected

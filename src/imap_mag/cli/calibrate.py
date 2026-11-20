@@ -339,7 +339,9 @@ def _run_leinweber_for_date(
         calibration_input_json_file=calibration_configuration.input_json_file,
         verify=calibration_configuration.verify,
         save_mode=save_mode,
-        cleanup_temp_files_after_run=cleanup_temp_files_after_run,
+        # Keep temp files if either the CLI flag or the configuration asks to.
+        cleanup_temp_files_after_run=cleanup_temp_files_after_run
+        and calibration_configuration.cleanup_temp_files_after_run,
         allow_pivot_platform_extrapolation=calibration_configuration.allow_pivot_platform_extrapolation,
     )
 

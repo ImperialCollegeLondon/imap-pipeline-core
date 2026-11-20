@@ -235,6 +235,34 @@ imap-mag calibration leinweber --date 2026-08-01 \
     --no-cleanup-temp-files-after-run
 ```
 
+#### Via `imap-mag calibrate`
+
+The same offsets can be generated through the general `calibrate` command with `--method leinweber`, taking its settings from a configuration file (YAML file or JSON string) like the other calibration methods. It runs once per day from `--date` to `--end-date`, for the single `--sensor` given.
+
+```yaml
+# leinweber.yaml
+matlab_repo: /app/matlab/calibration
+calibration_matrix_version: 9
+input_json_file: calibration_input.json   # relative to the MATLAB repo
+duration: 24h                             # required; e.g. 12h, 1d12h
+configure_midpoint: USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT  # or USE_MID_DAY / USE_DATE_AS_IS
+verify: true
+allow_pivot_platform_extrapolation: false
+cleanup_temp_files_after_run: true
+```
+
+```bash
+imap-mag calibrate --method leinweber --date 2026-08-01 --end-date 2026-08-03 \
+    --sensor MAGo --configuration leinweber.yaml --save-mode LocalAndDatabase
+```
+
+Notes:
+
+- Leinweber publishes offset CSVs rather than calibration layers, so `--mode`, `--metakernel`, `--version-number-override` and `--layer-data-format` have no effect for this method.
+- Temporary files are kept if either `--no-cleanup-temp-files-after-run` is passed or the configuration sets `cleanup_temp_files_after_run: false`.
+- `--save-mode` defaults to `LocalOnly` here, whereas `imap-mag calibration leinweber` defaults to `LocalAndDatabase`.
+- The Prefect `generate-leinweber-offsets` flow takes the same settings in its `calibration_configuration` parameter; there, an unset `duration` falls back to the `leinweber_duration_hours` Prefect variable.
+
 ## Running the pipeline locally + mounting data like
 
 It is possible to mount the data store folder from a local folder such as on box.com and run the pipeline locally with access to real data. This is useful for testing and debugging.
