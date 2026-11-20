@@ -6,8 +6,6 @@ from pathlib import Path
 
 from imap_mag.io.file.StandardSPDFPathHandler import StandardSPDFPathHandler
 from imap_mag.util import MAGSensor, ScienceMode
-from imap_mag.util.DataVersion import get_cdf_data_version
-from mag_toolkit.calibration.CalibrationDefinitions import CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -68,31 +66,6 @@ class SciencePathHandler(StandardSPDFPathHandler):
             )
 
         super().increase_sequence()
-
-    def prepare_for_version(self, source_file: Path) -> Path:
-        """Stamp an L2-pre CDF with the version it is being saved under."""
-        if self.level != "l2-pre" or self.get_extension_or_default() != "cdf":
-            return source_file
-
-        current = self.from_filename(source_file)
-        if current is not None and current.get_filename() == self.get_filename():
-            # no change in version
-            return source_file
-
-        logger.info(
-            f"Updating version attributes in {source_file} for {self.get_filename()}"
-        )
-        from spacepy import pycdf
-
-        with pycdf.CDF(str(source_file), readonly=False) as cdf:
-            cdf.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
-                self.version,
-                self.version_major if self.has_major_version else 0,
-            )
-            cdf.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(
-                self.get_filename()
-            ).stem
-        return source_file
 
     @classmethod
     def from_filename(

@@ -76,21 +76,6 @@ def create_test_file(file_path: Path, content: str | None = None) -> Path:
     return file_path
 
 
-def create_test_cdf_file(file_path: Path, content: str) -> Path:
-    """Create a minimal CDF whose content (and so hash) is set by content."""
-    import numpy as np
-    import xarray as xr
-    from cdflib.xarray import xarray_to_cdf
-
-    file_path.unlink(missing_ok=True)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    dataset = xr.Dataset(
-        {"value": ("record", np.array([1.0]))}, attrs={"Content": content}
-    )
-    xarray_to_cdf(dataset, str(file_path))
-    return file_path
-
-
 def copy_test_file(src_file: Path, dest_folder: Path, new_filename: str | None = None):
     if not new_filename:
         new_filename = src_file.name

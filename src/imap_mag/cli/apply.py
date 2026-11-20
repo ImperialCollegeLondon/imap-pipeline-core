@@ -15,6 +15,7 @@ from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
+    L2PrePathHandler,
     SciencePathHandler,
 )
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
@@ -438,7 +439,7 @@ def _apply_for_date(
         reference_frames=reference_frames,
     )
     for L2_file in L2_files:
-        l2_handler = SciencePathHandler.from_filename(L2_file.name)
+        l2_handler = L2PrePathHandler.from_filename(L2_file.name)
 
         if not l2_handler:
             logger.warning(

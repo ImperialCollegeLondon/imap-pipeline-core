@@ -1,4 +1,4 @@
-"""Tests for SciencePathHandler."""
+"""Tests for L2PrePathHandler."""
 
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +7,7 @@ import numpy as np
 import xarray as xr
 from cdflib.xarray import xarray_to_cdf
 
+from imap_mag.io.file.L2PrePathHandler import L2PrePathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 from tests.util.miscellaneous import open_cdf
 
@@ -31,8 +32,8 @@ def _read_global_attrs(cdf_file: Path) -> dict[str, list[str]]:
         return {name: [str(v) for v in cdf.attrs[name]] for name in cdf.attrs}
 
 
-def _l2_pre_handler(version: int, version_major: int = 1) -> SciencePathHandler:
-    return SciencePathHandler(
+def _l2_pre_handler(version: int, version_major: int = 1) -> L2PrePathHandler:
+    return L2PrePathHandler(
         level="l2-pre",
         descriptor="norm-srf",
         content_date=datetime(2026, 1, 16),
@@ -42,6 +43,13 @@ def _l2_pre_handler(version: int, version_major: int = 1) -> SciencePathHandler:
 
 
 class TestPrepareForVersion:
+    def test_from_filename_returns_an_l2_pre_handler(self):
+        handler = L2PrePathHandler.from_filename(
+            "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
+        )
+
+        assert isinstance(handler, L2PrePathHandler)
+
     def test_stamps_data_version_and_logical_file_id_in_place(self, tmp_path):
         source = _write_science_cdf(
             tmp_path, "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
@@ -80,13 +88,15 @@ class TestPrepareForVersion:
         assert _l2_pre_handler(version=1).prepare_for_version(source) == source
         assert source.read_bytes() == before
 
-    def test_never_rewrites_other_science_levels(self, tmp_path):
+    def test_science_path_handler_never_changes_the_file(self, tmp_path):
+        # Only L2PrePathHandler stamps versions: other science files, such as
+        # those from the SDC, are stored as they are, even at level l2-pre.
         source = _write_science_cdf(
-            tmp_path, "imap_mag_l1c_norm-mago_20260116_v001.0001.cdf"
+            tmp_path, "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
         )
         handler = SciencePathHandler(
-            level="l1c",
-            descriptor="norm-mago",
+            level="l2-pre",
+            descriptor="norm-srf",
             content_date=datetime(2026, 1, 16),
             version=2,
             version_major=1,
