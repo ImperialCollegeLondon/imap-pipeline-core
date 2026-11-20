@@ -11,6 +11,7 @@ from imap_mag.io.file.HKBinaryPathHandler import HKBinaryPathHandler
 from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler
+from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHandler
 from imap_mag.io.file.NOAAPathHandler import NOAAPathHandler
 from imap_mag.io.file.SciencePathHandler import SciencePathHandler
 from imap_mag.io.file.SPICEPathHandler import SPICEPathHandler
@@ -55,6 +56,7 @@ class FilePathHandlerSelector:
         # must be tried first.
         provider_to_try: list[type[IFilePathHandler]] = [
             CalculatedOffsetsPathHandler,
+            LeinweberOffsetsPathHandler,
             AncillaryPathHandler,
             CalibrationLayerPathHandler,
             HKBinaryPathHandler,

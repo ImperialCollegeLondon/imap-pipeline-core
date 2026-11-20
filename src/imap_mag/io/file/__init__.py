@@ -11,6 +11,7 @@ from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
 from imap_mag.io.file.LatestFilePathHandler import LatestFilePathHandler
+from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHandler
 from imap_mag.io.file.NOAAPathHandler import NOAAPathHandler
 from imap_mag.io.file.PartitionedPathHandler import PartitionedPathHandler
 from imap_mag.io.file.QuicklookPathHandler import QuicklookPathHandler
@@ -30,6 +31,7 @@ __all__ = [
     "IALiRTQuicklookPathHandler",
     "IFilePathHandler",
     "LatestFilePathHandler",
+    "LeinweberOffsetsPathHandler",
     "NOAAPathHandler",
     "PartitionedPathHandler",
     "QuicklookPathHandler",

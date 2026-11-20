@@ -1,10 +1,7 @@
 from enum import Enum
 
 from imap_db.model import WorkflowProgress
-from imap_mag.cli.fetch.DownloadDateManager import (
-    DownloadDateManager,
-    force_utc_timezone,
-)
+from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.data_pipelines import (
     AutomaticRunParameters,
     FetchByDatesRunParameters,
@@ -13,7 +10,7 @@ from imap_mag.data_pipelines import (
 )
 from imap_mag.data_pipelines.Record import Record
 from imap_mag.db import Database
-from imap_mag.util import DatetimeProvider
+from imap_mag.util import DatetimeProvider, TimeConversion
 
 
 class DateResolutionMode(Enum):
@@ -75,12 +72,12 @@ class GetProcessingDatesStage(SourceStage):
             (download_start, download_end) = download_dates
 
         download_start = (
-            force_utc_timezone(requested_start_date)
+            TimeConversion.force_utc_timezone(requested_start_date)
             if force_redownload and requested_start_date is not None
             else download_start
         )
         download_end = (
-            force_utc_timezone(requested_end_date)
+            TimeConversion.force_utc_timezone(requested_end_date)
             if force_redownload and requested_end_date is not None
             else download_end
         )

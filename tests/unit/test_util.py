@@ -4,8 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from imap_mag.cli.fetch.DownloadDateManager import force_utc_timezone
-from imap_mag.util import HKPacket
+from imap_mag.util import HKPacket, TimeConversion
 
 
 def test_name_all_packets() -> None:
@@ -34,4 +33,4 @@ def test_get_packet_from_apid_errors_on_invalid_apid() -> None:
     ],
 )
 def test_force_remove_timezone(date) -> None:
-    assert force_utc_timezone(date) == datetime(2025, 3, 20, 10, 0, 0)
+    assert TimeConversion.force_utc_timezone(date) == datetime(2025, 3, 20, 10, 0, 0)

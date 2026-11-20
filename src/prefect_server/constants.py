@@ -34,6 +34,13 @@ class PREFECT_CONSTANTS:
             "https://imperialcollegelondon.box.com/s/jwwydh31hpb6a96t2agqht88vmmc5iah"
         )
 
+    class GENERATE_LEINWEBER_OFFSETS:
+        # Prefect variables (editable in the Prefect UI) and their seeded defaults.
+        DURATION_HOURS_VARIABLE = "leinweber_duration_hours"
+        DEFAULT_DURATION_HOURS = 24
+        BACKFILL_LOOKBACK_DAYS_VARIABLE = "leinweber_backfill_lookback_days"
+        DEFAULT_BACKFILL_LOOKBACK_DAYS = 14
+
     class POLL_HK:
         WEBPODA_AUTH_CODE_SECRET_NAME = "webpoda-auth-code"
 
@@ -58,6 +65,7 @@ class PREFECT_CONSTANTS:
         POLL_HI45_ESA_STEP_CRON = "IMAP_CRON_POLL_HI45_ESA_STEP"
         POLL_HI90_ESA_STEP_CRON = "IMAP_CRON_POLL_HI90_ESA_STEP"
         IMAP_CRON_SHAREPOINT_UPLOAD = "IMAP_CRON_SHAREPOINT_UPLOAD"
+        IMAP_CRON_GENERATE_LEINWEBER_OFFSETS = "IMAP_CRON_GENERATE_LEINWEBER_OFFSETS"
         IMAP_CRON_POSTGRES_UPLOAD = "IMAP_CRON_POSTGRES_UPLOAD"
         IMAP_CRON_DATASTORE_CLEANUP = "IMAP_CRON_DATASTORE_CLEANUP"
         IMAP_CRON_DATASTORE_INDEXER = "IMAP_CRON_DATASTORE_INDEXER"
@@ -91,6 +99,7 @@ class PREFECT_CONSTANTS:
         APPLY_CALIBRATION = "apply-calibration"
         CALIBRATE_AND_APPLY = "calibrate-and-apply"
         CALIBRATE_CONVERT = "calibrate-convert"
+        GENERATE_LEINWEBER_OFFSETS = "generate-leinweber-offsets"
         PUBLISH = "publish"
         CHECK_IALIRT = "check-ialirt"
         QUICKLOOK_IALIRT = "quicklook-ialirt"
@@ -107,6 +116,7 @@ class PREFECT_CONSTANTS:
         APPLY_CALIBRATION = "apply"
         CALIBRATE_AND_APPLY = "calibrate_and_apply"
         CALIBRATE_CONVERT = "calibrate_convert"
+        GENERATE_LEINWEBER_OFFSETS = "generate_leinweber_offsets"
         POLL_IALIRT = "poll_ialirt"
         IALIRT_POSTGRES_SYNC = "ialirt-postgres-sync"
         POLL_HK = "poll_hk"

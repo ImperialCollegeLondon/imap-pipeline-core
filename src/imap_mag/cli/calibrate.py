@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from imap_mag.cli import apply, convert
+from imap_mag.cli import apply, convert, generateLeinweberOffsets
 from imap_mag.cli.cliUtils import initialiseLoggingForCommand
 from imap_mag.config import (
     AppSettings,
@@ -28,6 +28,9 @@ from mag_toolkit.calibration import (
     LayerDataFormat,
     Sensor,
 )
+from mag_toolkit.calibration.CalibrationConfig import (
+    ScriptedLeinweberCalibrationConfig,
+)
 from mag_toolkit.calibration.CalibrationLayer import CalibrationLayer
 from mag_toolkit.calibration.calibrators import (
     CalibrationJob,
@@ -41,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 app.command()(apply.apply)
 app.command(name="convert")(convert.convert)
+app.command(name="leinweber")(generateLeinweberOffsets.generate_leinweber_offsets)
 
 
 def _validate_version_number_override(
@@ -285,6 +289,63 @@ def calibrate(
     return results
 
 
+def _load_calibration_configuration(
+    method: CalibrationMethod, configuration: str | None
+) -> CalibrationConfig:
+    """Parse ``configuration`` (YAML file path or JSON string) for ``method``."""
+    config_cls = CalibrationConfig.get_class(method)
+    if configuration is None or len(configuration.strip()) == 0:
+        raise ValueError(
+            f"Calibration method {method.short_name} requires a configuration to be provided"
+        )
+    elif configuration.lstrip().startswith("{"):
+        # Check for JSON first: a long JSON string passed to Path.is_file() raises
+        # OSError (file name too long) rather than returning False.
+        return config_cls.model_validate_json(configuration)
+    else:
+        logger.info(f"Loading calibration configuration from {configuration}")
+        return config_cls.from_file(Path(configuration))
+
+
+def _run_leinweber_for_date(
+    start_date: datetime,
+    sensor: Sensor,
+    configuration: str | None,
+    save_mode: SaveMode,
+    cleanup_temp_files_after_run: bool,
+) -> list[Path]:
+    """Generate Leinweber offsets for one day and sensor via the leinweber command."""
+    calibration_configuration = _load_calibration_configuration(
+        CalibrationMethod.SCRIPTED_LEINWEBER_CALIBRATION, configuration
+    )
+    assert isinstance(calibration_configuration, ScriptedLeinweberCalibrationConfig)
+    if not calibration_configuration.matlab_repo:
+        raise ValueError(
+            "A matlab_repo is required in the configuration to generate Leinweber offsets."
+        )
+    duration_hours = calibration_configuration.get_duration_hours()
+    if duration_hours is None:
+        raise ValueError(
+            "A duration is required in the configuration to generate Leinweber offsets."
+        )
+
+    return generateLeinweberOffsets.generate_leinweber_offsets(
+        date=start_date,
+        duration_hours=duration_hours,
+        matlab_repo=Path(calibration_configuration.matlab_repo),
+        sensors=[sensor],
+        configure_midpoint=calibration_configuration.configure_midpoint,
+        calibration_matrix_version=calibration_configuration.calibration_matrix_version,
+        calibration_input_json_file=calibration_configuration.input_json_file,
+        verify=calibration_configuration.verify,
+        save_mode=save_mode,
+        # Keep temp files if either the CLI flag or the configuration asks to.
+        cleanup_temp_files_after_run=cleanup_temp_files_after_run
+        and calibration_configuration.cleanup_temp_files_after_run,
+        allow_pivot_platform_extrapolation=calibration_configuration.allow_pivot_platform_extrapolation,
+    )
+
+
 def _calibrate_for_date(
     start_date: datetime,
     method: CalibrationMethod,
@@ -304,6 +365,17 @@ def _calibrate_for_date(
         raise ValueError(
             "The 'noop' calibration method is not runnable. It exists only for the "
             "internal zero-offset layer. Choose a real calibration method."
+        )
+
+    if method == CalibrationMethod.SCRIPTED_LEINWEBER_CALIBRATION:
+        # Leinweber publishes offset CSVs rather than calibration layers, so it
+        # bypasses the layer pipeline below and runs the dedicated command.
+        return _run_leinweber_for_date(
+            start_date=start_date,
+            sensor=sensor,
+            configuration=configuration,
+            save_mode=save_mode,
+            cleanup_temp_files_after_run=cleanup_temp_files_after_run,
         )
 
     version_number_override = _validate_version_number_override(version_number_override)
@@ -330,16 +402,7 @@ def _calibrate_for_date(
 
     # The scripted-l2 method uses an extended configuration with extra required
     # fields, so parse against the correct model for the chosen method.
-    config_cls = CalibrationConfig.get_class(method)
-    if configuration is None or len(configuration.strip()) == 0:
-        raise ValueError(
-            f"Calibration method {method.short_name} requires a configuration to be provided"
-        )
-    elif Path(configuration).is_file():
-        logger.info(f"Loading calibration configuration from {configuration}")
-        calibration_configuration = config_cls.from_file(Path(configuration))
-    else:
-        calibration_configuration = config_cls.model_validate_json(configuration)
+    calibration_configuration = _load_calibration_configuration(method, configuration)
 
     calibration_job_parameters = CalibrationJobParameters(
         date=start_date,

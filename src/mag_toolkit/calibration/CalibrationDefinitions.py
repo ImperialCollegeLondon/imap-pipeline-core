@@ -87,6 +87,10 @@ class CalibrationMethod(Enum):
         "manual",
         "Scripted L2 Calibration (MATLAB calibrate L2 script)",
     )
+    SCRIPTED_LEINWEBER_CALIBRATION = (
+        "leinweber",
+        "Automatic Leinweber Calibration (MATLAB Leinweber generate offsets script)",
+    )
 
     @classmethod
     def from_string(cls, name: str) -> "CalibrationMethod":
@@ -95,6 +99,20 @@ class CalibrationMethod(Enum):
                 return method
 
         raise ValueError(f"Unknown calibration method: {name}")
+
+
+class ConfigureMidpoint(StrEnum):
+    """How generate_raw_leinweber_offset derives its analysis midpoint from the date.
+
+    Mirrors the ``Options.configure_midpoint`` name-value option of the MATLAB
+    tool exactly (values are passed straight through).
+    """
+
+    USE_DATE_AS_IS = "USE_DATE_AS_IS"
+    USE_MID_DAY = "USE_MID_DAY"
+    USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT = (
+        "USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT"
+    )
 
 
 class LayerDataFormat(StrEnum):

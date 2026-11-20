@@ -86,7 +86,13 @@ class ServerConfig:
 
     @staticmethod
     async def _create_variables(client):
-        default_variables = {}
+        leinweber = PREFECT_CONSTANTS.GENERATE_LEINWEBER_OFFSETS
+        default_variables = {
+            leinweber.DURATION_HOURS_VARIABLE: leinweber.DEFAULT_DURATION_HOURS,
+            leinweber.BACKFILL_LOOKBACK_DAYS_VARIABLE: (
+                leinweber.DEFAULT_BACKFILL_LOOKBACK_DAYS
+            ),
+        }
 
         for var_name, var_value in default_variables.items():
             current = await client.read_variable_by_name(var_name)

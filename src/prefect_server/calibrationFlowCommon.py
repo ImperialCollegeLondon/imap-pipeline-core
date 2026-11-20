@@ -13,16 +13,17 @@ from pydantic import Field
 
 from imap_mag.cli.calibrate import calibrate
 from imap_mag.config.AppSettings import AppSettings
+from imap_mag.util.constants import CONSTANTS
 from mag_toolkit.calibration import LayerDataFormat
 from mag_toolkit.calibration.CalibrationConfig import (
     ScriptedL2CalibrationConfig,
+    ScriptedLeinweberCalibrationConfig,
     SetQualityAndNaNConfig,
 )
 
+APP_SETTINGS_DEFAULT_INSTANCE = AppSettings()
+
 logger = logging.getLogger(__name__)
-DEFAULT_INPUT_JSON_FILE = "+calibration/calibration/template.json"
-DEFAULT_MATLAB_REPO_PATH = "/app/matlab/calibration"
-DEFAULT_CALIBRATION_MATRIX_VERSION = 9
 
 # Shared, self-documenting definition of the split_by_day flow parameter so the
 # title/description show up consistently in the Prefect UI for every flow that
@@ -44,8 +45,16 @@ SplitByDay = Annotated[
 ]
 
 
+class PrefectScriptedLeinweberCalibrationConfig(ScriptedLeinweberCalibrationConfig):
+    matlab_repo: LocalFileSystem | GitHubRepository | str | None = (
+        CONSTANTS.DEFAULT_MATLAB_REPO_PATH
+    )
+
+
 class PrefectScriptedL2CalibrationConfig(ScriptedL2CalibrationConfig):
-    matlab_repo: LocalFileSystem | GitHubRepository | str | None = None
+    matlab_repo: LocalFileSystem | GitHubRepository | str | None = (
+        CONSTANTS.DEFAULT_MATLAB_REPO_PATH
+    )
 
 
 def _days_in_range(start_date: date, end_date: date | None) -> list[date]:
@@ -134,7 +143,7 @@ def _load_matlab_repo_block(
 
 
 def _configuration_for_deployment(
-    configuration: "PrefectScriptedL2CalibrationConfig | SetQualityAndNaNConfig",
+    configuration: "PrefectScriptedL2CalibrationConfig | PrefectScriptedLeinweberCalibrationConfig | SetQualityAndNaNConfig",
 ) -> "dict | SetQualityAndNaNConfig":
     """Prepare configuration for passing to ``run_deployment``.
 
@@ -151,20 +160,35 @@ def _configuration_for_deployment(
     Returns:
         A deployment-safe representation of the configuration.
     """
-    if not isinstance(configuration, PrefectScriptedL2CalibrationConfig):
+    if not isinstance(
+        configuration,
+        (PrefectScriptedL2CalibrationConfig, PrefectScriptedLeinweberCalibrationConfig),
+    ):
         return configuration
 
-    matlab_repo = configuration.matlab_repo
+    config_dict = configuration.model_dump()
+    config_dict["matlab_repo"] = _swap_matlab_repo_for_block_ref(
+        configuration.matlab_repo
+    )
+    return config_dict
+
+
+def _swap_matlab_repo_for_block_ref(
+    matlab_repo: "LocalFileSystem | GitHubRepository | str | None",
+) -> dict:
+    """Return a block reference for the given ``matlab_repo``.
+
+    Args:
+        matlab_repo: The original ``matlab_repo`` value passed.
+
+    Returns:
+        ``matlab_repo`` either as original string or as a block reference.
+    """
     if isinstance(matlab_repo, (GitHubRepository, LocalFileSystem)):
         block_doc_id = getattr(matlab_repo, "_block_document_id", None)
         if block_doc_id:
-            config_dict = configuration.model_dump()
-            config_dict["matlab_repo"] = {
-                "$ref": {"block_document_id": str(block_doc_id)}
-            }
-            return config_dict
-
-    return configuration
+            matlab_repo = {"$ref": {"block_document_id": str(block_doc_id)}}
+    return matlab_repo
 
 
 def _resolve_matlab_repo_path(
@@ -177,8 +201,8 @@ def _resolve_matlab_repo_path(
     a GitHubRepository block (pulled into a subfolder of the work folder named after
     the repo), or None. Raises if a provided repo cannot be found or pulled.
     """
-    if not matlab_repo and Path(DEFAULT_MATLAB_REPO_PATH).exists():
-        return Path(DEFAULT_MATLAB_REPO_PATH)
+    if not matlab_repo and Path(CONSTANTS.DEFAULT_MATLAB_REPO_PATH).exists():
+        return Path(CONSTANTS.DEFAULT_MATLAB_REPO_PATH)
 
     block: LocalFileSystem | GitHubRepository | None = None
     if isinstance(matlab_repo, str):

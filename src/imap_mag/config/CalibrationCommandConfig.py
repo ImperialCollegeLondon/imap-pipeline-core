@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 
 from imap_mag.config.CommandConfig import CommandConfig
+from imap_mag.config.GenerateLeinweberOffsetsConfig import (
+    GenerateLeinweberOffsetsConfig,
+)
 
 # Fallback for the ``metakernel_file_types`` app setting when it is not provided by
 # the yaml config. The authoritative list lives in the AppSettings yaml file and is
@@ -78,4 +81,16 @@ class CalibrationCommandConfig(CommandConfig):
     scripted_l2_timeout_seconds_per_day_norm: int = 10 * 60
     scripted_l2_timeout_seconds_per_day_burst: int = 60 * 60
 
+    # Defaults for the scripted-L2 calibration flow's pre-filled configuration
+    # (shown in the Prefect UI when no configuration is supplied).
+    scripted_l2_calibration_matrix_version: int = 9
+    scripted_l2_input_json_file: str = (
+        "+calibration/calibration/input_files/template.json"
+    )
+
     sparse_datastore: SparseDatastoreConfig = SparseDatastoreConfig()
+
+    # The generate-leinweber-offsets flow is another MATLAB tool under the
+    # calibrate umbrella - it shares scripted_l2_calibration_matrix_version /
+    # scripted_l2_input_json_file above rather than duplicating them.
+    leinweber: GenerateLeinweberOffsetsConfig = GenerateLeinweberOffsetsConfig()
