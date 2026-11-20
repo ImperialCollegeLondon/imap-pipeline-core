@@ -15,6 +15,9 @@ from prefect.variables import Variable
 from prefect_github import GitHubRepository
 from pydantic import Field
 
+from imap_mag.cli.fetch.DownloadDateManager import (
+    force_utc_timezone,
+)
 from imap_mag.cli.generateLeinweberOffsets import (
     ConfigureMidpoint,
     NoOffsetsProducedError,
@@ -129,12 +132,6 @@ class LeinweberByDateRunParameters:
     ] = True
 
 
-def _assume_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value
-    return value.replace(tzinfo=None)
-
-
 def generate_leinweber_offsets_flow_run_name() -> str:
     parameters = flow_run.parameters
     run_parameters = parameters.get("run_parameters")
@@ -241,14 +238,14 @@ def _file_has_gap_in_window(
         return True
 
     if (
-        _assume_utc(analysis.first_timestamp) > window_start
-        or _assume_utc(analysis.last_timestamp) < window_end
+        force_utc_timezone(analysis.first_timestamp) > window_start
+        or force_utc_timezone(analysis.last_timestamp) < window_end
     ):
         return True
 
     for gap in analysis.gaps or []:
-        gap_start = _assume_utc(datetime.fromisoformat(gap["start_time"]))
-        gap_end = _assume_utc(datetime.fromisoformat(gap["end_time"]))
+        gap_start = force_utc_timezone(datetime.fromisoformat(gap["start_time"]))
+        gap_end = force_utc_timezone(datetime.fromisoformat(gap["end_time"]))
         if gap_start < window_end and gap_end > window_start:
             return True
     return False
