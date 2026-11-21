@@ -5293,44 +5293,44 @@ scipy = ">=1.0"
 
 [[package]]
 name = "spiceypy"
-version = "8.3.0"
+version = "8.4.0"
 description = "A Python Wrapper for the NAIF CSPICE Toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "spiceypy-8.3.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:93acaba4b2268e1c6e90c474a1e7f6d936ee401fd41dc1fa6f25b2f89f2cc912"},
-    {file = "spiceypy-8.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:6e4f24ec1f21f46545f058e14692ac3509eff8025c74a2068fb3e353f9444e04"},
-    {file = "spiceypy-8.3.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:02bf1ffc8e65654881a3fbfd51ddc5e6e640cac8aa4a681d02f5ebe3b82cc24b"},
-    {file = "spiceypy-8.3.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:29b799f11414399a50f43d8d89ffdd83c22a7b0629c759ac0fea7f2a90d10216"},
-    {file = "spiceypy-8.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:d68a4ce813a6ed8441c98e786ba40f0e5c14ba75461e92396ebb4fcab1fb50ec"},
-    {file = "spiceypy-8.3.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:092a11eaf314fbbaf9eb34be8abfb0a86068fc72620b29901ea64f2d59f0ec00"},
-    {file = "spiceypy-8.3.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:bf69dd0ef08c31f44183fa970b340097fa9e630f2d139e1f3148670c23e69121"},
-    {file = "spiceypy-8.3.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9cff9028e6caad06c3723ba4911a91dda0c3fc417bcea07211f18c9dcac0621d"},
-    {file = "spiceypy-8.3.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:509060fc9bfc6cb84d3da706330c557b791736112c2803ca851c909f34c72d22"},
-    {file = "spiceypy-8.3.0-cp311-cp311-win_amd64.whl", hash = "sha256:5fb4f13b1b7a2d7bb4113156cbb38534e906739f3d867a335cd082eaf34f8079"},
-    {file = "spiceypy-8.3.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:b19e8d182907ee87f5526e06155ecd62ce21ab9aab109ba57d81cdefddc8d476"},
-    {file = "spiceypy-8.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:82b4975268d7acb7514ec0bc0f78500975ece13ee882f6382d0dbdfeead84623"},
-    {file = "spiceypy-8.3.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:62168bd511e438040d7b2389c546e2635717410a6a108036febb3e1c1ca0cb7b"},
-    {file = "spiceypy-8.3.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4fe34342b561b01657573f925d5a602fff295d4cb0f81afdab3a7d0c9fbef6b2"},
-    {file = "spiceypy-8.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:94c6125ae9e78d39eb5f626d646854f9c3a8736184a0ba07294b5842c0e52309"},
-    {file = "spiceypy-8.3.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:ab84d70ee9e073130aad021a31d5b9defa28fe0994913bbde43ca5053f3dab18"},
-    {file = "spiceypy-8.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:7c4490301dc82b60f98d608b8222444689b47eeeb146c65e7b08524a3a3790b6"},
-    {file = "spiceypy-8.3.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0220367c404dec342f5ef8592326bbe99e4e2e13e8902c3540d8eec67366b5fa"},
-    {file = "spiceypy-8.3.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bbfab248ac7a9e242b104353aa2e4275734a4768e542bce4802a4112666d8a1a"},
-    {file = "spiceypy-8.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:4774fd3f39493e9b29d2d704d65678c55b7ffd3426f7c9f23bd2e06cd5cb8c52"},
-    {file = "spiceypy-8.3.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:9ef80867b346797295063d28c8f5cbb65f930cdf114303a080f434054fd28bbb"},
-    {file = "spiceypy-8.3.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:94530fe4927ef4d06d7eb4c4ba2036a448313f5b806c65aa7a3943d55e535d31"},
-    {file = "spiceypy-8.3.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:f013d93be17c387e822d99c84d57956f57f93d5352179c8f04ddc9af926e8dc8"},
-    {file = "spiceypy-8.3.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:92e7497b13f5d02a34cd6e85d10dcbb3143121ce9955572f99c0edc9769c6139"},
-    {file = "spiceypy-8.3.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:2779362acfe127fa3d35d1f68ecfe4e391768bd2d0a1f88206083d0f672b764d"},
-    {file = "spiceypy-8.3.0-cp314-cp314-win_amd64.whl", hash = "sha256:71e4d0e0416376cb201755c26c588a621c579c5bdc09f0c3c29fa27bf0f1acdd"},
-    {file = "spiceypy-8.3.0-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:bc2a1013a6c8e8e58dfa5f20583fedf944bd079e603251a48a4656d542bcaa71"},
-    {file = "spiceypy-8.3.0-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:dbc6c84350a0d8372bff8e17d8631bbba353b1db7d2b2a238a6123d4c20df731"},
-    {file = "spiceypy-8.3.0-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:432a5b0a1188310379062e1322d72be3a2204cd6757376a4d91f25389ad66770"},
-    {file = "spiceypy-8.3.0-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d155c4f67bd8ec4608b98acb80ae2b179afb447b873b30f59b6e3b0c56a24c24"},
-    {file = "spiceypy-8.3.0-cp315-cp315-win_amd64.whl", hash = "sha256:970429a0da5dd67b0e5f39fac6e4f254d592332fe87e6a8bef31b35e96f51bd6"},
-    {file = "spiceypy-8.3.0.tar.gz", hash = "sha256:abe5223a80c253c5fa3318a52e80789807d0b1f4dbbc464dc92b35b83024b018"},
+    {file = "spiceypy-8.4.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7aef7d1a482ba4c092b03e9e06b4d2c1b24612dddc5183d0c7a13197b0e3da78"},
+    {file = "spiceypy-8.4.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:021af18c740b2efae57cd024eeff0185e85c26e8a6e81e47566cf624ecf4d347"},
+    {file = "spiceypy-8.4.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8ac15654439b9493d3af3c257570c5acf86aefa971fd6455e373b0089f45ccbf"},
+    {file = "spiceypy-8.4.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8932a27b95d5d8b6751a944ef20fbbc34f3dff0c043f47c32e6342eefc336e3a"},
+    {file = "spiceypy-8.4.0-cp310-cp310-win_amd64.whl", hash = "sha256:b34cf8b4feef048da7a91d98d033b695fd1dcba0bf72d04d400d7d5bcaac4028"},
+    {file = "spiceypy-8.4.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:870e4e87a3c96a25aa46a557cb36faff55892652ecdbb9a74cb6fe3a537e6d6c"},
+    {file = "spiceypy-8.4.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:bdda0b408f79e8d2c0262b90cd54cd740118abf7932c6a2fe74c9f8582581411"},
+    {file = "spiceypy-8.4.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4f9b72a225450f0aaad3a7f69c3283efe1bf7164f11f3ee2434d6629ad72e3aa"},
+    {file = "spiceypy-8.4.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9a296445446fad7dde91e1d21e716c3fb14a3d9f1a74a53408679967bd0b8660"},
+    {file = "spiceypy-8.4.0-cp311-cp311-win_amd64.whl", hash = "sha256:8e4268c889ab3734524182a90c78a64dce480bd238cb9bc81eaac8a0dc33206e"},
+    {file = "spiceypy-8.4.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:d7c3bee006fe2017e8ae338604735ffaa41f06a7130420f6b53fa42a6d0a7536"},
+    {file = "spiceypy-8.4.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:badb51129afe1bea923a7d67f76b81723f4be4d9e94a3e2c5b2352284fcf1108"},
+    {file = "spiceypy-8.4.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:95adee878e052acb98771060f1de214dbe8456613bdef8b97308ce97d209f6dd"},
+    {file = "spiceypy-8.4.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3da959bace1eb0a1ebad7fd39f7cf673419f2faa86bd9dff67bff73d3f102257"},
+    {file = "spiceypy-8.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:5e79cf756a94c345dc90282317ee49e17b1915d28cebe5936e0fc99e957ee02d"},
+    {file = "spiceypy-8.4.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:539ec1d4c30be09faeef540d50f4b0b67ebcbad45499a6aa496841a0271bdaca"},
+    {file = "spiceypy-8.4.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ed1469fbfaa45d7d5b4182bcc1b382c9ee6f3e3e54b08b76b6c75c529387feb8"},
+    {file = "spiceypy-8.4.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:717b6dad97c770cf0d628cf9562f5ad9111a66cbf362bb49938cba7c523e7b5c"},
+    {file = "spiceypy-8.4.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:af4e85d0e55bb3fc0be92e6f68b8a60ee26ca6b8efdd126272fbbbc929c2341a"},
+    {file = "spiceypy-8.4.0-cp313-cp313-win_amd64.whl", hash = "sha256:f5426d933a51a84e65985c694b8028c552a986f91da224f3633e81ec6d7b399c"},
+    {file = "spiceypy-8.4.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:d35e970f8bd49e09dfa8e71f4c4e54d958e5757927aecfbb993bc7c02be6ddc7"},
+    {file = "spiceypy-8.4.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:5adff3c3618fbd4a427ba838eaf7599b4f5062bbfe3672e5f62780f3abeac676"},
+    {file = "spiceypy-8.4.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1362e8d97324b301a6036e58314c220e699239924f20dd5c8458c184845907ba"},
+    {file = "spiceypy-8.4.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a1149c03e61bbde0f51838cd2dc4cbd81cfec6b2c9b66eccc337b59ae6054d2d"},
+    {file = "spiceypy-8.4.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:544c2937e84bdf68b7b49d815b1d03d26e4f541dcc911d09646a1625af31a0ee"},
+    {file = "spiceypy-8.4.0-cp314-cp314-win_amd64.whl", hash = "sha256:eb8d403b66cb68a6dcca3d330af5d1a2334b5418ab22bb241e832d468d2f5f28"},
+    {file = "spiceypy-8.4.0-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:a61a069d71b17d977b1344ed97acaf644c7689ab3ea82cc3cf29c2b77ff2d452"},
+    {file = "spiceypy-8.4.0-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:df3ad6bf6e2c703a9ddc3ba565542806daf16c54812392afa53975c6e800b2e5"},
+    {file = "spiceypy-8.4.0-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5b593299998ea5063f8da7dca81d3ebf1a736903d1e9f505eba243877ba63f06"},
+    {file = "spiceypy-8.4.0-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:01ba9fabc55c2c4a666371d294d3b76259e2e60b993212f3d115db7cd65e5862"},
+    {file = "spiceypy-8.4.0-cp315-cp315-win_amd64.whl", hash = "sha256:084c54231fc9fdb65a6cf7525192fb73f07b0f9ce3f141089b79d6ef78914505"},
+    {file = "spiceypy-8.4.0.tar.gz", hash = "sha256:bedc5ae8296094451a1ec23cefde543442dc2c086b41b9c1dbd9c07b789833e4"},
 ]
 
 [package.dependencies]
@@ -6003,4 +6003,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "86dfdf50fcaebc60ad3ef5eb9abe8a7fc3a115a788161da15b7e5fa175f5e39d"
+content-hash = "a0e591405fa440bb2df6ce2cbe8b035c92a37efe5831f303e47cb42d530deaca"
