@@ -24,9 +24,7 @@ from mag_toolkit.calibration.CalibrationConfig import (
     SetQualityAndNaNConfig,
 )
 from prefect_server.calibrationFlowCommon import (
-    DEFAULT_CALIBRATION_MATRIX_VERSION,
-    DEFAULT_INPUT_JSON_FILE,
-    DEFAULT_MATLAB_REPO_PATH,
+    APP_SETTINGS_DEFAULT_INSTANCE,
     PrefectScriptedL2CalibrationConfig,
     SplitByDay,
     _configuration_for_deployment,
@@ -89,10 +87,8 @@ def calibrate_and_apply_flow(
                 "position": 3,
             }
         ),
-    ] = PrefectScriptedL2CalibrationConfig(
-        calibration_matrix_version=DEFAULT_CALIBRATION_MATRIX_VERSION,
-        input_json_file=DEFAULT_INPUT_JSON_FILE,
-        matlab_repo=DEFAULT_MATLAB_REPO_PATH,
+    ] = PrefectScriptedL2CalibrationConfig.build_with_defaults_from_app_settings(
+        APP_SETTINGS_DEFAULT_INSTANCE
     ),
     mode: ScienceMode = ScienceMode.Normal,
     sensor: Sensor = Sensor.MAGO,

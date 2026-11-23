@@ -217,7 +217,7 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 
 ### Sync the files database with heliopuddle
 
-Optionally, the `files` table can be mirrored into a [heliopuddle](https://github.com/alastairtree/heliopuddle) project. Turn it on in the `heliopuddle` section of `imap-mag-config.yaml` (or `MAG_HELIOPUDDLE_ENABLED=true`) and give credentials with `MAG_HELIOPUDDLE_USERNAME`/`MAG_HELIOPUDDLE_PASSWORD`, `MAG_HELIOPUDDLE_TOKEN` or `MAG_HELIOPUDDLE_CLIENT_ID`/`MAG_HELIOPUDDLE_CLIENT_SECRET`. With `shared_datastore: true` the heliopuddle storage location must point at the same data store, and files are registered in place; otherwise their content is uploaded.
+Optionally, the `files` table can be mirrored into a [heliopuddle](https://github.com/ImperialCollegeLondon/heliopuddle) project. Turn it on in the `heliopuddle` section of `imap-mag-config.yaml` (or `MAG_HELIOPUDDLE_ENABLED=true`) and give credentials with `MAG_HELIOPUDDLE_USERNAME`/`MAG_HELIOPUDDLE_PASSWORD`, `MAG_HELIOPUDDLE_TOKEN` or `MAG_HELIOPUDDLE_CLIENT_ID`/`MAG_HELIOPUDDLE_CLIENT_SECRET`. With `shared_datastore: true` the heliopuddle storage location must point at the same data store, and files are registered in place; otherwise their content is uploaded.
 
 Once enabled, every insert, update and soft delete of a file record is repeated in heliopuddle as soon as the database commits it. If heliopuddle cannot be updated the operation fails (`fail_on_error`) but the database change is kept, and the next sync repairs it. Removing a file in heliopuddle also deletes it from its storage location, so with a shared data store a soft-deleted record's file is removed from disk (as the cleanup, archive and convert commands already do).
 
@@ -233,6 +233,54 @@ imap-mag heliopuddle sync
 # also remove files that are in heliopuddle but not in the database
 imap-mag heliopuddle sync --full --remove-untracked
 ```
+
+### Generating Leinweber Offset
+
+Runs the MATLAB `generate_raw_leinweber_offset` tool for one day and publishes the resulting offsets to `calibration/calculated_offsets/leinweber` in the datastore. Needs the L1C norm science and IMAP-Lo pivot-platform HK covering the window to already be in the datastore.
+
+```bash
+# Generate MAGo and MAGi offsets for a 24h window around 1 Aug 2026,
+# using the MATLAB repo at the default path in the docker image (/app/matlab/calibration)
+imap-mag calibration leinweber --date 2026-08-01 --duration-hours 24
+
+# Point at a local checkout of the MATLAB repo, use a 48h window for MAGo only,
+# skip verification for a quicker run, and keep the work folder to inspect afterwards
+imap-mag calibration leinweber --date 2026-08-01 \
+    --matlab-repo ~/repos/IMAP_MAG_Calibration \
+    --duration-hours 48 \
+    --sensors MAGo \
+    --no-verify \
+    --save-mode LocalOnly \
+    --no-cleanup-temp-files-after-run
+```
+
+#### Via `imap-mag calibrate`
+
+The same offsets can be generated through the general `calibrate` command with `--method leinweber`, taking its settings from a configuration file (YAML file or JSON string) like the other calibration methods. It runs once per day from `--date` to `--end-date`, for the single `--sensor` given.
+
+```yaml
+# leinweber.yaml
+matlab_repo: /app/matlab/calibration
+calibration_matrix_version: 9
+input_json_file: calibration_input.json   # relative to the MATLAB repo
+duration: 24h                             # required; e.g. 12h, 1d12h
+configure_midpoint: USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT  # or USE_MID_DAY / USE_DATE_AS_IS
+verify: true
+allow_pivot_platform_extrapolation: false
+cleanup_temp_files_after_run: true
+```
+
+```bash
+imap-mag calibrate --method leinweber --date 2026-08-01 --end-date 2026-08-03 \
+    --sensor MAGo --configuration leinweber.yaml --save-mode LocalAndDatabase
+```
+
+Notes:
+
+- Leinweber publishes offset CSVs rather than calibration layers, so `--mode`, `--metakernel`, `--version-number-override` and `--layer-data-format` have no effect for this method.
+- Temporary files are kept if either `--no-cleanup-temp-files-after-run` is passed or the configuration sets `cleanup_temp_files_after_run: false`.
+- `--save-mode` defaults to `LocalOnly` here, whereas `imap-mag calibration leinweber` defaults to `LocalAndDatabase`.
+- The Prefect `generate-leinweber-offsets` flow takes the same settings in its `calibration_configuration` parameter; there, an unset `duration` falls back to the `leinweber_duration_hours` Prefect variable.
 
 ## Running the pipeline locally + mounting data like
 

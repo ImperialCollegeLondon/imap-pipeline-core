@@ -437,6 +437,21 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         if path_handler.get_sequence() >= next_version:
             return FILE_IS_NEW
 
+        # A locked file (e.g. from the SDC) can arrive out of sequence, after a higher
+        # version. If its own version has never been stored it is neither an overwrite
+        # nor a content change, so add it at the version it was published with.
+        if (
+            not path_handler.can_change_sequence()
+            and path_handler.get_sequence() not in existing_versions
+        ):
+            logger.warning(
+                f"File {original_file.name} arrived out of sequence: version "
+                f"{path_handler.get_sequence()} is lower than existing version(s) "
+                f"{sorted(existing_versions)} but has not been seen before. "
+                "Adding it at its own version."
+            )
+            return FILE_IS_NEW
+
         if (
             path_handler.get_sequence() < next_version
             and path_handler.can_change_sequence()

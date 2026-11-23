@@ -13,6 +13,9 @@ class CONSTANTS:
     MAG_APID_RANGE = (992, 1119)
     IALIRT_PACKET_DEFINITION_FILE = "ialirt_4.05.yaml"
 
+    # Where the IMAP_MAG_Calibration MATLAB repo is checked out in the Docker image.
+    DEFAULT_MATLAB_REPO_PATH = "/app/matlab/calibration"
+
     class CCSDS_FIELD:
         APID = "pkt_apid"
         SEQ_COUNTER = "src_seq_ctr"

@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from imap_db.model import File, WorkflowProgress
+from imap_db.model import File, FileAnalysis, WorkflowProgress
 
 
 def test_get_descriptor_from_filename():
@@ -425,3 +425,92 @@ class TestWorkflowProgress:
         wp.update_last_checked_timestamp(ts)
 
         assert wp.get_last_checked_date() == ts
+
+
+class TestFileAnalysisGapInWindow:
+    WINDOW_START = datetime(2026, 1, 29, 23, 59)
+    WINDOW_END = datetime(2026, 1, 31, 0, 1)
+
+    @staticmethod
+    def _gap(start: str, end: str) -> dict:
+        return {"start_time": start, "end_time": end, "duration_seconds": 0}
+
+    def _analysis(self, **kwargs) -> FileAnalysis:
+        # Defaults comfortably cover the window, so each test isolates one cause.
+        fields = {
+            "first_timestamp": datetime(2026, 1, 29),
+            "last_timestamp": datetime(2026, 2, 1),
+            "gaps": [],
+        }
+        fields.update(kwargs)
+        return FileAnalysis(**fields)
+
+    def _gap_in_window(self, analysis: FileAnalysis) -> bool:
+        return analysis.gap_in_window(self.WINDOW_START, self.WINDOW_END)
+
+    def test_false_when_coverage_spans_the_window_with_no_gaps(self):
+        assert self._gap_in_window(self._analysis()) is False
+
+    def test_false_when_gaps_is_none(self):
+        assert self._gap_in_window(self._analysis(gaps=None)) is False
+
+    def test_false_when_coverage_exactly_matches_the_window(self):
+        analysis = self._analysis(
+            first_timestamp=self.WINDOW_START, last_timestamp=self.WINDOW_END
+        )
+        assert self._gap_in_window(analysis) is False
+
+    def test_false_when_recorded_gap_is_outside_the_window(self):
+        analysis = self._analysis(
+            gaps=[self._gap("2026-02-15T10:00:00", "2026-02-15T10:05:00")]
+        )
+        assert self._gap_in_window(analysis) is False
+
+    def test_false_when_gap_ends_exactly_at_window_start(self):
+        analysis = self._analysis(
+            gaps=[self._gap("2026-01-29T23:00:00", "2026-01-29T23:59:00")]
+        )
+        assert self._gap_in_window(analysis) is False
+
+    def test_true_when_recorded_gap_overlaps_the_window(self):
+        analysis = self._analysis(
+            gaps=[self._gap("2026-01-30T10:00:00", "2026-01-30T10:05:00")]
+        )
+        assert self._gap_in_window(analysis) is True
+
+    def test_true_when_recorded_gap_only_partially_overlaps_the_window(self):
+        # Starts before the window and ends just inside it.
+        analysis = self._analysis(
+            gaps=[self._gap("2026-01-29T20:00:00", "2026-01-30T00:00:01")]
+        )
+        assert self._gap_in_window(analysis) is True
+
+    @pytest.mark.parametrize(
+        ("first", "last"),
+        [(None, None), (None, datetime(2026, 2, 1)), (datetime(2026, 1, 29), None)],
+        ids=["both-missing", "first-missing", "last-missing"],
+    )
+    def test_true_when_timestamp_range_not_recorded(self, first, last):
+        # Coverage can't be confirmed, so treat as incomplete.
+        analysis = self._analysis(first_timestamp=first, last_timestamp=last)
+        assert self._gap_in_window(analysis) is True
+
+    def test_true_when_data_starts_after_the_window_start(self):
+        # A leading gap that `gaps` can't see - no earlier record to diff against.
+        analysis = self._analysis(first_timestamp=datetime(2026, 1, 30, 6, 0))
+        assert self._gap_in_window(analysis) is True
+
+    def test_true_when_data_ends_before_the_window_end(self):
+        # A trailing gap that `gaps` can't see - no later record to diff against.
+        analysis = self._analysis(last_timestamp=datetime(2026, 1, 30, 18, 0))
+        assert self._gap_in_window(analysis) is True
+
+    def test_timezone_aware_timestamps_compared_as_utc(self):
+        # Timestamps loaded from the database are timezone-aware; they must still
+        # compare against the naive window without raising.
+        analysis = self._analysis(
+            first_timestamp=datetime(2026, 1, 29, tzinfo=UTC),
+            last_timestamp=datetime(2026, 2, 1, tzinfo=UTC),
+            gaps=[self._gap("2026-01-30T10:00:00+00:00", "2026-01-30T10:05:00+00:00")],
+        )
+        assert self._gap_in_window(analysis) is True

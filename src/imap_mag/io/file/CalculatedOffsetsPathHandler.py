@@ -8,13 +8,13 @@ from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
 
 logger = logging.getLogger(__name__)
 
-# The two datastore sub-folders (under calibration/calculated_offsets) that hold the
-# per-day spin-plane offset CSVs produced by the scripted-L2 MATLAB calibration.
-SPIN_PLANE = "spin_plane"  # spin-averaged offsets
+# The datastore sub-folders (under calibration/calculated_offsets) that hold the
+# per-day offset CSVs produced by the various MATLAB calibration tools.
+SPIN_PLANE = "spin_plane"  # spin-averaged offsets, from the scripted-L2 calibration
 SPIN_OPTIMISED = "spin_optimised"  # spin-tone-corrected ("optimised") offsets
 OFFSET_TYPES = (SPIN_PLANE, SPIN_OPTIMISED)
 
-# Each offset type has its own file-name descriptor so the two products are uniquely
+# Each offset type has its own file-name descriptor so the products are uniquely
 # named (and not just distinguished by their folder). This mirrors what MATLAB writes.
 _DESCRIPTOR_BY_OFFSET_TYPE = {
     SPIN_PLANE: "spin-plane-offsets",
@@ -34,6 +34,9 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
 
     - ``spin_plane``     -> ``imap_mag_<sensor>-spin-plane-offsets_<date>_vNNN.csv``
     - ``spin_optimised`` -> ``imap_mag_<sensor>-spin-plane-optimised-offsets_<date>_vNNN.csv``
+
+    Leinweber (solar-wind) offsets are a distinct product with their own
+    file-name convention and are handled by ``LeinweberOffsetsPathHandler``.
     """
 
     mission: str = "imap"
@@ -105,7 +108,8 @@ class CalculatedOffsetsPathHandler(VersionedPathHandler):
         # Match the more specific (optimised) descriptor first.
         descriptors = "|".join(re.escape(d) for d in _OFFSET_TYPE_BY_DESCRIPTOR)
         match = re.match(
-            rf"imap_mag_(?P<sensor>mago|magi)-(?P<descr>{descriptors})_"
+            rf"imap_mag_(?P<sensor>mago|magi)-"
+            rf"(?P<descr>{descriptors})_"
             r"(?P<date>\d{8})_v(?P<version>\d+)\.(?P<ext>\w+)",
             filename.name,
         )

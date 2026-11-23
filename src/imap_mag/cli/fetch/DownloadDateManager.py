@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from imap_db.model import WorkflowProgress
 from imap_mag.db.Database import Database
 from imap_mag.util.DatetimeProvider import DatetimeProvider
+from imap_mag.util.TimeConversion import TimeConversion
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,9 @@ class DownloadDateManager:
     def _get_start_date(self, original_start_date: datetime | None) -> datetime:
         if original_start_date is not None:
             logger.info(
-                f"Using provided start date {force_utc_timezone(original_start_date)} for {self.__packet_name}."
+                f"Using provided start date {TimeConversion.force_utc_timezone(original_start_date)} for {self.__packet_name}."
             )
-            return force_utc_timezone(original_start_date)
+            return TimeConversion.force_utc_timezone(original_start_date)
 
         elif self.__progress_timestamp is not None:
             logger.info(
@@ -71,9 +72,9 @@ class DownloadDateManager:
             return self.__datetime_provider.end_of_today()
         else:
             logger.info(
-                f"Using provided end date {force_utc_timezone(original_end_date)} for {self.__packet_name}."
+                f"Using provided end date {TimeConversion.force_utc_timezone(original_end_date)} for {self.__packet_name}."
             )
-            return force_utc_timezone(original_end_date)
+            return TimeConversion.force_utc_timezone(original_end_date)
 
     def _validate_download_dates(
         self, start_date: datetime, end_date: datetime
@@ -133,8 +134,3 @@ class DownloadDateManager:
                 f"Not checking database and forcing download from {start_date} to {end_date}."
             )
             return start_date, end_date
-
-
-def force_utc_timezone(date: datetime) -> datetime:
-    """No matter the timezone of the input date, it will be treated as UTC."""
-    return date.replace(tzinfo=None)

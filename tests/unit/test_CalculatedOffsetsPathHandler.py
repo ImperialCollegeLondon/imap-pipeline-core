@@ -158,3 +158,15 @@ class TestCalculatedOffsetsPathHandler:
         f.write_text("data")
 
         assert CalculatedOffsetsPathHandler.from_filename(f) is None
+
+    def test_from_filename_ignores_leinweber_names(self, tmp_path):
+        # Leinweber offsets are a distinct product handled by
+        # LeinweberOffsetsPathHandler, not this class.
+        f = (
+            tmp_path
+            / "leinweber"
+            / "imap_mag_mago-raw-leinweber-offsets-24hr_20260114_v000.csv"
+        )
+        f.parent.mkdir(parents=True)
+        f.write_text("data")
+        assert CalculatedOffsetsPathHandler.from_filename(f) is None

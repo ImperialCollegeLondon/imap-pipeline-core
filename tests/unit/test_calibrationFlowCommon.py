@@ -11,6 +11,7 @@ from prefect_github import GitHubRepository
 from mag_toolkit.calibration.CalibrationConfig import SetQualityAndNaNConfig
 from prefect_server.calibrationFlowCommon import (
     PrefectScriptedL2CalibrationConfig,
+    PrefectScriptedLeinweberCalibrationConfig,
     _configuration_for_deployment,
     _days_in_range,
     _github_repo_name,
@@ -51,16 +52,17 @@ class TestConfigurationForDeployment:
         config = SetQualityAndNaNConfig(csv_file="quality.csv")
         assert _configuration_for_deployment(config) is config
 
-    def test_scripted_config_without_block_returned_unchanged(self):
+    def test_scripted_config_without_block_dumped_with_repo_unchanged(self):
         config = PrefectScriptedL2CalibrationConfig(
             calibration_matrix_version=8,
             input_json_file="input.json",
             matlab_repo="my-block-name",
         )
         result = _configuration_for_deployment(config)
-        assert result is config
+        assert result == config.model_dump()
+        assert result["matlab_repo"] == "my-block-name"
 
-    def test_scripted_config_with_block_but_no_doc_id_returned_unchanged(self):
+    def test_scripted_config_with_block_but_no_doc_id_keeps_block(self):
         block = GitHubRepository(
             repository_url="git@github.com:example-org/example-repo.git"
         )
@@ -70,7 +72,28 @@ class TestConfigurationForDeployment:
             matlab_repo=block,
         )
         result = _configuration_for_deployment(config)
-        assert result is config
+        assert isinstance(result, dict)
+        assert result["matlab_repo"] is block
+
+    def test_leinweber_config_block_with_doc_id_replaced_by_ref(self):
+        block = GitHubRepository(
+            repository_url="git@github.com:example-org/example-repo.git"
+        )
+        block._block_document_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config = PrefectScriptedLeinweberCalibrationConfig(
+            calibration_matrix_version=8,
+            input_json_file="input.json",
+            matlab_repo=block,
+            duration="24h",
+        )
+
+        result = _configuration_for_deployment(config)
+
+        assert isinstance(result, dict)
+        assert result["matlab_repo"] == {
+            "$ref": {"block_document_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+        }
+        assert result["duration"] == "24h"
 
     def test_github_block_with_doc_id_replaced_by_ref(self):
         block = GitHubRepository(

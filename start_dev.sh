@@ -1,4 +1,4 @@
-#!bash
+#!/bin/bash
 
 # Start a development environment for the project
 # launch a prefect server

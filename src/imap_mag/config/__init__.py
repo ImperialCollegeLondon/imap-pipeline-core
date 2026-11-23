@@ -10,6 +10,9 @@ from imap_mag.config.ConvertCommandConfig import ConvertCommandConfig
 from imap_mag.config.DatastoreSaveOption import DatastoreSaveOption
 from imap_mag.config.FetchConfig import FetchBinaryConfig, FetchScienceConfig
 from imap_mag.config.FetchMode import FetchMode
+from imap_mag.config.GenerateLeinweberOffsetsConfig import (
+    GenerateLeinweberOffsetsConfig,
+)
 from imap_mag.config.NestedAliasEnvSettingsSource import NestedAliasEnvSettingsSource
 from imap_mag.config.PublishConfig import PublishConfig
 from imap_mag.config.SaveMode import SaveMode
@@ -30,6 +33,7 @@ __all__ = [
     "FetchBinaryConfig",
     "FetchMode",
     "FetchScienceConfig",
+    "GenerateLeinweberOffsetsConfig",
     "NestedAliasEnvSettingsSource",
     "PublishConfig",
     "SaveMode",

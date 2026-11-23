@@ -238,15 +238,18 @@ class TestCreateOffsetsFileValidation:
         mock_offsets._contents = pd.DataFrame({"col": [1, 2]})
         mock_offsets.write_to_file.return_value = expected_path
 
+        science = _make_mock_science()
         with patch(_CALIBRATION_LAYER_FROM_FILE, return_value=mock_offsets):
             result = _make_applicator()._create_offsets_file(
                 layers=[tmp_path / "layer.json"],
                 outputCalibrationFile=expected_path,
-                science=_make_mock_science(),
+                science=science,
             )
 
         assert result == expected_path
-        mock_offsets.set_metadata.assert_called_once()
+        mock_offsets.prepare_for_offsets_write.assert_called_once_with(
+            science, expected_path, version=1
+        )
         mock_offsets.write_to_file.assert_called_once_with(expected_path)
 
     def test_raises_calibration_validity_error_when_offsets_not_compatible(
