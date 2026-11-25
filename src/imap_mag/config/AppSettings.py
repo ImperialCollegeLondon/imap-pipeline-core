@@ -14,6 +14,7 @@ from imap_mag.config.CalibrationCommandConfig import (
     DEFAULT_METAKERNEL_FILE_TYPES,
     CalibrationCommandConfig,
 )
+from imap_mag.config.CheckIALiRTConfig import CheckIALiRTConfig
 from imap_mag.config.CommandConfig import CommandConfig
 from imap_mag.config.ConvertCommandConfig import ConvertCommandConfig
 from imap_mag.config.DatastoreCleanupConfig import DatastoreCleanupConfig
@@ -64,7 +65,7 @@ class AppSettings(BaseSettings):
     metakernel_file_types: list[str] = DEFAULT_METAKERNEL_FILE_TYPES
 
     # Command settings
-    check_ialirt: CommandConfig
+    check_ialirt: CheckIALiRTConfig
     fetch_binary: FetchBinaryConfig
     fetch_webtcad: FetchWebTCADLaTiSConfig
     fetch_ialirt: FetchIALiRTConfig
