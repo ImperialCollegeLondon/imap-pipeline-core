@@ -40,7 +40,11 @@ class HeliopuddleConfig(CommandConfig):
     shared_datastore: bool = True
     # Raise an error from the database write when heliopuddle could not be updated.
     # The IMAP database change is already committed; the next sync repairs it.
-    fail_on_error: bool = True
+    # Also MAG_HELIOPUDDLE_FAIL_ON_ERROR, so each environment can choose.
+    fail_on_error: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("fail_on_error", "MAG_HELIOPUDDLE_FAIL_ON_ERROR"),
+    )
     request_timeout: timedelta = timedelta(minutes=5)
     # How many times to retry a file that another heliopuddle operation owns.
     busy_retries: int = Field(default=3, ge=0)

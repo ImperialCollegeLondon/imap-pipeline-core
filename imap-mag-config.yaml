@@ -421,6 +421,7 @@ heliopuddle:
     # false: file content is uploaded to heliopuddle
     shared_datastore: true
     # fail the operation (after the IMAP database commit) if heliopuddle cannot be updated
+    # (MAG_HELIOPUDDLE_FAIL_ON_ERROR overrides it per environment)
     fail_on_error: true
     request_timeout: "5m"
     busy_retries: 3

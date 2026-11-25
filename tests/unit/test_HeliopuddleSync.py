@@ -113,6 +113,14 @@ class TestHeliopuddleConfig:
         assert settings.heliopuddle.project == "imap-mag"
         assert HeliopuddleSync.from_settings(settings) is not None
 
+    def test_app_settings_reads_fail_on_error_from_the_environment(self, monkeypatch):
+        from imap_mag.config.AppSettings import AppSettings
+
+        monkeypatch.setenv("MAG_HELIOPUDDLE_FAIL_ON_ERROR", "false")
+        settings = AppSettings()  # type: ignore
+
+        assert not settings.heliopuddle.fail_on_error
+
     def test_the_shipped_config_leaves_it_disabled(self):
         from imap_mag.config.AppSettings import AppSettings
 
