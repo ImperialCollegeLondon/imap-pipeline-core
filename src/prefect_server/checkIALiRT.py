@@ -12,6 +12,7 @@ from pydantic import Field
 from imap_mag.check.IALiRTAnomaly import IALiRTAnomaly
 from imap_mag.check.SeverityLevel import SeverityLevel
 from imap_mag.cli.check.check_ialirt import check_ialirt
+from imap_mag.config import AppSettings
 from imap_mag.db import Database
 from imap_mag.util import CONSTANTS, DatetimeProvider
 from prefect_server.constants import PREFECT_CONSTANTS
@@ -115,6 +116,9 @@ async def check_ialirt_flow(
         imap_webhook_block = await MicrosoftTeamsWebhook.aload(
             imap_notification_webhook_name
         )
+        run_url = AppSettings().check_ialirt.run_url_template.format(
+            flow_run_id=flow_run.id
+        )
 
         for anomaly in anomalies:
             message_body: str = anomaly.get_anomaly_description()
@@ -126,7 +130,7 @@ async def check_ialirt_flow(
             else:
                 message_body += f"\n\nAffected date range: {start_date} to {end_date}"
 
-            message_body += f"\n\n[View the run on mag-pipeline.ph.ic.ac.uk](http://mag-pipeline.ph.ic.ac.uk/runs/flow-run/{flow_run.id})"
+            message_body += f"\n\n[View the run]({run_url})"
             message_subject = f"I-ALiRT {anomaly.severity.name} Anomaly Detected"
 
             imap_webhook_block.notify_type = (  # type: ignore
