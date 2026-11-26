@@ -1,10 +1,9 @@
 import functools
 import itertools
 import logging
-import os
 import threading
 from datetime import UTC, datetime
-from typing import Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 from sqlalchemy import create_engine, event, or_, select
 from sqlalchemy.engine import Engine, make_url
@@ -16,6 +15,9 @@ from imap_mag.db.HeliopuddleSync import (
     HeliopuddleSync,
     HeliopuddleSyncError,
 )
+
+if TYPE_CHECKING:
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -32,28 +34,23 @@ class Database:
     ``File`` row is also applied to heliopuddle (see HeliopuddleSync).
 
     Args:
-        db_url: database URL; defaults to the SQLALCHEMY_URL environment variable.
-        heliopuddle_sync: the sync to apply file changes with. None (the default)
-            builds it from AppSettings when the first file change is committed,
-            False disables it.
+        settings: application settings. The database URL is settings.db_url and the
+            heliopuddle sync is built from settings.heliopuddle.
+
+    Attributes:
+        heliopuddle_sync: the sync that file changes are applied with, or None when
+            the heliopuddle integration is disabled.
     """
 
     _engine_cache: ClassVar[dict[str, Engine]] = {}
     _engine_lock: ClassVar[threading.Lock] = threading.Lock()
     __active_session: Session | None
 
-    def __init__(
-        self,
-        db_url=None,
-        heliopuddle_sync: HeliopuddleSync | bool | None = None,
-    ):
-        env_url = self.get_environment_url()
-        if db_url is None and env_url is not None:
-            db_url = env_url
-
-        if db_url is None or len(db_url) == 0:
+    def __init__(self, settings: "AppSettings"):
+        db_url = settings.db_url
+        if not db_url:
             raise ValueError(
-                "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
+                "No database URL provided. Consider setting the SQLALCHEMY_URL environment variable."
             )
 
         url = make_url(db_url)
@@ -66,36 +63,12 @@ class Database:
         self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
 
-        self.__heliopuddle_sync: HeliopuddleSync | bool | None = heliopuddle_sync
-        self.__heliopuddle_lock = threading.Lock()
+        self.heliopuddle_sync: HeliopuddleSync | None = HeliopuddleSync.from_settings(
+            settings
+        )
         event.listen(self.session, "after_flush", _collect_file_changes)
         event.listen(self.session, "after_commit", self.__apply_file_changes)
         event.listen(self.session, "after_rollback", _discard_file_changes)
-
-    @classmethod
-    def get_environment_url(cls) -> str | None:
-        return os.getenv("SQLALCHEMY_URL")
-
-    def get_heliopuddle_sync(self) -> HeliopuddleSync | None:
-        """The heliopuddle sync for this database, or None when the integration is disabled."""
-        with self.__heliopuddle_lock:
-            if self.__heliopuddle_sync is None:
-                from imap_mag.config.AppSettings import AppSettings
-
-                try:
-                    settings = AppSettings()  # type: ignore
-                except Exception as e:
-                    logger.warning(
-                        f"Could not load settings to check the heliopuddle integration, so it is off: {e}"
-                    )
-                    self.__heliopuddle_sync = False
-                else:
-                    self.__heliopuddle_sync = (
-                        HeliopuddleSync.from_settings(settings) or False
-                    )
-
-            sync = self.__heliopuddle_sync
-            return sync if isinstance(sync, HeliopuddleSync) else None
 
     def __apply_file_changes(self, session: Session) -> None:
         """Repeat the file changes just committed in heliopuddle."""
@@ -103,11 +76,10 @@ class Database:
         if not changes:
             return
 
-        sync = self.get_heliopuddle_sync()
-        if sync is None:
+        if self.heliopuddle_sync is None:
             return
 
-        sync.apply_changes(changes.values())
+        self.heliopuddle_sync.apply_changes(changes.values())
 
     @staticmethod
     def __session_manager(readonly=False, **session_kwargs):

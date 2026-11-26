@@ -468,7 +468,7 @@ def generate_leinweber_offsets_flow(
     a rolling backfill window ending yesterday, ``LeinweberByDateRunParameters``
     processes an explicit day or date range.
     """
-    app_settings = AppSettings()  # type: ignore
+    app_settings = AppSettings.create(is_prefect=True)
 
     duration_hours = _resolve_duration_hours(calibration_configuration.duration)
     logger.info(f"Window Duration: {duration_hours}h")
@@ -516,7 +516,7 @@ def generate_leinweber_offsets_flow(
             },
         )
 
-    database = Database() if Database.get_environment_url() else None
+    database = Database(app_settings) if app_settings.db_url else None
     datastore_finder = FileFinder(app_settings.data_store, database=database)
 
     produced: list[Path] = []

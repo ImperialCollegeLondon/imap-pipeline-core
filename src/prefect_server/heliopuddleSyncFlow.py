@@ -36,7 +36,7 @@ def heliopuddle_sync_flow(
         remove_untracked: With full, remove files that are only in heliopuddle.
         dry_run: Report what would change without changing heliopuddle.
     """
-    app_settings = AppSettings()  # type: ignore
+    app_settings = AppSettings.create(is_prefect=True)
     if not app_settings.heliopuddle.enabled:
         return Completed(
             message="heliopuddle integration is disabled",
@@ -46,7 +46,7 @@ def heliopuddle_sync_flow(
     try:
         summary = run_sync(
             app_settings,
-            Database(),
+            Database(app_settings),
             full=full,
             since=since,
             remove_untracked=remove_untracked,

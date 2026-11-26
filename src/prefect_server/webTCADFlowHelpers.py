@@ -55,8 +55,8 @@ async def run_webtcad_pipeline(
     ``RuntimeError`` if the pipeline reports failure.
     """
 
-    database = Database() if use_database else None
-    settings = AppSettings()
+    settings = AppSettings.create(is_prefect=True)
+    database = Database(settings) if use_database else None
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_WEBTCAD.WEBTCAD_AUTH_CODE_SECRET_NAME,

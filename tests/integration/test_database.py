@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from imap_db.model import Base, File, WorkflowProgress
 from imap_mag import __version__
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io import (
     IDatastoreFileManager,
@@ -225,9 +226,10 @@ def test_multiple_database_instances_share_engine(
     connection pool, so N instances consumed N*pool_size connections and could
     exhaust the server's max_connections limit.
     """
-    db1 = Database(db_url=test_database_server_engine.url)
-    db2 = Database(db_url=test_database_server_engine.url)
-    db3 = Database(db_url=test_database_server_engine.url)
+    db_url = test_database_server_engine.url.render_as_string(hide_password=False)
+    db1 = Database(AppSettings(db_url=db_url))
+    db2 = Database(AppSettings(db_url=db_url))
+    db3 = Database(AppSettings(db_url=db_url))
 
     assert db1.engine is db2.engine, (
         "Database instances with the same URL should reuse one cached engine"

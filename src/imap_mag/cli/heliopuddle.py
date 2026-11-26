@@ -50,7 +50,7 @@ def sync(
 
     summary = run_sync(
         app_settings,
-        Database(),
+        Database(app_settings),
         full=full,
         since=since,
         remove_untracked=remove_untracked,

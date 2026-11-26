@@ -35,8 +35,8 @@ async def index_datastore_flow():
     - If the file has a database record that was previously soft-deleted the
       deletion date is cleared so the record becomes active again.
     """
-    app_settings = AppSettings()  # type: ignore
-    db = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    db = Database(app_settings)
     datastore_manager = DBIndexedDatastoreFileManager(
         database=db, settings=app_settings
     )

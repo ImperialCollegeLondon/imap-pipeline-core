@@ -22,10 +22,11 @@ from prefect_server.prefectUtils import try_get_prefect_logger
 async def send_monthly_test_message(
     logger,
     imap_notification_webhook_name: str,
+    app_settings: AppSettings,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> None:
     # Send a monthly test notification on the first Monday of the month
-    database = Database()
+    database = Database(app_settings)
     workflow_progress = database.get_workflow_progress(
         CONSTANTS.DATABASE.IALIRT_VALIDATION_ID
     )
@@ -91,6 +92,7 @@ async def check_ialirt_flow(
     """
 
     logger = try_get_prefect_logger(__name__)
+    app_settings = AppSettings.create(is_prefect=True)
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
     )
@@ -108,7 +110,7 @@ async def check_ialirt_flow(
 
     if not anomalies:
         await send_monthly_test_message(
-            logger, imap_notification_webhook_name, datetime_provider
+            logger, imap_notification_webhook_name, app_settings, datetime_provider
         )
         return Completed(message="No anomalies detected in I-ALiRT data.")
     else:
@@ -116,7 +118,7 @@ async def check_ialirt_flow(
         imap_webhook_block = await MicrosoftTeamsWebhook.aload(
             imap_notification_webhook_name
         )
-        run_url = AppSettings().check_ialirt.run_url_template.format(
+        run_url = app_settings.check_ialirt.run_url_template.format(
             flow_run_id=flow_run.id
         )
 

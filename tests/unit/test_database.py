@@ -1,12 +1,18 @@
 """Unit tests for Database class that do not require a real database connection."""
 
 from datetime import UTC, datetime
-from unittest.mock import patch
 
 import pytest
 
 from imap_db.model import Base, File, FileAnalysis
+from imap_mag.config.AppSettings import AppSettings
+from imap_mag.config.HeliopuddleConfig import HeliopuddleConfig
 from imap_mag.db.Database import Database, update_database_with_progress
+from imap_mag.db.HeliopuddleSync import HeliopuddleSync
+
+
+def _sqlite_database(path) -> Database:
+    return Database(AppSettings(db_url=f"sqlite:///{path}"))
 
 
 def _make_file(name, path, hash_val, *, deletion_date=None, last_modified_date=None):
@@ -52,39 +58,49 @@ class TestDatabaseFnmatchToLike:
         assert result == "%hk/mag/l1/%\\_v%.cdf"
 
 
-class TestDatabaseGetEnvironmentUrl:
-    def test_returns_none_when_env_var_not_set(self):
-        with patch.dict("os.environ", {}, clear=True):
-            result = Database.get_environment_url()
-        assert result is None
-
-    def test_returns_url_from_env_var(self):
-        with patch.dict("os.environ", {"SQLALCHEMY_URL": "sqlite:///test.db"}):
-            result = Database.get_environment_url()
-        assert result == "sqlite:///test.db"
-
-
 class TestDatabaseInit:
-    def test_raises_when_no_url_provided(self):
-        with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="No database URL"):
-                Database()
+    def test_raises_when_settings_have_no_url(self):
+        with pytest.raises(ValueError, match=r"No database URL.*SQLALCHEMY_URL"):
+            Database(AppSettings(db_url=None))
 
-    def test_uses_env_var_url_when_no_explicit_url(self, tmp_path):
-        db_path = str(tmp_path / "test.db")
-        with patch.dict("os.environ", {"SQLALCHEMY_URL": f"sqlite:///{db_path}"}):
-            db = Database()
-        assert db.engine is not None
+    def test_uses_url_from_settings(self, tmp_path):
+        db_path = tmp_path / "test.db"
+        db = Database(AppSettings(db_url=f"sqlite:///{db_path}"))
+        assert db.engine.url.database == str(db_path)
 
-    def test_uses_explicit_url_when_provided(self, tmp_path):
-        db_path = str(tmp_path / "test.db")
-        db = Database(db_url=f"sqlite:///{db_path}")
-        assert db.engine is not None
+    def test_uses_url_from_env_var_through_settings(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "test.db"
+        monkeypatch.setenv("SQLALCHEMY_URL", f"sqlite:///{db_path}")
+        db = Database(AppSettings())
+        assert db.engine.url.database == str(db_path)
+
+    def test_no_heliopuddle_sync_when_disabled(self, tmp_path):
+        db = Database(
+            AppSettings(
+                db_url=f"sqlite:///{tmp_path}/test.db",
+                heliopuddle=HeliopuddleConfig(enabled=False),
+            )
+        )
+        assert db.heliopuddle_sync is None
+
+    def test_builds_heliopuddle_sync_when_enabled(self, tmp_path):
+        settings = AppSettings(
+            db_url=f"sqlite:///{tmp_path}/test.db",
+            data_store=tmp_path,
+            heliopuddle=HeliopuddleConfig(
+                enabled=True, url="http://example.com/api/v1", project="example"
+            ),
+        )
+
+        db = Database(settings)
+
+        assert isinstance(db.heliopuddle_sync, HeliopuddleSync)
+        assert db.heliopuddle_sync.config == settings.heliopuddle
 
 
 class TestUpdateDatabaseWithProgress:
     def test_updates_last_checked_timestamp(self, tmp_path):
-        db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
+        db = _sqlite_database(tmp_path / "test.db")
         Base.metadata.create_all(db.engine)
 
         checked = datetime(2025, 6, 1, 12, 0, 0)
@@ -97,7 +113,7 @@ class TestUpdateDatabaseWithProgress:
         assert progress.progress_timestamp == latest
 
     def test_does_not_update_progress_when_latest_is_older(self, tmp_path):
-        db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
+        db = _sqlite_database(tmp_path / "test.db")
         Base.metadata.create_all(db.engine)
 
         newer_progress = datetime(2025, 6, 1, 12, 0, 0)
@@ -113,7 +129,7 @@ class TestUpdateDatabaseWithProgress:
         assert progress.progress_timestamp == newer_progress
 
     def test_handles_none_latest_timestamp(self, tmp_path):
-        db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
+        db = _sqlite_database(tmp_path / "test.db")
         Base.metadata.create_all(db.engine)
 
         checked = datetime(2025, 6, 1)
@@ -126,7 +142,7 @@ class TestUpdateDatabaseWithProgress:
 class TestDatabaseOperations:
     @pytest.fixture
     def sqlite_db(self, tmp_path):
-        db = Database(db_url=f"sqlite:///{tmp_path}/test.db")
+        db = _sqlite_database(tmp_path / "test.db")
         Base.metadata.create_all(db.engine)
         return db
 

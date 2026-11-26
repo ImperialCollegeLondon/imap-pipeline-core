@@ -78,7 +78,10 @@ def sync(store: Path, hp: FakeHelioPuddleClient) -> HeliopuddleSync:
 
 @pytest.fixture
 def db(tmp_path: Path, sync: HeliopuddleSync) -> Database:
-    database = Database(db_url=f"sqlite:///{tmp_path}/test.db", heliopuddle_sync=sync)
+    from imap_mag.config.AppSettings import AppSettings
+
+    database = Database(AppSettings(db_url=f"sqlite:///{tmp_path}/test.db"))
+    database.heliopuddle_sync = sync
     Base.metadata.create_all(database.engine)
     return database
 
@@ -410,18 +413,20 @@ class TestDatabaseHook:
         assert [f.path for f in db.get_files()] == ["hk/a.csv"]
 
     def test_disabled_sync_makes_no_calls(self, tmp_path, hp, store):
-        database = Database(
-            db_url=f"sqlite:///{tmp_path}/off.db", heliopuddle_sync=False
-        )
+        from imap_mag.config.AppSettings import AppSettings
+
+        database = Database(AppSettings(db_url=f"sqlite:///{tmp_path}/off.db"))
         Base.metadata.create_all(database.engine)
         _write(store, "hk/a.csv", b"data")
         database.upsert_file(_file("hk/a.csv"))
         assert hp.calls == []
-        assert database.get_heliopuddle_sync() is None
+        assert database.heliopuddle_sync is None
 
     def test_default_sync_comes_from_app_settings(self, tmp_path):
-        database = Database(db_url=f"sqlite:///{tmp_path}/default.db")
-        assert database.get_heliopuddle_sync() is None  # disabled in the config
+        from imap_mag.config.AppSettings import AppSettings
+
+        database = Database(AppSettings(db_url=f"sqlite:///{tmp_path}/default.db"))
+        assert database.heliopuddle_sync is None  # disabled in the config
 
 
 # -- migration and reconciliation -----------------------------------------------------
@@ -430,7 +435,10 @@ class TestDatabaseHook:
 @pytest.fixture
 def offline_db(tmp_path: Path) -> Database:
     """A database whose own writes are not synced, to set up IMAP-only state."""
-    database = Database(db_url=f"sqlite:///{tmp_path}/imap.db", heliopuddle_sync=False)
+    from imap_mag.config.AppSettings import AppSettings
+
+    database = Database(AppSettings(db_url=f"sqlite:///{tmp_path}/imap.db"))
+    database.heliopuddle_sync = None
     Base.metadata.create_all(database.engine)
     return database
 

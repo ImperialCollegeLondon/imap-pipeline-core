@@ -9,7 +9,7 @@ from pydantic import Field
 from imap_mag.cli.fetch.binary import fetch_binary
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.process import process
-from imap_mag.config import FetchMode, SaveMode
+from imap_mag.config import AppSettings, FetchMode, SaveMode
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import HKBinaryPathHandler
 from imap_mag.util import (
@@ -122,7 +122,8 @@ async def poll_hk_flow(
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
     )
-    database = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    database = Database(app_settings)
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_HK.WEBPODA_AUTH_CODE_SECRET_NAME,

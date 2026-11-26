@@ -56,8 +56,8 @@ async def upload_shared_docs_flow(
     Publish new files to sharepoint/box/whatever configured cloud storage
     """
 
-    app_settings = AppSettings()  # type: ignore
-    db = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    db = Database(app_settings)
     started = datetime.now(tz=UTC)
 
     uploaded_files = (

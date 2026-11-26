@@ -11,7 +11,7 @@ from prefect_server.pollNOAA import generate_flow_run_name, poll_noaa_flow
 _PATCHES = (
     "prefect_server.pollNOAA.NOAAPipeline",
     "prefect_server.pollNOAA.Database",
-    "prefect_server.pollNOAA.AppSettings",
+    "prefect_server.pollNOAA.AppSettings.create",
 )
 
 
