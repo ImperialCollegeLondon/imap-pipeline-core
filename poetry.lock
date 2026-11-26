@@ -1932,8 +1932,9 @@ description = "A multi-location datastore manager built on Prefect"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "2763dd94a518892ca664f72d5ef657861213e74b.tar.gz", hash = "sha256:9428c9d382ed9cf7ee263722934edc3fe5b8698b5aa16a705a37bf05a60619ab"},
+]
 
 [package.dependencies]
 fsspec = ">=2023.1.0"
@@ -1953,10 +1954,8 @@ sftp = ["paramiko (>=5.1.0)"]
 smb = ["smbprotocol (>=1.17.0)"]
 
 [package.source]
-type = "git"
-url = "https://github.com/ImperialCollegeLondon/heliopuddle.git"
-reference = "task/client-file-sync"
-resolved_reference = "2763dd94a518892ca664f72d5ef657861213e74b"
+type = "url"
+url = "https://github.com/ImperialCollegeLondon/heliopuddle/archive/2763dd94a518892ca664f72d5ef657861213e74b.tar.gz"
 
 [[package]]
 name = "hpack"
@@ -6036,4 +6035,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "0e6e7b085bd73cc81869ef66c627bb6a937d0c6a96618cfb3166e174b4c658e2"
+content-hash = "6d4ef10b8439ad8c30ba5cb553d02b6a2c53f296c49f022a598b4f5550329b11"

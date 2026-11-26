@@ -75,9 +75,10 @@ dev = [
 
 [tool.poetry.dependencies]
 # The client's sync_file/sync_removed and busy retries are not released yet:
-# take them from the heliopuddle branch until the next heliopuddle release,
+# take them from the heliopuddle branch task/client-file-sync (a source archive
+# of its commit, so the images need no git) until the next heliopuddle release,
 # then delete this section and raise the floor above to that release.
-heliopuddle = { git = "https://github.com/ImperialCollegeLondon/heliopuddle.git", branch = "task/client-file-sync" }
+heliopuddle = { url = "https://github.com/ImperialCollegeLondon/heliopuddle/archive/2763dd94a518892ca664f72d5ef657861213e74b.tar.gz" }
 
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
