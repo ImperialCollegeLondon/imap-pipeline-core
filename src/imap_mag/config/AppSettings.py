@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar, Self
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -43,6 +43,9 @@ class AppSettings(BaseSettings):
     Application configuration class.
 
     Can be configured with imap-mag-config.yaml, with ENV vars like MAG_FIELD_SUBFIELD=123 and kwargs to AppSettings(data_store="some_path")
+
+    Build it once at the program entrypoint (CLI command or flow start), with
+    AppSettings.create(), and pass the instance to everything that needs settings.
     """
 
     config_file: ClassVar[str] = "imap-mag-config.yaml"
@@ -52,6 +55,8 @@ class AppSettings(BaseSettings):
         env_prefix="MAG_",
         yaml_file=config_file,
         extra="ignore",
+        # Lets db_url be set by its field name as well as by its env var aliases.
+        validate_by_name=True,
     )
 
     # Global settings
@@ -60,6 +65,15 @@ class AppSettings(BaseSettings):
     packet_definition: Path
     disk_usage_threshold: float = 0.95
     version_major: int = 1
+
+    # IMAP database URL. Read from the SQLALCHEMY_URL (or MAG_DB_URL) env var, db_url
+    # in the YAML or the db_url kwarg. In Prefect flows, AppSettings.create(is_prefect=True)
+    # falls back to the imap-database SqlAlchemyConnector block when it is not set.
+    db_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SQLALCHEMY_URL", "MAG_DB_URL"),
+        repr=False,
+    )
 
     # SPICE kernel types to include when generating a metakernel. Shared by the
     # calibration applicator and the scripted L2 calibration.
@@ -85,6 +99,35 @@ class AppSettings(BaseSettings):
     database_delete_rows: DeleteDatabaseRowsConfig
     file_analysis: FileAnalysisConfig = Field(default_factory=FileAnalysisConfig)
     heliopuddle: HeliopuddleConfig = Field(default_factory=HeliopuddleConfig)
+
+    @classmethod
+    def create(cls, is_prefect: bool = False, **overrides: Any) -> Self:
+        """Build the settings for a program entrypoint.
+
+        Args:
+            is_prefect: True when running in a Prefect flow. If no database URL is
+                configured, it is then read from the Prefect SqlAlchemyConnector block
+                named imap-database.
+            **overrides: Settings that take priority over the env vars and YAML file.
+
+        Returns:
+            The application settings.
+        """
+        settings = cls(**overrides)
+        if is_prefect and not settings.db_url:
+            # Imported here so that loading settings does not import Prefect.
+            from imap_mag.db.utils import DatabaseDriver, load_database_url
+            from prefect_server.constants import PREFECT_CONSTANTS
+
+            settings.db_url = load_database_url(
+                PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
+                database_driver=DatabaseDriver.PostgresqlPsychopg,
+            )
+            if not settings.db_url:
+                logger.warning(
+                    f"No database URL in SQLALCHEMY_URL or the {PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME} Prefect block."
+                )
+        return settings
 
     # functions
     def setup_work_folder_for_command(

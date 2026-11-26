@@ -404,7 +404,7 @@ def generate_spice_metakernel(
     initialiseLoggingForCommand(
         work_folder
     )  # DO NOT log anything before this point (it won't be captured in the log file)
-    database = Database()
+    database = Database(app_settings)
 
     if file_types:
         file_types = [type.strip().upper() for type in file_types]

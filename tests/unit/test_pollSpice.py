@@ -7,6 +7,8 @@ import pytest
 
 from prefect_server.pollSpice import poll_spice_flow
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 DATES = {"ingest_start_day": date(2025, 6, 1), "ingest_end_date": date(2025, 6, 2)}
 
 

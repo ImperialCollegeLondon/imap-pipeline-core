@@ -95,7 +95,7 @@ def convert(
         f"{output_layer_data_format.value} ({output_layer_versioning_strategy.value})."
     )
 
-    db = Database() if Database.get_environment_url() else None
+    db = Database(app_settings) if app_settings.db_url else None
     datastore_finder = FileFinder(
         app_settings.data_store,
         work_folder,

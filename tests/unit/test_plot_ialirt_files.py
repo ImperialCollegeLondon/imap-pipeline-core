@@ -123,6 +123,7 @@ class TestPlotIalirtFilesFunction:
                 science_files=[],
                 hk_files=[],
                 save_folder=tmp_path,
+                app_settings=MagicMock(),
             )
 
         assert len(result) == 1
@@ -159,6 +160,7 @@ class TestPlotIalirtFilesFunction:
                 science_files=[],
                 hk_files=[Path("hk.csv")],
                 save_folder=tmp_path,
+                app_settings=MagicMock(),
                 combine_plots=True,
             )
 
@@ -184,6 +186,7 @@ class TestPlotIalirtFilesFunction:
                 science_files=[Path("science.csv")],
                 hk_files=[],
                 save_folder=tmp_path,
+                app_settings=MagicMock(),
                 combine_plots=True,
             )
 
@@ -213,6 +216,7 @@ class TestPlotIalirtFilesFunction:
                 science_files=[Path("science.csv")],
                 hk_files=[],
                 save_folder=tmp_path,
+                app_settings=MagicMock(),
                 combine_plots=False,
             )
 
@@ -232,7 +236,7 @@ class TestCreateFigureFunction:
             "imap_mag.plot.plot_ialirt_files.Database",
             return_value=mock_db,
         ):
-            output_file, handler = create_figure(df, tmp_path)
+            output_file, handler = create_figure(df, tmp_path, MagicMock())
 
         assert output_file.suffix == ".png"
         assert output_file.exists()
@@ -266,7 +270,7 @@ class TestCreateFigureFunction:
             ),
             patch("imap_mag.plot.plot_ialirt_files.plt.close"),
         ):
-            output_file, _handler = create_figure(df, tmp_path)
+            output_file, _handler = create_figure(df, tmp_path, MagicMock())
             fig = plt.gcf()
 
         assert output_file.exists()

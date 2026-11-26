@@ -33,6 +33,8 @@ from prefect_server.generateLeinweberOffsetsFlow import (
     generate_leinweber_offsets_flow_run_name,
 )
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 MODULE = "prefect_server.generateLeinweberOffsetsFlow"
 DAY = datetime(2026, 1, 30)
 DEFAULT_MIDPOINT = ConfigureMidpoint.USE_12_HRS_AFTER_PIVOT_PLATFORM_MOVEMENT
@@ -117,6 +119,7 @@ def _patch_settings(tmp_path):
     mock_settings = MagicMock()
     mock_settings.work_folder = tmp_path
     mock_settings.data_store = tmp_path / "datastore"
+    mock_settings.db_url = None
     return mock_settings
 
 
@@ -131,7 +134,9 @@ class TestGenerateLeinweberOffsetsFlow:
             yield mock
 
     def test_raises_when_end_date_before_start_date(self, tmp_path):
-        with patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)):
+        with patch(
+            f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+        ):
             with pytest.raises(ValueError, match="cannot be before start date"):
                 generate_leinweber_offsets_flow.fn(
                     run_parameters=LeinweberByDateRunParameters(
@@ -153,7 +158,7 @@ class TestGenerateLeinweberOffsetsFlow:
 
         with (
             patch(
-                f"{MODULE}.AppSettings",
+                f"{MODULE}.AppSettings.create",
                 return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
@@ -187,7 +192,7 @@ class TestGenerateLeinweberOffsetsFlow:
 
         with (
             patch(
-                f"{MODULE}.AppSettings",
+                f"{MODULE}.AppSettings.create",
                 return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
@@ -218,7 +223,7 @@ class TestGenerateLeinweberOffsetsFlow:
 
         with (
             patch(
-                f"{MODULE}.AppSettings",
+                f"{MODULE}.AppSettings.create",
                 return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}._existing_offsets", side_effect=record_existing),
@@ -258,7 +263,9 @@ class TestGenerateLeinweberOffsetsFlow:
 
     def test_requires_matlab_repo_when_a_day_needs_generating(self, tmp_path):
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
         ):
@@ -277,7 +284,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -299,7 +308,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -331,7 +342,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -367,7 +380,9 @@ class TestGenerateLeinweberOffsetsFlow:
         existing_path = Path("already-there.csv")
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=[existing_path]),
             patch(f"{MODULE}._science_ready") as mock_ready,
             patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
@@ -398,7 +413,9 @@ class TestGenerateLeinweberOffsetsFlow:
         existing_path = Path("already-there.csv")
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(
                 f"{MODULE}._existing_offsets", return_value=[existing_path]
             ) as mock_existing,
@@ -423,7 +440,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -446,7 +465,9 @@ class TestGenerateLeinweberOffsetsFlow:
 
     def test_skips_days_where_science_is_not_ready(self, tmp_path):
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=False),
             patch(f"{MODULE}.generate_leinweber_offsets") as mock_generate,
@@ -470,7 +491,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(f"{MODULE}._pivot_platform_complete", return_value=False),
@@ -501,7 +524,9 @@ class TestGenerateLeinweberOffsetsFlow:
             return day == datetime(2026, 1, 31)
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", side_effect=fake_existing),
             patch(f"{MODULE}._science_ready", side_effect=fake_ready),
             patch(
@@ -539,7 +564,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -566,7 +593,7 @@ class TestGenerateLeinweberOffsetsFlow:
 
         with (
             patch(
-                f"{MODULE}.AppSettings",
+                f"{MODULE}.AppSettings.create",
                 return_value=_patch_settings(tmp_path),
             ),
             patch(f"{MODULE}.DatetimeProvider") as mock_provider,
@@ -591,7 +618,9 @@ class TestGenerateLeinweberOffsetsFlow:
         repo.mkdir()
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(
@@ -677,7 +706,9 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
         fixed_provider = DatetimeProvider(fixed_now=datetime(2026, 3, 10))
 
         with (
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}.DatetimeProvider", return_value=fixed_provider),
             patch(
                 f"{MODULE}.run_deployment",
@@ -706,7 +737,9 @@ class TestGenerateLeinweberOffsetsFlowSplitByDay:
 
         with (
             patch(f"{MODULE}.run_deployment") as mock_run_deployment,
-            patch(f"{MODULE}.AppSettings", return_value=_patch_settings(tmp_path)),
+            patch(
+                f"{MODULE}.AppSettings.create", return_value=_patch_settings(tmp_path)
+            ),
             patch(f"{MODULE}._existing_offsets", return_value=None),
             patch(f"{MODULE}._science_ready", return_value=True),
             patch(f"{MODULE}._create_offsets_table_artifact"),

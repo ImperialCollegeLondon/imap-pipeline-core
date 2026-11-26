@@ -29,7 +29,7 @@ def _run(
     work_folder = app_settings.setup_work_folder_for_command(app_settings.fetch_webtcad)
     initialiseLoggingForCommand(work_folder)
 
-    database = Database() if use_database else None
+    database = Database(app_settings) if use_database else None
 
     if start_date or end_date:
         run_params = FetchByDatesRunParameters(

@@ -15,6 +15,8 @@ from prefect_server.pollScience import (
     poll_science_flow,
 )
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 
 class TestGetLatestIngestionDate:
     def _make_handler_with_ingestion(self, ingestion_date: datetime | None):

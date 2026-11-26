@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
 from imap_db.model import Base
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.util import Environment
 
@@ -42,4 +43,14 @@ def test_database(test_database_server_engine):
             session.execute(table.delete())
         session.commit()
 
-    yield Database(db_url=test_database_server_engine.url)
+    yield Database(
+        AppSettings(
+            db_url=test_database_server_engine.url.render_as_string(hide_password=False)
+        )
+    )
+
+
+@pytest.fixture
+def in_memory_database_url(monkeypatch):
+    """Set SQLALCHEMY_URL so flows under test do not look the URL up in a Prefect block."""
+    monkeypatch.setenv("SQLALCHEMY_URL", "sqlite://")

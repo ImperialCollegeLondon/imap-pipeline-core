@@ -69,7 +69,7 @@ class TestRunWebtcadPipeline:
             ) as mock_pipeline_class,
             patch("prefect_server.webTCADFlowHelpers.Database") as mock_database_class,
             patch(
-                "prefect_server.webTCADFlowHelpers.AppSettings"
+                "prefect_server.webTCADFlowHelpers.AppSettings.create"
             ) as mock_settings_class,
             patch(
                 "prefect_server.webTCADFlowHelpers.get_secret_or_env_var",

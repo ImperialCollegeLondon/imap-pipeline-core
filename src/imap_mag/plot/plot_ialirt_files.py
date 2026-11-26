@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.io.file import IALiRTQuicklookPathHandler
 from imap_mag.util import DatetimeProvider
@@ -19,10 +20,23 @@ def plot_ialirt_files(
     science_files: list[Path],
     hk_files: list[Path],
     save_folder: Path,
+    app_settings: AppSettings,
     combine_plots: bool = False,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> dict[Path, IALiRTQuicklookPathHandler]:
-    """Generate I-ALiRT plots for the specified files."""
+    """Generate I-ALiRT plots for the specified files.
+
+    Args:
+        science_files: I-ALiRT science CSV files.
+        hk_files: I-ALiRT HK CSV files.
+        save_folder: Folder to save the plots in.
+        app_settings: Settings, for the database the plot titles' progress dates come from.
+        combine_plots: Plot all dates in one figure instead of one figure per date.
+        datetime_provider: Provider for the current time.
+
+    Returns:
+        Each plot file mapped to its path handler.
+    """
 
     generated_files: dict[Path, IALiRTQuicklookPathHandler] = {}
 
@@ -40,14 +54,14 @@ def plot_ialirt_files(
             "No I-ALiRT data present in files. Generating an empty quicklook plot."
         )
         (output_file, output_handler) = create_figure(
-            ialirt_data, save_folder, datetime_provider
+            ialirt_data, save_folder, app_settings, datetime_provider
         )
         generated_files[output_file] = output_handler
         return generated_files
 
     if combine_plots:
         (output_file, output_handler) = create_figure(
-            ialirt_data, save_folder, datetime_provider
+            ialirt_data, save_folder, app_settings, datetime_provider
         )
         generated_files[output_file] = output_handler
     else:
@@ -57,7 +71,7 @@ def plot_ialirt_files(
                 continue
 
             (output_file, output_handler) = create_figure(
-                daily_data, save_folder, datetime_provider
+                daily_data, save_folder, app_settings, datetime_provider
             )
             generated_files[output_file] = output_handler
 
@@ -104,6 +118,7 @@ def _non_null_column(data: pd.DataFrame, column: str) -> pd.Series:
 def create_figure(
     ialirt_data: pd.DataFrame,
     save_folder: Path,
+    app_settings: AppSettings,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> tuple[Path, IALiRTQuicklookPathHandler]:
     fig = plt.figure()
@@ -318,7 +333,7 @@ def create_figure(
         )
 
     set_time_format(fig)
-    set_figure_title(fig, datetime_provider)
+    set_figure_title(fig, app_settings, datetime_provider)
 
     fig.set_size_inches(22, 12)
     fig.tight_layout()
@@ -389,9 +404,10 @@ def set_time_format(fig: plt.Figure) -> None:
 
 def set_figure_title(
     fig: plt.Figure,
+    app_settings: AppSettings,
     datetime_provider: DatetimeProvider = DatetimeProvider(),
 ) -> None:
-    database = Database()
+    database = Database(app_settings)
     time_format = "%Y-%m-%d %H:%M:%S"
 
     latest_data_timestamp = database.get_workflow_progress(

@@ -38,7 +38,7 @@ async def delete_old_rows(
         database_driver=DatabaseDriver.PostgresqlPsychopg,
     )
 
-    db = Database(db_url)
+    db = Database(app_settings.model_copy(update={"db_url": db_url}))
 
     total_deleted = 0
     for task in config.tasks:

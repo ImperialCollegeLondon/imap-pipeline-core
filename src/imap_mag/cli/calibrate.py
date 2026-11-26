@@ -397,7 +397,7 @@ def _calibrate_for_date(
     datastore_finder = FileFinder(
         app_settings.data_store,
         work_folder,
-        database=Database() if Database.get_environment_url() else None,
+        database=Database(app_settings) if app_settings.db_url else None,
     )
 
     # The scripted-l2 method uses an extended configuration with extra required

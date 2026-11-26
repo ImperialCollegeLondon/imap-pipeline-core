@@ -45,17 +45,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         self,
         file_manager: IDatastoreFileManager | None = None,
         database: Database | None = None,
-        settings: AppSettings | None = None,
+        *,
+        settings: AppSettings,
     ):
-        """Initialize database and output manager."""
+        """Initialize database and output manager.
 
-        self.__settings = settings if settings else AppSettings()  # type: ignore
+        Args:
+            file_manager: Manager that writes the files; defaults to a DatastoreFileManager.
+            database: Database that indexes the files; defaults to one built from settings.
+            settings: Application settings.
+        """
+
+        self.__settings = settings
         self.__file_manager = (
             file_manager if file_manager else DatastoreFileManager(self.__settings)
         )
 
         if database is None:
-            self.__database = Database()
+            self.__database = Database(self.__settings)
         else:
             self.__database = database
 

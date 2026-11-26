@@ -92,8 +92,8 @@ async def cleanup_datastore_flow(
     """
     logger = try_get_prefect_logger(__name__)
 
-    app_settings = AppSettings()  # type: ignore
-    db = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    db = Database(app_settings)
     datastore_manager = DBIndexedDatastoreFileManager(
         database=db, settings=app_settings
     )

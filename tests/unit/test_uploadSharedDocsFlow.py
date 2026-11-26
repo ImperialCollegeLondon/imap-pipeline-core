@@ -276,7 +276,7 @@ class TestUploadSharedDocsFlow:
 
         with (
             patch(
-                "prefect_server.uploadSharedDocsFlow.AppSettings",
+                "prefect_server.uploadSharedDocsFlow.AppSettings.create",
                 return_value=MagicMock(),
             ),
             patch(
@@ -309,7 +309,7 @@ class TestUploadSharedDocsFlow:
 
         with (
             patch(
-                "prefect_server.uploadSharedDocsFlow.AppSettings",
+                "prefect_server.uploadSharedDocsFlow.AppSettings.create",
                 return_value=MagicMock(),
             ),
             patch(
@@ -342,7 +342,7 @@ class TestUploadSharedDocsFlow:
 
         with (
             patch(
-                "prefect_server.uploadSharedDocsFlow.AppSettings",
+                "prefect_server.uploadSharedDocsFlow.AppSettings.create",
                 return_value=MagicMock(),
             ),
             patch(

@@ -56,11 +56,11 @@ async def file_analyser_flow(
     """
     flow_logger = try_get_prefect_logger(__name__)
 
-    app_settings = AppSettings()  # type: ignore
+    app_settings = AppSettings.create(is_prefect=True)
     if max_files_per_run is not None:
         app_settings.file_analysis.max_files_per_run = max_files_per_run
 
-    db = Database()
+    db = Database(app_settings)
 
     flow_logger.info(
         f"Starting file index flow with {type(run_parameters).__name__}: {run_parameters}"

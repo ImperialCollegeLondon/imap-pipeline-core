@@ -130,7 +130,7 @@ class TestPollIALiRTFlow:
         with (
             patch("prefect_server.pollIALiRT.try_get_prefect_logger"),
             patch("prefect_server.pollIALiRT.Database"),
-            patch("prefect_server.pollIALiRT.AppSettings"),
+            patch("prefect_server.pollIALiRT.AppSettings.create"),
             patch(
                 "prefect_server.pollIALiRT.get_secret_or_env_var",
                 new_callable=AsyncMock,

@@ -17,6 +17,7 @@ from wiremock.client import (
 )
 
 from imap_db.model import File
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
 from imap_mag.main import app
 from imap_mag.util import Environment
@@ -129,7 +130,11 @@ def test_committed_file_is_registered_in_heliopuddle(
     }
 
     # A fresh Database reads the integration settings from the environment.
-    database = Database(db_url=test_database.engine.url)
+    database = Database(
+        AppSettings(
+            db_url=test_database.engine.url.render_as_string(hide_password=False)
+        )
+    )
     file = _file()
     _stub(
         HttpMethods.POST,
@@ -166,7 +171,12 @@ def test_full_sync_command_migrates_existing_files(
     heliopuddle_env,
     test_database,  # noqa: F811
 ):
-    offline = Database(db_url=test_database.engine.url, heliopuddle_sync=False)
+    offline = Database(
+        AppSettings(
+            db_url=test_database.engine.url.render_as_string(hide_password=False)
+        )
+    )
+    offline.heliopuddle_sync = None
     offline.upsert_file(_file())
     file_id = offline.get_files()[0].id
     metadata = {

@@ -14,6 +14,8 @@ from prefect_server.postgresUploadFlow import (
     upload_new_files_to_postgres,
 )
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 
 class TestGetDatabaseConnectionstring:
     def _make_app_settings(self, db_url_env_var=None):
@@ -78,8 +80,7 @@ class TestGetDatabaseConnectionstring:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch(
-                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.aload",
-                new_callable=AsyncMock,
+                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.load",
                 return_value=mock_connector,
             ),
         ):
@@ -94,7 +95,7 @@ class TestGetDatabaseConnectionstring:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch(
-                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.aload",
+                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.load",
                 side_effect=ValueError("Block not found"),
             ),
         ):
@@ -257,7 +258,7 @@ class TestUploadNewFilesToPostgres:
     def _base_patches(self, mock_settings, mock_db):
         with (
             patch(
-                "prefect_server.postgresUploadFlow.AppSettings",
+                "prefect_server.postgresUploadFlow.AppSettings.create",
                 return_value=mock_settings,
             ),
             patch(

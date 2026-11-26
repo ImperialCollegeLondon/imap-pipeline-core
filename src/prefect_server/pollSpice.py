@@ -10,6 +10,7 @@ from pydantic import Field
 from imap_db.main import create_db, upgrade_db
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.spice import fetch_spice
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database, update_database_with_progress
 from imap_mag.io.file import SPICEPathHandler
 from imap_mag.util import CONSTANTS, DatetimeProvider, Environment, TimeConversion
@@ -136,7 +137,8 @@ async def poll_spice_flow(
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
     )
-    database = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    database = Database(app_settings)
     progress_item_id = "SPICE"
     date_manager = DownloadDateManager(
         progress_item_id, database, datetime_provider=datetime_provider

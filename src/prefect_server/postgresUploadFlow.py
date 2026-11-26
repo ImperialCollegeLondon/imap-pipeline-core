@@ -187,8 +187,9 @@ async def upload_new_files_to_postgres(
 
     logger = try_get_prefect_logger(__name__)
 
-    app_settings = AppSettings()  # type: ignore
-    db = Database()  # the IMAP database to track progress - could be different from the target Postgres database
+    app_settings = AppSettings.create(is_prefect=True)
+    # the IMAP database to track progress - could be different from the target Postgres database
+    db = Database(app_settings)
     started = datetime.now(tz=UTC)
 
     # crump requires a database connection string without the psychopg option in it so force strip it.
