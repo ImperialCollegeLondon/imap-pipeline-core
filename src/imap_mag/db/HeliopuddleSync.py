@@ -1,14 +1,11 @@
 """Keep a heliopuddle project in step with the IMAP ``files`` table.
 
 The IMAP database stays the source of truth. Every committed change to a
-``File`` row is repeated in heliopuddle through its client and API:
-
-- a new or restored file is registered (or uploaded when heliopuddle has its own
-  storage location),
-- a file whose content changed at the same path is overwritten (or its new
-  content accepted),
-- a change to any other column updates the heliopuddle metadata,
-- a soft-deleted file is removed.
+``File`` row is repeated in heliopuddle with the client's ``sync_file`` (a new,
+restored or changed file, or changed metadata) or ``sync_removed`` (a
+soft-deleted file). The client decides what heliopuddle needs (register or
+upload, accept or overwrite, metadata), checks the result and retries busy
+paths; this module only maps IMAP rows to heliopuddle paths and metadata.
 
 :meth:`HeliopuddleSync.reconcile` runs the same logic over every file in bulk,
 which is both the one-off migration and the repair for any change that could
@@ -17,23 +14,21 @@ not be applied at the time.
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import time
 from collections import Counter
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import inspect
 
 from imap_db.model import File
 
 if TYPE_CHECKING:
-    from heliopuddle.client import FileRecord, HelioPuddleClient
+    from heliopuddle.client import FileRecord, HelioPuddleClient, SyncResult
 
     from imap_mag.config.AppSettings import AppSettings
     from imap_mag.config.HeliopuddleConfig import HeliopuddleConfig
@@ -41,10 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
-
 PROGRESS_ITEM_NAME = "heliopuddle-sync"
-HASH_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 class HeliopuddleSyncError(Exception):
@@ -79,16 +71,12 @@ class FileSnapshot:
     """The columns of one ``files`` row that heliopuddle mirrors."""
 
     id: int | None
-    name: str
     path: str
     hash: str | None
     size: int | None
     descriptor: str | None
-    version: int | None
-    version_major: int | None
     content_date: datetime | None
     deletion_date: datetime | None
-    software_version: str | None
     file_meta: dict | None
     hard_deleted: bool = False
 
@@ -102,16 +90,12 @@ class FileSnapshot:
         values = inspect(file).dict
         return cls(
             id=values.get("id"),
-            name=values.get("name") or "",
             path=values.get("path") or "",
             hash=values.get("hash"),
             size=values.get("size"),
             descriptor=values.get("descriptor"),
-            version=values.get("version"),
-            version_major=values.get("version_major"),
             content_date=values.get("content_date"),
             deletion_date=values.get("deletion_date"),
-            software_version=values.get("software_version"),
             file_meta=values.get("file_meta"),
             hard_deleted=hard_deleted,
         )
@@ -121,17 +105,14 @@ class FileSnapshot:
         return self.hard_deleted or self.deletion_date is not None
 
     def heliopuddle_metadata(self) -> dict[str, Any]:
-        """The heliopuddle metadata for this file (keys with no value are left out)."""
+        """The heliopuddle metadata for this file (keys with no value are left out).
+
+        Only what heliopuddle does not already keep: it has its own hash, size,
+        version (from the path) and content date.
+        """
         metadata: dict[str, Any] = {
             "imap_file_id": self.id,
-            "imap_hash": self.hash,
             "descriptor": self.descriptor,
-            "version": self.version,
-            "version_major": self.version_major,
-            "content_date": (
-                self.content_date.isoformat() if self.content_date else None
-            ),
-            "software_version": self.software_version,
             "file_meta": self.file_meta,
         }
         return {key: value for key, value in metadata.items() if value is not None}
@@ -167,7 +148,6 @@ class HeliopuddleSync:
         config: the heliopuddle settings.
         data_store: the IMAP data store that ``File.path`` is relative to.
         client: optional ready-made client (tests); built from ``config`` otherwise.
-        sleep: waits between retries of a busy path (tests replace it).
     """
 
     def __init__(
@@ -175,12 +155,10 @@ class HeliopuddleSync:
         config: HeliopuddleConfig,
         data_store: Path,
         client: HelioPuddleClient | None = None,
-        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.config = config
         self.data_store = data_store
         self._client = client
-        self._sleep = sleep
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> HeliopuddleSync | None:
@@ -192,24 +170,16 @@ class HeliopuddleSync:
     @property
     def client(self) -> HelioPuddleClient:
         if self._client is None:
-            try:
-                from heliopuddle.client import HelioPuddleClient
-            except ImportError as e:  # pragma: no cover - depends on the install
-                raise RuntimeError(
-                    "heliopuddle integration is enabled but the heliopuddle client is not installed"
-                ) from e
+            from heliopuddle.client import HelioPuddleClient
 
             assert self.config.url is not None
             self._client = HelioPuddleClient(
                 self.config.url,
                 self.config.project,
-                user=self.config.user,
                 timeout=self.config.request_timeout.total_seconds(),
-                token=self.config.token,
-                username=self.config.username,
-                password=self.config.password,
                 client_id=self.config.client_id,
                 client_secret=self.config.client_secret,
+                busy_retries=self.config.busy_retries,
             )
         return self._client
 
@@ -255,6 +225,10 @@ class HeliopuddleSync:
 
         Returns:
             What was (or, in a dry run, would be) done.
+
+        Raises:
+            FileNotFoundError: a live row's file is not in the data store.
+            SyncError: heliopuddle did not end up matching the row.
         """
         path = snapshot.path
         if not _is_store_path(path):
@@ -263,60 +237,29 @@ class HeliopuddleSync:
             )
             return SyncAction.SKIPPED
 
-        if existing is _MISSING:
-            existing = self._get_live(path)
+        options: dict[str, Any] = {"dry_run": dry_run}
+        if existing is not _MISSING:
+            options["current"] = existing
 
+        result: SyncResult
         if snapshot.is_deleted:
-            if existing is None:
-                return SyncAction.UNCHANGED
-            if not dry_run:
-                record = self._retry(lambda: self.client.remove_file(existing.id))
-                if record.deleted_at is None:
-                    raise RuntimeError(
-                        f"heliopuddle did not delete file {existing.id}; copy states: "
-                        f"{[(c.storage_location, str(c.state)) for c in record.storage_locations]}"
-                    )
-            logger.info(f"Removed {path} from heliopuddle.")
-            return SyncAction.REMOVED
-
-        local = self.data_store / path
-        if not local.is_file():
-            raise FileNotFoundError(f"{local} does not exist in the data store")
-
-        metadata = snapshot.heliopuddle_metadata()
-        digest, size = _md5_and_size(local)
-
-        if existing is not None and existing.hash == digest:
-            if existing.metadata == metadata:
-                return SyncAction.UNCHANGED
-            if not dry_run:
-                self._update_metadata(existing.id, metadata)
-            logger.info(f"Updated heliopuddle metadata for {path}.")
-            return SyncAction.METADATA
-
-        if dry_run:
-            return SyncAction.ADDED if existing is None else SyncAction.UPDATED
-
-        if existing is None:
-            record = self._add(snapshot, local, digest, size, metadata)
-            action = SyncAction.ADDED
+            result = self.client.sync_removed(path, **options)
         else:
-            record = self._replace(snapshot, existing, local, metadata)
-            action = SyncAction.UPDATED
-
-        if record.hash != digest:
-            raise RuntimeError(
-                f"heliopuddle has hash {record.hash} for {path}, expected {digest}"
+            result = self.client.sync_file(
+                self.data_store / path,
+                path,
+                self.config.storage_location,
+                snapshot.heliopuddle_metadata(),
+                in_place=self.config.shared_datastore,
+                content_date=_aware(snapshot.content_date),
+                **options,
             )
-        state = self._copy_state(record)
-        if state != "available":
-            raise RuntimeError(
-                f"heliopuddle copy of {path} is {state}, expected available"
-            )
-        if record.metadata != metadata:
-            self._update_metadata(record.id, metadata)
 
-        logger.info(f"{action.capitalize()} {path} in heliopuddle.")
+        action = SyncAction(result.action.value)
+        if action != SyncAction.UNCHANGED:
+            logger.info(
+                f"{path}: {action} in heliopuddle{' (dry run)' if dry_run else ''}."
+            )
         return action
 
     # -- bulk migration and reconciliation ---------------------------------------
@@ -332,9 +275,9 @@ class HeliopuddleSync:
 
         A full reconcile (no ``modified_after``) is the one-off migration: it
         compares every IMAP row, live or deleted, with the live heliopuddle files
-        and fixes every difference. Files whose heliopuddle metadata (which holds
-        the IMAP hash) and size already match are not re-read. Files that exist
-        only in heliopuddle are reported, and removed with ``remove_untracked``.
+        and fixes every difference. Files whose hash, size and metadata already
+        match the IMAP row are not re-read. Files that exist only in heliopuddle
+        are reported, and removed with ``remove_untracked``.
 
         An incremental reconcile only re-syncs IMAP rows modified after
         ``modified_after``.
@@ -354,12 +297,11 @@ class HeliopuddleSync:
                 self._sync_into(summary, FileSnapshot.from_file(file), dry_run=dry_run)
         else:
             files = database.get_files()
+            # find_all reads every page, however many files heliopuddle has.
             live = {
                 record.path: record
                 for record in self.client.find_all(
-                    order="path",
-                    page_size=1000,
-                    storage_location=self.config.storage_location,
+                    order="path", storage_location=self.config.storage_location
                 )
             }
             logger.info(
@@ -368,12 +310,7 @@ class HeliopuddleSync:
             for file in sorted(files, key=lambda f: f.path):
                 snapshot = FileSnapshot.from_file(file)
                 existing = live.pop(snapshot.path, None)
-                if (
-                    existing is not None
-                    and not snapshot.is_deleted
-                    and existing.size == snapshot.size
-                    and existing.metadata == snapshot.heliopuddle_metadata()
-                ):
+                if existing is not None and _already_in_sync(snapshot, existing):
                     summary.add(SyncAction.UNCHANGED)
                     continue
                 self._sync_into(summary, snapshot, existing, dry_run)
@@ -382,11 +319,10 @@ class HeliopuddleSync:
             for path, record in sorted(live.items()):
                 if remove_untracked:
                     try:
-                        if not dry_run:
-                            self._retry(lambda r=record: self.client.remove_file(r.id))
+                        self.client.sync_removed(path, current=record, dry_run=dry_run)
                         summary.add(SyncAction.REMOVED)
                     except Exception as e:
-                        summary.failures[path] = str(e)
+                        summary.failures[path] = f"{type(e).__name__}: {e}"
                 else:
                     logger.warning(
                         f"{path} is in heliopuddle but not in the IMAP database."
@@ -411,109 +347,6 @@ class HeliopuddleSync:
         except Exception as e:
             logger.error(f"Failed to sync {snapshot.path} to heliopuddle: {e}")
             summary.failures[snapshot.path] = f"{type(e).__name__}: {e}"
-
-    def _get_live(self, path: str) -> FileRecord | None:
-        from heliopuddle.client import NotFoundError
-
-        try:
-            return self.client.get_file_by_path(path)
-        except NotFoundError:
-            return None
-
-    def _add(
-        self,
-        snapshot: FileSnapshot,
-        local: Path,
-        digest: str,
-        size: int,
-        metadata: dict[str, Any],
-    ) -> FileRecord:
-        from heliopuddle.client import ConflictError
-
-        content_date = _aware(snapshot.content_date)
-        try:
-            if self.config.shared_datastore:
-                return self._retry(
-                    lambda: self.client.register_file(
-                        snapshot.path,
-                        digest,
-                        size,
-                        storage_location=self.config.storage_location,
-                        metadata=metadata,
-                        content_date=content_date,
-                    )
-                )
-            return self._retry(
-                lambda: self.client.add_file(
-                    local,
-                    snapshot.path,
-                    storage_location=self.config.storage_location,
-                    metadata=metadata,
-                    content_date=content_date,
-                )
-            )
-        except ConflictError as e:
-            # Another writer registered different content meanwhile.
-            return self._replace(snapshot, e.file, local, metadata)
-
-    def _replace(
-        self,
-        snapshot: FileSnapshot,
-        existing: FileRecord,
-        local: Path,
-        metadata: dict[str, Any],
-    ) -> FileRecord:
-        if self.config.shared_datastore and self._copy_state(existing) == "unknown":
-            # heliopuddle has already seen the new content in the shared store.
-            accepted = self._retry(
-                lambda: self.client.accept_file(
-                    existing.id, storage_location=self.config.storage_location
-                )
-            )
-            if accepted.hash == _md5_and_size(local)[0]:
-                return accepted
-            existing = accepted
-
-        return self._retry(
-            lambda: self.client.add_file(
-                local,
-                snapshot.path,
-                storage_location=self.config.storage_location,
-                metadata=metadata,
-                overwrite=True,
-                content_date=_aware(snapshot.content_date),
-            )
-        )
-
-    def _update_metadata(self, file_id: int, metadata: dict[str, Any]) -> None:
-        self._retry(
-            lambda: self.client.update_metadata(file_id, metadata, replace=True)
-        )
-
-    def _copy_state(self, record: FileRecord) -> str | None:
-        copies = record.storage_locations
-        if self.config.storage_location is not None:
-            copies = [
-                c for c in copies if c.storage_location == self.config.storage_location
-            ]
-        return str(copies[0].state) if copies else None
-
-    def _retry(self, call: Callable[[], T]) -> T:
-        from heliopuddle.client import BusyError
-
-        attempt = 0
-        while True:
-            try:
-                return call()
-            except BusyError as e:
-                if attempt >= self.config.busy_retries:
-                    raise
-                attempt += 1
-                wait = e.retry_after if e.retry_after is not None else 1.0
-                logger.info(
-                    f"heliopuddle path is busy; retrying in {wait:.0f}s ({attempt}/{self.config.busy_retries})."
-                )
-                self._sleep(wait)
 
 
 def run_sync(
@@ -567,14 +400,20 @@ def _is_store_path(path: str) -> bool:
     return bool(path) and not pure.is_absolute() and ".." not in pure.parts
 
 
-def _md5_and_size(path: Path) -> tuple[str, int]:
-    digest = hashlib.md5(usedforsecurity=False)
-    size = 0
-    with path.open("rb") as f:
-        while chunk := f.read(HASH_CHUNK_SIZE):
-            digest.update(chunk)
-            size += len(chunk)
-    return digest.hexdigest(), size
+def _already_in_sync(snapshot: FileSnapshot, record: FileRecord) -> bool:
+    """True when heliopuddle's record already matches a live IMAP row (no read needed).
+
+    The IMAP hash is the md5 of the content, the same hash heliopuddle keeps.
+    """
+    if snapshot.is_deleted:
+        return False
+    if (record.hash, record.size) != (snapshot.hash, snapshot.size):
+        return False
+    if record.metadata != snapshot.heliopuddle_metadata():
+        return False
+    return snapshot.content_date is None or _aware(record.content_date) == _aware(
+        snapshot.content_date
+    )
 
 
 def _aware(value: datetime | None) -> datetime | None:

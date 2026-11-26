@@ -24,9 +24,8 @@ class HeliopuddleConfig(CommandConfig):
     IMAP database transaction commits, and ``imap-mag heliopuddle sync`` (or the
     heliopuddle-sync flow) migrates or reconciles all files in bulk.
 
-    Credentials are read from the environment, e.g. MAG_HELIOPUDDLE_USERNAME and
-    MAG_HELIOPUDDLE_PASSWORD, MAG_HELIOPUDDLE_TOKEN, or MAG_HELIOPUDDLE_CLIENT_ID
-    and MAG_HELIOPUDDLE_CLIENT_SECRET.
+    heliopuddle is reached as a service account: the client id and secret come
+    from MAG_HELIOPUDDLE_CLIENT_ID and MAG_HELIOPUDDLE_CLIENT_SECRET.
     """
 
     enabled: bool = False
@@ -46,17 +45,13 @@ class HeliopuddleConfig(CommandConfig):
         validation_alias=AliasChoices("fail_on_error", "MAG_HELIOPUDDLE_FAIL_ON_ERROR"),
     )
     request_timeout: timedelta = timedelta(minutes=5)
-    # How many times to retry a file that another heliopuddle operation owns.
+    # How many times the heliopuddle client retries a file that another
+    # heliopuddle operation owns, waiting as heliopuddle asks each time.
     busy_retries: int = Field(default=3, ge=0)
     # Incremental syncs also re-check files modified this long before the last
     # sync, to allow for clock differences between writers.
     incremental_overlap: timedelta = timedelta(hours=1)
-    # Sent in the user header when heliopuddle runs in header auth mode.
-    user: str | None = "imap-mag"
 
-    username: str | None = None
-    password: str | None = None
-    token: str | None = None
     # Fields with an underscore in their name cannot be read from MAG_HELIOPUDDLE_*
     # env vars by the nested settings parser, so they also take an explicit alias.
     client_id: str | None = Field(
@@ -78,7 +73,11 @@ class HeliopuddleConfig(CommandConfig):
     @model_validator(mode="after")
     def _required_when_enabled(self) -> "HeliopuddleConfig":
         if self.enabled:
-            missing = [name for name in ("url", "project") if not getattr(self, name)]
+            missing = [
+                name
+                for name in ("url", "project", "client_id", "client_secret")
+                if not getattr(self, name)
+            ]
             if missing:
                 raise ValueError(
                     f"heliopuddle integration is enabled but {', '.join(missing)} is not set"

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from heliopuddle.client import BusyError, SyncError
 from heliopuddle.testing import Call, FakeHelioPuddleClient
 
 from imap_db.model import Base, File
@@ -23,7 +24,13 @@ CONTENT_DATE = datetime(2026, 3, 4)
 
 
 def _config(**overrides) -> HeliopuddleConfig:
-    values = dict(enabled=True, url="http://hp.example/api/v1", project="imap")
+    values = dict(
+        enabled=True,
+        url="http://hp.example/api/v1",
+        project="imap",
+        client_id="imap-pipeline",
+        client_secret="a-secret",
+    )
     values.update(overrides)
     return HeliopuddleConfig(**values)
 
@@ -66,7 +73,7 @@ def hp(store: Path) -> FakeHelioPuddleClient:
 
 @pytest.fixture
 def sync(store: Path, hp: FakeHelioPuddleClient) -> HeliopuddleSync:
-    return HeliopuddleSync(_config(), store, client=hp, sleep=lambda _: None)  # type: ignore[arg-type]
+    return HeliopuddleSync(_config(), store, client=hp)  # type: ignore[arg-type]
 
 
 @pytest.fixture
@@ -86,9 +93,16 @@ class TestHeliopuddleConfig:
         assert config.shared_datastore
         assert config.fail_on_error
 
-    def test_enabled_requires_url_and_project(self):
-        with pytest.raises(ValueError, match="url, project"):
+    def test_enabled_requires_url_project_and_client_credentials(self):
+        with pytest.raises(ValueError, match="url, project, client_id, client_secret"):
             HeliopuddleConfig(enabled=True)
+        with pytest.raises(ValueError, match="client_secret"):
+            _config(client_secret=None)
+
+    def test_only_client_credentials_are_accepted(self):
+        config = HeliopuddleConfig(username="u", password="p", token="t", user="x")
+        for name in ("username", "password", "token", "user"):
+            assert not hasattr(config, name)
 
     def test_durations_are_human_readable(self):
         config = _config(request_timeout="90s", incremental_overlap="2h")
@@ -100,14 +114,12 @@ class TestHeliopuddleConfig:
 
         monkeypatch.setenv("MAG_HELIOPUDDLE_ENABLED", "true")
         monkeypatch.setenv("MAG_HELIOPUDDLE_URL", "http://hp.example/api/v1")
-        monkeypatch.setenv("MAG_HELIOPUDDLE_PASSWORD", "secret")
         monkeypatch.setenv("MAG_HELIOPUDDLE_CLIENT_ID", "an-id")
         monkeypatch.setenv("MAG_HELIOPUDDLE_CLIENT_SECRET", "a-secret")
         settings = AppSettings()  # type: ignore
 
         assert settings.heliopuddle.enabled
         assert settings.heliopuddle.url == "http://hp.example/api/v1"
-        assert settings.heliopuddle.password == "secret"
         assert settings.heliopuddle.client_id == "an-id"
         assert settings.heliopuddle.client_secret == "a-secret"
         assert settings.heliopuddle.project == "imap-mag"
@@ -147,12 +159,7 @@ class TestSyncFile:
         assert record.content_date == CONTENT_DATE.replace(tzinfo=UTC)
         assert record.metadata == {
             "imap_file_id": 7,
-            "imap_hash": "imap-identity-hash",
             "descriptor": "imap_mag_l1_test",
-            "version": 1,
-            "version_major": 1,
-            "content_date": "2026-03-04T00:00:00",
-            "software_version": "1.0.0",
             "file_meta": {"source": "unit"},
         }
         assert Call("register_file", "hk/a_v001.csv") in hp.calls
@@ -182,7 +189,6 @@ class TestSyncFile:
         snapshot = FileSnapshot.from_file(_file("hk/a.csv", hash="new-identity"))
         assert sync.sync_file(snapshot) == SyncAction.UPDATED
         assert hp.record_at("hk/a.csv").hash == digest
-        assert hp.record_at("hk/a.csv").metadata["imap_hash"] == "new-identity"
         assert Call("add_file", "hk/a.csv") in hp.calls
 
     def test_changed_content_already_seen_by_heliopuddle_is_accepted(
@@ -217,6 +223,16 @@ class TestSyncFile:
         assert sync.sync_file(snapshot) == SyncAction.SKIPPED
         assert hp.calls == []
 
+    def test_changed_content_date_is_set(self, sync, hp, store):
+        _write(store, "hk/a.csv", b"data")
+        sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+
+        later = FileSnapshot.from_file(
+            _file("hk/a.csv", content_date=datetime(2026, 5, 6))
+        )
+        assert sync.sync_file(later) == SyncAction.METADATA
+        assert hp.record_at("hk/a.csv").content_date == datetime(2026, 5, 6, tzinfo=UTC)
+
     def test_missing_local_file_fails(self, sync):
         with pytest.raises(FileNotFoundError):
             sync.sync_file(FileSnapshot.from_file(_file("hk/missing.csv")))
@@ -225,10 +241,38 @@ class TestSyncFile:
         _write(store, "hk/a.csv", b"data")
         hp.store = store / "elsewhere"  # heliopuddle sees no object: unknown
 
-        with pytest.raises(RuntimeError, match="unknown"):
+        with pytest.raises(SyncError, match="unknown"):
             sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
 
-    def test_busy_path_is_retried(self, sync, hp, store):
+    def test_the_client_uses_the_service_account_timeout_and_busy_retries(
+        self, store, monkeypatch
+    ):
+        import heliopuddle.client
+
+        built = []
+        monkeypatch.setattr(
+            heliopuddle.client,
+            "HelioPuddleClient",
+            lambda *args, **kwargs: built.append((args, kwargs)) or object(),
+        )
+
+        HeliopuddleSync(_config(busy_retries=4, request_timeout="90s"), store).client
+
+        assert built == [
+            (
+                ("http://hp.example/api/v1", "imap"),
+                {
+                    "timeout": 90.0,
+                    "client_id": "imap-pipeline",
+                    "client_secret": "a-secret",
+                    "busy_retries": 4,
+                },
+            )
+        ]
+
+    def test_busy_path_is_retried_by_the_client(self, store):
+        hp = FakeHelioPuddleClient(project="imap", store=store, busy_retries=2)
+        sync = HeliopuddleSync(_config(), store, client=hp)  # type: ignore[arg-type]
         _write(store, "hk/a.csv", b"data")
         hp.inject_busy("hk/a.csv", times=2)
 
@@ -237,22 +281,17 @@ class TestSyncFile:
             == SyncAction.ADDED
         )
 
-    def test_busy_path_gives_up_after_the_configured_retries(self, store, hp):
-        sync = HeliopuddleSync(
-            _config(busy_retries=1), store, client=hp, sleep=lambda _: None
-        )
+    def test_busy_path_fails_once_the_client_gives_up(self, store):
+        hp = FakeHelioPuddleClient(project="imap", store=store, busy_retries=1)
+        sync = HeliopuddleSync(_config(), store, client=hp)  # type: ignore[arg-type]
         _write(store, "hk/a.csv", b"data")
         hp.inject_busy("hk/a.csv", times=5)
-
-        from heliopuddle.client import BusyError
 
         with pytest.raises(BusyError):
             sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
 
     def test_unshared_store_uploads_the_content(self, store, hp):
-        sync = HeliopuddleSync(
-            _config(shared_datastore=False), store, client=hp, sleep=lambda _: None
-        )
+        sync = HeliopuddleSync(_config(shared_datastore=False), store, client=hp)
         _write(store, "hk/a.csv", b"data")
 
         assert (
@@ -412,8 +451,8 @@ class TestReconcile:
     def test_full_reconcile_skips_files_already_in_sync_without_reading_them(
         self, sync, hp, store, offline_db
     ):
-        _write(store, "hk/a.csv", b"a")
-        offline_db.upsert_file(_file("hk/a.csv", size=1))
+        digest, size = _write(store, "hk/a.csv", b"a")
+        offline_db.upsert_file(_file("hk/a.csv", size=size, hash=digest))
         sync.reconcile(offline_db)
         (store / "hk/a.csv").unlink()  # reading it now would fail
         hp.reset_calls()
@@ -444,6 +483,16 @@ class TestReconcile:
         summary = sync.reconcile(offline_db, remove_untracked=True)
         assert hp.live_paths() == []
         assert summary.actions[SyncAction.REMOVED] == 1
+
+    def test_full_reconcile_reads_every_page_of_heliopuddle_files(
+        self, sync, hp, offline_db
+    ):
+        paths = [f"other/{n:04}.csv" for n in range(1201)]
+        for path in paths:
+            hp.seed(path, hash="0" * 32, size=1)
+
+        summary = sync.reconcile(offline_db)
+        assert summary.untracked == paths
 
     def test_incremental_reconcile_only_syncs_recent_changes(
         self, sync, hp, store, offline_db

@@ -410,9 +410,8 @@ database_delete_rows:
 # update and soft delete of a file record is repeated in heliopuddle as soon as it
 # is committed. Run `imap-mag heliopuddle sync --full` once to migrate existing
 # files; the heliopuddle-sync flow then keeps both in sync.
-# Credentials come from the environment: MAG_HELIOPUDDLE_USERNAME and
-# MAG_HELIOPUDDLE_PASSWORD, MAG_HELIOPUDDLE_TOKEN, or MAG_HELIOPUDDLE_CLIENT_ID and
-# MAG_HELIOPUDDLE_CLIENT_SECRET.
+# heliopuddle is reached as a service account: set MAG_HELIOPUDDLE_CLIENT_ID and
+# MAG_HELIOPUDDLE_CLIENT_SECRET in the environment.
 heliopuddle:
     enabled: false
     url: "http://localhost:8080/api/v1"
@@ -426,6 +425,7 @@ heliopuddle:
     # (MAG_HELIOPUDDLE_FAIL_ON_ERROR overrides it per environment)
     fail_on_error: true
     request_timeout: "5m"
+    # retries of a file another heliopuddle operation is working on
     busy_retries: 3
     incremental_overlap: "1h"
     work_sub_folder: "heliopuddle_sync"
