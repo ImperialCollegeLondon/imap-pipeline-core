@@ -3660,14 +3660,14 @@ prefect = ">=3.6.17"
 
 [[package]]
 name = "prefect-sqlalchemy"
-version = "0.6.1"
+version = "0.7.0"
 description = "Prefect integrations for working with databases"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "prefect_sqlalchemy-0.6.1-py3-none-any.whl", hash = "sha256:c7cf4dbaedf30b987cbdbb3cd645e55d6d59dbac6308f8385b808f936da267e3"},
-    {file = "prefect_sqlalchemy-0.6.1.tar.gz", hash = "sha256:7fb13101a568840a9fff1697d1cb1ac6931a340a52a3ec0a3b75929daebb5c77"},
+    {file = "prefect_sqlalchemy-0.7.0-py3-none-any.whl", hash = "sha256:6cb96d768132e8b3687927c556528e8ce1566dad919dc717e4f565bf0a47d242"},
+    {file = "prefect_sqlalchemy-0.7.0.tar.gz", hash = "sha256:eb88010002059c537fa51c1519108819b21e1eea73efddcbf2a3c5332797bdd8"},
 ]
 
 [package.dependencies]
@@ -6003,4 +6003,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "ee9bb2f87effe26d40173c9616d6767b6fb1de1ff8745fb05e16a05e094a6470"
+content-hash = "db71b50695d4945c85748806ea4f353f1b3469c950b046f38481ee7c17aae6f1"
