@@ -403,7 +403,9 @@ def _is_store_path(path: str) -> bool:
 def _already_in_sync(snapshot: FileSnapshot, record: FileRecord) -> bool:
     """True when heliopuddle's record already matches a live IMAP row (no read needed).
 
-    The IMAP hash is the md5 of the content, the same hash heliopuddle keeps.
+    The IMAP hash is the content identity: usually the md5 of the file, the hash
+    heliopuddle keeps. Where it is not (a calibration layer's identity is its data
+    file's md5) it never matches, and the file is read and compared instead.
     """
     if snapshot.is_deleted:
         return False
