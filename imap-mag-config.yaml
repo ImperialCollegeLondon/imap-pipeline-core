@@ -32,6 +32,8 @@ sdc: &sdc_creds
 # Command specific configuration:
 check_ialirt:
     work_sub_folder:
+    # Flow run link in anomaly notifications; opens the run in the platform app shell
+    run_url_template: "https://mag-pipeline.ph.ic.ac.uk/app/pipelines/runs/flow-run/{flow_run_id}"
 
 fetch_binary:
     api:

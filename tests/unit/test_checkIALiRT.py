@@ -145,6 +145,10 @@ class TestCheckIALiRTFlowUnit:
 
         assert result.is_failed()
         mock_webhook.notify.assert_called_once()
+        assert (
+            "[View the run](https://mag-pipeline.ph.ic.ac.uk/app/pipelines/runs/flow-run/test-run-id)"
+            in mock_webhook.notify.call_args.kwargs["body"]
+        )
 
     @pytest.mark.asyncio
     async def test_flow_sends_warning_type_for_non_danger_anomaly(self):
