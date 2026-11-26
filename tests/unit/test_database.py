@@ -88,7 +88,11 @@ class TestDatabaseInit:
             db_url=f"sqlite:///{tmp_path}/test.db",
             data_store=tmp_path,
             heliopuddle=HeliopuddleConfig(
-                enabled=True, url="http://example.com/api/v1", project="example"
+                enabled=True,
+                url="http://example.com/api/v1",
+                project="example",
+                client_id="example-client",
+                client_secret="example-secret",
             ),
         )
 
