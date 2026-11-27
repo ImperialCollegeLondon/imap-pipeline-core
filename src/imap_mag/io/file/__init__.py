@@ -10,6 +10,7 @@ from imap_mag.io.file.HKDecodedPathHandler import HKDecodedPathHandler
 from imap_mag.io.file.IALiRTPathHandler import IALiRTPathHandler
 from imap_mag.io.file.IALiRTQuicklookPathHandler import IALiRTQuicklookPathHandler
 from imap_mag.io.file.IFilePathHandler import IFilePathHandler, T
+from imap_mag.io.file.L2PrePathHandler import L2PrePathHandler
 from imap_mag.io.file.LatestFilePathHandler import LatestFilePathHandler
 from imap_mag.io.file.LeinweberOffsetsPathHandler import LeinweberOffsetsPathHandler
 from imap_mag.io.file.NOAAPathHandler import NOAAPathHandler
@@ -30,6 +31,7 @@ __all__ = [
     "IALiRTPathHandler",
     "IALiRTQuicklookPathHandler",
     "IFilePathHandler",
+    "L2PrePathHandler",
     "LatestFilePathHandler",
     "LeinweberOffsetsPathHandler",
     "NOAAPathHandler",

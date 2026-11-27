@@ -116,6 +116,9 @@ class DatastoreFileManager(IDatastoreFileManager):
             else DatastoreFileAction.FILE_CREATED,
         )
 
+    def resolve_version(self, original_file: Path, path_handler: T) -> None:
+        self.__get_next_available_version(original_file, path_handler)
+
     def verify_file_delivered_to_datastore(
         self, original_file, source_file_after_reversioning, destination_file
     ):

@@ -322,6 +322,10 @@ class CalibrationLayer(Layer):
         offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.PARENTS] = deepcopy(
             self.metadata.dependencies
         )
+        if self.metadata.calibration_dependencies:
+            offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.CALIBRATION_DEPENDENCIES] = (
+                deepcopy(self.metadata.calibration_dependencies)
+            )
         offsets_dataset.attrs[CONSTANTS.CDF_ATTRS.GROUND_SOFTWARE_VERSION_MAG] = (
             f"MAG imap-pipeline v{get_version()}"
         )
@@ -331,13 +335,24 @@ class CalibrationLayer(Layer):
         return filepath
 
     def prepare_for_offsets_write(
-        self, science: ScienceLayer, output_file: Path, version: int = 1
+        self,
+        science: ScienceLayer,
+        output_file: Path,
+        version: int = 1,
+        calibration_dependencies: list[str] | None = None,
     ) -> None:
         """Make this layer (the sum of all applied layers) the offsets layer
         for science, ready for ``write_to_file(output_file)``.
 
         Offsets files have no major version, so version_major is 0, which makes
         the CDF Data_version the minor version only.
+
+        Args:
+            science: Science layer the offsets apply to.
+            output_file: Path the offsets file will be written to.
+            version: Version of the offsets file.
+            calibration_dependencies: Dependencies of the layers summed into
+                these offsets, recorded in the offsets file.
         """
         if self._contents is None:
             raise ValueError("Offsets layer contents not loaded")
@@ -349,6 +364,7 @@ class CalibrationLayer(Layer):
 
         self.metadata = CalibrationMetadata(
             dependencies=[science.science_file],
+            calibration_dependencies=list(calibration_dependencies or []),
             science=[science.science_file],
             creation_timestamp=np.datetime64("now"),
             content_date=science.metadata.content_date,

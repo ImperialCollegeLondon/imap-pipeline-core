@@ -68,6 +68,14 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             path_handler,
         )
 
+        if (
+            not skip_database_insertion
+            and isinstance(path_handler, SequenceablePathHandler)
+            and path_handler.supports_sequencing()
+            and path_handler.allow_overwrite
+        ):
+            self.__remove_versions_conflicting_with_override(path_handler)
+
         # For a new version the handler may need to rewrite the source file
         # (e.g. update a data_filename reference inside a JSON layer).
         # For a reused version the source is unchanged — the inner file manager
@@ -108,6 +116,10 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 raise e
 
         return DatastoreStoreResult(destination_file, path_handler, action)
+
+    def resolve_version(self, original_file: Path, path_handler: T) -> None:
+        self.__get_next_available_version(original_file, path_handler)
+        self.__file_manager.resolve_version(original_file, path_handler)
 
     def archive_file(
         self,
@@ -298,6 +310,39 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
 
         return database_files
 
+    def __remove_versions_conflicting_with_override(
+        self, path_handler: SequenceablePathHandler
+    ) -> None:
+        """Resolve any unique-constraint conflict by soft-deleting active DB records
+        that share the forced minor version but a different path — those represent
+        the file being overwritten at the operator-supplied version.
+
+        In normal operations this should never happen because paths are well
+        defined and a match by version+descriptor would have the same path and
+        so would not be soft deleted, it would just update the existing file record.
+        """
+        forced_minor = path_handler.get_sequence()
+        new_destination = path_handler.get_full_path(self.__settings.data_store)
+        conflicting = [
+            f
+            for f in self.__get_matching_database_files(path_handler)
+            if f.version == forced_minor
+            and f.path
+            != File.get_datastore_relative_path(
+                new_destination, self.__settings, warn=False
+            )
+        ]
+        for conflict in conflicting:
+            conflict_path = conflict.get_full_path(self.__settings)
+            logger.warning(
+                f"Version override: soft-deleting conflicting DB record for "
+                f"{conflict.path} (same minor version {forced_minor})."
+            )
+            conflict.set_deleted()
+            self.__database.upsert_file(conflict)
+            if conflict_path.exists():
+                conflict_path.unlink()
+
     def __get_next_available_version(
         self,
         original_file: Path,
@@ -380,35 +425,8 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 )
                 return IDENTICAL_FILE_ALREADY_EXISTS
 
-        # Version override: keep the forced version (no max+1 walk). Resolve any
-        # unique-constraint conflict by soft-deleting active DB records that share
-        # the same minor version but a different path — those represent the file
-        # being overwritten at the operator-supplied version.
-        # in normal operations this should never happen because paths are well
-        # defined and a match by version+descriptor would have the same path and
-        # so would not be soft deleted, it would just update the existing file record.
+        # Version override: keep the forced version (no max+1 walk).
         if path_handler.allow_overwrite:
-            forced_minor = path_handler.get_sequence()
-            new_destination = path_handler.get_full_path(self.__settings.data_store)
-            conflicting = [
-                f
-                for f in database_files
-                if f.version == forced_minor
-                and f.path
-                != File.get_datastore_relative_path(
-                    new_destination, self.__settings, warn=False
-                )
-            ]
-            for conflict in conflicting:
-                conflict_path = conflict.get_full_path(self.__settings)
-                logger.warning(
-                    f"Version override: soft-deleting conflicting DB record for "
-                    f"{conflict.path} (same minor version {forced_minor})."
-                )
-                conflict.set_deleted()
-                self.__database.upsert_file(conflict)
-                if conflict_path.exists():
-                    conflict_path.unlink()
             return FILE_IS_NEW
 
         # Assign max+1 rather than the first available slot so version numbers are

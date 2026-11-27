@@ -15,6 +15,7 @@ from imap_mag.io import DatastoreFileManager, FileFinder
 from imap_mag.io.file import (
     AncillaryPathHandler,
     CalibrationLayerPathHandler,
+    L2PrePathHandler,
     SciencePathHandler,
 )
 from imap_mag.io.file.VersionedPathHandler import VersionedPathHandler
@@ -417,19 +418,37 @@ def _apply_for_date(
             )
         ]
 
-    (L2_files, offset_file) = applier.apply(
-        day_to_process=date,
+    offset_file = applier.create_offsets(
         layer_files=workLayers,
         rotation=workRotationFile,
         dataFile=workScienceFile,
         outputOffsetsFile=offset_file_path,
+    )
+    # Versioned before generating L2 so their Parents name the offsets version
+    # that will be stored, but not stored until L2 generation succeeds.
+    outputManager.resolve_version(offset_file, offset_file_handler)
+    versioned_offset_file = offset_file_handler.prepare_for_version(offset_file)
+    L2_files = applier.create_l2(
+        day_to_process=date,
+        offsets_file=versioned_offset_file,
+        rotation=workRotationFile,
+        dataFile=workScienceFile,
         outputScienceFolder=app_settings.work_folder,
         spice_metakernel=spice_metakernel,
         reference_frames=reference_frames,
     )
-    outputManager.add_file(offset_file, offset_file_handler)
+
+    stored_offset_file = outputManager.store_file(
+        versioned_offset_file, offset_file_handler
+    ).destination
+    if stored_offset_file.name != versioned_offset_file.name:
+        raise RuntimeError(
+            f"Offsets were stored as {stored_offset_file.name} but the L2 files "
+            f"reference {versioned_offset_file.name}."
+        )
+
     for L2_file in L2_files:
-        l2_handler = SciencePathHandler.from_filename(L2_file.name)
+        l2_handler = L2PrePathHandler.from_filename(L2_file.name)
 
         if not l2_handler:
             logger.warning(
@@ -448,23 +467,27 @@ def _apply_for_date(
             l2_handler.version_major = app_settings.version_major
         outputManager.add_file(L2_file, l2_handler)
 
+    offset_files = [offset_file]
+    if versioned_offset_file != offset_file:
+        offset_files.append(versioned_offset_file)
+
     cleanup_workfolder_after_apply(
         app_settings,
         workScienceFile,
         workLayers,
         workRotationFile,
         L2_files,
-        offset_file,
+        offset_files,
     )
 
     logger.info(f"Apply complete for date {date}. Temporary files cleaned up.")
 
 
 def cleanup_workfolder_after_apply(
-    app_settings, workScienceFile, workLayers, workRotationFile, L2_files, offset_file
+    app_settings, workScienceFile, workLayers, workRotationFile, L2_files, offset_files
 ):
     files_to_cleanup: list[Path] = [
-        offset_file,
+        *offset_files,
         *L2_files,
         *workLayers,
         workScienceFile,

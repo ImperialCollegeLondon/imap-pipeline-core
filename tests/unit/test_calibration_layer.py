@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import cdflib
 import numpy as np
 import pandas as pd
 import pyarrow.types as pa_types
@@ -448,6 +449,29 @@ class TestCalibrationLayerFromCdf:
         result = CalibrationLayer._values_from_cdf(cdf_file)
         assert np.isnan(result[CONSTANTS.CSV_VARS.OFFSET_X].iloc[0])
 
+    def test_write_to_cdf_records_calibration_dependencies(self, tmp_path):
+        layer = _make_layer_with_contents()
+        layer.metadata.calibration_dependencies = [
+            "config.json",
+            "offsets_v001.csv",
+        ]
+        cdf_file = tmp_path / "layer.cdf"
+        layer._write_to_cdf(cdf_file)
+
+        attrs = cdflib.CDF(str(cdf_file)).globalattsget()
+        assert attrs[CONSTANTS.CDF_ATTRS.CALIBRATION_DEPENDENCIES] == [
+            "config.json",
+            "offsets_v001.csv",
+        ]
+
+    def test_write_to_cdf_omits_calibration_dependencies_when_none(self, tmp_path):
+        layer = _make_layer_with_contents()
+        cdf_file = tmp_path / "layer.cdf"
+        layer._write_to_cdf(cdf_file)
+
+        attrs = cdflib.CDF(str(cdf_file)).globalattsget()
+        assert CONSTANTS.CDF_ATTRS.CALIBRATION_DEPENDENCIES not in attrs
+
     def test_from_file_dispatches_to_cdf_on_cdf_extension(self, tmp_path):
         layer = _make_layer_with_contents()
         cdf_file = tmp_path / "layer.cdf"
@@ -569,7 +593,10 @@ class TestCalibrationLayerPrepareForOffsetsWrite:
         )
 
         layer.prepare_for_offsets_write(
-            science, Path("imap_mag_l2-norm-offsets_20250601_v001.cdf"), version=2
+            science,
+            Path("imap_mag_l2-norm-offsets_20250601_v001.cdf"),
+            version=2,
+            calibration_dependencies=["config.json", "offsets_v001.csv"],
         )
 
         assert layer.id == "imap_mag_l2-norm-offsets_20250601_v001"
@@ -579,6 +606,10 @@ class TestCalibrationLayerPrepareForOffsetsWrite:
         assert layer.value_type == ValueType.VECTOR
         assert "sci.csv" in layer.metadata.dependencies
         assert layer.metadata.science == ["sci.csv"]
+        assert layer.metadata.calibration_dependencies == [
+            "config.json",
+            "offsets_v001.csv",
+        ]
         assert layer.validity.start == np.datetime64("2025-06-01")
         assert layer.sensor == Sensor.MAGO
         assert layer.mission == Mission.IMAP

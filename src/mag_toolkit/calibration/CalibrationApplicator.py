@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas
@@ -14,7 +15,9 @@ from imap_processing.mag.l2.mag_l2_data import ValidFrames
 from xarray import Dataset
 
 from imap_mag.config import AppSettings
-from imap_mag.util import ScienceMode
+from imap_mag.io.file import SciencePathHandler
+from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
+from imap_mag.util import ScienceMode, get_cdf_data_version
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration.CalibrationDefinitions import (
     CONSTANTS,
@@ -27,6 +30,9 @@ from .CalibrationDefinitions import (
 from .CalibrationLayer import CalibrationLayer
 from .CalibrationMatrix import CalibrationMatrix
 from .ScienceLayer import ScienceLayer
+
+if TYPE_CHECKING:
+    from imap_mag.io.file import SciencePathHandler
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +54,7 @@ class CalibrationApplicator:
         science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
 
         offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
+        calibration_dependencies = dict.fromkeys(offsets.metadata.dependencies)
         if offsets.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
             offsets = self._expand_boundary_changes_to_every_epoch(
                 offsets, science_epochs
@@ -62,6 +69,7 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
+            calibration_dependencies.update(dict.fromkeys(layer.metadata.dependencies))
             if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
                 layer = self._expand_boundary_changes_to_every_epoch(
                     layer, science_epochs
@@ -72,48 +80,29 @@ class CalibrationApplicator:
         if offsets._contents is None:
             raise ValueError("Offsets layer contents not loaded")
 
-        offsets.prepare_for_offsets_write(science, outputCalibrationFile, version=1)
+        offsets.prepare_for_offsets_write(
+            science,
+            outputCalibrationFile,
+            version=1,
+            calibration_dependencies=list(calibration_dependencies),
+        )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
         return cal_filepath
 
-    def apply(
+    def create_offsets(
         self,
-        day_to_process: datetime,
         layer_files: list[Path],
         rotation: Path | None,
-        dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
+        dataFile: Path,
         outputOffsetsFile: Path,
-        outputScienceFolder: Path,
-        spice_metakernel: Path | None = None,
-        reference_frames: list[ReferenceFrame] = [
-            ReferenceFrame.SRF,
-            ReferenceFrame.GSE,
-            ReferenceFrame.GSM,
-            ReferenceFrame.RTN,
-            ReferenceFrame.DSRF,
-        ],
-    ) -> tuple[list[Path], Path]:
-        """Currently operating on unprocessed data."""
-        from imap_mag.io.file import SciencePathHandler
-        from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
-
+    ) -> Path:
+        """Sum the calibration layers into an offsets file for dataFile."""
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
 
-        if not outputScienceFolder.exists():
-            raise ValueError(
-                f"Output science folder does not exist: {outputScienceFolder}"
-            )
-
-        science_handler = SciencePathHandler.from_filename(dataFile.name)
-        # resolve datafile to an absolute path to ensure it exists in the datastore
-        dataFile = dataFile.resolve()
-        if not dataFile.exists() or not science_handler:
-            raise ValueError(
-                f"Input science file does not exist or could not be parsed: {dataFile}"
-            )
+        dataFile, _ = self._resolve_science_file(dataFile)
 
         if outputOffsetsFile.exists():
             logger.warning(
@@ -130,15 +119,39 @@ class CalibrationApplicator:
             outputOffsetsFile,
             science=science,
         )
-        created_offsets_filepath = created_offsets_filepath.resolve()
+        return created_offsets_filepath.resolve()
 
-        del science
+    def create_l2(
+        self,
+        day_to_process: datetime,
+        offsets_file: Path,
+        rotation: Path | None,
+        dataFile: Path,
+        outputScienceFolder: Path,
+        spice_metakernel: Path | None = None,
+        reference_frames: list[ReferenceFrame] = [
+            ReferenceFrame.SRF,
+            ReferenceFrame.GSE,
+            ReferenceFrame.GSM,
+            ReferenceFrame.RTN,
+            ReferenceFrame.DSRF,
+        ],
+    ) -> list[Path]:
+        """Apply offsets_file (and rotation) to dataFile to create L2 files."""
+
+        if not outputScienceFolder.exists():
+            raise ValueError(
+                f"Output science folder does not exist: {outputScienceFolder}"
+            )
+
+        dataFile, science_handler = self._resolve_science_file(dataFile)
+        offsets_file = offsets_file.resolve()
 
         if not reference_frames:
             logger.info(
                 "No reference frames specified, only offsets have been created, skipping L2 file generation"
             )
-            return [], created_offsets_filepath
+            return []
 
         if rotation is None:
             rotationCalibrationDataset = CalibrationMatrix.get_zero_rotation_dataset()
@@ -199,9 +212,7 @@ class CalibrationApplicator:
             # The finally block below performs the restore after computation ends.
             logger.info("Kernels furnished. Loading data ready for L2 file generation")
             science_data = cdf_to_xarray(str(dataFile), to_datetime=False)
-            created_offsets_data = cdf_to_xarray(
-                str(created_offsets_filepath), to_datetime=False
-            )
+            created_offsets_data = cdf_to_xarray(str(offsets_file), to_datetime=False)
             mode = (
                 mag_l2_data.DataMode.NORM
                 if science_handler.get_mode() == ScienceMode.Normal
@@ -266,7 +277,16 @@ class CalibrationApplicator:
             )
             filepath = outputScienceFolder / filename
 
-            ds.attrs["Logical_file_id"] = filename
+            ds.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_SOURCE] = logical_source
+            ds.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(filename).stem
+
+            ds.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
+                1, self.app_settings.version_major
+            )
+            ds.attrs[CONSTANTS.CDF_ATTRS.PARENTS] = self._get_l2_parents(
+                ds,
+                [f for f in (rotation, offsets_file, dataFile) if f is not None],
+            )
             logger.info(f"Writing output science file to {filepath}")
             if filepath.exists():
                 logger.warning(
@@ -278,7 +298,28 @@ class CalibrationApplicator:
             xarray_to_cdf(ds, str(filepath))
             files_created.append(filepath)
 
-        return (files_created, created_offsets_filepath)
+        return files_created
+
+    @staticmethod
+    def _resolve_science_file(dataFile: Path) -> tuple[Path, SciencePathHandler]:
+
+        science_handler = SciencePathHandler.from_filename(dataFile.name)
+        # resolve datafile to an absolute path to ensure it exists in the datastore
+        dataFile = dataFile.resolve()
+        if not dataFile.exists() or not science_handler:
+            raise ValueError(
+                f"Input science file does not exist or could not be parsed: {dataFile}"
+            )
+        return dataFile, science_handler
+
+    @staticmethod
+    def _get_l2_parents(ds: Dataset, parent_files: list[Path]) -> list[str]:
+        """Parents of an L2 dataset: any it already has, plus the names of
+        parent_files (rotation, offsets and L1c input, in the official L2 order)."""
+        existing = ds.attrs.get(CONSTANTS.CDF_ATTRS.PARENTS) or []
+        if isinstance(existing, str):
+            existing = [existing]
+        return list(dict.fromkeys([*existing, *(f.name for f in parent_files)]))
 
     @staticmethod
     def _get_l2_frames(reference_frames: list[ReferenceFrame]) -> list[ValidFrames]:
