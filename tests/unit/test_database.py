@@ -102,6 +102,21 @@ class TestDatabaseInit:
         assert db.heliopuddle_sync.config == settings.heliopuddle
 
 
+class TestDatabaseUrls:
+    def test_a_sqlite_file_is_created_with_its_folder_and_tables(self, tmp_path):
+        path = tmp_path / "new" / "folder" / "imap.db"
+
+        db = Database(AppSettings(db_url=f"sqlite:///{path}"))
+
+        assert path.exists()
+        assert db.get_files() == []
+
+    def test_a_bare_postgresql_url_uses_psycopg(self):
+        db = Database(AppSettings(db_url="postgresql://user:pw@host-x:5432/imap"))
+
+        assert db.engine.url.drivername == "postgresql+psycopg"
+
+
 class TestUpdateDatabaseWithProgress:
     def test_updates_last_checked_timestamp(self, tmp_path):
         db = _sqlite_database(tmp_path / "test.db")

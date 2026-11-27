@@ -90,6 +90,9 @@ pythonpath = [
   ".", "src"
 ]
 minversion = "8.0"
+markers = [
+    "imap_database_block: reads the imap-database block from the test's own Prefect server",
+]
 testpaths = [
     "tests/*.py",
     "tests/**/*.py",
@@ -101,7 +104,9 @@ env = [
     # adds significant per-flow-run overhead. Logs are still captured via Python
     # logging (e.g. the capture_cli_logs fixture), so log assertions keep working.
     "PREFECT_LOGGING_TO_API_ENABLED=false",
-    "MPLBACKEND=Agg"
+    "MPLBACKEND=Agg",
+    # No database unless a test asks for one (the config's default is a SQLite file).
+    "SQLALCHEMY_URL=",
 ]
 
 [build-system]

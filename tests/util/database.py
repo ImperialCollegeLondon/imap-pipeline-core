@@ -52,5 +52,6 @@ def test_database(test_database_server_engine):
 
 @pytest.fixture
 def in_memory_database_url(monkeypatch):
-    """Set SQLALCHEMY_URL so flows under test do not look the URL up in a Prefect block."""
+    """An in-memory SQLite database for flows under test (tests/conftest.py makes
+    sure no imap-database block is found)."""
     monkeypatch.setenv("SQLALCHEMY_URL", "sqlite://")

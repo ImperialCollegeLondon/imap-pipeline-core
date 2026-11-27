@@ -67,8 +67,9 @@ class AppSettings(BaseSettings):
     version_major: int = 1
 
     # IMAP database URL. Read from the SQLALCHEMY_URL (or MAG_DB_URL) env var, db_url
-    # in the YAML or the db_url kwarg. In Prefect flows, AppSettings.create(is_prefect=True)
-    # falls back to the imap-database SqlAlchemyConnector block when it is not set.
+    # in the YAML (a local SQLite file by default) or the db_url kwarg. In Prefect
+    # flows, AppSettings.create(is_prefect=True) takes it from the imap-database
+    # SqlAlchemyConnector block instead whenever that block exists.
     db_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices("SQLALCHEMY_URL", "MAG_DB_URL"),
@@ -105,27 +106,33 @@ class AppSettings(BaseSettings):
         """Build the settings for a program entrypoint.
 
         Args:
-            is_prefect: True when running in a Prefect flow. If no database URL is
-                configured, it is then read from the Prefect SqlAlchemyConnector block
-                named imap-database.
+            is_prefect: True when running in a Prefect flow. The database URL then
+                comes from the Prefect SqlAlchemyConnector block named imap-database
+                when that block exists, overriding any other setting.
             **overrides: Settings that take priority over the env vars and YAML file.
 
         Returns:
             The application settings.
         """
         settings = cls(**overrides)
-        if is_prefect and not settings.db_url:
+        if is_prefect:
             # Imported here so that loading settings does not import Prefect.
             from imap_mag.db.utils import DatabaseDriver, load_database_url
             from prefect_server.constants import PREFECT_CONSTANTS
 
-            settings.db_url = load_database_url(
-                PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
-                database_driver=DatabaseDriver.PostgresqlPsychopg,
+            block_name = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME
+            block_url = load_database_url(
+                block_name, database_driver=DatabaseDriver.PostgresqlPsychopg
             )
-            if not settings.db_url:
+            if block_url:
+                settings.db_url = block_url
+            elif settings.db_url:
+                logger.info(
+                    f"No {block_name} Prefect block: using the configured database URL."
+                )
+            else:
                 logger.warning(
-                    f"No database URL in SQLALCHEMY_URL or the {PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME} Prefect block."
+                    f"No database URL in the {block_name} Prefect block, SQLALCHEMY_URL or the config."
                 )
         return settings
 

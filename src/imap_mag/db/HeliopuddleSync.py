@@ -15,21 +15,24 @@ not be applied at the time.
 from __future__ import annotations
 
 import logging
+import os
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
-from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, overload
 
+from heliopuddle.client import FileRecord, HelioPuddleClient, SyncResult
 from sqlalchemy import inspect
 
 from imap_db.model import File
 
 if TYPE_CHECKING:
-    from heliopuddle.client import FileRecord, HelioPuddleClient, SyncResult
-
+    # Annotations only. Database imports this module, and imap_mag.config's
+    # __init__ imports (through the calibration toolkit and imap_mag.io) Database,
+    # so run-time imports of either here would be circular.
     from imap_mag.config.AppSettings import AppSettings
     from imap_mag.config.HeliopuddleConfig import HeliopuddleConfig
     from imap_mag.db.Database import Database
@@ -67,7 +70,7 @@ class SyncAction(StrEnum):
 
 
 @dataclass(frozen=True)
-class FileSnapshot:
+class ImapDbFileSnapshot:
     """The columns of one ``files`` row that heliopuddle mirrors."""
 
     id: int | None
@@ -81,7 +84,7 @@ class FileSnapshot:
     hard_deleted: bool = False
 
     @classmethod
-    def from_file(cls, file: File, hard_deleted: bool = False) -> FileSnapshot:
+    def from_file(cls, file: File, hard_deleted: bool = False) -> ImapDbFileSnapshot:
         """Snapshot a File without triggering any database load.
 
         Uses only the loaded attribute values, so it is safe inside session
@@ -107,13 +110,15 @@ class FileSnapshot:
     def heliopuddle_metadata(self) -> dict[str, Any]:
         """The heliopuddle metadata for this file (keys with no value are left out).
 
-        Only what heliopuddle does not already keep: it has its own hash, size,
-        version (from the path) and content date.
+        The row's ``file_meta`` keys, plus ``imap_file_id`` and ``descriptor``
+        (which win over a ``file_meta`` key of the same name). Only what
+        heliopuddle does not already keep: it has its own hash, size, version
+        (from the path) and content date.
         """
         metadata: dict[str, Any] = {
+            **(self.file_meta or {}),
             "imap_file_id": self.id,
             "descriptor": self.descriptor,
-            "file_meta": self.file_meta,
         }
         return {key: value for key, value in metadata.items() if value is not None}
 
@@ -170,8 +175,6 @@ class HeliopuddleSync:
     @property
     def client(self) -> HelioPuddleClient:
         if self._client is None:
-            from heliopuddle.client import HelioPuddleClient
-
             assert self.config.url is not None
             self._client = HelioPuddleClient(
                 self.config.url,
@@ -190,7 +193,7 @@ class HeliopuddleSync:
 
     # -- applying changes ------------------------------------------------------
 
-    def apply_changes(self, snapshots: Iterable[FileSnapshot]) -> SyncSummary:
+    def apply_changes(self, snapshots: Iterable[ImapDbFileSnapshot]) -> SyncSummary:
         """Apply committed IMAP changes to heliopuddle.
 
         Raises:
@@ -199,7 +202,7 @@ class HeliopuddleSync:
         """
         summary = SyncSummary()
         for snapshot in snapshots:
-            self._sync_into(summary, snapshot)
+            self._sync_and_record_outcome(summary, snapshot)
 
         if summary.failures:
             if self.config.fail_on_error:
@@ -211,7 +214,7 @@ class HeliopuddleSync:
 
     def sync_file(
         self,
-        snapshot: FileSnapshot,
+        snapshot: ImapDbFileSnapshot,
         existing: FileRecord | None = _MISSING,
         dry_run: bool = False,
     ) -> SyncAction:
@@ -230,10 +233,10 @@ class HeliopuddleSync:
             FileNotFoundError: a live row's file is not in the data store.
             SyncError: heliopuddle did not end up matching the row.
         """
-        path = snapshot.path
-        if not _is_store_path(path):
+        path = self.store_path(snapshot.path)
+        if path is None:
             logger.warning(
-                f"Not syncing {path} to heliopuddle: it is not inside the data store."
+                f"Not syncing {snapshot.path} to heliopuddle: it is not inside the data store."
             )
             return SyncAction.SKIPPED
 
@@ -251,7 +254,7 @@ class HeliopuddleSync:
                 self.config.storage_location,
                 snapshot.heliopuddle_metadata(),
                 in_place=self.config.shared_datastore,
-                content_date=_aware(snapshot.content_date),
+                content_date=_naive_utc(snapshot.content_date),
                 **options,
             )
 
@@ -261,6 +264,23 @@ class HeliopuddleSync:
                 f"{path}: {action} in heliopuddle{' (dry run)' if dry_run else ''}."
             )
         return action
+
+    def store_path(self, path: str) -> str | None:
+        """The heliopuddle path of a ``files`` row path, or None if it is outside the store.
+
+        Rows normally hold a path relative to the data store. A file archived
+        outside the store keeps the absolute path it was moved to, which
+        heliopuddle cannot hold. Both kinds are normalised (``..`` and ``.``
+        removed, without following links) and kept only when they fall inside
+        the data store, as a ``/``-separated path relative to it.
+        """
+        if not path:
+            return None
+        root = Path(os.path.normpath(self.data_store.absolute()))
+        full = Path(os.path.normpath(root / path))  # an absolute path replaces root
+        if full == root or not full.is_relative_to(root):
+            return None
+        return full.relative_to(root).as_posix()
 
     # -- bulk migration and reconciliation ---------------------------------------
 
@@ -294,7 +314,9 @@ class HeliopuddleSync:
                 f"Syncing {len(files)} file(s) modified since {since.isoformat()} to heliopuddle."
             )
             for file in files:
-                self._sync_into(summary, FileSnapshot.from_file(file), dry_run=dry_run)
+                self._sync_and_record_outcome(
+                    summary, ImapDbFileSnapshot.from_file(file), dry_run=dry_run
+                )
         else:
             files = database.get_files()
             # find_all reads every page, however many files heliopuddle has.
@@ -308,12 +330,13 @@ class HeliopuddleSync:
                 f"Reconciling {len(files)} IMAP file record(s) with {len(live)} live heliopuddle file(s)."
             )
             for file in sorted(files, key=lambda f: f.path):
-                snapshot = FileSnapshot.from_file(file)
-                existing = live.pop(snapshot.path, None)
+                snapshot = ImapDbFileSnapshot.from_file(file)
+                path = self.store_path(snapshot.path)
+                existing = live.pop(path, None) if path is not None else None
                 if existing is not None and _already_in_sync(snapshot, existing):
                     summary.add(SyncAction.UNCHANGED)
                     continue
-                self._sync_into(summary, snapshot, existing, dry_run)
+                self._sync_and_record_outcome(summary, snapshot, existing, dry_run)
 
             summary.untracked = sorted(live)
             for path, record in sorted(live.items()):
@@ -335,10 +358,10 @@ class HeliopuddleSync:
 
     # -- helpers -------------------------------------------------------------------
 
-    def _sync_into(
+    def _sync_and_record_outcome(
         self,
         summary: SyncSummary,
-        snapshot: FileSnapshot,
+        snapshot: ImapDbFileSnapshot,
         existing: FileRecord | None = _MISSING,
         dry_run: bool = False,
     ) -> None:
@@ -395,12 +418,7 @@ def run_sync(
     return summary
 
 
-def _is_store_path(path: str) -> bool:
-    pure = PurePosixPath(path)
-    return bool(path) and not pure.is_absolute() and ".." not in pure.parts
-
-
-def _already_in_sync(snapshot: FileSnapshot, record: FileRecord) -> bool:
+def _already_in_sync(snapshot: ImapDbFileSnapshot, record: FileRecord) -> bool:
     """True when heliopuddle's record already matches a live IMAP row (no read needed).
 
     The IMAP hash is the content identity: usually the md5 of the file, the hash
@@ -413,18 +431,17 @@ def _already_in_sync(snapshot: FileSnapshot, record: FileRecord) -> bool:
         return False
     if record.metadata != snapshot.heliopuddle_metadata():
         return False
-    return snapshot.content_date is None or _aware(record.content_date) == _aware(
-        snapshot.content_date
-    )
+    return snapshot.content_date is None or _naive_utc(
+        record.content_date
+    ) == _naive_utc(snapshot.content_date)
 
 
-def _aware(value: datetime | None) -> datetime | None:
-    if value is None or value.tzinfo is not None:
-        return value
-    return value.replace(tzinfo=UTC)
-
-
-def _naive_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
+@overload
+def _naive_utc(value: datetime) -> datetime: ...
+@overload
+def _naive_utc(value: None) -> None: ...
+def _naive_utc(value: datetime | None) -> datetime | None:
+    """A naive UTC time: heliopuddle takes naive content dates as UTC."""
+    if value is None or value.tzinfo is None:
         return value
     return value.astimezone(UTC).replace(tzinfo=None)

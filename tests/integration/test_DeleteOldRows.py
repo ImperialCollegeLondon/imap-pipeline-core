@@ -14,9 +14,7 @@ from imap_mag.config.DeleteDatabaseRowsConfig import (
     DeleteRowsTask,
 )
 from imap_mag.db.DeleteOldRows import delete_old_rows
-from imap_mag.util import DatetimeProvider, Environment
-
-DATABASE_URL_ENV_VAR = "DELETE_OLD_ROWS_TEST_DATABASE_URL"
+from imap_mag.util import DatetimeProvider
 
 NOW = datetime(2026, 7, 21)
 
@@ -45,17 +43,9 @@ def _remaining_ids(engine, table_name: str) -> set[int]:
         return {row[0] for row in result}
 
 
-def _make_app_settings(
-    tasks: list[DeleteRowsTask],
-    dry_run: bool,
-    database_url_env_var_or_block_name: str = DATABASE_URL_ENV_VAR,
-) -> AppSettings:
+def _make_app_settings(tasks: list[DeleteRowsTask], dry_run: bool) -> AppSettings:
     return AppSettings(
-        database_delete_rows=DeleteDatabaseRowsConfig(
-            dry_run=dry_run,
-            database_url_env_var_or_block_name=database_url_env_var_or_block_name,
-            tasks=tasks,
-        )
+        database_delete_rows=DeleteDatabaseRowsConfig(dry_run=dry_run, tasks=tasks)
     )
 
 
@@ -92,12 +82,10 @@ async def test_delete_old_rows_deletes_rows_older_than_threshold_and_keeps_the_r
     )
     app_settings = _make_app_settings(tasks=[task], dry_run=False)
 
-    with Environment(
-        **{DATABASE_URL_ENV_VAR: test_database_container.get_connection_url()}
-    ):
-        affected = await delete_old_rows(
-            app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
-        )
+    app_settings.db_url = test_database_container.get_connection_url()
+    affected = await delete_old_rows(
+        app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
+    )
 
     assert affected == 2
     assert _remaining_ids(test_database_server_engine, table_name) == {3, 4}
@@ -132,12 +120,10 @@ async def test_delete_old_rows_dry_run_only_counts_rows_and_leaves_them_in_place
     )
     app_settings = _make_app_settings(tasks=[task], dry_run=True)
 
-    with Environment(
-        **{DATABASE_URL_ENV_VAR: test_database_container.get_connection_url()}
-    ):
-        affected = await delete_old_rows(
-            app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
-        )
+    app_settings.db_url = test_database_container.get_connection_url()
+    affected = await delete_old_rows(
+        app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
+    )
 
     assert affected == 1
     assert _remaining_ids(test_database_server_engine, table_name) == {1, 2}
@@ -183,12 +169,10 @@ async def test_delete_old_rows_skips_missing_table_but_still_runs_other_tasks(
     ]
     app_settings = _make_app_settings(tasks=tasks, dry_run=False)
 
-    with Environment(
-        **{DATABASE_URL_ENV_VAR: test_database_container.get_connection_url()}
-    ):
-        affected = await delete_old_rows(
-            app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
-        )
+    app_settings.db_url = test_database_container.get_connection_url()
+    affected = await delete_old_rows(
+        app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
+    )
 
     # Only the existing table's row should have been deleted; the missing
     # table must be logged and skipped without aborting the remaining tasks.
@@ -224,13 +208,11 @@ async def test_delete_old_rows_reraises_when_datetime_column_does_not_exist(
     )
     app_settings = _make_app_settings(tasks=[task], dry_run=False)
 
-    with Environment(
-        **{DATABASE_URL_ENV_VAR: test_database_container.get_connection_url()}
-    ):
-        with pytest.raises(ProgrammingError) as exc_info:
-            await delete_old_rows(
-                app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
-            )
+    app_settings.db_url = test_database_container.get_connection_url()
+    with pytest.raises(ProgrammingError) as exc_info:
+        await delete_old_rows(
+            app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
+        )
 
     assert isinstance(exc_info.value.orig, UndefinedColumn)
     # Row must be untouched since the statement never succeeded.
@@ -264,10 +246,10 @@ async def test_delete_old_rows_works_with_bare_postgresql_url_missing_driver(
     bare_url = test_database_container.get_connection_url(driver=None)
     assert "+psycopg" not in bare_url
 
-    with Environment(**{DATABASE_URL_ENV_VAR: bare_url}):
-        affected = await delete_old_rows(
-            app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
-        )
+    app_settings.db_url = bare_url
+    affected = await delete_old_rows(
+        app_settings, datetime_provider=DatetimeProvider(fixed_now=NOW)
+    )
 
     assert affected == 1
     assert _remaining_ids(test_database_server_engine, table_name) == set()

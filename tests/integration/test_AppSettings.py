@@ -27,6 +27,7 @@ def imap_database_block(prefect_test_fixture):  # noqa: F811
     SqlAlchemyConnector.delete(PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME, _sync=True)
 
 
+@pytest.mark.imap_database_block
 @pytest.mark.asyncio
 async def test_create_in_async_flow_reads_db_url_from_imap_database_block(
     imap_database_block, monkeypatch

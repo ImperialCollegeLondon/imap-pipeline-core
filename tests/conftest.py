@@ -58,6 +58,24 @@ def override_version_major():
         yield
 
 
+@pytest.fixture(autouse=True)
+def no_imap_database_block(request, monkeypatch):
+    """Tests never read the imap-database block from a real Prefect server.
+
+    AppSettings.create(is_prefect=True) looks that block up, and outside a test
+    harness Prefect would use whatever PREFECT_API_URL the machine has (possibly
+    a real environment). Here the block does not exist, unless a test is marked
+    imap_database_block to read it from its own Prefect test server.
+    """
+    if request.node.get_closest_marker("imap_database_block"):
+        return
+
+    def no_block(*_args, **_kwargs):
+        raise ValueError("no imap-database block in tests")
+
+    monkeypatch.setattr("imap_mag.db.utils.SqlAlchemyConnector.load", no_block)
+
+
 @pytest.fixture(autouse=False)
 def temp_file_path() -> Generator[Path, None, None]:
     """Fixture to create a temporary file for testing."""

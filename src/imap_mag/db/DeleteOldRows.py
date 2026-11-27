@@ -8,7 +8,6 @@ from sqlalchemy.exc import ProgrammingError
 
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.db.utils import DatabaseDriver, get_database_connectionstring
 from imap_mag.util import DatetimeProvider
 from prefect_server.durationUtils import parse_duration
 
@@ -32,13 +31,7 @@ async def delete_old_rows(
     """
     config = app_settings.database_delete_rows
     dry_run = dry_run if dry_run is not None else config.dry_run
-    db_url = await get_database_connectionstring(
-        app_settings,
-        config.database_url_env_var_or_block_name,
-        database_driver=DatabaseDriver.PostgresqlPsychopg,
-    )
-
-    db = Database(app_settings.model_copy(update={"db_url": db_url}))
+    db = Database(app_settings)
 
     total_deleted = 0
     for task in config.tasks:

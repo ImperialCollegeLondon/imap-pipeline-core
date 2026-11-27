@@ -3,17 +3,7 @@ from datetime import timedelta
 from pydantic import AliasChoices, Field, field_validator, model_validator
 
 from imap_mag.config.CommandConfig import CommandConfig
-
-
-def _parse_duration(value: str | int | float | timedelta) -> timedelta:
-    if isinstance(value, timedelta):
-        return value
-    if isinstance(value, int | float):
-        return timedelta(seconds=value)
-
-    from prefect_server.durationUtils import parse_duration
-
-    return parse_duration(value)
+from prefect_server.durationUtils import to_timedelta
 
 
 class HeliopuddleConfig(CommandConfig):
@@ -68,7 +58,7 @@ class HeliopuddleConfig(CommandConfig):
     @field_validator("request_timeout", "incremental_overlap", mode="before")
     @classmethod
     def _duration(cls, value: str | int | float | timedelta) -> timedelta:
-        return _parse_duration(value)
+        return to_timedelta(value)
 
     @model_validator(mode="after")
     def _required_when_enabled(self) -> "HeliopuddleConfig":

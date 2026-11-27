@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
@@ -215,7 +216,7 @@ def yaml_with_db_url(tmp_path, monkeypatch):
     """Run from a copy of the project config file that also sets db_url."""
     config = Path(AppSettings.config_file).read_text()
     (tmp_path / AppSettings.config_file).write_text(
-        f"{config}\ndb_url: {YAML_DB_URL}\n"
+        re.sub(r"(?m)^db_url: .*$", f"db_url: {YAML_DB_URL}", config)
     )
     monkeypatch.chdir(tmp_path)
 
@@ -227,8 +228,8 @@ def _block(url: str) -> MagicMock:
 
 
 @pytest.mark.usefixtures("no_db_url_env")
-def test_db_url_defaults_to_none():
-    assert AppSettings().db_url is None
+def test_db_url_defaults_to_a_local_sqlite_file():
+    assert AppSettings().db_url == "sqlite:///.work/imap.db"
 
 
 @pytest.mark.usefixtures("no_db_url_env")
@@ -283,7 +284,7 @@ def test_create_outside_prefect_does_not_load_the_block():
     with patch(BLOCK_LOAD) as mock_load:
         settings = AppSettings.create()
 
-    assert settings.db_url is None
+    assert settings.db_url == "sqlite:///.work/imap.db"
     mock_load.assert_not_called()
 
 
@@ -298,29 +299,33 @@ def test_create_for_prefect_loads_url_from_imap_database_block():
 
 
 @pytest.mark.usefixtures("no_db_url_env")
-def test_create_for_prefect_leaves_url_unset_when_block_missing():
+@pytest.mark.parametrize("env_var", ["SQLALCHEMY_URL", "MAG_DB_URL"])
+def test_create_for_prefect_keeps_the_configured_url_when_block_missing(
+    monkeypatch, env_var
+):
+    monkeypatch.setenv(env_var, ENV_DB_URL)
     with patch(BLOCK_LOAD, side_effect=ValueError("Unable to find block document")):
         settings = AppSettings.create(is_prefect=True)
 
-    assert settings.db_url is None
+    assert settings.db_url == ENV_DB_URL
 
 
 @pytest.mark.usefixtures("no_db_url_env")
 @pytest.mark.parametrize("env_var", ["SQLALCHEMY_URL", "MAG_DB_URL"])
-def test_create_for_prefect_prefers_configured_url_to_block(monkeypatch, env_var):
+def test_create_for_prefect_block_overrides_the_configured_url(monkeypatch, env_var):
     monkeypatch.setenv(env_var, ENV_DB_URL)
+    block_url = "postgresql+psycopg://user:pass@block-host:5432/imap"
 
-    with patch(BLOCK_LOAD) as mock_load:
+    with patch(BLOCK_LOAD, return_value=_block(block_url)):
         settings = AppSettings.create(is_prefect=True)
 
-    assert settings.db_url == ENV_DB_URL
-    mock_load.assert_not_called()
+    assert settings.db_url == block_url
 
 
 @pytest.mark.usefixtures("no_db_url_env")
-def test_create_for_prefect_prefers_kwarg_to_block():
-    with patch(BLOCK_LOAD) as mock_load:
+def test_create_for_prefect_block_overrides_a_kwarg():
+    block_url = "postgresql+psycopg://user:pass@block-host:5432/imap"
+    with patch(BLOCK_LOAD, return_value=_block(block_url)):
         settings = AppSettings.create(is_prefect=True, db_url=KWARG_DB_URL)
 
-    assert settings.db_url == KWARG_DB_URL
-    mock_load.assert_not_called()
+    assert settings.db_url == block_url

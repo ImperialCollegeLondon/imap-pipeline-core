@@ -208,6 +208,8 @@ IMAP_API_KEY=KEY_HERE \
 source defaults.env
 source .env
 
+# The files database defaults to a local SQLite file (db_url in imap-mag-config.yaml,
+# .work/imap.db, created on first use). Point it at Postgres instead with:
 export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap
 
 imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --output-path ./metakernels --file-types ck,spk --publish-to-datastore
@@ -217,7 +219,7 @@ imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05
 
 ### Sync the files database with heliopuddle
 
-Optionally, the `files` table can be mirrored into a [heliopuddle](https://github.com/ImperialCollegeLondon/heliopuddle) project. Turn it on in the `heliopuddle` section of `imap-mag-config.yaml` (or `MAG_HELIOPUDDLE_ENABLED=true`) and give it a heliopuddle service account with `MAG_HELIOPUDDLE_CLIENT_ID`/`MAG_HELIOPUDDLE_CLIENT_SECRET` (both required). With `shared_datastore: true` the heliopuddle storage location must point at the same data store, and files are registered in place; otherwise their content is uploaded. What to change in heliopuddle (register or upload, accept or overwrite, metadata, delete, retries of busy files) is decided by the heliopuddle client's `sync_file`/`sync_removed`; heliopuddle keeps the hash, size, version and content date itself, and the metadata adds `imap_file_id`, `descriptor` and `file_meta`.
+Optionally, the `files` table can be mirrored into a [heliopuddle](https://github.com/ImperialCollegeLondon/heliopuddle) project. Turn it on in the `heliopuddle` section of `imap-mag-config.yaml` (or `MAG_HELIOPUDDLE_ENABLED=true`) and give it a heliopuddle service account with `MAG_HELIOPUDDLE_CLIENT_ID`/`MAG_HELIOPUDDLE_CLIENT_SECRET` (both required). With `shared_datastore: true` the heliopuddle storage location must point at the same data store, and files are registered in place; otherwise their content is uploaded. What to change in heliopuddle (register or upload, accept or overwrite, metadata, delete, retries of busy files) is decided by the heliopuddle client's `sync_file`/`sync_removed`; heliopuddle keeps the hash, size, version and content date (UTC) itself; the metadata holds the row's `file_meta` keys plus `imap_file_id` and `descriptor`. A row whose path is outside the data store (a file archived elsewhere) is skipped.
 
 Once enabled, every insert, update and soft delete of a file record is repeated in heliopuddle as soon as the database commits it. If heliopuddle cannot be updated the operation fails (`fail_on_error`, or `MAG_HELIOPUDDLE_FAIL_ON_ERROR=false` to only log it) but the database change is kept, and the next sync repairs it. Removing a file in heliopuddle also deletes it from its storage location, so with a shared data store a soft-deleted record's file is removed from disk (as the cleanup, archive and convert commands already do).
 

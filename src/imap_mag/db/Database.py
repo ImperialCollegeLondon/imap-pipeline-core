@@ -3,6 +3,7 @@ import itertools
 import logging
 import threading
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 from sqlalchemy import create_engine, event, or_, select
@@ -11,12 +12,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
 from imap_mag.db.HeliopuddleSync import (
-    FileSnapshot,
     HeliopuddleSync,
     HeliopuddleSyncError,
+    ImapDbFileSnapshot,
 )
 
 if TYPE_CHECKING:
+    # Annotation only: importing imap_mag.config runs its __init__, which imports
+    # the calibration toolkit, then imap_mag.io, which imports this module, so a
+    # run-time import here is circular. Callers pass the instance in.
     from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
@@ -54,11 +58,17 @@ class Database:
             )
 
         url = make_url(db_url)
+        if url.drivername == "postgresql":
+            # psycopg (3) is the installed driver; a bare URL would pick psycopg2.
+            url = url.set(drivername="postgresql+psycopg")
         url_key = url.render_as_string(hide_password=False)
 
         with Database._engine_lock:
             if url_key not in Database._engine_cache:
-                Database._engine_cache[url_key] = create_engine(url, pool_pre_ping=True)
+                engine = create_engine(url, pool_pre_ping=True)
+                if url.get_backend_name() == "sqlite":
+                    _create_sqlite_tables(engine, url.database)
+                Database._engine_cache[url_key] = engine
 
         self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
@@ -72,7 +82,7 @@ class Database:
 
     def __apply_file_changes(self, session: Session) -> None:
         """Repeat the file changes just committed in heliopuddle."""
-        changes: dict[str, FileSnapshot] = session.info.pop(_FILE_CHANGES_KEY, {})
+        changes: dict[str, ImapDbFileSnapshot] = session.info.pop(_FILE_CHANGES_KEY, {})
         if not changes:
             return
 
@@ -358,15 +368,29 @@ class Database:
         return result
 
 
+def _create_sqlite_tables(engine: Engine, database: str | None) -> None:
+    """Make a SQLite database usable straight away (local development, tests).
+
+    Postgres databases are created and migrated with alembic (imap-db); a SQLite
+    file (the default in imap-mag-config.yaml) gets its folder and the current
+    tables instead, so nothing needs installing to run the pipeline locally.
+    """
+    if database and database != ":memory:":
+        Path(database).parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(engine)
+
+
 def _collect_file_changes(session: Session, flush_context: Any) -> None:
     """Snapshot every File row this flush inserts, changes or deletes."""
-    changes: dict[str, FileSnapshot] = session.info.setdefault(_FILE_CHANGES_KEY, {})
+    changes: dict[str, ImapDbFileSnapshot] = session.info.setdefault(
+        _FILE_CHANGES_KEY, {}
+    )
     for obj in itertools.chain(session.new, session.dirty, session.deleted):
         if not isinstance(obj, File):
             continue
         deleted = obj in session.deleted
         if obj in session.new or deleted or session.is_modified(obj):
-            snapshot = FileSnapshot.from_file(obj, hard_deleted=deleted)
+            snapshot = ImapDbFileSnapshot.from_file(obj, hard_deleted=deleted)
             changes[snapshot.path] = snapshot
 
 

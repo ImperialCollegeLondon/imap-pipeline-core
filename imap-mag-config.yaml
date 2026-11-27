@@ -10,9 +10,12 @@ data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 version_major: 2
-# IMAP database URL, usually set with the SQLALCHEMY_URL (or MAG_DB_URL) env var.
-# When unset, Prefect flows read it from the imap-database SqlAlchemyConnector block.
-#db_url: 'postgresql+psycopg://postgres:postgres@localhost:5432/imap'
+# IMAP database URL. The default is a local SQLite file, created with its tables on
+# first use, so nothing needs installing for local development. Deployments set
+# SQLALCHEMY_URL (or MAG_DB_URL), e.g. postgresql+psycopg://user:password@host:5432/imap,
+# and in Prefect flows the imap-database SqlAlchemyConnector block, when it exists,
+# overrides both.
+db_url: 'sqlite:///.work/imap.db'
 
 # SPICE kernel types included when generating a metakernel. Shared by the
 # calibration applicator and the scripted L2 calibration.
@@ -390,7 +393,6 @@ datastore_cleanup:
 
 database_delete_rows:
     dry_run: false
-    database_url_env_var_or_block_name: "imap-database"
     tasks:
         - name: "delete-rows-ace-mag-noaa-older-7d"
           table: "ace_mag_noaa"

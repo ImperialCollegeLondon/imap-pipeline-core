@@ -1,7 +1,7 @@
 """Unit tests for mirroring the files table into heliopuddle."""
 
 import hashlib
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -13,9 +13,9 @@ from imap_mag.config.HeliopuddleConfig import HeliopuddleConfig
 from imap_mag.db.Database import Database
 from imap_mag.db.HeliopuddleSync import (
     PROGRESS_ITEM_NAME,
-    FileSnapshot,
     HeliopuddleSync,
     HeliopuddleSyncError,
+    ImapDbFileSnapshot,
     SyncAction,
     run_sync,
 )
@@ -152,7 +152,7 @@ class TestSyncFile:
         self, sync, hp, store
     ):
         digest, size = _write(store, "hk/a_v001.csv", b"data")
-        snapshot = FileSnapshot.from_file(_file("hk/a_v001.csv", id=7))
+        snapshot = ImapDbFileSnapshot.from_file(_file("hk/a_v001.csv", id=7))
 
         assert sync.sync_file(snapshot) == SyncAction.ADDED
 
@@ -163,13 +163,13 @@ class TestSyncFile:
         assert record.metadata == {
             "imap_file_id": 7,
             "descriptor": "imap_mag_l1_test",
-            "file_meta": {"source": "unit"},
+            "source": "unit",  # file_meta keys sit at the root
         }
         assert Call("register_file", "hk/a_v001.csv") in hp.calls
 
     def test_identical_file_is_unchanged(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
-        snapshot = FileSnapshot.from_file(_file("hk/a.csv"))
+        snapshot = ImapDbFileSnapshot.from_file(_file("hk/a.csv"))
         sync.sync_file(snapshot)
         hp.reset_calls()
 
@@ -178,18 +178,20 @@ class TestSyncFile:
 
     def test_changed_columns_update_the_metadata(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
-        sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+        sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
 
-        changed = FileSnapshot.from_file(_file("hk/a.csv", file_meta={"x": 1}))
+        changed = ImapDbFileSnapshot.from_file(_file("hk/a.csv", file_meta={"x": 1}))
         assert sync.sync_file(changed) == SyncAction.METADATA
-        assert hp.record_at("hk/a.csv").metadata["file_meta"] == {"x": 1}
+        metadata = hp.record_at("hk/a.csv").metadata
+        assert metadata["x"] == 1
+        assert "source" not in metadata  # the whole metadata is replaced
 
     def test_changed_content_overwrites(self, sync, hp, store):
         _write(store, "hk/a.csv", b"old")
-        sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+        sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
         digest, _ = _write(store, "hk/a.csv", b"new content")
 
-        snapshot = FileSnapshot.from_file(_file("hk/a.csv", hash="new-identity"))
+        snapshot = ImapDbFileSnapshot.from_file(_file("hk/a.csv", hash="new-identity"))
         assert sync.sync_file(snapshot) == SyncAction.UPDATED
         assert hp.record_at("hk/a.csv").hash == digest
         assert Call("add_file", "hk/a.csv") in hp.calls
@@ -202,7 +204,7 @@ class TestSyncFile:
         digest, _ = _write(store, "hk/a.csv", b"new content")
 
         assert (
-            sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
             == SyncAction.UPDATED
         )
         assert hp.record_at("hk/a.csv").hash == digest
@@ -211,26 +213,70 @@ class TestSyncFile:
 
     def test_deleted_file_is_removed(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
-        sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+        sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
 
         deleted = _file("hk/a.csv", deletion_date=datetime(2026, 5, 1))
-        assert sync.sync_file(FileSnapshot.from_file(deleted)) == SyncAction.REMOVED
+        assert (
+            sync.sync_file(ImapDbFileSnapshot.from_file(deleted)) == SyncAction.REMOVED
+        )
         assert "hk/a.csv" not in hp.live_paths()
 
     def test_deleted_file_not_in_heliopuddle_is_unchanged(self, sync, hp):
         deleted = _file("hk/gone.csv", deletion_date=datetime(2026, 5, 1))
-        assert sync.sync_file(FileSnapshot.from_file(deleted)) == SyncAction.UNCHANGED
+        assert (
+            sync.sync_file(ImapDbFileSnapshot.from_file(deleted))
+            == SyncAction.UNCHANGED
+        )
 
-    def test_path_outside_the_data_store_is_skipped(self, sync, hp):
-        snapshot = FileSnapshot.from_file(_file("/archive/hk/a.csv"))
+    @pytest.mark.parametrize(
+        "path", ["/archive/hk/a.csv", "../a.csv", "hk/../../a.csv", ""]
+    )
+    def test_path_outside_the_data_store_is_skipped(self, sync, hp, path):
+        snapshot = ImapDbFileSnapshot.from_file(_file(path))
         assert sync.sync_file(snapshot) == SyncAction.SKIPPED
         assert hp.calls == []
 
+    def test_paths_inside_the_store_are_normalised_to_store_paths(self, sync, store):
+        assert sync.store_path("hk/./x/../a.csv") == "hk/a.csv"
+        assert sync.store_path(str(store / "hk" / "a.csv")) == "hk/a.csv"
+        assert sync.store_path(str(store)) is None
+
+    def test_an_absolute_path_inside_the_store_is_synced_by_its_store_path(
+        self, sync, hp, store
+    ):
+        _write(store, "hk/a.csv", b"data")
+        snapshot = ImapDbFileSnapshot.from_file(_file(str(store / "hk/a.csv")))
+
+        assert sync.sync_file(snapshot) == SyncAction.ADDED
+        assert hp.live_paths() == ["hk/a.csv"]
+
+    def test_metadata_keeps_the_imap_id_over_a_file_meta_key(self):
+        snapshot = ImapDbFileSnapshot.from_file(
+            _file("hk/a.csv", id=3, file_meta={"imap_file_id": 99, "k": "v"})
+        )
+        assert snapshot.heliopuddle_metadata() == {
+            "imap_file_id": 3,
+            "descriptor": "imap_mag_l1_test",
+            "k": "v",
+        }
+
+    def test_content_date_is_stored_as_utc(self, sync, hp, store):
+        _write(store, "hk/a.csv", b"data")
+        two_hours_ahead = timezone(timedelta(hours=2))
+        snapshot = ImapDbFileSnapshot.from_file(
+            _file(
+                "hk/a.csv", content_date=datetime(2026, 3, 4, 2, tzinfo=two_hours_ahead)
+            )
+        )
+
+        sync.sync_file(snapshot)
+        assert hp.record_at("hk/a.csv").content_date == datetime(2026, 3, 4, tzinfo=UTC)
+
     def test_changed_content_date_is_set(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
-        sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+        sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
 
-        later = FileSnapshot.from_file(
+        later = ImapDbFileSnapshot.from_file(
             _file("hk/a.csv", content_date=datetime(2026, 5, 6))
         )
         assert sync.sync_file(later) == SyncAction.METADATA
@@ -238,24 +284,21 @@ class TestSyncFile:
 
     def test_missing_local_file_fails(self, sync):
         with pytest.raises(FileNotFoundError):
-            sync.sync_file(FileSnapshot.from_file(_file("hk/missing.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/missing.csv")))
 
     def test_store_content_not_matching_fails(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
         hp.store = store / "elsewhere"  # heliopuddle sees no object: unknown
 
         with pytest.raises(SyncError, match="unknown"):
-            sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
 
     def test_the_client_uses_the_service_account_timeout_and_busy_retries(
         self, store, monkeypatch
     ):
-        import heliopuddle.client
-
         built = []
         monkeypatch.setattr(
-            heliopuddle.client,
-            "HelioPuddleClient",
+            "imap_mag.db.HeliopuddleSync.HelioPuddleClient",
             lambda *args, **kwargs: built.append((args, kwargs)) or object(),
         )
 
@@ -280,7 +323,7 @@ class TestSyncFile:
         hp.inject_busy("hk/a.csv", times=2)
 
         assert (
-            sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
             == SyncAction.ADDED
         )
 
@@ -291,21 +334,21 @@ class TestSyncFile:
         hp.inject_busy("hk/a.csv", times=5)
 
         with pytest.raises(BusyError):
-            sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
 
     def test_unshared_store_uploads_the_content(self, store, hp):
         sync = HeliopuddleSync(_config(shared_datastore=False), store, client=hp)
         _write(store, "hk/a.csv", b"data")
 
         assert (
-            sync.sync_file(FileSnapshot.from_file(_file("hk/a.csv")))
+            sync.sync_file(ImapDbFileSnapshot.from_file(_file("hk/a.csv")))
             == SyncAction.ADDED
         )
         assert Call("add_file", "hk/a.csv") in hp.calls
 
     def test_dry_run_changes_nothing(self, sync, hp, store):
         _write(store, "hk/a.csv", b"data")
-        snapshot = FileSnapshot.from_file(_file("hk/a.csv"))
+        snapshot = ImapDbFileSnapshot.from_file(_file("hk/a.csv"))
 
         assert sync.sync_file(snapshot, dry_run=True) == SyncAction.ADDED
         assert hp.live_paths() == []
@@ -322,8 +365,8 @@ class TestApplyChanges:
         with pytest.raises(HeliopuddleSyncError) as info:
             sync.apply_changes(
                 [
-                    FileSnapshot.from_file(_file("hk/a.csv")),
-                    FileSnapshot.from_file(_file("hk/b.csv")),
+                    ImapDbFileSnapshot.from_file(_file("hk/a.csv")),
+                    ImapDbFileSnapshot.from_file(_file("hk/b.csv")),
                 ]
             )
 
@@ -337,7 +380,7 @@ class TestApplyChanges:
         )
         _write(store, "hk/a.csv", b"a")
 
-        summary = sync.apply_changes([FileSnapshot.from_file(_file("hk/a.csv"))])
+        summary = sync.apply_changes([ImapDbFileSnapshot.from_file(_file("hk/a.csv"))])
         assert list(summary.failures) == ["hk/a.csv"]
         assert "out of sync" in caplog.text
 
@@ -358,7 +401,7 @@ class TestDatabaseHook:
         db.upsert_file(_file("hk/a.csv"))
 
         db.upsert_file(_file("hk/a.csv", file_meta={"updated": True}))
-        assert hp.record_at("hk/a.csv").metadata["file_meta"] == {"updated": True}
+        assert hp.record_at("hk/a.csv").metadata["updated"] is True
 
         file = db.get_files()[0]
         file.set_deleted()
