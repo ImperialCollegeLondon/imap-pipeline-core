@@ -56,6 +56,16 @@ class IDatastoreFileManager(abc.ABC):
             (which may have had its version changed) and the action performed.
         """
 
+    @abc.abstractmethod
+    def resolve_version(self, original_file: Path, path_handler: T) -> None:
+        """Set path_handler to the version store_file would save original_file as,
+        without changing the datastore.
+
+        Args:
+            original_file: The file that would be stored.
+            path_handler: The path handler to update.
+        """
+
     @deprecated("Use store_file, which reports the action performed, instead.")
     def add_file(self, original_file: Path, path_handler: T) -> tuple[Path, T, bool]:
         """Add file to output location.

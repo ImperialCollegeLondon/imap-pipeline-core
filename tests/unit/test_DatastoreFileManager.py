@@ -574,3 +574,75 @@ def test_add_file_is_deprecated_wrapper_around_store_file(temp_folder_path):
     assert result_path == destination
     assert result_handler is handler
     assert overwritten is True
+
+
+def test_resolve_version_sets_next_available_version_without_storing(
+    temp_folder_path,
+):
+    # Set up.
+    manager = _manager(temp_folder_path)
+    original_file = create_test_file(
+        temp_folder_path / "work" / "some_file.txt", "new content"
+    )
+    existing_file = create_test_file(
+        temp_folder_path / "hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt",
+        "old content",
+    )
+    handler = HKDecodedPathHandler(
+        descriptor="pwr", content_date=datetime(2025, 5, 2), extension="txt"
+    )
+
+    # Exercise.
+    manager.resolve_version(original_file, handler)
+
+    # Verify.
+    assert handler.version == 2
+    assert not existing_file.with_name("imap_mag_l1_pwr_20250502_v002.txt").exists()
+
+
+def test_resolve_version_matches_version_assigned_by_store_file(temp_folder_path):
+    # Set up.
+    manager = _manager(temp_folder_path)
+    original_file = create_test_file(
+        temp_folder_path / "work" / "some_file.txt", "new content"
+    )
+    create_test_file(
+        temp_folder_path / "hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt",
+        "old content",
+    )
+    handler = HKDecodedPathHandler(
+        descriptor="pwr", content_date=datetime(2025, 5, 2), extension="txt"
+    )
+    manager.resolve_version(original_file, handler)
+    resolved_filename = handler.get_filename()
+
+    # Exercise.
+    result = manager.store_file(original_file, handler)
+
+    # Verify.
+    assert result.destination.name == resolved_filename
+
+
+def test_resolve_version_reuses_version_of_identical_file(temp_folder_path):
+    # Set up.
+    manager = _manager(temp_folder_path)
+    original_file = create_test_file(
+        temp_folder_path / "work" / "some_file.txt", "same content"
+    )
+    create_test_file(
+        temp_folder_path / "hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v001.txt",
+        "same content",
+    )
+    create_test_file(
+        temp_folder_path / "hk/mag/l1/pwr/2025/05/imap_mag_l1_pwr_20250502_v002.txt",
+        "other content",
+    )
+    handler = HKDecodedPathHandler(
+        descriptor="pwr", content_date=datetime(2025, 5, 2), extension="txt"
+    )
+
+    # Exercise.
+    manager.resolve_version(original_file, handler)
+
+    # Verify.
+    assert handler.version == 1

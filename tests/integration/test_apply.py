@@ -1,9 +1,11 @@
+import json
 import re
 import shutil
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import cdflib
 import numpy as np
 import pytest
 
@@ -47,8 +49,6 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     assert np.issubdtype(dataset["validity_start_datetime"].dtype, np.datetime64)
     assert np.issubdtype(dataset["validity_end_datetime"].dtype, np.datetime64)
 
-    import cdflib
-
     l2_attrs = cdflib.CDF(str(output_l2_file)).globalattsget()
     assert output_offsets_file.name in l2_attrs["Parents"]
     # every global attribute is written, not just those before a None value
@@ -74,8 +74,6 @@ def test_apply_produces_output_science_file_and_offsets_file_with_data(
         start_date=datetime(2026, 1, 16),
     )
     verify_noop_results(temp_datastore, date=datetime(2026, 1, 16))
-
-    import cdflib
 
     l2_file = (
         temp_datastore
@@ -195,8 +193,6 @@ def test_apply_performs_correct_rotation(
     )
 
     assert output_file.exists()
-
-    import cdflib
 
     assert cdflib.CDF(str(output_file)).globalattsget()["Parents"] == [
         "imap_mag_l2-calibration_20250926_v002.cdf",
@@ -586,8 +582,6 @@ def test_apply_l2_version_override_forces_specific_version(
         "Default v001.0001 must not be created when the L2 version override is active"
     )
 
-    import cdflib
-
     attrs = cdflib.CDF(str(forced_srf)).globalattsget()
     assert attrs["Data_version"] == ["002.0005"]
     assert attrs["Logical_file_id"] == [forced_srf.stem]
@@ -624,10 +618,6 @@ def test_apply_records_layer_dependencies_in_offsets_file(
     dynamic_work_folder,
     spice_kernels,
 ):
-    import json
-
-    import cdflib
-
     layer_file = (
         temp_datastore
         / "calibration/layers/2026/01/imap_mag_noop-norm-layer_20260116_v001.json"
@@ -661,8 +651,6 @@ def test_apply_l2_parents_name_the_offsets_version_assigned_by_the_datastore(
 ):
     """When v001 of the offsets already exists with different content the new
     offsets are saved as v002, and the L2-pre Parents must name v002."""
-    import cdflib
-
     offsets_dir = temp_datastore / "science-ancillary/l2-offsets/2026/01"
     offsets_dir.mkdir(parents=True, exist_ok=True)
     (offsets_dir / "imap_mag_l2-norm-offsets_20260116_20260116_v001.cdf").write_bytes(
@@ -695,8 +683,6 @@ def test_apply_stamps_l2_pre_with_the_version_assigned_by_the_datastore(
     """When v001.0001 of the L2-pre already exists with different content the
     new file is saved as v001.0002, and its Data_version and Logical_file_id
     must say v001.0002 too."""
-    import cdflib
-
     l2_dir = temp_datastore / "science/mag/l2-pre/2026/01"
     l2_dir.mkdir(parents=True, exist_ok=True)
     (l2_dir / "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf").write_bytes(
@@ -715,3 +701,58 @@ def test_apply_stamps_l2_pre_with_the_version_assigned_by_the_datastore(
     assert attrs["Data_version"] == ["001.0002"]
     assert attrs["Logical_file_id"] == [new_l2.stem]
     assert "imap_mag_l1c_norm-mago_20260116_v001.cdf" in attrs["Parents"]
+
+
+def test_apply_stores_nothing_when_l2_generation_fails(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+):
+    with (
+        patch.object(
+            CalibrationApplicator, "create_l2", side_effect=RuntimeError("L2 failed")
+        ),
+        pytest.raises(RuntimeError, match="L2 failed"),
+    ):
+        apply(
+            layers=["imap_mag_noop-norm-layer_20260116_v001.json"],
+            input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+            start_date=datetime(2026, 1, 16),
+        )
+
+    assert not list((temp_datastore / "science-ancillary").rglob("*offsets*"))
+    assert not (temp_datastore / "science/mag/l2-pre").exists()
+
+
+def test_apply_with_database_l2_parents_name_the_offsets_version_assigned(
+    temp_datastore,
+    dynamic_work_folder,
+    spice_kernels,
+    test_database,  # noqa: F811
+):
+    layer_file = (
+        temp_datastore
+        / "calibration/layers/2026/01/imap_mag_noop-norm-layer_20260116_v001.json"
+    )
+    for dependencies in (["first"], ["second"]):
+        layer_json = json.loads(layer_file.read_text())
+        layer_json["metadata"]["dependencies"] = dependencies
+        layer_file.write_text(json.dumps(layer_json))
+
+        apply(
+            layers=[layer_file.name],
+            input="imap_mag_l1c_norm-mago_20260116_v001.cdf",
+            start_date=datetime(2026, 1, 16),
+            save_mode=SaveMode.LocalAndDatabase,
+        )
+
+    new_offsets = (
+        temp_datastore
+        / "science-ancillary/l2-offsets/2026/01/imap_mag_l2-norm-offsets_20260116_20260116_v002.cdf"
+    )
+    assert new_offsets.exists()
+    l2_file = (
+        temp_datastore
+        / "science/mag/l2-pre/2026/01/imap_mag_l2-pre_norm-srf_20260116_v001.0002.cdf"
+    )
+    assert new_offsets.name in cdflib.CDF(str(l2_file)).globalattsget()["Parents"]

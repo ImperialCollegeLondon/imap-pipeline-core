@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
+    Field,
     PlainSerializer,
 )
 
@@ -188,7 +189,7 @@ class CalibrationMetadata(ArbitraryTypesAllowedBaseModel):
     dependencies: list[str] = []
     # Dependencies of the layers summed into an offsets file, written to the
     # offsets CDF as the Calibration_Dependencies global attribute.
-    calibration_dependencies: list[str] = []
+    calibration_dependencies: list[str] = Field(default=[], exclude=True)
     science: list[str]
     content_date: Annotated[
         np.datetime64 | None,

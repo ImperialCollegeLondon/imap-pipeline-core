@@ -106,3 +106,15 @@ class TestPrepareForVersion:
 
         assert handler.prepare_for_version(source) == source
         assert source.read_bytes() == before
+
+    def test_does_not_rewrite_a_file_already_stamped_for_its_version(self, tmp_path):
+        source = _write_science_cdf(
+            tmp_path, "imap_mag_l2-pre_norm-srf_20260116_v001.0001.cdf"
+        )
+        handler = _l2_pre_handler(version=2)
+        handler.prepare_for_version(source)
+        before = source.read_bytes()
+
+        handler.prepare_for_version(source)
+
+        assert source.read_bytes() == before

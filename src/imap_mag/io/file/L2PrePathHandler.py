@@ -20,22 +20,21 @@ class L2PrePathHandler(SciencePathHandler):
 
     def prepare_for_version(self, source_file: Path) -> Path:
         """Stamp the CDF with the version it is being saved under."""
-        current = self.from_filename(source_file)
-        if current is not None and current.get_filename() == self.get_filename():
-            # no change in version
-            return source_file
-
-        logger.info(
-            f"Updating version attributes in {source_file} for {self.get_filename()}"
-        )
         from spacepy import pycdf
 
+        logical_file_id = Path(self.get_filename()).stem
+        with pycdf.CDF(str(source_file)) as cdf:
+            current_id = cdf.attrs.get(CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID)
+            if current_id is not None and str(current_id[0]) == logical_file_id:
+                return source_file
+
+        logger.info(
+            f"Updating version attributes in {source_file} for {logical_file_id}"
+        )
         with pycdf.CDF(str(source_file), readonly=False) as cdf:
             cdf.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
                 self.version,
                 self.version_major if self.has_major_version else 0,
             )
-            cdf.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(
-                self.get_filename()
-            ).stem
+            cdf.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = logical_file_id
         return source_file

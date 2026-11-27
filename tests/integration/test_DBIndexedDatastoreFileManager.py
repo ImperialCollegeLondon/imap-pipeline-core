@@ -1668,3 +1668,93 @@ class TestDBIndexedDatastoreFileManagerUnit:
         assert (archive_folder / "subdir" / "test_file.csv").exists()
         mock_db.upsert_files.assert_called_once_with([mock_archived_file, mock_file])
         assert not source_file.exists()
+
+
+def _hk_file_record(version: int, path: str) -> File:
+    return File(
+        name=f"imap_mag_l1_hsk-pw_20250502_v{version:03}.txt",
+        path=path,
+        descriptor="imap_mag_l1_hsk-pw",
+        version=version,
+        hash=0,
+        size=0,
+        content_date=datetime(2025, 5, 2),
+        software_version=__version__,
+    )
+
+
+def test_DBIndexedDatastoreFileManager_resolve_version_assigns_next_version_without_storing(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
+) -> None:
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    mock_database.get_files.return_value = [
+        _hk_file_record(
+            1, "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v001.txt"
+        ),
+        _hk_file_record(
+            2, "hk/mag/l1/hsk-pw/2025/05/imap_mag_l1_hsk-pw_20250502_v002.txt"
+        ),
+    ]
+
+    # Exercise.
+    database_manager.resolve_version(original_file, path_handler)
+
+    # Verify.
+    assert path_handler.version == 3
+    mock_datastore_manager.resolve_version.assert_called_once_with(
+        original_file, path_handler
+    )
+    mock_datastore_manager.store_file.assert_not_called()
+    mock_database.upsert_file.assert_not_called()
+
+
+def test_DBIndexedDatastoreFileManager_override_conflict_soft_deleted_on_store_not_on_resolve(
+    mock_datastore_manager: mock.Mock, mock_database: mock.Mock
+) -> None:
+    # Set up.
+    database_manager = DBIndexedDatastoreFileManager(
+        mock_datastore_manager, mock_database
+    )
+    original_file = create_test_file(
+        Path(tempfile.gettempdir()) / "some_file", "some content"
+    )
+    path_handler = HKDecodedPathHandler(
+        version=1,
+        descriptor="hsk-pw",
+        content_date=datetime(2025, 5, 2),
+        extension="txt",
+    )
+    path_handler.allow_overwrite = True
+    conflict = _hk_file_record(1, "hk/mag/l1/hsk-pw/2025/05/elsewhere_v001.txt")
+    mock_database.get_files.side_effect = lambda *_: [conflict]
+    test_file = Path(tempfile.gettempdir()) / "test_file_override.txt"
+    mock_datastore_manager.store_file.side_effect = lambda *_: add_result(
+        create_test_file(test_file, "some content"), path_handler
+    )
+
+    # Exercise.
+    database_manager.resolve_version(original_file, path_handler)
+
+    # Verify.
+    assert path_handler.version == 1
+    assert conflict.deletion_date is None
+    mock_database.upsert_file.assert_not_called()
+
+    # Exercise.
+    database_manager.store_file(original_file, path_handler)
+
+    # Verify.
+    assert conflict.deletion_date is not None
+    assert mock_database.upsert_file.call_args_list[0] == mock.call(conflict)

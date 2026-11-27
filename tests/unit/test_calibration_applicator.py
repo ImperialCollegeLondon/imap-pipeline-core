@@ -74,7 +74,7 @@ def _make_mock_science():
 
 @contextlib.contextmanager
 def _patch_apply_base_deps(tmp_path):
-    """Patch the four external dependencies needed to get past apply() validation."""
+    """Patch the external dependencies needed to get past create_l2() validation."""
     with (
         patch("mag_toolkit.calibration.CalibrationApplicator.ScienceLayer.from_file"),
         patch.object(
@@ -175,23 +175,20 @@ class TestApplyValidation:
         with pytest.raises(
             ValueError, match="No calibration layers or rotation file provided"
         ):
-            _make_applicator().apply(
-                day_to_process=datetime(2025, 10, 17),
+            _make_applicator().create_offsets(
                 layer_files=[],
                 rotation=None,
                 dataFile=tmp_path / "science.cdf",
                 outputOffsetsFile=tmp_path / "offsets.cdf",
-                outputScienceFolder=tmp_path,
             )
 
     def test_raises_when_output_science_folder_does_not_exist(self, tmp_path):
         with pytest.raises(ValueError, match="Output science folder does not exist"):
-            _make_applicator().apply(
+            _make_applicator().create_l2(
                 day_to_process=datetime(2025, 10, 17),
-                layer_files=[tmp_path / "layer.json"],
+                offsets_file=tmp_path / "offsets.cdf",
                 rotation=None,
                 dataFile=tmp_path / "science.cdf",
-                outputOffsetsFile=tmp_path / "offsets.cdf",
                 outputScienceFolder=tmp_path / "nonexistent_folder",
             )
 
@@ -200,13 +197,11 @@ class TestApplyValidation:
             ValueError,
             match="Input science file does not exist or could not be parsed",
         ):
-            _make_applicator().apply(
-                day_to_process=datetime(2025, 10, 17),
+            _make_applicator().create_offsets(
                 layer_files=[tmp_path / "layer.json"],
                 rotation=None,
                 dataFile=tmp_path / "missing_science.cdf",
                 outputOffsetsFile=tmp_path / "offsets.cdf",
-                outputScienceFolder=tmp_path,
             )
 
     def test_raises_when_science_filename_is_not_parseable(self, tmp_path):
@@ -217,13 +212,11 @@ class TestApplyValidation:
             ValueError,
             match="Input science file does not exist or could not be parsed",
         ):
-            _make_applicator().apply(
-                day_to_process=datetime(2025, 10, 17),
+            _make_applicator().create_offsets(
                 layer_files=[tmp_path / "layer.json"],
                 rotation=None,
                 dataFile=unparseable,
                 outputOffsetsFile=tmp_path / "offsets.cdf",
-                outputScienceFolder=tmp_path,
             )
 
     def test_raises_file_exists_error_when_offsets_file_already_exists(self, tmp_path):
@@ -236,13 +229,11 @@ class TestApplyValidation:
             FileExistsError,
             match="Output calibration file already exists",
         ):
-            _make_applicator().apply(
-                day_to_process=datetime(2025, 10, 17),
+            _make_applicator().create_offsets(
                 layer_files=[tmp_path / "layer.json"],
                 rotation=None,
                 dataFile=science_file,
                 outputOffsetsFile=existing_offsets,
-                outputScienceFolder=tmp_path,
             )
 
 
@@ -440,10 +431,9 @@ class TestApplyPostValidation:
         science_file.write_bytes(b"fake cdf data")
         return dict(
             day_to_process=datetime(2025, 10, 17),
-            layer_files=[tmp_path / "layer.json"],
+            offsets_file=tmp_path / "offsets.cdf",
             rotation=None,
             dataFile=science_file,
-            outputOffsetsFile=tmp_path / "new_offsets.cdf",
             outputScienceFolder=tmp_path,
         )
 
@@ -458,7 +448,7 @@ class TestApplyPostValidation:
             ),
             pytest.raises(ValueError, match="Failed to generate spice metakernel"),
         ):
-            _make_applicator().apply(**kwargs)
+            _make_applicator().create_l2(**kwargs)
 
     def test_raises_when_resolved_spice_metakernel_path_does_not_exist(self, tmp_path):
         kwargs = self._make_validated_apply_kwargs(tmp_path)
@@ -470,7 +460,9 @@ class TestApplyPostValidation:
                 ValueError, match="Resolved spice metakernel path does not exist"
             ),
         ):
-            _make_applicator().apply(**{**kwargs, "spice_metakernel": nonexistent_mk})
+            _make_applicator().create_l2(
+                **{**kwargs, "spice_metakernel": nonexistent_mk}
+            )
 
     def test_raises_when_rotation_filename_is_not_parseable(self, tmp_path):
         kwargs = self._make_validated_apply_kwargs(tmp_path)
@@ -479,22 +471,12 @@ class TestApplyPostValidation:
 
         with (
             patch(
-                "mag_toolkit.calibration.CalibrationApplicator.ScienceLayer.from_file"
-            ),
-            patch.object(
-                CalibrationApplicator,
-                "_create_offsets_file",
-                return_value=tmp_path / "offsets.cdf",
-            ),
-            patch(
                 "imap_mag.io.FilePathHandlerSelector.AncillaryPathHandler.from_filename",
                 return_value=None,
             ),
             pytest.raises(ValueError, match="Could not parse rotation file name"),
         ):
-            _make_applicator().apply(
-                **{**kwargs, "layer_files": [], "rotation": rotation_file}
-            )
+            _make_applicator().create_l2(**{**kwargs, "rotation": rotation_file})
 
     def test_processes_through_spice_and_returns_empty_files_when_no_datasets(
         self, tmp_path
@@ -518,12 +500,11 @@ class TestApplyPostValidation:
                 return_value=[],
             ),
         ):
-            files, _ = _make_applicator().apply(
+            files = _make_applicator().create_l2(
                 day_to_process=datetime(2025, 10, 17),
-                layer_files=[tmp_path / "layer.json"],
+                offsets_file=tmp_path / "offsets.cdf",
                 rotation=None,
                 dataFile=science_file,
-                outputOffsetsFile=tmp_path / "new_offsets.cdf",
                 outputScienceFolder=tmp_path,
                 spice_metakernel=spice_mk,
             )
@@ -577,30 +558,17 @@ class TestApplyEarlyReturn:
     def test_returns_empty_l2_list_when_no_reference_frames(self, tmp_path):
         science_file = tmp_path / "imap_mag_l1c_norm-mago_20251017_v001.0001.cdf"
         science_file.write_bytes(b"fake cdf data")
-        offsets_path = tmp_path / "offsets.cdf"
 
-        with (
-            patch(
-                "mag_toolkit.calibration.CalibrationApplicator.ScienceLayer.from_file"
-            ),
-            patch.object(
-                CalibrationApplicator,
-                "_create_offsets_file",
-                return_value=offsets_path,
-            ),
-        ):
-            l2_files, returned_offsets = _make_applicator().apply(
-                day_to_process=datetime(2025, 10, 17),
-                layer_files=[tmp_path / "layer.json"],
-                rotation=None,
-                dataFile=science_file,
-                outputOffsetsFile=tmp_path / "new_offsets.cdf",
-                outputScienceFolder=tmp_path,
-                reference_frames=[],
-            )
+        l2_files = _make_applicator().create_l2(
+            day_to_process=datetime(2025, 10, 17),
+            offsets_file=tmp_path / "offsets.cdf",
+            rotation=None,
+            dataFile=science_file,
+            outputScienceFolder=tmp_path,
+            reference_frames=[],
+        )
 
         assert l2_files == []
-        assert returned_offsets == offsets_path
 
 
 class TestExpandBoundaryChangesToEveryEpoch:

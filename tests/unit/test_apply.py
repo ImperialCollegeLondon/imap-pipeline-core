@@ -229,7 +229,7 @@ class TestCleanupWorkfolderAfterApply:
             workLayers=[layer_file],
             workRotationFile=None,
             L2_files=[l2_file],
-            offset_file=offset_file,
+            offset_files=[offset_file],
         )
 
         assert not science_file.exists()
@@ -257,7 +257,7 @@ class TestCleanupWorkfolderAfterApply:
             workLayers=[],
             workRotationFile=rotation_file,
             L2_files=[],
-            offset_file=offset_file,
+            offset_files=[offset_file],
         )
 
         assert not rotation_file.exists()
@@ -282,7 +282,7 @@ class TestCleanupWorkfolderAfterApply:
             workLayers=[],
             workRotationFile=None,
             L2_files=[inside_file],
-            offset_file=work_folder / "offsets.cdf",
+            offset_files=[work_folder / "offsets.cdf"],
         )
 
         assert outside_file.exists()
@@ -309,7 +309,7 @@ class TestCleanupWorkfolderAfterApply:
             workLayers=[json_layer],
             workRotationFile=None,
             L2_files=[],
-            offset_file=offset_file,
+            offset_files=[offset_file],
         )
 
         assert not json_layer.exists()
@@ -330,7 +330,7 @@ class TestCleanupWorkfolderAfterApply:
             workLayers=[],
             workRotationFile=None,
             L2_files=[],
-            offset_file=nonexistent_file,
+            offset_files=[nonexistent_file],
         )
 
 
@@ -508,7 +508,7 @@ class TestCleanupWorkfolderParquetCompanion:
             workLayers=[json_path],
             workRotationFile=None,
             L2_files=[],
-            offset_file=offset_file,
+            offset_files=[offset_file],
         )
 
         assert not parquet_companion.exists()

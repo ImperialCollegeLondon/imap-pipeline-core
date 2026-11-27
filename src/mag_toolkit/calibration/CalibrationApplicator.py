@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas
@@ -28,6 +29,9 @@ from .CalibrationLayer import CalibrationLayer
 from .CalibrationMatrix import CalibrationMatrix
 from .ScienceLayer import ScienceLayer
 
+if TYPE_CHECKING:
+    from imap_mag.io.file import SciencePathHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +52,7 @@ class CalibrationApplicator:
         science_epochs = science._contents[CONSTANTS.CSV_VARS.EPOCH]
 
         offsets = CalibrationLayer.from_file(layers[0], load_contents=True)
-        calibration_dependencies = list(offsets.metadata.dependencies)
+        calibration_dependencies = dict.fromkeys(offsets.metadata.dependencies)
         if offsets.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
             offsets = self._expand_boundary_changes_to_every_epoch(
                 offsets, science_epochs
@@ -63,9 +67,7 @@ class CalibrationApplicator:
 
         for layer_file in layers[1:]:
             layer = CalibrationLayer.from_file(layer_file, load_contents=True)
-            for dependency in layer.metadata.dependencies:
-                if dependency not in calibration_dependencies:
-                    calibration_dependencies.append(dependency)
+            calibration_dependencies.update(dict.fromkeys(layer.metadata.dependencies))
             if layer.value_type == ValueType.BOUNDARY_CHANGES_ONLY:
                 layer = self._expand_boundary_changes_to_every_epoch(
                     layer, science_epochs
@@ -80,45 +82,12 @@ class CalibrationApplicator:
             science,
             outputCalibrationFile,
             version=1,
-            calibration_dependencies=calibration_dependencies,
+            calibration_dependencies=list(calibration_dependencies),
         )
 
         cal_filepath = offsets.write_to_file(outputCalibrationFile)
 
         return cal_filepath
-
-    def apply(
-        self,
-        day_to_process: datetime,
-        layer_files: list[Path],
-        rotation: Path | None,
-        dataFile: Path,  # the file path of the science file that gived the raw data the layers are applied to
-        outputOffsetsFile: Path,
-        outputScienceFolder: Path,
-        spice_metakernel: Path | None = None,
-        reference_frames: list[ReferenceFrame] = [
-            ReferenceFrame.SRF,
-            ReferenceFrame.GSE,
-            ReferenceFrame.GSM,
-            ReferenceFrame.RTN,
-            ReferenceFrame.DSRF,
-        ],
-    ) -> tuple[list[Path], Path]:
-        """Currently operating on unprocessed data."""
-        self._check_output_science_folder(outputScienceFolder)
-        offsets_file = self.create_offsets(
-            layer_files, rotation, dataFile, outputOffsetsFile
-        )
-        l2_files = self.create_l2(
-            day_to_process,
-            offsets_file,
-            rotation,
-            dataFile,
-            outputScienceFolder,
-            spice_metakernel,
-            reference_frames,
-        )
-        return (l2_files, offsets_file)
 
     def create_offsets(
         self,
@@ -131,7 +100,7 @@ class CalibrationApplicator:
         if len(layer_files) < 1 and rotation is None:
             raise ValueError("No calibration layers or rotation file provided")
 
-        dataFile = self._resolve_science_file(dataFile)
+        dataFile, _ = self._resolve_science_file(dataFile)
 
         if outputOffsetsFile.exists():
             logger.warning(
@@ -170,11 +139,12 @@ class CalibrationApplicator:
         from imap_mag.io.file import SciencePathHandler
         from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 
-        self._check_output_science_folder(outputScienceFolder)
+        if not outputScienceFolder.exists():
+            raise ValueError(
+                f"Output science folder does not exist: {outputScienceFolder}"
+            )
 
-        dataFile = self._resolve_science_file(dataFile)
-        science_handler = SciencePathHandler.from_filename(dataFile.name)
-        assert science_handler is not None
+        dataFile, science_handler = self._resolve_science_file(dataFile)
         # resolved so it can still be read after changing directory to the datastore
         offsets_file = offsets_file.resolve()
 
@@ -332,14 +302,7 @@ class CalibrationApplicator:
         return files_created
 
     @staticmethod
-    def _check_output_science_folder(outputScienceFolder: Path) -> None:
-        if not outputScienceFolder.exists():
-            raise ValueError(
-                f"Output science folder does not exist: {outputScienceFolder}"
-            )
-
-    @staticmethod
-    def _resolve_science_file(dataFile: Path) -> Path:
+    def _resolve_science_file(dataFile: Path) -> tuple[Path, SciencePathHandler]:
         from imap_mag.io.file import SciencePathHandler
 
         science_handler = SciencePathHandler.from_filename(dataFile.name)
@@ -349,7 +312,7 @@ class CalibrationApplicator:
             raise ValueError(
                 f"Input science file does not exist or could not be parsed: {dataFile}"
             )
-        return dataFile
+        return dataFile, science_handler
 
     @staticmethod
     def _get_l2_parents(ds: Dataset, parent_files: list[Path]) -> list[str]:
@@ -358,11 +321,7 @@ class CalibrationApplicator:
         existing = ds.attrs.get(CONSTANTS.CDF_ATTRS.PARENTS) or []
         if isinstance(existing, str):
             existing = [existing]
-        parents = list(existing)
-        for parent_file in parent_files:
-            if parent_file.name not in parents:
-                parents.append(parent_file.name)
-        return parents
+        return list(dict.fromkeys([*existing, *(f.name for f in parent_files)]))
 
     @staticmethod
     def _get_l2_frames(reference_frames: list[ReferenceFrame]) -> list[ValidFrames]:

@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import cdflib
 import numpy as np
 import pandas as pd
 import pyarrow.types as pa_types
@@ -449,8 +450,6 @@ class TestCalibrationLayerFromCdf:
         assert np.isnan(result[CONSTANTS.CSV_VARS.OFFSET_X].iloc[0])
 
     def test_write_to_cdf_records_calibration_dependencies(self, tmp_path):
-        import cdflib
-
         layer = _make_layer_with_contents()
         layer.metadata.calibration_dependencies = [
             "config.json",
@@ -466,8 +465,6 @@ class TestCalibrationLayerFromCdf:
         ]
 
     def test_write_to_cdf_omits_calibration_dependencies_when_none(self, tmp_path):
-        import cdflib
-
         layer = _make_layer_with_contents()
         cdf_file = tmp_path / "layer.cdf"
         layer._write_to_cdf(cdf_file)
