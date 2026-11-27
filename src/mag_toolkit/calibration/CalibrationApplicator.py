@@ -15,6 +15,8 @@ from imap_processing.mag.l2.mag_l2_data import ValidFrames
 from xarray import Dataset
 
 from imap_mag.config import AppSettings
+from imap_mag.io.file import SciencePathHandler
+from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 from imap_mag.util import ScienceMode, get_cdf_data_version
 from imap_mag.util.ReferenceFrame import ReferenceFrame
 from mag_toolkit.calibration.CalibrationDefinitions import (
@@ -136,8 +138,6 @@ class CalibrationApplicator:
         ],
     ) -> list[Path]:
         """Apply offsets_file (and rotation) to dataFile to create L2 files."""
-        from imap_mag.io.file import SciencePathHandler
-        from imap_mag.io.FilePathHandlerSelector import AncillaryPathHandler
 
         if not outputScienceFolder.exists():
             raise ValueError(
@@ -145,7 +145,6 @@ class CalibrationApplicator:
             )
 
         dataFile, science_handler = self._resolve_science_file(dataFile)
-        # resolved so it can still be read after changing directory to the datastore
         offsets_file = offsets_file.resolve()
 
         if not reference_frames:
@@ -278,9 +277,9 @@ class CalibrationApplicator:
             )
             filepath = outputScienceFolder / filename
 
+            ds.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_SOURCE] = logical_source
             ds.attrs[CONSTANTS.CDF_ATTRS.LOGICAL_FILE_ID] = Path(filename).stem
-            # mag_l2 leaves Data_version as None, and cdflib silently stops
-            # writing global attributes at the first None value.
+
             ds.attrs[CONSTANTS.CDF_ATTRS.DATA_VERSION] = get_cdf_data_version(
                 1, self.app_settings.version_major
             )
@@ -303,7 +302,6 @@ class CalibrationApplicator:
 
     @staticmethod
     def _resolve_science_file(dataFile: Path) -> tuple[Path, SciencePathHandler]:
-        from imap_mag.io.file import SciencePathHandler
 
         science_handler = SciencePathHandler.from_filename(dataFile.name)
         # resolve datafile to an absolute path to ensure it exists in the datastore

@@ -42,6 +42,7 @@ class CONSTANTS:
         GENERATION_DATE = "Generation_date"
         DATA_VERSION = "Data_version"
         LOGICAL_FILE_ID = "Logical_file_id"
+        LOGICAL_SOURCE = "Logical_source"
         MISSION_GROUP = "Mission_group"
         IS_MAGO = "is_mago"
         PARENTS = "Parents"

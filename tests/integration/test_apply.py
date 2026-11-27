@@ -53,6 +53,7 @@ def verify_noop_results(datastore, date=datetime(2025, 10, 17), frame="srf"):
     assert output_offsets_file.name in l2_attrs["Parents"]
     # every global attribute is written, not just those before a None value
     assert l2_attrs["Logical_file_id"] == [output_l2_file.stem]
+    assert l2_attrs["Logical_source"] == [f"imap_mag_l2-pre_norm-{frame}"]
 
     with open_cdf(output_l2_file) as cdf:
         assert f"b_{frame}" in cdf
@@ -700,6 +701,7 @@ def test_apply_stamps_l2_pre_with_the_version_assigned_by_the_datastore(
     attrs = cdflib.CDF(str(new_l2)).globalattsget()
     assert attrs["Data_version"] == ["001.0002"]
     assert attrs["Logical_file_id"] == [new_l2.stem]
+    assert attrs["Logical_source"] == ["imap_mag_l2-pre_norm-srf"]
     assert "imap_mag_l1c_norm-mago_20260116_v001.cdf" in attrs["Parents"]
 
 
