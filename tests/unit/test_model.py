@@ -163,40 +163,34 @@ class TestFileGetDatastoreRelativePath:
 
         assert result == "spice/ck/test.cdf"
 
-    def test_returns_original_path_when_outside_datastore(self):
+    def test_a_path_already_relative_to_the_datastore_is_kept(self):
         mock_settings = MagicMock()
         mock_settings.data_store = Path("/data/store")
 
-        f = _make_file(path="/other/location/test.cdf")
-        result = File.get_datastore_relative_path(Path(f.path), mock_settings)
-
-        assert result == "/other/location/test.cdf"
-
-    def test_no_warning_when_warn_false_and_outside_datastore(self, caplog):
-        import logging
-
-        mock_settings = MagicMock()
-        mock_settings.data_store = Path("/data/store")
-
-        f = _make_file(path="/other/location/test.cdf")
-        with caplog.at_level(logging.WARNING):
-            File.get_datastore_relative_path(Path(f.path), mock_settings, warn=False)
-
-        assert not any(
-            "is not within the data store path" in m for m in caplog.messages
+        result = File.get_datastore_relative_path(
+            Path("spice/./ck/x/../test.cdf"), mock_settings
         )
 
-    def test_warning_when_warn_true_and_outside_datastore(self, caplog):
-        import logging
+        assert result == "spice/ck/test.cdf"
 
+    @pytest.mark.parametrize(
+        "path", ["/other/location/test.cdf", "/data/store", "/data/store/../x.cdf"]
+    )
+    def test_a_path_outside_the_datastore_is_refused(self, path):
         mock_settings = MagicMock()
         mock_settings.data_store = Path("/data/store")
 
-        f = _make_file(path="/other/location/test.cdf")
-        with caplog.at_level(logging.WARNING):
-            File.get_datastore_relative_path(Path(f.path), mock_settings, warn=True)
+        with pytest.raises(ValueError, match="not inside the data store"):
+            File.get_datastore_relative_path(Path(path), mock_settings)
 
-        assert any("is not within the data store path" in m for m in caplog.messages)
+    def test_a_file_outside_the_datastore_cannot_be_indexed(self, tmp_path):
+        outside = tmp_path / "outside.csv"
+        outside.write_text("x")
+        settings = MagicMock()
+        settings.data_store = tmp_path / "store"
+
+        with pytest.raises(ValueError, match="not inside the data store"):
+            File.from_file(outside, 1, "hash", None, settings)
 
 
 class TestFileFromFile:

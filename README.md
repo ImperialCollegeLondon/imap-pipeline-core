@@ -209,7 +209,7 @@ source defaults.env
 source .env
 
 # The files database defaults to a local SQLite file (db_url in imap-mag-config.yaml,
-# .work/imap.db, created on first use). Point it at Postgres instead with:
+# .data/imap.db, created on first use). Point it at Postgres instead with:
 export SQLALCHEMY_URL=postgresql+psycopg://postgres:postgres@host.docker.internal:5432/imap
 
 imap-mag fetch metakernel --start-time 2025-11-01T00:00:00 --end-time 2025-11-05T23:59:59 --output-path ./metakernels --file-types ck,spk --publish-to-datastore

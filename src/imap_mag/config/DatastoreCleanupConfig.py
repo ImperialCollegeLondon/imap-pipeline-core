@@ -40,7 +40,8 @@ class CleanupTask(BaseModel):
     )
     archive_folder: Path | None = Field(
         default=None,
-        description="Folder to archive files to. Required when cleanup_mode is 'archive'. "
+        description="Folder to archive files to, inside the data store (absolute, or "
+        "relative to the data store root). Required when cleanup_mode is 'archive'. "
         "The folder structure relative to datastore root will be preserved.",
     )
 

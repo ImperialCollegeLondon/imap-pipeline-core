@@ -15,7 +15,7 @@ version_major: 2
 # SQLALCHEMY_URL (or MAG_DB_URL), e.g. postgresql+psycopg://user:password@host:5432/imap,
 # and in Prefect flows the imap-database SqlAlchemyConnector block, when it exists,
 # overrides both.
-db_url: 'sqlite:///.work/imap.db'
+db_url: 'sqlite:///.data/imap.db'
 
 # SPICE kernel types included when generating a metakernel. Shared by the
 # calibration applicator and the scripted L2 calibration.

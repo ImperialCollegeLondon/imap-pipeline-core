@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from imap_mag.db.utils import DatabaseDriver
 from prefect_server.postgresUploadFlow import (
     _process_files,
     get_database_connectionstring,
@@ -44,30 +43,17 @@ class TestGetDatabaseConnectionstring:
         assert result == "postgresql://user:pass@host/db"
 
     @pytest.mark.asyncio
-    async def test_converts_psycopg_driver_spec_in_url(self):
+    @pytest.mark.parametrize(
+        "url",
+        ["postgresql+psycopg://user:pass@host/db", "postgres://user:pass@host/db"],
+    )
+    async def test_returns_the_url_as_configured(self, url):
         mock_settings = self._make_app_settings()
 
-        with patch.dict(
-            os.environ, {"MY_DB_URL": "postgresql+psycopg://user:pass@host/db"}
-        ):
-            result = await get_database_connectionstring(
-                mock_settings, "MY_DB_URL", database_driver=DatabaseDriver.Postgresql
-            )
+        with patch.dict(os.environ, {"MY_DB_URL": url}):
+            result = await get_database_connectionstring(mock_settings, "MY_DB_URL")
 
-        assert result == "postgresql://user:pass@host/db"
-
-    @pytest.mark.asyncio
-    async def test_adds_psycopg_driver_spec_in_url(self):
-        mock_settings = self._make_app_settings()
-
-        with patch.dict(os.environ, {"MY_DB_URL": "postgresql://user:pass@host/db"}):
-            result = await get_database_connectionstring(
-                mock_settings,
-                "MY_DB_URL",
-                database_driver=DatabaseDriver.PostgresqlPsychopg,
-            )
-
-        assert result == "postgresql+psycopg://user:pass@host/db"
+        assert result == url
 
     @pytest.mark.asyncio
     async def test_loads_prefect_block_when_env_var_not_set(self):
@@ -103,7 +89,7 @@ class TestGetDatabaseConnectionstring:
                 await get_database_connectionstring(mock_settings, "nonexistent-block")
 
     @pytest.mark.asyncio
-    async def test_raises_when_none_passed_and_app_settings_has_env_var(self):
+    async def test_none_uses_the_env_var_named_in_app_settings(self):
         mock_settings = self._make_app_settings(
             db_url_env_var="MY_DB_URL_FROM_SETTINGS"
         )
@@ -111,8 +97,9 @@ class TestGetDatabaseConnectionstring:
         with patch.dict(
             os.environ, {"MY_DB_URL_FROM_SETTINGS": "postgresql://host/db"}
         ):
-            with pytest.raises(ValueError, match="Invalid database connection input"):
-                await get_database_connectionstring(mock_settings, None)
+            result = await get_database_connectionstring(mock_settings, None)
+
+        assert result == "postgresql://host/db"
 
 
 class TestProcessFiles:

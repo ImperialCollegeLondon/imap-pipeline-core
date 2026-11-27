@@ -41,6 +41,4 @@ async def test_create_in_async_flow_reads_db_url_from_imap_database_block(
 
     db_url = await build_settings()
 
-    assert (
-        db_url == "postgresql+psycopg://user:example-password@db.example.com:5432/imap"
-    )
+    assert db_url == "postgresql://user:example-password@db.example.com:5432/imap"

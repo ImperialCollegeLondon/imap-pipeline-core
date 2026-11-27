@@ -370,8 +370,8 @@ async def test_cleanup_datastore_archives_files(
     prefect_test_fixture,  # noqa: F811
     mocker,
 ):
-    """Test that files can be archived instead of deleted."""
-    archive_folder = tmp_path / "archive"
+    """Test that files can be archived instead of deleted (inside the data store)."""
+    archive_folder = temp_datastore / "archive"
     archive_folder.mkdir()
 
     test_files_info = [
@@ -442,6 +442,14 @@ async def test_cleanup_datastore_archives_files(
         temp_datastore
         / "hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v002.csv"
     ).exists()
+
+    # the archived record keeps a path relative to the data store root
+    live_paths = [f.path for f in test_database.get_files() if f.deletion_date is None]
+    assert (
+        "archive/hk/mag/l1/hsk-procstat/2025/11/imap_mag_l1_hsk-procstat_20251101_v001.csv"
+        in live_paths
+    )
+    assert not any(path.startswith("/") for path in live_paths)
 
 
 @pytest.mark.asyncio

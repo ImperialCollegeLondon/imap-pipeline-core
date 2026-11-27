@@ -1,6 +1,5 @@
 import logging
 import os
-from enum import StrEnum
 from typing import cast
 
 from prefect_sqlalchemy import SqlAlchemyConnector
@@ -10,16 +9,7 @@ from imap_mag.config.AppSettings import AppSettings
 logger = logging.getLogger(__name__)
 
 
-class DatabaseDriver(StrEnum):
-    Unchanged = ""
-    Postgresql = "postgresql"
-    PostgresqlPsychopg = "postgresql+psycopg"
-
-
-def load_database_url(
-    env_name_or_block_name: str,
-    database_driver: DatabaseDriver = DatabaseDriver.Unchanged,
-) -> str | None:
+def load_database_url(env_name_or_block_name: str) -> str | None:
     """Get a database URL from an environment variable or a Prefect block.
 
     The environment variable is checked first. Otherwise the name is taken to be a
@@ -28,7 +18,6 @@ def load_database_url(
 
     Args:
         env_name_or_block_name: Environment variable name or Prefect block name.
-        database_driver: Driver to put in the URL, or Unchanged to keep the one given.
 
     Returns:
         The database URL, or None if there is no such variable or block.
@@ -56,55 +45,42 @@ def load_database_url(
         )
         db_url = connector_block._rendered_url.render_as_string(False)
 
-    return _set_driver(db_url, database_driver)
+    return db_url
 
 
 async def get_database_connectionstring(
     app_settings: AppSettings,
     db_env_name_or_block_name_or_block: str | SqlAlchemyConnector | None,
-    database_driver: DatabaseDriver = DatabaseDriver.Unchanged,
 ) -> str:
-    """
-    Get database connection string from environment variable or Prefect block.
+    """Get a database connection string from an environment variable or Prefect block.
+
+    The URL is returned as configured: crump (0.9+) and Database both accept any
+    PostgreSQL URL form, so no driver is forced here.
 
     Args:
-        db_env_name_or_block_name_or_block: Environment variable name, Prefect block name, or SqlAlchemyConnector block.
+        app_settings: settings; postgres_upload names the default env var or block.
+        db_env_name_or_block_name_or_block: Environment variable name, Prefect block
+            name, or SqlAlchemyConnector block. None uses the postgres_upload setting.
+
     Returns:
         Database connection string.
     """
-
-    if db_env_name_or_block_name_or_block is None:
+    lookup = db_env_name_or_block_name_or_block
+    if lookup is None:
         logger.info("Using database connection info from app settings")
-        db_url_lookup_key = (
-            app_settings.postgres_upload.database_url_env_var_or_block_name
-        )
-    else:
-        db_url_lookup_key = db_env_name_or_block_name_or_block
+        lookup = app_settings.postgres_upload.database_url_env_var_or_block_name
 
-    if db_url_lookup_key is None:
+    if lookup is None:
         raise RuntimeError(
             "Database connection information not provided. Cannot upload."
         )
 
-    db_url = None
-
-    if isinstance(db_env_name_or_block_name_or_block, SqlAlchemyConnector):
-        db_url = _set_driver(
-            db_env_name_or_block_name_or_block._rendered_url.render_as_string(False),
-            database_driver,
-        )
-    elif isinstance(db_env_name_or_block_name_or_block, str):
-        db_url = load_database_url(db_env_name_or_block_name_or_block, database_driver)
+    if isinstance(lookup, SqlAlchemyConnector):
+        db_url = lookup._rendered_url.render_as_string(False)
+    else:
+        db_url = load_database_url(lookup)
 
     if db_url is None:
         raise ValueError("Invalid database connection input")
 
     return db_url
-
-
-def _set_driver(db_url: str, database_driver: DatabaseDriver) -> str:
-    # Note that crump expects/needs: postgresql://user:pass@host:port/dbname so whenever
-    # crump is used, the postgress driver should be forced.
-    if database_driver == DatabaseDriver.Unchanged:
-        return db_url
-    return database_driver + "://" + db_url.split("://")[-1]

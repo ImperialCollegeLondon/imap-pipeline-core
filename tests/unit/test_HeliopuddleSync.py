@@ -669,13 +669,28 @@ class TestDatastoreOperations:
         )
 
         with pytest.raises(HeliopuddleSyncError):
-            manager.archive_file(db.get_files()[0], tmp_path / "archive")
+            manager.archive_file(db.get_files()[0], Path("archive"))
 
         assert not (store / "hk/a.csv").exists()
-        assert (tmp_path / "archive/hk/a.csv").exists()
-        assert db.get_files(File.deletion_date.is_(None))[0].path.endswith(
-            "archive/hk/a.csv"
-        )
+        assert (store / "archive/hk/a.csv").exists()
+        assert db.get_files(File.deletion_date.is_(None))[0].path == "archive/hk/a.csv"
+
+    def test_archive_outside_the_store_is_refused_before_anything_moves(
+        self, manager, db, hp, store, tmp_path
+    ):
+        _write(store, "hk/a.csv", b"data")
+        db.upsert_file(_file("hk/a.csv"))
+        hp.reset_calls()
+
+        with pytest.raises(ValueError, match="not inside the data store"):
+            manager.archive_file(db.get_files()[0], tmp_path / "archive")
+
+        assert (store / "hk/a.csv").exists()
+        assert not (tmp_path / "archive").exists()
+        assert [f.path for f in db.get_files(File.deletion_date.is_(None))] == [
+            "hk/a.csv"
+        ]
+        assert hp.calls == []
 
     def test_restoring_a_deleted_record_adds_it_back(self, manager, db, hp, store):
         from imap_mag.io.file import HKBinaryPathHandler

@@ -117,13 +117,11 @@ class AppSettings(BaseSettings):
         settings = cls(**overrides)
         if is_prefect:
             # Imported here so that loading settings does not import Prefect.
-            from imap_mag.db.utils import DatabaseDriver, load_database_url
+            from imap_mag.db.utils import load_database_url
             from prefect_server.constants import PREFECT_CONSTANTS
 
             block_name = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME
-            block_url = load_database_url(
-                block_name, database_driver=DatabaseDriver.PostgresqlPsychopg
-            )
+            block_url = load_database_url(block_name)
             if block_url:
                 settings.db_url = block_url
             elif settings.db_url:

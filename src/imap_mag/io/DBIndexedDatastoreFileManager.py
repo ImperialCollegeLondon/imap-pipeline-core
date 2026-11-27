@@ -141,7 +141,12 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             archive_date: Timestamp to record as archive/deletion date
         """
         source_path = self.__settings.data_store / file.path
+        if not archive_folder.is_absolute():
+            archive_folder = self.__settings.data_store / archive_folder
         dest_path = archive_folder / file.path
+        # The files table only holds paths relative to the data store, so the
+        # archive must be inside it. Check before anything is copied.
+        new_db_path = File.get_datastore_relative_path(dest_path, self.__settings)
 
         # Create destination directory
         dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -149,12 +154,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Copy file to archive
         shutil.copy2(source_path, dest_path)
 
-        # if destination path is in datastore use a relative path, otherwise use absolute path
-        new_db_path = dest_path.absolute()
-        if dest_path.is_relative_to(self.__settings.data_store):
-            new_db_path = dest_path.relative_to(self.__settings.data_store)
-
-        archived_file = file.archive_to_new_file_path(new_db_path)
+        archived_file = file.archive_to_new_file_path(Path(new_db_path))
         sync_error: HeliopuddleSyncError | None = None
         try:
             self.__database.upsert_files([archived_file, file])
@@ -412,9 +412,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 for f in database_files
                 if f.version == forced_minor
                 and f.path
-                != File.get_datastore_relative_path(
-                    new_destination, self.__settings, warn=False
-                )
+                != File.get_datastore_relative_path(new_destination, self.__settings)
             ]
             for conflict in conflicting:
                 conflict_path = conflict.get_full_path(self.__settings)

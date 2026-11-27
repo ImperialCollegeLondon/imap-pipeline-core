@@ -229,7 +229,7 @@ def _block(url: str) -> MagicMock:
 
 @pytest.mark.usefixtures("no_db_url_env")
 def test_db_url_defaults_to_a_local_sqlite_file():
-    assert AppSettings().db_url == "sqlite:///.work/imap.db"
+    assert AppSettings().db_url == "sqlite:///.data/imap.db"
 
 
 @pytest.mark.usefixtures("no_db_url_env")
@@ -284,7 +284,7 @@ def test_create_outside_prefect_does_not_load_the_block():
     with patch(BLOCK_LOAD) as mock_load:
         settings = AppSettings.create()
 
-    assert settings.db_url == "sqlite:///.work/imap.db"
+    assert settings.db_url == "sqlite:///.data/imap.db"
     mock_load.assert_not_called()
 
 
@@ -295,7 +295,7 @@ def test_create_for_prefect_loads_url_from_imap_database_block():
         settings = AppSettings.create(is_prefect=True)
 
     mock_load.assert_called_once_with("imap-database", _sync=True)
-    assert settings.db_url == "postgresql+psycopg://user:pass@block-host:5432/imap"
+    assert settings.db_url == block_url  # as configured; Database picks the driver
 
 
 @pytest.mark.usefixtures("no_db_url_env")

@@ -1232,14 +1232,14 @@ files = [
 
 [[package]]
 name = "crump"
-version = "0.7.1"
+version = "0.9.0"
 description = "Csv/cdf Read and dUMP - Sync CSV, Parquet, and CDF science files into PostgreSQL database"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "crump-0.7.1-py3-none-any.whl", hash = "sha256:8356a7d6d6dc73b5c930ffb2dfa7a7f2c596aed1b3792d2d48d00a69aa5edec2"},
-    {file = "crump-0.7.1.tar.gz", hash = "sha256:fdae20c322342ebfaae55683623064c1ae549129c0e0972bc7a1c902b34b7bfe"},
+    {file = "crump-0.9.0-py3-none-any.whl", hash = "sha256:3d3fc43f9724de8a2fe96a5106de6e0c602b6c839be5b2d8cab85821df743be9"},
+    {file = "crump-0.9.0.tar.gz", hash = "sha256:90371a942f104c50982ae64f74ea72cb0c192b00fb35b9bdd84bc9432a40acd0"},
 ]
 
 [package.dependencies]
@@ -6035,4 +6035,4 @@ viz = ["cartopy (>=0.23)", "matplotlib (>=3.8)", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "6d4ef10b8439ad8c30ba5cb553d02b6a2c53f296c49f022a598b4f5550329b11"
+content-hash = "5806ac6d1460f14abfd6e1b0613277e48b5a8442d76bc55eb06d4632773ab4ae"
