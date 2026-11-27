@@ -130,6 +130,8 @@ class SyncSummary:
     actions: Counter[SyncAction] = field(default_factory=Counter)
     failures: dict[str, str] = field(default_factory=dict)
     untracked: list[str] = field(default_factory=list)
+    # The latest last_modified_date of the IMAP rows that were synced (naive UTC).
+    last_modified: datetime | None = None
 
     def add(self, action: SyncAction) -> None:
         self.actions[action] += 1
@@ -309,7 +311,9 @@ class HeliopuddleSync:
 
         if modified_after is not None:
             since = _naive_utc(modified_after) - self.config.incremental_overlap
-            files = database.get_files(File.last_modified_date > since)
+            files = _by_modification(
+                database.get_files(File.last_modified_date > since)
+            )
             logger.info(
                 f"Syncing {len(files)} file(s) modified since {since.isoformat()} to heliopuddle."
             )
@@ -317,8 +321,9 @@ class HeliopuddleSync:
                 self._sync_and_record_outcome(
                     summary, ImapDbFileSnapshot.from_file(file), dry_run=dry_run
                 )
+                _note_modified(summary, file)
         else:
-            files = database.get_files()
+            files = _by_modification(database.get_files())
             # find_all reads every page, however many files heliopuddle has.
             live = {
                 record.path: record
@@ -329,7 +334,8 @@ class HeliopuddleSync:
             logger.info(
                 f"Reconciling {len(files)} IMAP file record(s) with {len(live)} live heliopuddle file(s)."
             )
-            for file in sorted(files, key=lambda f: f.path):
+            for file in files:
+                _note_modified(summary, file)
                 snapshot = ImapDbFileSnapshot.from_file(file)
                 path = self.store_path(snapshot.path)
                 existing = live.pop(path, None) if path is not None else None
@@ -383,8 +389,12 @@ def run_sync(
 ) -> SyncSummary:
     """Run a full or incremental reconcile and record its progress.
 
-    Without ``full`` or ``since`` the sync is incremental from the start of the
-    last successful sync, and full when there has been none (the migration).
+    Without ``full`` or ``since`` the sync is incremental from the progress
+    timestamp, and full when there is none (the migration). Files are synced in
+    order of modification, and after a successful sync the progress timestamp is
+    the modification time of the most recently modified file synced, so changes
+    made while the sync ran are picked up next time. A sync that fails records no
+    progress.
 
     Raises:
         ValueError: the integration is disabled.
@@ -413,9 +423,26 @@ def run_sync(
 
     if not dry_run:
         progress.update_last_checked_timestamp(started)
-        progress.update_progress_timestamp(started)
+        if summary.last_modified is not None:
+            progress.update_progress_timestamp(summary.last_modified)
         database.save(progress)
     return summary
+
+
+def _by_modification(files: list[File]) -> list[File]:
+    """Rows oldest change first (path order for equal times; rows without one first)."""
+    return sorted(
+        files,
+        key=lambda f: (_naive_utc(f.last_modified_date) or datetime.min, f.path),
+    )
+
+
+def _note_modified(summary: SyncSummary, file: File) -> None:
+    modified = _naive_utc(file.last_modified_date)
+    if modified is not None and (
+        summary.last_modified is None or modified > summary.last_modified
+    ):
+        summary.last_modified = modified
 
 
 def _already_in_sync(snapshot: ImapDbFileSnapshot, record: FileRecord) -> bool:

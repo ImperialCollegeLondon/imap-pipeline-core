@@ -3,103 +3,35 @@
 import contextlib
 import os
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from imap_mag.db.utils import load_database_url
 from prefect_server.postgresUploadFlow import (
     _process_files,
-    get_database_connectionstring,
     upload_new_files_to_postgres,
 )
 
 pytestmark = pytest.mark.usefixtures("in_memory_database_url")
 
 
-class TestGetDatabaseConnectionstring:
-    def _make_app_settings(self, db_url_env_var=None):
-        mock_settings = MagicMock()
-        mock_settings.postgres_upload.database_url_env_var_or_block_name = (
-            db_url_env_var
-        )
-        return mock_settings
+class TestLoadDatabaseUrl:
+    def test_reads_the_env_var_first(self):
+        with patch.dict(os.environ, {"MY_DB_URL": "postgresql+psycopg://u:p@h/db"}):
+            assert load_database_url("MY_DB_URL") == "postgresql+psycopg://u:p@h/db"
 
-    @pytest.mark.asyncio
-    async def test_raises_when_no_connection_info_and_app_settings_has_none(self):
-        mock_settings = self._make_app_settings(db_url_env_var=None)
+    def test_falls_back_to_the_prefect_block(self):
+        block = MagicMock()
+        block._rendered_url.render_as_string.return_value = "postgresql://u:p@h/db"
+        with patch(
+            "imap_mag.db.utils.SqlAlchemyConnector.load", return_value=block
+        ) as load:
+            assert load_database_url("imap-database") == "postgresql://u:p@h/db"
+        load.assert_called_once_with("imap-database", _sync=True)
 
-        with pytest.raises(
-            RuntimeError, match="Database connection information not provided"
-        ):
-            await get_database_connectionstring(mock_settings, None)
-
-    @pytest.mark.asyncio
-    async def test_uses_env_var_when_string_and_env_var_set(self):
-        mock_settings = self._make_app_settings()
-
-        with patch.dict(os.environ, {"MY_DB_URL": "postgresql://user:pass@host/db"}):
-            result = await get_database_connectionstring(mock_settings, "MY_DB_URL")
-
-        assert result == "postgresql://user:pass@host/db"
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "url",
-        ["postgresql+psycopg://user:pass@host/db", "postgres://user:pass@host/db"],
-    )
-    async def test_returns_the_url_as_configured(self, url):
-        mock_settings = self._make_app_settings()
-
-        with patch.dict(os.environ, {"MY_DB_URL": url}):
-            result = await get_database_connectionstring(mock_settings, "MY_DB_URL")
-
-        assert result == url
-
-    @pytest.mark.asyncio
-    async def test_loads_prefect_block_when_env_var_not_set(self):
-        mock_settings = self._make_app_settings()
-        mock_connector = MagicMock()
-        mock_connector._rendered_url.render_as_string.return_value = (
-            "postgresql://user:pass@host/db"
-        )
-
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch(
-                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.load",
-                return_value=mock_connector,
-            ),
-        ):
-            result = await get_database_connectionstring(mock_settings, "my-block-name")
-
-        assert "postgresql" in result
-
-    @pytest.mark.asyncio
-    async def test_raises_when_block_name_not_found(self):
-        mock_settings = self._make_app_settings()
-
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch(
-                "prefect_server.postgresUploadFlow.SqlAlchemyConnector.load",
-                side_effect=ValueError("Block not found"),
-            ),
-        ):
-            with pytest.raises(ValueError, match="Invalid database connection input"):
-                await get_database_connectionstring(mock_settings, "nonexistent-block")
-
-    @pytest.mark.asyncio
-    async def test_none_uses_the_env_var_named_in_app_settings(self):
-        mock_settings = self._make_app_settings(
-            db_url_env_var="MY_DB_URL_FROM_SETTINGS"
-        )
-
-        with patch.dict(
-            os.environ, {"MY_DB_URL_FROM_SETTINGS": "postgresql://host/db"}
-        ):
-            result = await get_database_connectionstring(mock_settings, None)
-
-        assert result == "postgresql://host/db"
+    def test_returns_none_when_there_is_no_block(self):
+        assert load_database_url("no-such-block") is None  # tests have no blocks
 
 
 class TestProcessFiles:
@@ -252,11 +184,6 @@ class TestUploadNewFilesToPostgres:
                 "prefect_server.postgresUploadFlow.Database",
                 return_value=mock_db,
             ),
-            patch(
-                "prefect_server.postgresUploadFlow.get_database_connectionstring",
-                new_callable=AsyncMock,
-                return_value="postgresql://test",
-            ),
         ):
             yield
 
@@ -272,7 +199,6 @@ class TestUploadNewFilesToPostgres:
         ):
             result = await upload_new_files_to_postgres.fn(
                 paths_to_match=["*.csv"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         assert result.is_completed()
@@ -290,7 +216,6 @@ class TestUploadNewFilesToPostgres:
             await upload_new_files_to_postgres.fn(
                 find_files_after=None,
                 paths_to_match=["*.csv"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         assert (
@@ -309,7 +234,6 @@ class TestUploadNewFilesToPostgres:
             with pytest.raises(ValueError, match="Crump configuration file not found"):
                 await upload_new_files_to_postgres.fn(
                     paths_to_match=["*.csv"],
-                    db_env_name_or_block_name_or_block="DB_URL",
                 )
 
     @pytest.mark.asyncio
@@ -329,7 +253,6 @@ class TestUploadNewFilesToPostgres:
         ):
             result = await upload_new_files_to_postgres.fn(
                 paths_to_match=["*"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         assert result.is_failed()
@@ -358,7 +281,6 @@ class TestUploadNewFilesToPostgres:
             mock_crump_cls.from_yaml.return_value = mock_crump_config
             result = await upload_new_files_to_postgres.fn(
                 paths_to_match=["*"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         assert result.is_failed()
@@ -391,7 +313,6 @@ class TestUploadNewFilesToPostgres:
             mock_crump_cls.from_yaml.return_value = mock_crump_config
             result = await upload_new_files_to_postgres.fn(
                 paths_to_match=["*.csv"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         assert result.is_completed()
@@ -432,7 +353,6 @@ class TestUploadNewFilesToPostgres:
             mock_crump_cls.from_yaml.return_value = mock_crump_config
             result = await upload_new_files_to_postgres.fn(
                 paths_to_match=["*.cdf"],
-                db_env_name_or_block_name_or_block="DB_URL",
             )
 
         mock_extract.assert_called_once()
@@ -446,11 +366,6 @@ class TestPostgresUploadFlowSimpleRun:
         mock_db.get_files_since.return_value = []
 
         with (
-            patch(
-                "prefect_server.postgresUploadFlow.get_database_connectionstring",
-                new_callable=AsyncMock,
-                return_value="postgresql://localhost/test",
-            ),
             patch("prefect_server.postgresUploadFlow.Database", return_value=mock_db),
             patch(
                 "prefect_server.postgresUploadFlow.try_get_prefect_logger",

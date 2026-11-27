@@ -579,12 +579,17 @@ class TestReconcile:
 
 class TestRunSync:
     @pytest.fixture
-    def settings(self, store, monkeypatch, sync):
+    def settings(self, store, monkeypatch, hp):
         from imap_mag.config.AppSettings import AppSettings
 
         settings = AppSettings(data_store=store)  # type: ignore
         settings.heliopuddle = _config()
-        monkeypatch.setattr(HeliopuddleSync, "from_settings", lambda _s: sync)
+        # a new sync per run, as in production (run_sync closes it), on the same fake
+        monkeypatch.setattr(
+            HeliopuddleSync,
+            "from_settings",
+            lambda _s: HeliopuddleSync(_config(), store, client=hp),  # type: ignore[arg-type]
+        )
         return settings
 
     def test_first_run_is_full_and_records_progress(
@@ -600,17 +605,49 @@ class TestRunSync:
 
         assert "hk/a.csv" in hp.live_paths()
         progress = offline_db.get_workflow_progress(PROGRESS_ITEM_NAME)
-        assert progress.progress_timestamp == datetime(2026, 7, 1)
+        # the modification time of the newest file synced, not the clock
+        assert progress.progress_timestamp == datetime(2000, 1, 1)
+        assert progress.last_checked_date == datetime(2026, 7, 1)
         assert hp.closed
 
     def test_later_runs_are_incremental_from_the_last_run(
         self, settings, hp, store, offline_db
     ):
+        _write(store, "hk/a.csv", b"a")
+        offline_db.upsert_file(
+            _file("hk/a.csv", size=1, last_modified_date=datetime(2026, 6, 1))
+        )
         run_sync(settings, offline_db, now=datetime(2026, 7, 1, tzinfo=UTC))
         hp.reset_calls()
 
         run_sync(settings, offline_db, now=datetime(2026, 7, 2, tzinfo=UTC))
         assert "find" not in hp.methods_called()
+
+    def test_files_sync_oldest_change_first_and_progress_is_the_newest(
+        self, settings, hp, store, offline_db
+    ):
+        for name, modified in (("b", 3), ("a", 1), ("c", 2)):
+            _write(store, f"hk/{name}.csv", name.encode())
+            offline_db.upsert_file(
+                _file(
+                    f"hk/{name}.csv",
+                    size=1,
+                    last_modified_date=datetime(2026, 6, modified),
+                )
+            )
+
+        run_sync(settings, offline_db, now=datetime(2026, 7, 1, tzinfo=UTC))
+
+        registered = [c.target for c in hp.calls if c.method == "register_file"]
+        assert registered == ["hk/a.csv", "hk/c.csv", "hk/b.csv"]
+        progress = offline_db.get_workflow_progress(PROGRESS_ITEM_NAME)
+        assert progress.progress_timestamp == datetime(2026, 6, 3)
+
+    def test_a_run_with_nothing_to_sync_keeps_the_progress(self, settings, offline_db):
+        run_sync(settings, offline_db, now=datetime(2026, 7, 1, tzinfo=UTC))
+        progress = offline_db.get_workflow_progress(PROGRESS_ITEM_NAME)
+        assert progress.progress_timestamp is None
+        assert progress.last_checked_date == datetime(2026, 7, 1)
 
     def test_dry_run_records_no_progress(self, settings, offline_db):
         run_sync(settings, offline_db, dry_run=True)

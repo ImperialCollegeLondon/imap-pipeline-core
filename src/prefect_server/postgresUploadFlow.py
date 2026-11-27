@@ -9,12 +9,10 @@ from crump import CrumpConfig, sync_file_to_db
 from crump.cdf_extractor import extract_cdf_to_tabular_file
 from prefect import flow
 from prefect.states import Completed, Failed
-from prefect_sqlalchemy import SqlAlchemyConnector
 
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
-from imap_mag.db.utils import get_database_connectionstring
 from prefect_server.constants import PREFECT_CONSTANTS
 from prefect_server.prefectUtils import try_get_prefect_logger
 
@@ -161,9 +159,6 @@ async def upload_new_files_to_postgres(
     paths_to_match: list[str] | None = None,
     how_many: int | None = None,
     job_name: str | None = None,
-    db_env_name_or_block_name_or_block: str
-    | SqlAlchemyConnector
-    | None = PREFECT_CONSTANTS.IMAP_DATABASE_BLOCK_NAME,
     progress_key="postgres-upload",
 ):
     """
@@ -188,13 +183,12 @@ async def upload_new_files_to_postgres(
     logger = try_get_prefect_logger(__name__)
 
     app_settings = AppSettings.create(is_prefect=True)
-    # the IMAP database to track progress - could be different from the target Postgres database
+    # One IMAP database: crump writes the packet tables to the same database that
+    # tracks the files and this flow's progress.
     db = Database(app_settings)
     started = datetime.now(tz=UTC)
-
-    db_url = await get_database_connectionstring(
-        app_settings, db_env_name_or_block_name_or_block
-    )
+    db_url = app_settings.db_url
+    assert db_url  # Database has already refused a missing URL
 
     # Get workflow progress
     workflow_progress = db.get_workflow_progress(progress_key)
