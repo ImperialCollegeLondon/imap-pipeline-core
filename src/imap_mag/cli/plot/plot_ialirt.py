@@ -106,6 +106,7 @@ def plot_ialirt(
         science_files,
         hk_files,
         save_folder=work_folder,
+        app_settings=app_settings,
         combine_plots=combined_plot,
         datetime_provider=datetime_provider,
     )

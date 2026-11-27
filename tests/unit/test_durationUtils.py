@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from prefect_server.durationUtils import format_duration, parse_duration
+from prefect_server.durationUtils import format_duration, parse_duration, to_timedelta
 
 
 def test_parses_days():
@@ -53,3 +53,12 @@ def test_formats_combinations():
 
 def test_formats_zero():
     assert format_duration(timedelta(0)) == "0s"
+
+
+def test_to_timedelta_accepts_timedeltas_seconds_and_duration_strings():
+    assert to_timedelta(timedelta(hours=2)) == timedelta(hours=2)
+    assert to_timedelta(90) == timedelta(seconds=90)
+    assert to_timedelta(1.5) == timedelta(seconds=1.5)
+    assert to_timedelta("5m") == timedelta(minutes=5)
+    with pytest.raises(ValueError):
+        to_timedelta("soon")

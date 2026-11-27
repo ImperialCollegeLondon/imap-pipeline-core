@@ -33,7 +33,7 @@ dependencies = [
     "spacepy>=0.7.0",
     "pydantic-settings>=2.16.3",
     "ccsdspy>=2.1.0",
-    "crump>=0.7.1,<0.8.0",
+    "crump>=0.9.0",
     "prefect-managedfiletransfer>=0.7.2",
     "ialirt-data-access>=0.6.0",
     "apprise>=1.13.1",
@@ -43,6 +43,8 @@ dependencies = [
     "prefect-github (>=0.4.3,<0.4.4)",
     "pyarrow (>=26.0.1,<27.0.0)",
     "certifi>=2026.10.23",
+    # Client only (no server dependencies); used when heliopuddle.enabled is set.
+    "heliopuddle>=0.1.0",
 ]
 
 
@@ -71,6 +73,13 @@ dev = [
     "openpyxl>=3.1.5",
 ]
 
+[tool.poetry.dependencies]
+# The client's sync_file/sync_removed and busy retries are not released yet:
+# take them from the heliopuddle branch task/client-file-sync (a source archive
+# of its commit, so the images need no git) until the next heliopuddle release,
+# then delete this section and raise the floor above to that release.
+heliopuddle = { url = "https://github.com/ImperialCollegeLondon/heliopuddle/archive/2763dd94a518892ca664f72d5ef657861213e74b.tar.gz" }
+
 [tool.poetry.scripts]
 # can execute via poetry, e.g. `poetry run imap-mag hello world`
 imap-mag = 'imap_mag.main:app'
@@ -81,6 +90,9 @@ pythonpath = [
   ".", "src"
 ]
 minversion = "8.0"
+markers = [
+    "imap_database_block: reads the imap-database block from the test's own Prefect server",
+]
 testpaths = [
     "tests/*.py",
     "tests/**/*.py",
@@ -92,7 +104,9 @@ env = [
     # adds significant per-flow-run overhead. Logs are still captured via Python
     # logging (e.g. the capture_cli_logs fixture), so log assertions keep working.
     "PREFECT_LOGGING_TO_API_ENABLED=false",
-    "MPLBACKEND=Agg"
+    "MPLBACKEND=Agg",
+    # No database unless a test asks for one (the config's default is a SQLite file).
+    "SQLALCHEMY_URL=",
 ]
 
 [build-system]

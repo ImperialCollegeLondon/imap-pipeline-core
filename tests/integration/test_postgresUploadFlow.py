@@ -31,12 +31,8 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         "hk/sc/l1/x285/2026/02/imap_sc_l1_x285_20260217_v001.csv",
     ]
 
-    # Set up test environment with a target database for crump to write to
-    target_db_url = test_database_container.get_connection_url()
-
     with Environment(
         MAG_DATA_STORE=str(DATASTORE.absolute()),
-        TARGET_DATABASE_URL=target_db_url,
     ):
         # Insert test files into IMAP tracking database
         app_settings = AppSettings()
@@ -45,7 +41,6 @@ async def test_upload_new_files_to_postgres_does_upload_files(
         # Exercise - upload files to postgres
         await upload_new_files_to_postgres(
             find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
-            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
         # Verify
@@ -79,9 +74,7 @@ async def test_upload_new_files_to_postgres_does_upload_files(
 
         # Exercise again - should not upload again (no new files)
         # Don't pass find_files_after so it uses the updated workflow progress
-        await upload_new_files_to_postgres(
-            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
-        )
+        await upload_new_files_to_postgres()
 
         # Verify - should be no work to do
         assert "No work to do" in capture_cli_logs.text
@@ -100,12 +93,8 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
         # "hk/mag/l1/hsk-pw/2025/11/imap_mag_l1_hsk-pw_20251102_v002.csv"
     ]
 
-    # Set up test environment with a target database for crump to write to
-    target_db_url = test_database_container.get_connection_url()
-
     with Environment(
         MAG_DATA_STORE=str(DATASTORE.absolute()),
-        TARGET_DATABASE_URL=target_db_url,
         PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW="ignore",
     ):
         # Insert test files into IMAP tracking database
@@ -115,7 +104,6 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
         # Exercise - upload files to postgres
         await upload_new_files_to_postgres.fn(
             find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
-            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
         expected_rows = 5
@@ -149,7 +137,6 @@ async def test_upload_files_to_postgres_populates_file_date_so_they_can_be_updat
         # Exercise - upload files to postgres
         await upload_new_files_to_postgres.fn(
             find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
-            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
         expected_rows = 8
@@ -182,11 +169,8 @@ async def test_upload_new_files_to_postgres_allows_empty_noaa_wind_values(
         + "\n"
     )
 
-    target_db_url = test_database_container.get_connection_url()
-
     with Environment(
         MAG_DATA_STORE=str(tmp_path),
-        TARGET_DATABASE_URL=target_db_url,
         PREFECT_LOGGING_TO_API_WHEN_MISSING_FLOW="ignore",
     ):
         app_settings = AppSettings()
@@ -199,7 +183,6 @@ async def test_upload_new_files_to_postgres_allows_empty_noaa_wind_values(
 
         await upload_new_files_to_postgres.fn(
             find_files_after=datetime(2010, 1, 1, tzinfo=UTC),
-            db_env_name_or_block_name_or_block="TARGET_DATABASE_URL",
         )
 
         assert (

@@ -10,6 +10,12 @@ data_store:  'tests/datastore'
 packet_definition: 'packet_def/'
 disk_usage_threshold: 0.95  # Block file operations when filesystem is >= 95 % full
 version_major: 2
+# IMAP database URL. The default is a local SQLite file, created with its tables on
+# first use, so nothing needs installing for local development. Deployments set
+# SQLALCHEMY_URL (or MAG_DB_URL), e.g. postgresql+psycopg://user:password@host:5432/imap,
+# and in Prefect flows the imap-database SqlAlchemyConnector block, when it exists,
+# overrides both.
+db_url: 'sqlite:///.data/imap.db'
 
 # SPICE kernel types included when generating a metakernel. Shared by the
 # calibration applicator and the scripted L2 calibration.
@@ -187,7 +193,6 @@ upload:
 
 postgres_upload:
     crump_config_path: imap-db-ingest-config.yaml
-    database_url_env_var_or_block_name: "imap-database"
     enable_history: true
     paths_to_match:
         - "*hk/mag/l1/hsk-pw/*"
@@ -387,7 +392,6 @@ datastore_cleanup:
 
 database_delete_rows:
     dry_run: false
-    database_url_env_var_or_block_name: "imap-database"
     tasks:
         - name: "delete-rows-ace-mag-noaa-older-7d"
           table: "ace_mag_noaa"
@@ -405,3 +409,27 @@ database_delete_rows:
           table: "solar_wind_noaa"
           datetime_column: "id"
           older_than: "7d"
+
+# Mirror the files table into a heliopuddle project. When enabled, every insert,
+# update and soft delete of a file record is repeated in heliopuddle as soon as it
+# is committed. Run `imap-mag heliopuddle sync --full` once to migrate existing
+# files; the heliopuddle-sync flow then keeps both in sync.
+# heliopuddle is reached as a service account: set MAG_HELIOPUDDLE_CLIENT_ID and
+# MAG_HELIOPUDDLE_CLIENT_SECRET in the environment.
+heliopuddle:
+    enabled: false
+    url: "http://localhost:8080/api/v1"
+    project: "imap-mag"
+    # storage location in the project; empty means the project's first
+    storage_location:
+    # true: the heliopuddle storage location is this data store, files are registered in place
+    # false: file content is uploaded to heliopuddle
+    shared_datastore: true
+    # fail the operation (after the IMAP database commit) if heliopuddle cannot be updated
+    # (MAG_HELIOPUDDLE_FAIL_ON_ERROR overrides it per environment)
+    fail_on_error: true
+    request_timeout: "5m"
+    # retries of a file another heliopuddle operation is working on
+    busy_retries: 3
+    incremental_overlap: "1h"
+    work_sub_folder: "heliopuddle_sync"

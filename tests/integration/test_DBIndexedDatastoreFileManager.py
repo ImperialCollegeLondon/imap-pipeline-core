@@ -82,7 +82,8 @@ def check_inserted_file(
 ):
     # Two instances of `File` will never be equal, so we check the attributes.
     assert file.name == file_name
-    assert file.path == test_file.absolute().as_posix()
+    # only the path relative to the data store root (the temp folder here) is stored
+    assert file.path == test_file.relative_to(tempfile.gettempdir()).as_posix()
     assert file.version == version
     assert file.hash == hashlib.md5(b"some content").hexdigest()
     assert file.content_date == datetime(2025, 5, 2)
@@ -97,7 +98,9 @@ def test_DBIndexedDatastoreFileManager_writes_to_database(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -144,7 +147,9 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_in_database(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -204,7 +209,9 @@ def test_DBIndexedDatastoreFileManager_same_file_already_exists_as_second_file_i
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -283,7 +290,9 @@ def test_DBIndexedDatastoreFileManager_file_different_hash_already_exists_in_dat
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -362,7 +371,9 @@ def test_DBIndexedDatastoreFileManager_errors_when_destination_file_is_not_found
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -394,7 +405,9 @@ def test_DBIndexedDatastoreFileManager_errors_database_error(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -432,7 +445,9 @@ def test_DBIndexedDatastoreFileManager_real_database_l0_hk_partitioned_file(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -518,7 +533,9 @@ def test_DBIndexedDatastoreFileManager_real_database_l1_hk_versioned_file(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -610,7 +627,9 @@ def test_DBIndexedDatastoreFileManager_add_ancillary_files_uses_correct_dates(
 ) -> None:
     # Set Up
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -699,7 +718,9 @@ def test_calibration_layer_db_dedup_identical_content_reuses_v001(
 ) -> None:
     """Identical companion CSV → version stays at 1, no DB insertion."""
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     date = datetime(2026, 1, 16)
@@ -780,7 +801,9 @@ def test_calibration_layer_db_dedup_multiple_records_same_hash_handled_gracefull
     that best matches the handler's current version_major.
     """
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     date = datetime(2026, 1, 16)
@@ -921,7 +944,9 @@ def test_calibration_layer_db_different_content_creates_v002_with_correct_meta(
     mock_datastore_manager.store_file.side_effect = capture_store_file
 
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
     database_manager.add_file(work_json, path_handler)
 
@@ -956,7 +981,9 @@ def test_calibration_layer_db_deleted_version_not_compared_or_blocking(
     causing a new run with identical content to be assigned v003 instead of v001.
     """
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     date = datetime(2026, 1, 1)
@@ -1046,7 +1073,9 @@ def test_adding_file_to_real_postgres_sets_last_modified_date_in_database(
 ) -> None:
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, test_database
+        mock_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -1096,7 +1125,9 @@ def test_DBIndexedDatastoreFileManager_add_file_with_deleted_file_to_real_postgr
     mock_settings.disk_usage_threshold = 1.0
     real_datastore_manager = DatastoreFileManager(mock_settings)
     database_manager = DBIndexedDatastoreFileManager(
-        real_datastore_manager, test_database
+        real_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=mock_settings.data_store),
     )
 
     file_contents = "some content"
@@ -1153,7 +1184,9 @@ def test_DBIndexedDatastoreFileManager_add_same_file_with_existing_file_to_real_
     mock_settings.disk_usage_threshold = 1.0
     real_datastore_manager = DatastoreFileManager(mock_settings)
     database_manager = DBIndexedDatastoreFileManager(
-        real_datastore_manager, test_database
+        real_datastore_manager,
+        test_database,
+        settings=AppSettings(data_store=mock_settings.data_store),
     )
 
     file_contents = "some content"
@@ -1215,7 +1248,9 @@ def test_DBIndexedDatastoreFileManager_redownloading_identical_spice_file_refres
     mock_settings.data_store = temp_datastore
     mock_settings.disk_usage_threshold = 1.0
     database_manager = DBIndexedDatastoreFileManager(
-        DatastoreFileManager(mock_settings), test_database
+        DatastoreFileManager(mock_settings),
+        test_database,
+        settings=AppSettings(data_store=mock_settings.data_store),
     )
 
     downloaded_file = create_test_file(
@@ -1263,7 +1298,9 @@ def test_DBIndexedDatastoreFileManager_database_error_keeps_existing_datastore_f
     mock_settings.data_store = temp_datastore
     mock_settings.disk_usage_threshold = 1.0
     database_manager = DBIndexedDatastoreFileManager(
-        DatastoreFileManager(mock_settings), mock_database
+        DatastoreFileManager(mock_settings),
+        mock_database,
+        settings=AppSettings(data_store=mock_settings.data_store),
     )
 
     downloaded_file = create_test_file(
@@ -1294,7 +1331,9 @@ def test_DBIndexedDatastoreFileManager_database_error_removes_newly_created_data
     mock_settings.data_store = temp_datastore
     mock_settings.disk_usage_threshold = 1.0
     database_manager = DBIndexedDatastoreFileManager(
-        DatastoreFileManager(mock_settings), mock_database
+        DatastoreFileManager(mock_settings),
+        mock_database,
+        settings=AppSettings(data_store=mock_settings.data_store),
     )
 
     downloaded_file = create_test_file(
@@ -1321,7 +1360,9 @@ def test_DBIndexedDatastoreFileManager_science_file_version_major_stored_in_db(
     """SciencePathHandler with version_major=2 stores version_major=2 in the DB record."""
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -1365,7 +1406,9 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_major_scans_mi
     which naming convention they originally used."""
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -1439,7 +1482,9 @@ def test_DBIndexedDatastoreFileManager_get_next_available_version_uses_max_plus_
     """
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     original_file = create_test_file(
@@ -1523,7 +1568,9 @@ def test_DBIndexedDatastoreFileManager_locked_science_file_arriving_out_of_seque
     """
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     file_name = "imap_mag_l1d_burst-rtn_20261109_v002.0002.cdf"
@@ -1568,7 +1615,9 @@ def test_DBIndexedDatastoreFileManager_locked_science_file_with_same_version_dif
     different content."""
     # Set up.
     database_manager = DBIndexedDatastoreFileManager(
-        mock_datastore_manager, mock_database
+        mock_datastore_manager,
+        mock_database,
+        settings=AppSettings(data_store=Path(tempfile.gettempdir())),
     )
 
     file_name = "imap_mag_l1d_burst-rtn_20261109_v002.0002.cdf"

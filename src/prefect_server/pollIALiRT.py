@@ -187,8 +187,8 @@ async def poll_ialirt_flow(
             "When waiting for new data to arrive, run_parameters must be of type Automatic Run"
         )
 
-    database = Database() if use_database else None
-    settings = AppSettings()  # type: ignore
+    settings = AppSettings.create(is_prefect=True)
+    database = Database(settings) if use_database else None
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
     )

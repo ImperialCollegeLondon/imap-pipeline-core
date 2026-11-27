@@ -23,7 +23,7 @@ async def database_cleanup_flow(dry_run: bool | None = None):
         dry_run: If True, only count rows that would be deleted, without deleting
             them. If None, uses the value from configuration.
     """
-    app_settings = AppSettings()  # type: ignore
+    app_settings = AppSettings.create(is_prefect=True)
     config = app_settings.database_delete_rows
     dry_run = dry_run if dry_run is not None else config.dry_run
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -249,24 +250,28 @@ class File(Base):
         )
 
     @classmethod
-    def get_datastore_relative_path(
-        cls, file: Path, settings: AppSettings, warn: bool = True
-    ) -> str:
-        try:
-            file_with_datastore_relative_path = file.absolute().relative_to(
-                settings.data_store.absolute()
-            )
-        # match exception by message text "not a subpath"
-        except ValueError as e:
-            if "is not in the subpath of" in str(e):
-                if warn:
-                    logger.warning(
-                        f"File {file} is not within the data store path {settings.data_store}"
-                    )
-                file_with_datastore_relative_path = file
-            else:
-                raise
-        return file_with_datastore_relative_path.as_posix()
+    def get_datastore_relative_path(cls, file: Path, settings: AppSettings) -> str:
+        """The path to store in the files table: relative to the data store root.
+
+        The table only ever holds paths relative to the data store; the root
+        itself comes from config (``data_store``). A path inside the store is
+        made relative to it: an absolute path, a path relative to the current
+        folder, or a path that is already relative to the store.
+
+        Args:
+            file: a local path, or a path relative to the data store.
+            settings: settings with the data store root.
+
+        Raises:
+            ValueError: the file is outside the data store.
+        """
+        root = Path(os.path.normpath(settings.data_store.absolute()))
+        candidates = [file] if file.is_absolute() else [file.absolute(), root / file]
+        for candidate in candidates:
+            full = Path(os.path.normpath(candidate))
+            if full != root and full.is_relative_to(root):
+                return full.relative_to(root).as_posix()
+        raise ValueError(f"File {file} is not inside the data store {root}")
 
     @classmethod
     def filter_to_latest_versions_only(

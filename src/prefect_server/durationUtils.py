@@ -54,6 +54,26 @@ def parse_duration(duration_str: str) -> timedelta:
     return timedelta(seconds=total_seconds)
 
 
+def to_timedelta(value: str | int | float | timedelta) -> timedelta:
+    """Convert a config duration to a timedelta.
+
+    Args:
+        value: a timedelta (returned as is), a number of seconds, or a duration
+            string such as "5m" or "1d12h" (see parse_duration).
+
+    Returns:
+        The duration as a timedelta.
+
+    Raises:
+        ValueError: If a duration string is invalid
+    """
+    if isinstance(value, timedelta):
+        return value
+    if isinstance(value, int | float):
+        return timedelta(seconds=value)
+    return parse_duration(value)
+
+
 def format_duration(td: timedelta) -> str:
     """
     Format a timedelta into a human-readable duration string.

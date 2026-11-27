@@ -1,51 +1,95 @@
 import functools
+import itertools
 import logging
-import os
 import threading
 from datetime import UTC, datetime
-from typing import Any, ClassVar, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
-from sqlalchemy import create_engine, or_, select
+from sqlalchemy import create_engine, event, or_, select
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from imap_db.model import Base, File, FileAnalysis, WorkflowProgress
+from imap_mag.db.HeliopuddleSync import (
+    HeliopuddleSync,
+    HeliopuddleSyncError,
+    ImapDbFileSnapshot,
+)
+
+if TYPE_CHECKING:
+    # Annotation only: importing imap_mag.config runs its __init__, which imports
+    # the calibration toolkit, then imap_mag.io, which imports this module, so a
+    # run-time import here is circular. Callers pass the instance in.
+    from imap_mag.config.AppSettings import AppSettings
 
 logger = logging.getLogger(__name__)
 
 TBase = TypeVar("TBase", bound=Base)
 
 
+_FILE_CHANGES_KEY = "heliopuddle_file_changes"
+
+
 class Database:
-    """Database manager."""
+    """Database manager.
+
+    When the heliopuddle integration is enabled, every committed change to a
+    ``File`` row is also applied to heliopuddle (see HeliopuddleSync).
+
+    Args:
+        settings: application settings. The database URL is settings.db_url and the
+            heliopuddle sync is built from settings.heliopuddle.
+
+    Attributes:
+        heliopuddle_sync: the sync that file changes are applied with, or None when
+            the heliopuddle integration is disabled.
+    """
 
     _engine_cache: ClassVar[dict[str, Engine]] = {}
     _engine_lock: ClassVar[threading.Lock] = threading.Lock()
     __active_session: Session | None
 
-    def __init__(self, db_url=None):
-        env_url = self.get_environment_url()
-        if db_url is None and env_url is not None:
-            db_url = env_url
-
-        if db_url is None or len(db_url) == 0:
+    def __init__(self, settings: "AppSettings"):
+        db_url = settings.db_url
+        if not db_url:
             raise ValueError(
-                "No database URL provided. Consider setting SQLALCHEMY_URL environment variable."
+                "No database URL provided. Consider setting the SQLALCHEMY_URL environment variable."
             )
 
         url = make_url(db_url)
+        if url.drivername == "postgresql":
+            # psycopg (3) is the installed driver; a bare URL would pick psycopg2.
+            url = url.set(drivername="postgresql+psycopg")
         url_key = url.render_as_string(hide_password=False)
 
         with Database._engine_lock:
             if url_key not in Database._engine_cache:
-                Database._engine_cache[url_key] = create_engine(url, pool_pre_ping=True)
+                engine = create_engine(url, pool_pre_ping=True)
+                if url.get_backend_name() == "sqlite":
+                    _create_sqlite_tables(engine, url.database)
+                Database._engine_cache[url_key] = engine
 
         self.engine = Database._engine_cache[url_key]
         self.session = sessionmaker(bind=self.engine)
 
-    @classmethod
-    def get_environment_url(cls) -> str | None:
-        return os.getenv("SQLALCHEMY_URL")
+        self.heliopuddle_sync: HeliopuddleSync | None = HeliopuddleSync.from_settings(
+            settings
+        )
+        event.listen(self.session, "after_flush", _collect_file_changes)
+        event.listen(self.session, "after_commit", self.__apply_file_changes)
+        event.listen(self.session, "after_rollback", _discard_file_changes)
+
+    def __apply_file_changes(self, session: Session) -> None:
+        """Repeat the file changes just committed in heliopuddle."""
+        changes: dict[str, ImapDbFileSnapshot] = session.info.pop(_FILE_CHANGES_KEY, {})
+        if not changes:
+            return
+
+        if self.heliopuddle_sync is None:
+            return
+
+        self.heliopuddle_sync.apply_changes(changes.values())
 
     @staticmethod
     def __session_manager(readonly=False, **session_kwargs):
@@ -64,6 +108,9 @@ class Database:
                         logger.debug("Database session committed.")
 
                     return value
+                except HeliopuddleSyncError:
+                    # The database change is committed; only heliopuddle is behind.
+                    raise
                 except Exception as e:
                     if not readonly:
                         session.rollback()
@@ -319,6 +366,36 @@ class Database:
         # Convert fnmatch wildcards to SQL LIKE wildcards
         result = result.replace("**", "%").replace("*", "%").replace("?", "_")
         return result
+
+
+def _create_sqlite_tables(engine: Engine, database: str | None) -> None:
+    """Make a SQLite database usable straight away (local development, tests).
+
+    Postgres databases are created and migrated with alembic (imap-db); a SQLite
+    file (the default in imap-mag-config.yaml) gets its folder and the current
+    tables instead, so nothing needs installing to run the pipeline locally.
+    """
+    if database and database != ":memory:":
+        Path(database).parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(engine)
+
+
+def _collect_file_changes(session: Session, flush_context: Any) -> None:
+    """Snapshot every File row this flush inserts, changes or deletes."""
+    changes: dict[str, ImapDbFileSnapshot] = session.info.setdefault(
+        _FILE_CHANGES_KEY, {}
+    )
+    for obj in itertools.chain(session.new, session.dirty, session.deleted):
+        if not isinstance(obj, File):
+            continue
+        deleted = obj in session.deleted
+        if obj in session.new or deleted or session.is_modified(obj):
+            snapshot = ImapDbFileSnapshot.from_file(obj, hard_deleted=deleted)
+            changes[snapshot.path] = snapshot
+
+
+def _discard_file_changes(session: Session) -> None:
+    session.info.pop(_FILE_CHANGES_KEY, None)
 
 
 def update_database_with_progress(

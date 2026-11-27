@@ -11,6 +11,8 @@ from imap_mag.cli.check.check_ialirt import check_ialirt as check_ialirt_cli
 from imap_mag.util.DatetimeProvider import DatetimeProvider
 from prefect_server.checkIALiRT import check_ialirt_flow, send_monthly_test_message
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 
 class TestSendMonthlyTestMessage:
     """Unit tests for send_monthly_test_message without Docker."""
@@ -44,6 +46,7 @@ class TestSendMonthlyTestMessage:
             await send_monthly_test_message(
                 logger,
                 "test-webhook",
+                MagicMock(),
                 datetime_provider=DatetimeProvider(fixed_now=first_monday),
             )
 
@@ -64,6 +67,7 @@ class TestSendMonthlyTestMessage:
             await send_monthly_test_message(
                 logger,
                 "test-webhook",
+                MagicMock(),
                 datetime_provider=DatetimeProvider(fixed_now=regular_tuesday),
             )
 
@@ -86,6 +90,7 @@ class TestSendMonthlyTestMessage:
             await send_monthly_test_message(
                 logger,
                 "test-webhook",
+                MagicMock(),
                 datetime_provider=DatetimeProvider(fixed_now=first_monday),
             )
 
@@ -106,6 +111,7 @@ class TestSendMonthlyTestMessage:
             await send_monthly_test_message(
                 logger,
                 "test-webhook",
+                MagicMock(),
                 datetime_provider=DatetimeProvider(fixed_now=regular_tuesday),
             )
 

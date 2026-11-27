@@ -9,6 +9,7 @@ from sqlalchemy.sql import text
 from imap_db.model import File
 from imap_mag.config.AppSettings import AppSettings
 from imap_mag.db import Database
+from imap_mag.db.HeliopuddleSync import HeliopuddleSyncError
 from imap_mag.io.DatastoreFileManager import DatastoreFileManager
 from imap_mag.io.file import (
     IFilePathHandler,
@@ -44,17 +45,24 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         self,
         file_manager: IDatastoreFileManager | None = None,
         database: Database | None = None,
-        settings: AppSettings | None = None,
+        *,
+        settings: AppSettings,
     ):
-        """Initialize database and output manager."""
+        """Initialize database and output manager.
 
-        self.__settings = settings if settings else AppSettings()  # type: ignore
+        Args:
+            file_manager: Manager that writes the files; defaults to a DatastoreFileManager.
+            database: Database that indexes the files; defaults to one built from settings.
+            settings: Application settings.
+        """
+
+        self.__settings = settings
         self.__file_manager = (
             file_manager if file_manager else DatastoreFileManager(self.__settings)
         )
 
         if database is None:
-            self.__database = Database()
+            self.__database = Database(self.__settings)
         else:
             self.__database = database
 
@@ -99,6 +107,9 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             try:
                 new_file = self.__create_file_record(destination_file, path_handler)
                 self.__database.upsert_file(new_file)
+            except HeliopuddleSyncError:
+                # The record is committed and matches the file; only heliopuddle is behind.
+                raise
             except Exception as e:
                 logger.error(f"Error inserting {destination_file} into database: {e}")
                 # Only remove the file if this call created it, a file that was already
@@ -130,7 +141,12 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
             archive_date: Timestamp to record as archive/deletion date
         """
         source_path = self.__settings.data_store / file.path
+        if not archive_folder.is_absolute():
+            archive_folder = self.__settings.data_store / archive_folder
         dest_path = archive_folder / file.path
+        # The files table only holds paths relative to the data store, so the
+        # archive must be inside it. Check before anything is copied.
+        new_db_path = File.get_datastore_relative_path(dest_path, self.__settings)
 
         # Create destination directory
         dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,22 +154,23 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
         # Copy file to archive
         shutil.copy2(source_path, dest_path)
 
-        # if destination path is in datastore use a relative path, otherwise use absolute path
-        new_db_path = dest_path.absolute()
-        if dest_path.is_relative_to(self.__settings.data_store):
-            new_db_path = dest_path.relative_to(self.__settings.data_store)
+        archived_file = file.archive_to_new_file_path(Path(new_db_path))
+        sync_error: HeliopuddleSyncError | None = None
+        try:
+            self.__database.upsert_files([archived_file, file])
+        except HeliopuddleSyncError as e:
+            # Committed in the database, so finish the archive before reporting it.
+            sync_error = e
 
-        archived_file = file.archive_to_new_file_path(new_db_path)
-        self.__database.upsert_files([archived_file, file])
-
-        # Delete from filesystem if it exists
+        # Delete from filesystem if it exists (heliopuddle may already have removed it)
         if source_path.exists():
             logger.info(f"Deleting file {source_path} from filesystem.")
             source_path.unlink()
         else:
-            logger.warning(
-                f"File {source_path} does not exist on filesystem. It may have already been deleted."
-            )
+            logger.info(f"File {source_path} is no longer on the filesystem.")
+
+        if sync_error is not None:
+            raise sync_error
 
     def index_existing_file(
         self, file: Path, path_handler: IFilePathHandler
@@ -395,9 +412,7 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                 for f in database_files
                 if f.version == forced_minor
                 and f.path
-                != File.get_datastore_relative_path(
-                    new_destination, self.__settings, warn=False
-                )
+                != File.get_datastore_relative_path(new_destination, self.__settings)
             ]
             for conflict in conflicting:
                 conflict_path = conflict.get_full_path(self.__settings)
@@ -406,9 +421,16 @@ class DBIndexedDatastoreFileManager(IDatastoreFileManager):
                     f"{conflict.path} (same minor version {forced_minor})."
                 )
                 conflict.set_deleted()
-                self.__database.upsert_file(conflict)
+                sync_error: HeliopuddleSyncError | None = None
+                try:
+                    self.__database.upsert_file(conflict)
+                except HeliopuddleSyncError as e:
+                    # Committed as deleted in the database; finish before reporting it.
+                    sync_error = e
                 if conflict_path.exists():
                     conflict_path.unlink()
+                if sync_error is not None:
+                    raise sync_error
             return FILE_IS_NEW
 
         # Assign max+1 rather than the first available slot so version numbers are

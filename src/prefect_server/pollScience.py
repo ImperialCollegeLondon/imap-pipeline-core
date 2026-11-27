@@ -9,6 +9,7 @@ from pydantic import Field
 
 from imap_mag.cli.fetch.DownloadDateManager import DownloadDateManager
 from imap_mag.cli.fetch.science import fetch_science
+from imap_mag.config.AppSettings import AppSettings
 from imap_mag.config.DatastoreSaveOption import DatastoreSaveOption
 from imap_mag.config.FetchMode import FetchMode
 from imap_mag.db import Database, update_database_with_progress
@@ -220,7 +221,8 @@ async def poll_science_flow(
     datetime_provider = (
         DatetimeProvider() if datetime_provider is None else datetime_provider
     )
-    database = Database()
+    app_settings = AppSettings.create(is_prefect=True)
+    database = Database(app_settings)
 
     auth_code = await get_secret_or_env_var(
         PREFECT_CONSTANTS.POLL_SCIENCE.SDC_AUTH_CODE_SECRET_NAME,

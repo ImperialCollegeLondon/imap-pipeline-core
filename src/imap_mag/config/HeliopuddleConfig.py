@@ -1,0 +1,75 @@
+from datetime import timedelta
+
+from pydantic import AliasChoices, Field, field_validator, model_validator
+
+from imap_mag.config.CommandConfig import CommandConfig
+from prefect_server.durationUtils import to_timedelta
+
+
+class HeliopuddleConfig(CommandConfig):
+    """Optional mirroring of the IMAP files table into a heliopuddle project.
+
+    When enabled, every insert, update and soft delete of a row in the ``files``
+    table is repeated in heliopuddle through its client and API as soon as the
+    IMAP database transaction commits, and ``imap-mag heliopuddle sync`` (or the
+    heliopuddle-sync flow) migrates or reconciles all files in bulk.
+
+    heliopuddle is reached as a service account: the client id and secret come
+    from MAG_HELIOPUDDLE_CLIENT_ID and MAG_HELIOPUDDLE_CLIENT_SECRET.
+    """
+
+    enabled: bool = False
+    # API base URL including /api/v1, e.g. http://host:8080/api/v1
+    url: str | None = None
+    project: str | None = None
+    # Storage location in the heliopuddle project; None means the project's first.
+    storage_location: str | None = None
+    # True when the heliopuddle storage location is the IMAP data store itself, so
+    # files are registered in place. False uploads each file's content.
+    shared_datastore: bool = True
+    # Raise an error from the database write when heliopuddle could not be updated.
+    # The IMAP database change is already committed; the next sync repairs it.
+    # Also MAG_HELIOPUDDLE_FAIL_ON_ERROR, so each environment can choose.
+    fail_on_error: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("fail_on_error", "MAG_HELIOPUDDLE_FAIL_ON_ERROR"),
+    )
+    request_timeout: timedelta = timedelta(minutes=5)
+    # How many times the heliopuddle client retries a file that another
+    # heliopuddle operation owns, waiting as heliopuddle asks each time.
+    busy_retries: int = Field(default=3, ge=0)
+    # Incremental syncs also re-check files modified this long before the last
+    # sync, to allow for clock differences between writers.
+    incremental_overlap: timedelta = timedelta(hours=1)
+
+    # Fields with an underscore in their name cannot be read from MAG_HELIOPUDDLE_*
+    # env vars by the nested settings parser, so they also take an explicit alias.
+    client_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("client_id", "MAG_HELIOPUDDLE_CLIENT_ID"),
+    )
+    client_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("client_secret", "MAG_HELIOPUDDLE_CLIENT_SECRET"),
+    )
+
+    work_sub_folder: str | None = "heliopuddle_sync"
+
+    @field_validator("request_timeout", "incremental_overlap", mode="before")
+    @classmethod
+    def _duration(cls, value: str | int | float | timedelta) -> timedelta:
+        return to_timedelta(value)
+
+    @model_validator(mode="after")
+    def _required_when_enabled(self) -> "HeliopuddleConfig":
+        if self.enabled:
+            missing = [
+                name
+                for name in ("url", "project", "client_id", "client_secret")
+                if not getattr(self, name)
+            ]
+            if missing:
+                raise ValueError(
+                    f"heliopuddle integration is enabled but {', '.join(missing)} is not set"
+                )
+        return self

@@ -73,6 +73,7 @@ class PREFECT_CONSTANTS:
 
         DATABASE_CLEANUP_CRON = "IMAP_CRON_DATABASE_CLEANUP"
         IMAP_CRON_FILE_ANALYSER = "IMAP_CRON_FILE_ANALYSER"
+        IMAP_CRON_HELIOPUDDLE_SYNC = "IMAP_CRON_HELIOPUDDLE_SYNC"
 
         SQLALCHEMY_URL = "SQLALCHEMY_URL"
 
@@ -110,6 +111,7 @@ class PREFECT_CONSTANTS:
         POLL_NOAA = "poll-noaa"
         DATABASE_CLEANUP = "database-cleanup"
         FILE_ANALYSER = "file-analyser"
+        HELIOPUDDLE_SYNC = "heliopuddle-sync"
 
     class DEPLOYMENT_NAMES:
         CALIBRATE = "calibrate"
@@ -139,3 +141,4 @@ class PREFECT_CONSTANTS:
         POLL_NOAA = "poll_noaa"
         DATABASE_CLEANUP = "database_cleanup"
         FILE_ANALYSER = "file_analyser"
+        HELIOPUDDLE_SYNC = "heliopuddle_sync"

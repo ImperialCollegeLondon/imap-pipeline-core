@@ -61,8 +61,8 @@ async def poll_noaa_flow(
 ):
     """Poll NOAA space weather data."""
 
-    database = Database() if use_database else None
-    settings = AppSettings()  # type: ignore
+    settings = AppSettings.create(is_prefect=True)
+    database = Database(settings) if use_database else None
 
     pipeline = NOAAPipeline(
         spacecraft=spacecraft,

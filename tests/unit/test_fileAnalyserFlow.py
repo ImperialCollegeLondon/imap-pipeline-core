@@ -67,7 +67,10 @@ class TestMaxFilesPerRunOverride:
         pipeline.get_results.return_value.data_items = []
 
         with (
-            patch("prefect_server.fileAnalyserFlow.AppSettings", return_value=settings),
+            patch(
+                "prefect_server.fileAnalyserFlow.AppSettings.create",
+                return_value=settings,
+            ),
             patch("prefect_server.fileAnalyserFlow.Database"),
             patch(
                 "prefect_server.fileAnalyserFlow.FileAnalysisPipeline",

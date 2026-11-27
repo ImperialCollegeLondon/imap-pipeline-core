@@ -138,6 +138,8 @@ site/
 
 # dev env files and test data
 .work
+# local development data, e.g. the default SQLite files database
+/.data
 /output
 src/matlab
 dev.env

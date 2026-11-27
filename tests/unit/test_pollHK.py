@@ -8,6 +8,8 @@ import pytest
 from imap_mag.util import HKPacket
 from prefect_server.pollHK import generate_flow_run_name, poll_hk_flow
 
+pytestmark = pytest.mark.usefixtures("in_memory_database_url")
+
 
 class TestPollHKFlowGenerateName:
     def test_auto_run_includes_last_update(self):
